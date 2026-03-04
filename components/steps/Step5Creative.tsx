@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 
 const C = {
@@ -39,6 +40,12 @@ interface WMOption {
 
 export default function Step5Creative({ briefing, updateBriefing, nextStep }: Props) {
   const selected = briefing.werbemittel;
+  const [openItem, setOpenItem] = useState<'upload' | 'erstellen' | 'spaeter' | null>(null);
+
+  const handleOptionClick = (value: 'upload' | 'erstellen' | 'spaeter') => {
+    updateBriefing({ werbemittel: value });
+    setOpenItem(prev => prev === value ? null : value);
+  };
 
   const options: WMOption[] = [
     {
@@ -130,11 +137,11 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep }: Pr
         {/* WM Cards */}
         {options.map(opt => {
           const active = selected === opt.value;
-          const bodyOpen = active;
+          const bodyOpen = openItem === opt.value;
           return (
             <div
               key={opt.value}
-              onClick={() => updateBriefing({ werbemittel: opt.value })}
+              onClick={() => handleOptionClick(opt.value)}
               style={{
                 background: active ? C.pl : C.white,
                 borderRadius: '14px',
@@ -157,11 +164,14 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep }: Pr
                 <div style={{ ...opt.badgeStyle, marginLeft: 'auto', padding: '4px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {opt.badge}
                 </div>
+                <div style={{ fontSize: '12px', color: C.muted, marginLeft: '8px', flexShrink: 0, transition: 'transform .25s', transform: bodyOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  ▾
+                </div>
               </div>
               {/* Body (accordion) */}
               <div
                 style={{
-                  maxHeight: bodyOpen ? '260px' : '0',
+                  maxHeight: bodyOpen ? '300px' : '0',
                   overflow: 'hidden',
                   transition: 'max-height .35s cubic-bezier(.4,0,.2,1)',
                   padding: bodyOpen ? '0 20px 18px' : '0 20px',

@@ -42,20 +42,26 @@ interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
   nextStep: () => void;
+  onRestart?: (url: string) => void;
   isActive: boolean;
   isCompleted: boolean;
 }
 
-export default function Step1Entry({ briefing, updateBriefing, nextStep }: Props) {
+export default function Step1Entry({ briefing, updateBriefing, nextStep, onRestart }: Props) {
   const [url, setUrl] = useState(briefing.url || '');
 
   const handleSubmit = () => {
     let cleanUrl = url.trim();
-    if (cleanUrl && !cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      cleanUrl = 'https://' + cleanUrl;
+    // Strip protocol and www, then re-prepend https://
+    cleanUrl = cleanUrl.replace(/^https?:\/\//, '');
+    cleanUrl = cleanUrl.replace(/^www\./, '');
+    if (cleanUrl) cleanUrl = 'https://' + cleanUrl;
+    if (onRestart) {
+      onRestart(cleanUrl);
+    } else {
+      updateBriefing({ url: cleanUrl });
+      nextStep();
     }
-    updateBriefing({ url: cleanUrl });
-    nextStep();
   };
 
   return (
@@ -93,7 +99,7 @@ export default function Step1Entry({ briefing, updateBriefing, nextStep }: Props
           <input
             type="url"
             value={url}
-            placeholder="https://deine-website.ch"
+            placeholder="deine-website.ch"
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />

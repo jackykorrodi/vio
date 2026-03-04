@@ -32,6 +32,12 @@ export default function Home() {
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
+  // Called when user submits a (new) URL from Step 1 — resets the full flow
+  const onRestart = (url: string) => {
+    setBriefing(prev => ({ ...initialBriefing, url, campaignType: prev.campaignType }));
+    setCurrentStep(2);
+  };
+
   useEffect(() => {
     if (currentStep > 1) {
       const el = stepRefs.current[currentStep - 1];
@@ -94,14 +100,15 @@ export default function Home() {
             briefing={briefing}
             updateBriefing={updateBriefing}
             nextStep={nextStep}
-            isActive={currentStep >= 1}
+            onRestart={onRestart}
+            isActive={currentStep === 1}
             isCompleted={currentStep > 1}
           />
         </div>
 
-        <AnimatePresence>
-          {currentStep >= 2 && (
-            <motion.div ref={el => { stepRefs.current[1] = el; }} {...fadeIn}>
+        <AnimatePresence mode="wait">
+          {currentStep === 2 && (
+            <motion.div key="step2" ref={el => { stepRefs.current[1] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step2Analysis
                 briefing={briefing}
                 updateBriefing={updateBriefing}
@@ -112,9 +119,9 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {currentStep >= 3 && (
-            <motion.div ref={el => { stepRefs.current[2] = el; }} {...fadeIn}>
+        <AnimatePresence mode="wait">
+          {currentStep === 3 && (
+            <motion.div key="step3" ref={el => { stepRefs.current[2] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step3Audience
                 briefing={briefing}
                 updateBriefing={updateBriefing}
@@ -125,9 +132,9 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {currentStep >= 4 && (
-            <motion.div ref={el => { stepRefs.current[3] = el; }} {...fadeIn}>
+        <AnimatePresence mode="wait">
+          {currentStep === 4 && (
+            <motion.div key="step4" ref={el => { stepRefs.current[3] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step4Budget
                 briefing={briefing}
                 updateBriefing={updateBriefing}
@@ -138,9 +145,9 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {currentStep >= 5 && (
-            <motion.div ref={el => { stepRefs.current[4] = el; }} {...fadeIn}>
+        <AnimatePresence mode="wait">
+          {currentStep === 5 && (
+            <motion.div key="step5" ref={el => { stepRefs.current[4] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step5Creative
                 briefing={briefing}
                 updateBriefing={updateBriefing}
@@ -151,9 +158,9 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {currentStep >= 6 && (
-            <motion.div ref={el => { stepRefs.current[5] = el; }} {...fadeIn}>
+        <AnimatePresence mode="wait">
+          {currentStep === 6 && (
+            <motion.div key="step6" ref={el => { stepRefs.current[5] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step6Contact
                 briefing={briefing}
                 updateBriefing={updateBriefing}
@@ -164,9 +171,9 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {currentStep >= 7 && (
-            <motion.div ref={el => { stepRefs.current[6] = el; }} {...fadeIn}>
+        <AnimatePresence mode="wait">
+          {currentStep === 7 && (
+            <motion.div key="step7" ref={el => { stepRefs.current[6] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step7Confirmation briefing={briefing} />
             </motion.div>
           )}

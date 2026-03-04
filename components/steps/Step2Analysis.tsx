@@ -96,7 +96,7 @@ function Step2Analysis({ briefing, updateBriefing, nextStep, isActive }: Props) 
     };
 
     analyze();
-    return () => { clearInterval(interval); clearTimeout(cancelTimer); };
+    return () => { clearInterval(interval); clearTimeout(cancelTimer); abortRef.current?.abort(); };
   }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const progress = Math.min(((stepIndex + 1) / STEPS.length) * 100, 100);
