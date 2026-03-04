@@ -1,65 +1,597 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { initialBriefing, BriefingData } from '@/lib/types';
-import Step1Entry from '@/components/steps/Step1Entry';
-import Step2Analysis from '@/components/steps/Step2Analysis';
-import Step3Audience from '@/components/steps/Step3Audience';
-import Step4Budget from '@/components/steps/Step4Budget';
-import Step5Creative from '@/components/steps/Step5Creative';
-import Step6Contact from '@/components/steps/Step6Contact';
-import Step7Confirmation from '@/components/steps/Step7Confirmation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 const C = {
   primary: '#C1666B',
+  pd: '#A84E53',
+  pl: '#F9ECEC',
+  taupe: '#5C4F3D',
   muted: '#8A8490',
   border: '#EDE8E0',
   bg: '#FAF7F2',
+  white: '#FFFFFF',
 } as const;
 
-export default function Home() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [briefing, setBriefing] = useState<BriefingData>(initialBriefing);
-  const [analysisRunKey, setAnalysisRunKey] = useState(0);
+// ── Scroll reveal wrapper ────────────────────────────────────────────────────
 
-  const updateBriefing = (data: Partial<BriefingData>) => {
-    setBriefing(prev => ({ ...prev, ...data }));
-  };
+function Reveal({ children, style, delay = 0 }: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
 
-  const nextStep = () => setCurrentStep(prev => prev + 1);
-
-  // Steps 2 and 3 both go back to step 1:
-  // - Step 2 (analysis loader) should abort and return to URL entry
-  // - Step 3 should let the user correct the URL if needed
-  // Steps 4–6 go to the immediately previous step.
-  const prevStep = () => {
-    setCurrentStep(prev => (prev === 2 || prev === 3) ? 1 : prev - 1);
-  };
-
-  // Reset full flow when user submits a new URL from step 1.
-  // Incrementing analysisRunKey forces a remount of Step2Analysis
-  // even if currentStep was already 2 (setState(2) would be a no-op).
-  const onRestart = (url: string) => {
-    setBriefing(prev => ({ ...initialBriefing, url, campaignType: prev.campaignType }));
-    setAnalysisRunKey(k => k + 1);
-    setCurrentStep(2);
-  };
-
-  // Scroll to top on every step transition.
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentStep]);
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: C.bg }}>
+    <div
+      ref={ref}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'none' : 'translateY(28px)',
+        transition: `opacity .65s ease ${delay}ms, transform .65s ease ${delay}ms`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
-      {/* ── Nav bar ── */}
+// ── URL input used in hero + CTA ─────────────────────────────────────────────
+
+function UrlInput({
+  placeholder,
+  buttonLabel,
+  dark = false,
+  onSubmit,
+}: {
+  placeholder: string;
+  buttonLabel: string;
+  dark?: boolean;
+  onSubmit: (url: string) => void;
+}) {
+  const [val, setVal] = useState('');
+  const submit = () => onSubmit(val);
+
+  return (
+    <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '520px' }}>
+      <input
+        type="url"
+        value={val}
+        placeholder={placeholder}
+        onChange={e => setVal(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && submit()}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: '14px 20px',
+          borderRadius: '100px',
+          border: dark ? '1.5px solid rgba(255,255,255,.25)' : `1.5px solid ${C.border}`,
+          fontSize: '15px',
+          fontFamily: 'var(--font-outfit), sans-serif',
+          color: dark ? '#fff' : C.taupe,
+          backgroundColor: dark ? 'rgba(255,255,255,.12)' : C.white,
+          outline: 'none',
+        }}
+      />
+      <button
+        type="button"
+        onClick={submit}
+        style={{
+          padding: '14px 26px',
+          borderRadius: '100px',
+          backgroundColor: dark ? C.white : C.primary,
+          color: dark ? C.pd : '#fff',
+          border: 'none',
+          fontFamily: 'var(--font-outfit), sans-serif',
+          fontSize: '15px',
+          fontWeight: 700,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          boxShadow: dark ? '0 4px 16px rgba(0,0,0,.15)' : '0 4px 16px rgba(193,102,107,.35)',
+          transition: 'transform .18s, box-shadow .18s',
+          flexShrink: 0,
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = dark
+            ? '0 8px 24px rgba(0,0,0,.2)'
+            : '0 8px 24px rgba(193,102,107,.4)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = dark
+            ? '0 4px 16px rgba(0,0,0,.15)'
+            : '0 4px 16px rgba(193,102,107,.35)';
+        }}
+      >
+        {buttonLabel}
+      </button>
+    </div>
+  );
+}
+
+// ── Main page ────────────────────────────────────────────────────────────────
+
+export default function HomePage() {
+  const router = useRouter();
+  const [heroVisible, setHeroVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setHeroVisible(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleStart = (url: string) => {
+    let clean = url.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
+    if (clean) {
+      router.push(`/campaign?url=${encodeURIComponent(clean)}`);
+    } else {
+      router.push('/campaign');
+    }
+  };
+
+  return (
+    <main style={{ backgroundColor: C.bg, overflowX: 'hidden' }}>
+
+      {/* ── NAV ─────────────────────────────────────────────────────────── */}
       <nav style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        backgroundColor: '#fff', borderBottom: `1px solid ${C.border}`,
-        height: '60px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', padding: '0 28px',
-        boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+        position: 'sticky', top: 0, zIndex: 100,
+        backgroundColor: 'rgba(250,247,242,.9)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: `1px solid ${C.border}`,
+        height: '64px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 clamp(20px, 5vw, 56px)',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-fraunces), Georgia, serif',
+          fontSize: '28px', fontWeight: 600, color: C.primary, letterSpacing: '-.02em',
+        }}>
+          VIO
+        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+          <a href="#how" style={{ fontSize: '14px', color: C.muted, textDecoration: 'none', fontWeight: 500 }}>
+            Wie es funktioniert
+          </a>
+          <a href="#whom" style={{ fontSize: '14px', color: C.muted, textDecoration: 'none', fontWeight: 500 }}>
+            Für wen
+          </a>
+          <button
+            type="button"
+            onClick={() => router.push('/campaign')}
+            style={{
+              padding: '9px 22px',
+              borderRadius: '100px',
+              backgroundColor: C.primary,
+              color: '#fff',
+              border: 'none',
+              fontFamily: 'var(--font-outfit), sans-serif',
+              fontSize: '14px', fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color .18s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; }}
+          >
+            Kampagne starten →
+          </button>
+        </div>
+      </nav>
+
+      {/* ── HERO ────────────────────────────────────────────────────────── */}
+      <section style={{
+        minHeight: '92vh',
+        background: `linear-gradient(155deg, ${C.bg} 0%, ${C.pl} 100%)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '80px clamp(20px, 5vw, 56px)',
+        textAlign: 'center',
+      }}>
+        <div
+          style={{
+            maxWidth: '800px', width: '100%',
+            opacity: heroVisible ? 1 : 0,
+            transform: heroVisible ? 'none' : 'translateY(24px)',
+            transition: 'opacity .7s ease, transform .7s ease',
+          }}
+        >
+          {/* Eyebrow */}
+          <div
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              backgroundColor: C.pl,
+              border: `1px solid rgba(193,102,107,.2)`,
+              borderRadius: '100px',
+              padding: '6px 18px',
+              marginBottom: '32px',
+              opacity: heroVisible ? 1 : 0,
+              transition: 'opacity .7s ease .1s',
+            }}
+          >
+            <span style={{ fontSize: '13px', fontWeight: 600, color: C.pd }}>
+              🇨🇭 Nur Schweizer Medien
+            </span>
+          </div>
+
+          <h1
+            style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 'clamp(42px, 8vw, 76px)',
+              fontWeight: 400,
+              letterSpacing: '-.03em',
+              lineHeight: 1.08,
+              color: C.taupe,
+              marginBottom: '22px',
+              opacity: heroVisible ? 1 : 0,
+              transform: heroVisible ? 'none' : 'translateY(16px)',
+              transition: 'opacity .7s ease .15s, transform .7s ease .15s',
+            }}
+          >
+            Deine Kampagne.<br />In 15 Minuten.
+          </h1>
+
+          <p
+            style={{
+              fontSize: 'clamp(16px, 2.5vw, 20px)',
+              color: C.muted,
+              lineHeight: 1.65,
+              maxWidth: '560px',
+              margin: '0 auto 40px',
+              opacity: heroVisible ? 1 : 0,
+              transition: 'opacity .7s ease .25s',
+            }}
+          >
+            VIO analysiert deine Website mit KI, erkennt deine Zielgruppe und plant deine
+            DOOH- und Display-Kampagne — automatisch, transparent, ohne Vorkenntnisse.
+          </p>
+
+          <div
+            style={{
+              display: 'flex', justifyContent: 'center', marginBottom: '24px',
+              opacity: heroVisible ? 1 : 0,
+              transition: 'opacity .7s ease .35s',
+            }}
+          >
+            <UrlInput
+              placeholder="deine-website.ch"
+              buttonLabel="Los geht's →"
+              onSubmit={handleStart}
+            />
+          </div>
+
+          {/* Trust badges */}
+          <div
+            style={{
+              display: 'flex', justifyContent: 'center', gap: '24px',
+              flexWrap: 'wrap', marginTop: '12px',
+              opacity: heroVisible ? 1 : 0,
+              transition: 'opacity .7s ease .45s',
+            }}
+          >
+            {[
+              '🔒 Deine Daten bleiben bei uns',
+              '⚡ Bereit in 15 Sekunden',
+              '✓ Keine Kreditkarte nötig',
+            ].map(t => (
+              <span key={t} style={{ fontSize: '13px', color: C.muted, fontWeight: 500 }}>
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ────────────────────────────────────────────────── */}
+      <section id="how" style={{ padding: '100px clamp(20px, 5vw, 56px)' }}>
+        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
+          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <div style={{
+              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
+              color: C.primary, textTransform: 'uppercase', marginBottom: '14px',
+            }}>
+              So einfach geht&apos;s
+            </div>
+            <h2 style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 'clamp(28px, 4vw, 46px)',
+              fontWeight: 400, letterSpacing: '-.02em', color: C.taupe,
+            }}>
+              Drei Schritte zur Kampagne
+            </h2>
+          </Reveal>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            {[
+              {
+                n: '01', ico: '🌐',
+                title: 'URL eingeben',
+                desc: 'Gib einfach deine Website-Adresse ein. VIO scannt deinen Content in Sekundenschnelle.',
+              },
+              {
+                n: '02', ico: '🤖',
+                title: 'KI analysiert',
+                desc: 'Gemini AI erkennt deine Zielgruppe, Branche und Region — vollautomatisch und präzise.',
+              },
+              {
+                n: '03', ico: '📺',
+                title: 'Kampagne live',
+                desc: 'Budget festlegen, Werbemittel hochladen, fertig. Deine Kampagne erscheint auf Schweizer DOOH-Screens und Online.',
+              },
+            ].map((s, i) => (
+              <Reveal key={s.n} delay={i * 100}>
+                <div
+                  style={{
+                    backgroundColor: C.white,
+                    borderRadius: '16px',
+                    border: `1px solid ${C.border}`,
+                    padding: '28px 26px',
+                    height: '100%',
+                    boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+                    transition: 'transform .2s, box-shadow .2s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = 'translateY(-5px)';
+                    el.style.boxShadow = '0 10px 28px rgba(44,44,62,.12)';
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = 'none';
+                    el.style.boxShadow = '0 1px 4px rgba(44,44,62,.07)';
+                  }}
+                >
+                  <div style={{
+                    fontSize: '11px', fontWeight: 700, letterSpacing: '.12em',
+                    color: C.primary, marginBottom: '14px',
+                  }}>
+                    {s.n}
+                  </div>
+                  <div style={{ fontSize: '36px', marginBottom: '16px' }}>{s.ico}</div>
+                  <h3 style={{
+                    fontFamily: 'var(--font-fraunces), Georgia, serif',
+                    fontSize: '22px', fontWeight: 400, color: C.taupe, marginBottom: '10px',
+                  }}>
+                    {s.title}
+                  </h3>
+                  <p style={{ fontSize: '14px', color: C.muted, lineHeight: 1.65 }}>
+                    {s.desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOR WHOM ────────────────────────────────────────────────────── */}
+      <section id="whom" style={{ backgroundColor: C.taupe, padding: '100px clamp(20px, 5vw, 56px)' }}>
+        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
+          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <div style={{
+              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
+              color: 'rgba(255,255,255,.45)', textTransform: 'uppercase', marginBottom: '14px',
+            }}>
+              Perfekt geeignet für
+            </div>
+            <h2 style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 'clamp(28px, 4vw, 46px)',
+              fontWeight: 400, letterSpacing: '-.02em', color: '#fff',
+            }}>
+              Für wen ist VIO gemacht?
+            </h2>
+          </Reveal>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            {[
+              {
+                ico: '🏪',
+                title: 'KMU & Detailhandel',
+                desc: 'Regionale Unternehmen, die ihre Bekanntheit in der Gemeinde oder im Kanton erhöhen möchten — ohne Agentur, ohne grosses Budget.',
+              },
+              {
+                ico: '🗳️',
+                title: 'Politik & Gemeinden',
+                desc: 'Politische Parteien, Kandidierende und Gemeinden, die ihre Botschaft gezielt in bestimmten Regionen platzieren wollen.',
+              },
+              {
+                ico: '🤝',
+                title: 'Vereine & NGOs',
+                desc: 'Non-Profit-Organisationen und Vereine, die für Events, Mitglieder oder Spenden werben — mit maximalem Wirkungsgrad.',
+              },
+            ].map((w, i) => (
+              <Reveal key={w.title} delay={i * 100}>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,.08)',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255,255,255,.12)',
+                    padding: '30px 26px',
+                    height: '100%',
+                    transition: 'transform .2s, background-color .2s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = 'translateY(-5px)';
+                    el.style.backgroundColor = 'rgba(255,255,255,.13)';
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = 'none';
+                    el.style.backgroundColor = 'rgba(255,255,255,.08)';
+                  }}
+                >
+                  <div style={{ fontSize: '38px', marginBottom: '18px' }}>{w.ico}</div>
+                  <h3 style={{
+                    fontFamily: 'var(--font-fraunces), Georgia, serif',
+                    fontSize: '22px', fontWeight: 400, color: '#fff', marginBottom: '10px',
+                  }}>
+                    {w.title}
+                  </h3>
+                  <p style={{ fontSize: '14px', color: 'rgba(255,255,255,.6)', lineHeight: 1.65 }}>
+                    {w.desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── REASON WHY ──────────────────────────────────────────────────── */}
+      <section style={{ padding: '100px clamp(20px, 5vw, 56px)' }}>
+        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
+          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <div style={{
+              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
+              color: C.primary, textTransform: 'uppercase', marginBottom: '14px',
+            }}>
+              Warum VIO
+            </div>
+            <h2 style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 'clamp(28px, 4vw, 46px)',
+              fontWeight: 400, letterSpacing: '-.02em', color: C.taupe,
+            }}>
+              Was VIO einzigartig macht
+            </h2>
+          </Reveal>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px',
+          }}>
+            {[
+              {
+                ico: '💡',
+                title: 'Transparente Preise',
+                desc: 'Keine versteckten Kosten. Dein Budget, deine Reichweite — live berechnet, bevor du buchst.',
+              },
+              {
+                ico: '🇨🇭',
+                title: 'Nur Schweizer Medien',
+                desc: 'Ausschliesslich Schweizer DOOH-Screens und Display-Netzwerke. Zielgenau, lokal, relevant.',
+              },
+              {
+                ico: '🤖',
+                title: 'KI-gestützte Analyse',
+                desc: 'Gemini AI liest deine Website und erkennt Zielgruppe, Branche und Region in Sekunden.',
+              },
+              {
+                ico: '⚡',
+                title: 'In 15 Minuten fertig',
+                desc: 'Von der URL bis zur fertigen Kampagne in unter 15 Minuten. Kein Onboarding, keine Schulung.',
+              },
+              {
+                ico: '🎯',
+                title: 'Keine Vorkenntnisse nötig',
+                desc: 'VIO erklärt jeden Schritt verständlich. Einfach, klar, ohne Marketingfachjargon.',
+              },
+              {
+                ico: '🤝',
+                title: 'Persönliche Beratung',
+                desc: 'Ab CHF 15\'000 Budget: persönliches Beratungsgespräch inklusive. Dein Partner, nicht dein Verkäufer.',
+              },
+            ].map((r, i) => (
+              <Reveal key={r.title} delay={(i % 3) * 80}>
+                <div
+                  style={{
+                    backgroundColor: C.white,
+                    borderRadius: '14px',
+                    border: `1px solid ${C.border}`,
+                    padding: '26px 22px',
+                    height: '100%',
+                    boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+                    transition: 'transform .2s, box-shadow .2s',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = 'translateY(-4px)';
+                    el.style.boxShadow = '0 10px 28px rgba(44,44,62,.11)';
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLDivElement;
+                    el.style.transform = 'none';
+                    el.style.boxShadow = '0 1px 4px rgba(44,44,62,.07)';
+                  }}
+                >
+                  <div style={{ fontSize: '30px', marginBottom: '14px' }}>{r.ico}</div>
+                  <h3 style={{
+                    fontFamily: 'var(--font-fraunces), Georgia, serif',
+                    fontSize: '18px', fontWeight: 400, color: C.taupe, marginBottom: '8px',
+                  }}>
+                    {r.title}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: C.muted, lineHeight: 1.65 }}>
+                    {r.desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── BOTTOM CTA ──────────────────────────────────────────────────── */}
+      <section style={{
+        background: `linear-gradient(135deg, ${C.primary} 0%, ${C.pd} 100%)`,
+        padding: '100px clamp(20px, 5vw, 56px)',
+        textAlign: 'center',
+      }}>
+        <Reveal style={{ maxWidth: '620px', margin: '0 auto' }}>
+          <h2 style={{
+            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontSize: 'clamp(30px, 5vw, 52px)',
+            fontWeight: 400, letterSpacing: '-.025em', lineHeight: 1.12,
+            color: '#fff', marginBottom: '18px',
+          }}>
+            Bereit, loszulegen?
+          </h2>
+          <p style={{
+            fontSize: '16px', color: 'rgba(255,255,255,.75)',
+            lineHeight: 1.65, marginBottom: '40px',
+          }}>
+            Gib deine Website-URL ein und entdecke, wie viele Menschen du mit deinem Budget erreichen kannst.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <UrlInput
+              placeholder="deine-website.ch"
+              buttonLabel="Kostenlos starten →"
+              dark
+              onSubmit={handleStart}
+            />
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── FOOTER ──────────────────────────────────────────────────────── */}
+      <footer id="contact" style={{
+        backgroundColor: C.taupe,
+        padding: '36px clamp(20px, 5vw, 56px)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
       }}>
         <span style={{
           fontFamily: 'var(--font-fraunces), Georgia, serif',
@@ -68,115 +600,32 @@ export default function Home() {
           VIO
         </span>
 
-        {/* Progress dots — completed ones are clickable */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          {[1, 2, 3, 4, 5, 6, 7].map(step => {
-            const done = step < currentStep;
-            const active = step === currentStep;
-            return (
-              <button
-                key={step}
-                onClick={() => { if (done) setCurrentStep(step); }}
-                title={done ? `Zurück zu Schritt ${step}` : undefined}
-                style={{
-                  width: active ? '42px' : '28px',
-                  height: '3px', borderRadius: '2px', border: 'none', padding: 0,
-                  backgroundColor: (active || done) ? C.primary : C.border,
-                  opacity: done ? 0.45 : 1,
-                  cursor: done ? 'pointer' : 'default',
-                  transition: 'all .3s',
-                }}
-              />
-            );
-          })}
-          <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '6px' }}>
-            Schritt {currentStep} von 7
-          </span>
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+          {[
+            { label: 'hello@vio.ch', href: 'mailto:hello@vio.ch' },
+            { label: 'Impressum', href: '#' },
+            { label: 'Datenschutz', href: '#' },
+          ].map(l => (
+            <a
+              key={l.label}
+              href={l.href}
+              style={{
+                fontSize: '13px', color: 'rgba(255,255,255,.55)',
+                textDecoration: 'none', fontWeight: 500,
+                transition: 'color .15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,.55)'; }}
+            >
+              {l.label}
+            </a>
+          ))}
         </div>
-      </nav>
 
-      {/* ── Back button (steps 2–6, not on the confirmation screen) ── */}
-      {currentStep >= 2 && currentStep <= 6 && (
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '16px 20px 0' }}>
-          <button
-            onClick={prevStep}
-            style={{
-              background: 'none', border: 'none', padding: '4px 0',
-              fontFamily: 'var(--font-outfit), sans-serif',
-              fontSize: '13px', color: C.muted,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
-              transition: 'color .15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = C.primary; }}
-            onMouseLeave={e => { e.currentTarget.style.color = C.muted; }}
-          >
-            ← Zurück
-          </button>
-        </div>
-      )}
-
-      {/* ── Steps — simple conditional render, no framer-motion ── */}
-
-      {currentStep === 1 && (
-        <Step1Entry
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          nextStep={nextStep}
-          onRestart={onRestart}
-          isActive
-          isCompleted={false}
-        />
-      )}
-
-      {currentStep === 2 && (
-        <Step2Analysis
-          key={analysisRunKey}
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          nextStep={nextStep}
-          isActive
-        />
-      )}
-
-      {currentStep === 3 && (
-        <Step3Audience
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          nextStep={nextStep}
-          isActive
-        />
-      )}
-
-      {currentStep === 4 && (
-        <Step4Budget
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          nextStep={nextStep}
-          isActive
-        />
-      )}
-
-      {currentStep === 5 && (
-        <Step5Creative
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          nextStep={nextStep}
-          isActive
-        />
-      )}
-
-      {currentStep === 6 && (
-        <Step6Contact
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          nextStep={nextStep}
-          isActive
-        />
-      )}
-
-      {currentStep === 7 && (
-        <Step7Confirmation briefing={briefing} />
-      )}
+        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)', fontWeight: 500 }}>
+          © {new Date().getFullYear()} VIO. Alle Rechte vorbehalten.
+        </span>
+      </footer>
 
     </main>
   );
