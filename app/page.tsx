@@ -242,7 +242,7 @@ export default function HomePage() {
               transition: 'opacity .7s ease .15s, transform .7s ease .15s',
             }}
           >
-            Deine Kampagne.<br />In 15 Minuten.
+            VIO –<br />Sichtbarkeit für alle.
           </h1>
 
           <p
@@ -256,8 +256,9 @@ export default function HomePage() {
               transition: 'opacity .7s ease .25s',
             }}
           >
-            VIO analysiert deine Website mit KI, erkennt deine Zielgruppe und plant deine
-            DOOH- und Display-Kampagne — automatisch, transparent, ohne Vorkenntnisse.
+            Gib deine Website-Adresse ein. Wir finden deine Zielgruppe,
+            planen deine Kampagne und bringen deine Botschaft dorthin,
+            wo deine Menschen sind — einfach, fair, persönlich.
           </p>
 
           <div
@@ -285,7 +286,7 @@ export default function HomePage() {
           >
             {[
               '🔒 Deine Daten bleiben bei uns',
-              '⚡ Bereit in 15 Sekunden',
+              '⚡ Bereit in 2 Minuten',
               '✓ Keine Kreditkarte nötig',
             ].map(t => (
               <span key={t} style={{ fontSize: '13px', color: C.muted, fontWeight: 500 }}>
@@ -320,17 +321,17 @@ export default function HomePage() {
               {
                 n: '01', ico: '🌐',
                 title: 'URL eingeben',
-                desc: 'Gib einfach deine Website-Adresse ein. VIO scannt deinen Content in Sekundenschnelle.',
+                desc: 'Gib deine Website-Adresse ein. Wir schauen uns an, was du anbietest und für wen.',
               },
               {
-                n: '02', ico: '🤖',
-                title: 'KI analysiert',
-                desc: 'Gemini AI erkennt deine Zielgruppe, Branche und Region — vollautomatisch und präzise.',
+                n: '02', ico: '🔍',
+                title: 'Wir finden deine Zielgruppe',
+                desc: 'Wir analysieren deinen Auftritt und leiten automatisch ab, wen du erreichen möchtest — nach Region, Branche und Grösse.',
               },
               {
                 n: '03', ico: '📺',
                 title: 'Kampagne live',
-                desc: 'Budget festlegen, Werbemittel hochladen, fertig. Deine Kampagne erscheint auf Schweizer DOOH-Screens und Online.',
+                desc: 'Budget festlegen, Werbemittel hochladen, fertig. Deine Kampagne läuft auf Schweizer DOOH-Screens und im Web.',
               },
             ].map((s, i) => (
               <Reveal key={s.n} delay={i * 100}>
@@ -376,6 +377,62 @@ export default function HomePage() {
               </Reveal>
             ))}
           </div>
+
+          {/* ── Media info box ─────────────────────────────────────────── */}
+          <Reveal style={{ marginTop: '32px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '16px',
+            }}>
+              {[
+                {
+                  ico: '🖥️',
+                  label: 'DOOH',
+                  title: 'Digital Out-of-Home',
+                  desc: 'Digitale Screens an Bahnhöfen, Einkaufszentren und belebten Orten. Deine Werbung dort wo Menschen unterwegs sind.',
+                },
+                {
+                  ico: '📱',
+                  label: 'Display',
+                  title: 'Online-Werbung',
+                  desc: 'Banner und Anzeigen auf Websites und Apps – gezielt ausgespielt an deine Zielgruppe.',
+                },
+              ].map(m => (
+                <div
+                  key={m.label}
+                  style={{
+                    background: `linear-gradient(135deg, ${C.pl} 0%, ${C.bg} 100%)`,
+                    borderRadius: '14px',
+                    border: `1px solid rgba(193,102,107,.15)`,
+                    padding: '24px 22px',
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <div style={{ fontSize: '28px', flexShrink: 0, marginTop: '2px' }}>{m.ico}</div>
+                  <div>
+                    <div style={{
+                      fontSize: '10px', fontWeight: 700, letterSpacing: '.12em',
+                      color: C.primary, textTransform: 'uppercase', marginBottom: '4px',
+                    }}>
+                      {m.label}
+                    </div>
+                    <div style={{
+                      fontFamily: 'var(--font-fraunces), Georgia, serif',
+                      fontSize: '16px', fontWeight: 400, color: C.taupe, marginBottom: '6px',
+                    }}>
+                      {m.title}
+                    </div>
+                    <p style={{ fontSize: '13px', color: C.muted, lineHeight: 1.6 }}>
+                      {m.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -474,44 +531,58 @@ export default function HomePage() {
             </h2>
           </Reveal>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '16px',
-          }}>
+          {/* Big card */}
+          <Reveal style={{ marginBottom: '16px' }}>
+            <div style={{
+              backgroundColor: C.taupe,
+              borderRadius: '16px',
+              padding: '40px 36px',
+              boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+            }}>
+              <h3 style={{
+                fontFamily: 'var(--font-fraunces), Georgia, serif',
+                fontSize: 'clamp(22px, 3vw, 30px)',
+                fontWeight: 400,
+                color: '#fff',
+                marginBottom: '16px',
+                lineHeight: 1.25,
+                letterSpacing: '-.02em',
+              }}>
+                Wir kommen aus der Medienbranche.<br />Wir wissen wo es hakt.
+              </h3>
+              <p style={{
+                fontSize: '15px',
+                color: 'rgba(255,255,255,.65)',
+                lineHeight: 1.7,
+                maxWidth: '680px',
+              }}>
+                Auf der einen Seite grosse Unternehmen mit Agenturen und Spezialisten.
+                Auf der anderen KMUs, Vereine, Politiker – mit echten Botschaften, aber keinem
+                Zugang zu denselben Werkzeugen. Diesen Gap wollten wir schliessen.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* 3 smaller cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             {[
               {
-                ico: '💡',
-                title: 'Transparente Preise',
-                desc: 'Keine versteckten Kosten. Dein Budget, deine Reichweite — live berechnet, bevor du buchst.',
+                ico: '⚡',
+                title: 'Schnell wenn du es brauchst',
+                desc: 'In 2 Minuten buchst du eine Kampagne – ohne Agentur, ohne Fachwissen. Keine Fachbegriffe, keine versteckten Kosten.',
+              },
+              {
+                ico: '💬',
+                title: 'Persönlich wenn du es willst',
+                desc: 'Hinter VIO stecken echte Menschen. Wir sind erreichbar, beraten gerne und freuen uns über jede Kampagne die wir gemeinsam auf den Weg bringen.',
               },
               {
                 ico: '🇨🇭',
-                title: 'Nur Schweizer Medien',
-                desc: 'Ausschliesslich Schweizer DOOH-Screens und Display-Netzwerke. Zielgenau, lokal, relevant.',
-              },
-              {
-                ico: '🤖',
-                title: 'KI-gestützte Analyse',
-                desc: 'Gemini AI liest deine Website und erkennt Zielgruppe, Branche und Region in Sekunden.',
-              },
-              {
-                ico: '⚡',
-                title: 'In 15 Minuten fertig',
-                desc: 'Von der URL bis zur fertigen Kampagne in unter 15 Minuten. Kein Onboarding, keine Schulung.',
-              },
-              {
-                ico: '🎯',
-                title: 'Keine Vorkenntnisse nötig',
-                desc: 'VIO erklärt jeden Schritt verständlich. Einfach, klar, ohne Marketingfachjargon.',
-              },
-              {
-                ico: '🤝',
-                title: 'Persönliche Beratung',
-                desc: 'Ab CHF 15\'000 Budget: persönliches Beratungsgespräch inklusive. Dein Partner, nicht dein Verkäufer.',
+                title: '100% Schweiz',
+                desc: 'Nur echte Schweizer Medien. Faire Preise. Transparente Abrechnung.',
               },
             ].map((r, i) => (
-              <Reveal key={r.title} delay={(i % 3) * 80}>
+              <Reveal key={r.title} delay={i * 100}>
                 <div
                   style={{
                     backgroundColor: C.white,
@@ -537,7 +608,7 @@ export default function HomePage() {
                   <div style={{ fontSize: '30px', marginBottom: '14px' }}>{r.ico}</div>
                   <h3 style={{
                     fontFamily: 'var(--font-fraunces), Georgia, serif',
-                    fontSize: '18px', fontWeight: 400, color: C.taupe, marginBottom: '8px',
+                    fontSize: '20px', fontWeight: 400, color: C.taupe, marginBottom: '10px',
                   }}>
                     {r.title}
                   </h3>
