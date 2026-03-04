@@ -10,6 +10,7 @@ import Step4Budget from '@/components/steps/Step4Budget';
 import Step5Creative from '@/components/steps/Step5Creative';
 import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
+import Step8Dashboard from '@/components/steps/Step8Dashboard';
 
 const C = {
   primary: '#C1666B',
@@ -81,7 +82,7 @@ export default function CampaignFlow() {
 
         {/* Progress dots — completed ones are clickable */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          {[1, 2, 3, 4, 5, 6, 7].map(step => {
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(step => {
             const done = step < currentStep;
             const active = step === currentStep;
             return (
@@ -101,7 +102,7 @@ export default function CampaignFlow() {
             );
           })}
           <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '6px' }}>
-            Schritt {currentStep} von 7
+            Schritt {currentStep} von 8
           </span>
         </div>
       </nav>
@@ -186,7 +187,15 @@ export default function CampaignFlow() {
       )}
 
       {currentStep === 7 && (
-        <Step7Confirmation briefing={briefing} />
+        <Step7Confirmation briefing={briefing} nextStep={nextStep} />
+      )}
+
+      {currentStep === 8 && (
+        <Step8Dashboard
+          briefing={briefing}
+          onBack={() => setCurrentStep(7)}
+          onSubmitSuccess={() => setCurrentStep(7)}
+        />
       )}
 
     </main>

@@ -31,6 +31,7 @@ const card: React.CSSProperties = {
 
 interface Props {
   briefing: BriefingData;
+  nextStep?: () => void;
 }
 
 const nextSteps = [
@@ -41,7 +42,7 @@ const nextSteps = [
 
 const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL;
 
-export default function Step7Confirmation({ briefing }: Props) {
+export default function Step7Confirmation({ briefing, nextStep }: Props) {
   return (
     <section style={{ backgroundColor: C.bg }}>
       <div style={page}>
@@ -120,33 +121,44 @@ export default function Step7Confirmation({ briefing }: Props) {
           ))}
         </div>
 
-        {/* Teal CTA */}
-        {calendlyUrl && (
-          <a
-            href={calendlyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: C.teal,
-              color: '#fff',
-              border: 'none',
-              borderRadius: '100px',
-              padding: '15px 32px',
-              fontFamily: 'var(--font-outfit), sans-serif',
-              fontSize: '16px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(42,127,127,.3)',
-              transition: 'all .18s',
-              textDecoration: 'none',
-            }}
-          >
-            Beratungsgespräch buchen
-          </a>
-        )}
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {nextStep && (
+            <button
+              type="button"
+              onClick={nextStep}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: C.primary, color: '#fff', border: 'none',
+                borderRadius: '100px', padding: '15px 32px',
+                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
+                cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+                transition: 'all .18s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+            >
+              Kampagnen-Dashboard ansehen →
+            </button>
+          )}
+          {calendlyUrl && (
+            <a
+              href={calendlyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: C.teal, color: '#fff', border: 'none',
+                borderRadius: '100px', padding: '15px 32px',
+                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
+                cursor: 'pointer', boxShadow: '0 4px 16px rgba(42,127,127,.3)',
+                transition: 'all .18s', textDecoration: 'none',
+              }}
+            >
+              Beratungsgespräch buchen
+            </a>
+          )}
+        </div>
 
         <style>{`@keyframes bi{0%{transform:scale(.4);opacity:0;}70%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}}`}</style>
       </div>

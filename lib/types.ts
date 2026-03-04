@@ -47,6 +47,7 @@ export interface BriefingData {
   // Step 4
   budget: number;
   laufzeit: number;
+  startDate: string;
   reach: number;
   b2bReach: { unternehmen: number; mitarbeiter: number } | null;
   // Step 5
@@ -70,6 +71,7 @@ export const initialBriefing: BriefingData = {
   analysis: null,
   budget: 5000,
   laufzeit: 4,
+  startDate: '',
   reach: 0,
   b2bReach: null,
   werbemittel: null,

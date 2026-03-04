@@ -104,12 +104,12 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const handleNext = () => {
     if (isB2B) {
       updateBriefing({
-        budget, laufzeit,
+        budget, laufzeit, startDate,
         reach: b2bReach?.mitarbeiter ?? 0,
         b2bReach: b2bReach ?? null,
       });
     } else {
-      updateBriefing({ budget, laufzeit, reach: reach.uniquePeople, b2bReach: null });
+      updateBriefing({ budget, laufzeit, startDate, reach: reach.uniquePeople, b2bReach: null });
     }
     nextStep();
   };
