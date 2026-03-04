@@ -24,6 +24,7 @@ const STEP_LABELS: Record<number, string> = {
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const [briefing, setBriefing] = useState<BriefingData>(initialBriefing);
+  const [analysisRunKey, setAnalysisRunKey] = useState(0);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const updateBriefing = (data: Partial<BriefingData>) => {
@@ -32,9 +33,13 @@ export default function Home() {
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
-  // Called when user submits a (new) URL from Step 1 — resets the full flow
+  // Called when user submits a (new) URL from Step 1 — resets the full flow.
+  // Incrementing analysisRunKey changes the React key on Step2's wrapper, forcing
+  // a guaranteed remount even if currentStep is already 2 (setCurrentStep would
+  // be a no-op in that case and the useEffect would never re-fire).
   const onRestart = (url: string) => {
     setBriefing(prev => ({ ...initialBriefing, url, campaignType: prev.campaignType }));
+    setAnalysisRunKey(k => k + 1);
     setCurrentStep(2);
   };
 
@@ -108,7 +113,7 @@ export default function Home() {
 
         <AnimatePresence mode="wait">
           {currentStep === 2 && (
-            <motion.div key="step2" ref={el => { stepRefs.current[1] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
+            <motion.div key={`step2-${analysisRunKey}`} ref={el => { stepRefs.current[1] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
               <Step2Analysis
                 briefing={briefing}
                 updateBriefing={updateBriefing}
