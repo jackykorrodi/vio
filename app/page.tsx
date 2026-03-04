@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step1Entry from '@/components/steps/Step1Entry';
 import Step2Analysis from '@/components/steps/Step2Analysis';
@@ -11,21 +10,17 @@ import Step5Creative from '@/components/steps/Step5Creative';
 import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
 
-const STEP_LABELS: Record<number, string> = {
-  1: 'Start',
-  2: 'Analyse',
-  3: 'Zielgruppe',
-  4: 'Reichweite',
-  5: 'Werbemittel',
-  6: 'Abschluss',
-  7: 'Bestätigung',
-};
+const C = {
+  primary: '#C1666B',
+  muted: '#8A8490',
+  border: '#EDE8E0',
+  bg: '#FAF7F2',
+} as const;
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const [briefing, setBriefing] = useState<BriefingData>(initialBriefing);
   const [analysisRunKey, setAnalysisRunKey] = useState(0);
-  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const updateBriefing = (data: Partial<BriefingData>) => {
     setBriefing(prev => ({ ...prev, ...data }));
@@ -33,157 +28,156 @@ export default function Home() {
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
-  // Called when user submits a (new) URL from Step 1 — resets the full flow.
-  // Incrementing analysisRunKey changes the React key on Step2's wrapper, forcing
-  // a guaranteed remount even if currentStep is already 2 (setCurrentStep would
-  // be a no-op in that case and the useEffect would never re-fire).
+  // Steps 2 and 3 both go back to step 1:
+  // - Step 2 (analysis loader) should abort and return to URL entry
+  // - Step 3 should let the user correct the URL if needed
+  // Steps 4–6 go to the immediately previous step.
+  const prevStep = () => {
+    setCurrentStep(prev => (prev === 2 || prev === 3) ? 1 : prev - 1);
+  };
+
+  // Reset full flow when user submits a new URL from step 1.
+  // Incrementing analysisRunKey forces a remount of Step2Analysis
+  // even if currentStep was already 2 (setState(2) would be a no-op).
   const onRestart = (url: string) => {
     setBriefing(prev => ({ ...initialBriefing, url, campaignType: prev.campaignType }));
     setAnalysisRunKey(k => k + 1);
     setCurrentStep(2);
   };
 
+  // Scroll to top on every step transition.
   useEffect(() => {
-    if (currentStep > 1) {
-      const el = stepRefs.current[currentStep - 1];
-      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
-  const dotStyle = (step: number): React.CSSProperties => {
-    if (step < currentStep) return { width: '28px', height: '3px', borderRadius: '2px', backgroundColor: '#C1666B', opacity: 0.4, transition: 'all .3s' };
-    if (step === currentStep) return { width: '42px', height: '3px', borderRadius: '2px', backgroundColor: '#C1666B', transition: 'all .3s' };
-    return { width: '28px', height: '3px', borderRadius: '2px', backgroundColor: '#EDE8E0', transition: 'all .3s' };
-  };
-
-  const fadeIn = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } };
-
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: '#FAF7F2' }}>
-      {/* Nav */}
-      <nav
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          backgroundColor: '#fff',
-          borderBottom: '1px solid #EDE8E0',
-          height: '60px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 28px',
-          boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontSize: '26px',
-            fontWeight: 600,
-            color: '#C1666B',
-          }}
-        >
+    <main style={{ minHeight: '100vh', backgroundColor: C.bg }}>
+
+      {/* ── Nav bar ── */}
+      <nav style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        backgroundColor: '#fff', borderBottom: `1px solid ${C.border}`,
+        height: '60px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', padding: '0 28px',
+        boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-fraunces), Georgia, serif',
+          fontSize: '26px', fontWeight: 600, color: C.primary,
+        }}>
           VIO
         </span>
+
+        {/* Progress dots — completed ones are clickable */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-            {[1, 2, 3, 4, 5, 6].map(step => (
-              <div key={step} style={dotStyle(step)} />
-            ))}
-          </div>
-          <span style={{ fontSize: '12px', color: '#8A8490', fontWeight: 500, marginLeft: '8px' }}>
-            Schritt {Math.min(currentStep, 7)} von 7
+          {[1, 2, 3, 4, 5, 6, 7].map(step => {
+            const done = step < currentStep;
+            const active = step === currentStep;
+            return (
+              <button
+                key={step}
+                onClick={() => { if (done) setCurrentStep(step); }}
+                title={done ? `Zurück zu Schritt ${step}` : undefined}
+                style={{
+                  width: active ? '42px' : '28px',
+                  height: '3px', borderRadius: '2px', border: 'none', padding: 0,
+                  backgroundColor: (active || done) ? C.primary : C.border,
+                  opacity: done ? 0.45 : 1,
+                  cursor: done ? 'pointer' : 'default',
+                  transition: 'all .3s',
+                }}
+              />
+            );
+          })}
+          <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '6px' }}>
+            Schritt {currentStep} von 7
           </span>
         </div>
       </nav>
 
-      {/* Steps */}
-      <div>
-        <div ref={el => { stepRefs.current[0] = el; }}>
-          <Step1Entry
-            briefing={briefing}
-            updateBriefing={updateBriefing}
-            nextStep={nextStep}
-            onRestart={onRestart}
-            isActive={currentStep === 1}
-            isCompleted={currentStep > 1}
-          />
+      {/* ── Back button (steps 2–6, not on the confirmation screen) ── */}
+      {currentStep >= 2 && currentStep <= 6 && (
+        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '16px 20px 0' }}>
+          <button
+            onClick={prevStep}
+            style={{
+              background: 'none', border: 'none', padding: '4px 0',
+              fontFamily: 'var(--font-outfit), sans-serif',
+              fontSize: '13px', color: C.muted,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
+              transition: 'color .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = C.primary; }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.muted; }}
+          >
+            ← Zurück
+          </button>
         </div>
+      )}
 
-        <AnimatePresence mode="wait">
-          {currentStep === 2 && (
-            <motion.div key={`step2-${analysisRunKey}`} ref={el => { stepRefs.current[1] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
-              <Step2Analysis
-                briefing={briefing}
-                updateBriefing={updateBriefing}
-                nextStep={nextStep}
-                isActive={currentStep === 2}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* ── Steps — simple conditional render, no framer-motion ── */}
 
-        <AnimatePresence mode="wait">
-          {currentStep === 3 && (
-            <motion.div key="step3" ref={el => { stepRefs.current[2] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
-              <Step3Audience
-                briefing={briefing}
-                updateBriefing={updateBriefing}
-                nextStep={nextStep}
-                isActive={currentStep === 3}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {currentStep === 1 && (
+        <Step1Entry
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          onRestart={onRestart}
+          isActive
+          isCompleted={false}
+        />
+      )}
 
-        <AnimatePresence mode="wait">
-          {currentStep === 4 && (
-            <motion.div key="step4" ref={el => { stepRefs.current[3] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
-              <Step4Budget
-                briefing={briefing}
-                updateBriefing={updateBriefing}
-                nextStep={nextStep}
-                isActive={currentStep === 4}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {currentStep === 2 && (
+        <Step2Analysis
+          key={analysisRunKey}
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          isActive
+        />
+      )}
 
-        <AnimatePresence mode="wait">
-          {currentStep === 5 && (
-            <motion.div key="step5" ref={el => { stepRefs.current[4] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
-              <Step5Creative
-                briefing={briefing}
-                updateBriefing={updateBriefing}
-                nextStep={nextStep}
-                isActive={currentStep === 5}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {currentStep === 3 && (
+        <Step3Audience
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          isActive
+        />
+      )}
 
-        <AnimatePresence mode="wait">
-          {currentStep === 6 && (
-            <motion.div key="step6" ref={el => { stepRefs.current[5] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
-              <Step6Contact
-                briefing={briefing}
-                updateBriefing={updateBriefing}
-                nextStep={nextStep}
-                isActive={currentStep === 6}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {currentStep === 4 && (
+        <Step4Budget
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          isActive
+        />
+      )}
 
-        <AnimatePresence mode="wait">
-          {currentStep === 7 && (
-            <motion.div key="step7" ref={el => { stepRefs.current[6] = el; }} {...fadeIn} exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}>
-              <Step7Confirmation briefing={briefing} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {currentStep === 5 && (
+        <Step5Creative
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          isActive
+        />
+      )}
+
+      {currentStep === 6 && (
+        <Step6Contact
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          isActive
+        />
+      )}
+
+      {currentStep === 7 && (
+        <Step7Confirmation briefing={briefing} />
+      )}
+
     </main>
   );
 }
