@@ -1,26 +1,82 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --bg: #FAF7F2;
+  --cream: #FAF7F2;
+  --surface: #FFFFFF;
+  --white: #FFFFFF;
+  --primary: #C1666B;
+  --terracotta: #C1666B;
+  --pl: #F9ECEC;
+  --terracotta-light: #F9ECEC;
+  --pd: #A84E53;
+  --terracotta-dark: #A84E53;
+  --taupe: #5C4F3D;
+  --muted: #8A8490;
+  --border: #EDE8E0;
+  --teal: #2A7F7F;
+  --green: #3A9E7A;
+  --success: #3A9E7A;
+  --r: 14px;
+  --rs: 10px;
+  --sh: 0 1px 4px rgba(44,44,62,.07);
+  --shm: 0 6px 24px rgba(44,44,62,.11);
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-outfit), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  font-family: var(--font-outfit), 'Outfit', sans-serif;
+  color: var(--taupe);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+input[type='range'] {
+  accent-color: var(--primary);
+  cursor: pointer;
+  width: 100%;
+}
+
+input[type='date'] {
+  color-scheme: light;
+}
+
+input[type='url'],
+input[type='text'],
+input[type='email'],
+input[type='tel'],
+input[type='date'] {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  font-family: var(--font-outfit), 'Outfit', sans-serif;
+  font-size: 15px;
+  color: var(--taupe);
+  background: var(--bg);
+  outline: none;
+  transition: all .2s;
+}
+
+input[type='url']:focus,
+input[type='text']:focus,
+input[type='email']:focus,
+input[type='tel']:focus,
+input[type='date']:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(193,102,107,.1);
+}
+
+/* Fraunces for all display headings */
+.font-display {
+  font-family: var(--font-serif);
 }

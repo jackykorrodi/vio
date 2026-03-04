@@ -1,65 +1,177 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { initialBriefing, BriefingData } from '@/lib/types';
+import Step1Entry from '@/components/steps/Step1Entry';
+import Step2Analysis from '@/components/steps/Step2Analysis';
+import Step3Audience from '@/components/steps/Step3Audience';
+import Step4Budget from '@/components/steps/Step4Budget';
+import Step5Creative from '@/components/steps/Step5Creative';
+import Step6Contact from '@/components/steps/Step6Contact';
+import Step7Confirmation from '@/components/steps/Step7Confirmation';
+
+const STEP_LABELS: Record<number, string> = {
+  1: 'Start',
+  2: 'Analyse',
+  3: 'Zielgruppe',
+  4: 'Reichweite',
+  5: 'Werbemittel',
+  6: 'Abschluss',
+  7: 'Bestätigung',
+};
 
 export default function Home() {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [briefing, setBriefing] = useState<BriefingData>(initialBriefing);
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const updateBriefing = (data: Partial<BriefingData>) => {
+    setBriefing(prev => ({ ...prev, ...data }));
+  };
+
+  const nextStep = () => setCurrentStep(prev => prev + 1);
+
+  useEffect(() => {
+    if (currentStep > 1) {
+      const el = stepRefs.current[currentStep - 1];
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+  }, [currentStep]);
+
+  const dotStyle = (step: number): React.CSSProperties => {
+    if (step < currentStep) return { width: '28px', height: '3px', borderRadius: '2px', backgroundColor: '#C1666B', opacity: 0.4, transition: 'all .3s' };
+    if (step === currentStep) return { width: '42px', height: '3px', borderRadius: '2px', backgroundColor: '#C1666B', transition: 'all .3s' };
+    return { width: '28px', height: '3px', borderRadius: '2px', backgroundColor: '#EDE8E0', transition: 'all .3s' };
+  };
+
+  const fadeIn = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3 } };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main style={{ minHeight: '100vh', backgroundColor: '#FAF7F2' }}>
+      {/* Nav */}
+      <nav
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          backgroundColor: '#fff',
+          borderBottom: '1px solid #EDE8E0',
+          height: '60px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 28px',
+          boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontSize: '26px',
+            fontWeight: 600,
+            color: '#C1666B',
+          }}
+        >
+          VIO
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+            {[1, 2, 3, 4, 5, 6].map(step => (
+              <div key={step} style={dotStyle(step)} />
+            ))}
+          </div>
+          <span style={{ fontSize: '12px', color: '#8A8490', fontWeight: 500, marginLeft: '8px' }}>
+            Schritt {Math.min(currentStep, 7)} von 7
+          </span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </nav>
+
+      {/* Steps */}
+      <div>
+        <div ref={el => { stepRefs.current[0] = el; }}>
+          <Step1Entry
+            briefing={briefing}
+            updateBriefing={updateBriefing}
+            nextStep={nextStep}
+            isActive={currentStep >= 1}
+            isCompleted={currentStep > 1}
+          />
         </div>
-      </main>
-    </div>
+
+        <AnimatePresence>
+          {currentStep >= 2 && (
+            <motion.div ref={el => { stepRefs.current[1] = el; }} {...fadeIn}>
+              <Step2Analysis
+                briefing={briefing}
+                updateBriefing={updateBriefing}
+                nextStep={nextStep}
+                isActive={currentStep === 2}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {currentStep >= 3 && (
+            <motion.div ref={el => { stepRefs.current[2] = el; }} {...fadeIn}>
+              <Step3Audience
+                briefing={briefing}
+                updateBriefing={updateBriefing}
+                nextStep={nextStep}
+                isActive={currentStep === 3}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {currentStep >= 4 && (
+            <motion.div ref={el => { stepRefs.current[3] = el; }} {...fadeIn}>
+              <Step4Budget
+                briefing={briefing}
+                updateBriefing={updateBriefing}
+                nextStep={nextStep}
+                isActive={currentStep === 4}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {currentStep >= 5 && (
+            <motion.div ref={el => { stepRefs.current[4] = el; }} {...fadeIn}>
+              <Step5Creative
+                briefing={briefing}
+                updateBriefing={updateBriefing}
+                nextStep={nextStep}
+                isActive={currentStep === 5}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {currentStep >= 6 && (
+            <motion.div ref={el => { stepRefs.current[5] = el; }} {...fadeIn}>
+              <Step6Contact
+                briefing={briefing}
+                updateBriefing={updateBriefing}
+                nextStep={nextStep}
+                isActive={currentStep === 6}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {currentStep >= 7 && (
+            <motion.div ref={el => { stepRefs.current[6] = el; }} {...fadeIn}>
+              <Step7Confirmation briefing={briefing} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </main>
   );
 }
