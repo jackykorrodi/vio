@@ -182,6 +182,7 @@ export default function CampaignFlow() {
           briefing={briefing}
           updateBriefing={updateBriefing}
           nextStep={nextStep}
+          goToStep={setCurrentStep}
           isActive
         />
       )}

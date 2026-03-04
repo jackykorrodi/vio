@@ -45,10 +45,11 @@ interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
   nextStep: () => void;
+  goToStep?: (step: number) => void;
   isActive: boolean;
 }
 
-export default function Step6Contact({ briefing, updateBriefing, nextStep }: Props) {
+export default function Step6Contact({ briefing, updateBriefing, nextStep, goToStep }: Props) {
   const [abschluss, setAbschluss] = useState<'buchen' | 'offerte'>('buchen');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -85,7 +86,11 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep }: Pro
         setLoading(false);
         return;
       }
-      nextStep();
+      if (data.navigateTo && goToStep) {
+        goToStep(data.navigateTo);
+      } else {
+        nextStep();
+      }
     } catch {
       setSubmitError('Netzwerkfehler. Bitte prüfe deine Internetverbindung und versuche es erneut.');
       setLoading(false);
