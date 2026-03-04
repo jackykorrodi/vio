@@ -223,7 +223,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           <div style={{ fontSize: '34px' }}>👥</div>
           <div>
             <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '42px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
-              {formatNumber(reach.uniquePeople)}
+              ~{formatNumber(reach.uniquePeople)}
             </div>
             <div style={{ fontSize: '13px', color: C.green, marginTop: '4px', fontWeight: 500 }}>
               erreichbare Personen · Ø 3× Kontakt/Woche
