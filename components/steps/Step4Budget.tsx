@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
-import { calculateReach, formatNumber, formatCHF } from '@/lib/calculations';
+import { calculateReach, calculateB2BReach, formatNumber, formatCHF } from '@/lib/calculations';
 import { MIN_BUDGET, MAX_BUDGET } from '@/lib/constants';
 
 const C = {
@@ -80,6 +80,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const [laufzeit, setLaufzeit] = useState(briefing.laufzeit || 4);
   const [startDate, setStartDate] = useState(todayStr());
 
+  const isB2B = briefing.campaignType === 'b2b';
+
   // Logarithmic slider
   const logMin = Math.log(MIN_BUDGET);
   const logMax = Math.log(MAX_BUDGET);
@@ -91,6 +93,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   };
 
   const reach = calculateReach(budget, laufzeit);
+  const b2bReach = isB2B ? calculateB2BReach(briefing.analysis) : null;
+
   const endDate = addDays(startDate, laufzeit * 7);
   const dateLabel = `${formatDateDE(new Date(startDate + 'T12:00:00'))} – ${formatDateDE(endDate)} (${laufzeit} ${laufzeit === 1 ? 'Woche' : 'Wochen'})`;
 
@@ -98,7 +102,15 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const displayBudget = Math.round(budget * 0.3);
 
   const handleNext = () => {
-    updateBriefing({ budget, laufzeit, reach: reach.uniquePeople });
+    if (isB2B) {
+      updateBriefing({
+        budget, laufzeit,
+        reach: b2bReach?.mitarbeiter ?? 0,
+        b2bReach: b2bReach ?? null,
+      });
+    } else {
+      updateBriefing({ budget, laufzeit, reach: reach.uniquePeople, b2bReach: null });
+    }
     nextStep();
   };
 
@@ -219,16 +231,45 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         </div>
 
         {/* Reach box */}
-        <div style={{ background: 'linear-gradient(135deg,#EBF7F2,#D4F0E6)', border: '1px solid #A8DFC8', borderRadius: '14px', padding: '20px 22px', display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '14px' }}>
-          <div style={{ fontSize: '34px' }}>👥</div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '42px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
-              ~{formatNumber(reach.uniquePeople)}
+        <div style={{ background: 'linear-gradient(135deg,#EBF7F2,#D4F0E6)', border: '1px solid #A8DFC8', borderRadius: '14px', padding: '20px 22px', marginBottom: '14px' }}>
+          {isB2B && b2bReach ? (
+            <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ fontSize: '28px' }}>🏢</div>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '36px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
+                    ~{formatNumber(b2bReach.unternehmen)}
+                  </div>
+                  <div style={{ fontSize: '13px', color: C.green, marginTop: '3px', fontWeight: 500 }}>
+                    Unternehmen erreichbar
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ fontSize: '28px' }}>👥</div>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '36px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
+                    ~{formatNumber(b2bReach.mitarbeiter)}
+                  </div>
+                  <div style={{ fontSize: '13px', color: C.green, marginTop: '3px', fontWeight: 500 }}>
+                    Mitarbeiter erreichbar
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: '13px', color: C.green, marginTop: '4px', fontWeight: 500 }}>
-              erreichbare Personen · Ø 3× Kontakt/Woche
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div style={{ fontSize: '34px' }}>👥</div>
+              <div>
+                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '42px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
+                  ~{formatNumber(reach.uniquePeople)}
+                </div>
+                <div style={{ fontSize: '13px', color: C.green, marginTop: '4px', fontWeight: 500 }}>
+                  erreichbare Personen · Ø 3× Kontakt/Woche
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ibox */}

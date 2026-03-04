@@ -7,6 +7,7 @@ export type LifecycleOption =
   | 'familien_aeltere_kinder'
   | 'eltern_erwachsene_kinder';
 export type SpracheOption = 'de' | 'fr' | 'it';
+export type UnternehmensgroesseOption = 'micro' | 'klein' | 'mittel' | 'gross';
 
 export interface AnalysisResult {
   // Shared
@@ -29,7 +30,7 @@ export interface AnalysisResult {
   // B2B only
   branche: string | null;
   nogaCode: string | null;
-  unternehmensgroesse: 'klein' | 'mittel' | 'gross' | null;
+  unternehmensgroesse: UnternehmensgroesseOption[];
 
   // Meta
   needsManualInput: boolean;
@@ -43,14 +44,15 @@ export interface BriefingData {
   campaignType: 'b2c' | 'b2b';
   // Step 3
   analysis: AnalysisResult | null;
-  // Step 4/5
+  // Step 4
   budget: number;
   laufzeit: number;
   reach: number;
-  // Step 6
+  b2bReach: { unternehmen: number; mitarbeiter: number } | null;
+  // Step 5
   werbemittel: 'upload' | 'erstellen' | 'spaeter' | null;
   uploadedFiles: string[];
-  // Step 7
+  // Step 6
   vorname: string;
   nachname: string;
   email: string;
@@ -69,6 +71,7 @@ export const initialBriefing: BriefingData = {
   budget: 5000,
   laufzeit: 4,
   reach: 0,
+  b2bReach: null,
   werbemittel: null,
   uploadedFiles: [],
   vorname: '',

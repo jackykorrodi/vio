@@ -8,6 +8,7 @@ import {
   WohnlageOption,
   LifecycleOption,
   SpracheOption,
+  UnternehmensgroesseOption,
 } from '@/lib/types';
 import { CANTONS } from '@/lib/constants';
 
@@ -66,6 +67,27 @@ const SPRACHE_LABELS: Record<SpracheOption, string> = {
   fr: '🇫🇷 Französisch',
   it: '🇮🇹 Italienisch',
 };
+const GROESSE_LABELS: Record<UnternehmensgroesseOption, string> = {
+  micro: 'Micro (1–9)',
+  klein: 'Klein (10–49)',
+  mittel: 'Mittel (50–249)',
+  gross: 'Gross (250+)',
+};
+
+const BRANCHE_SUGGESTIONS: { label: string; noga: string; range: string }[] = [
+  { label: 'Detailhandel',            noga: '47', range: 'NOGA 47'    },
+  { label: 'Gastronomie & Hotellerie', noga: '55', range: 'NOGA 55–56' },
+  { label: 'Bau & Handwerk',          noga: '41', range: 'NOGA 41–43' },
+  { label: 'Gesundheit & Soziales',   noga: '86', range: 'NOGA 86–88' },
+  { label: 'Bildung',                 noga: '85', range: 'NOGA 85'    },
+  { label: 'Finanz & Versicherung',   noga: '64', range: 'NOGA 64–66' },
+  { label: 'Immobilien',              noga: '68', range: 'NOGA 68'    },
+  { label: 'IT & Kommunikation',      noga: '58', range: 'NOGA 58–63' },
+  { label: 'Produktion & Industrie',  noga: '10', range: 'NOGA 10–33' },
+  { label: 'Transport & Logistik',    noga: '49', range: 'NOGA 49–53' },
+  { label: 'Öffentliche Verwaltung',  noga: '84', range: 'NOGA 84'    },
+  { label: 'Andere',                  noga: '',   range: ''            },
+];
 
 function toggleArr<T>(arr: T[], item: T): T[] {
   return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
@@ -78,7 +100,7 @@ const page: React.CSSProperties = {
 };
 
 const card: React.CSSProperties = {
-  background: C.white,
+  background: '#FFFFFF',
   borderRadius: '14px',
   border: `1px solid ${C.border}`,
   boxShadow: '0 1px 4px rgba(44,44,62,.07)',
@@ -96,10 +118,7 @@ const clabel: React.CSSProperties = {
 };
 
 function Tbtn({ active, onClick, col, children }: {
-  active: boolean;
-  onClick: () => void;
-  col?: boolean;
-  children: React.ReactNode;
+  active: boolean; onClick: () => void; col?: boolean; children: React.ReactNode;
 }) {
   return (
     <button
@@ -127,9 +146,7 @@ function Tbtn({ active, onClick, col, children }: {
 }
 
 function Cbtn({ active, onClick, children }: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
+  active: boolean; onClick: () => void; children: React.ReactNode;
 }) {
   return (
     <button
@@ -165,12 +182,15 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
   const isB2B = briefing.campaignType === 'b2b';
   const analysis = briefing.analysis;
 
+  // ── Shared state ───────────────────────────────────────────────────────
   const [organisation, setOrganisation] = useState(analysis?.organisation || '');
   const [region, setRegion] = useState<string[]>(analysis?.region || []);
   const [selectedCities, setSelectedCities] = useState<string[]>(analysis?.gemeinden || []);
   const [sprache, setSprache] = useState<SpracheOption[]>(
     analysis?.sprache?.length ? analysis.sprache : ['de']
   );
+
+  // ── B2C state ──────────────────────────────────────────────────────────
   const [alter, setAlter] = useState<AlterOption[]>(analysis?.alter || []);
   const [wohnlage, setWohnlage] = useState<WohnlageOption[]>(analysis?.wohnlage || []);
   const [einkommen, setEinkommen] = useState<'tief' | 'mittel' | 'hoch' | null>(analysis?.einkommen ?? null);
@@ -179,12 +199,16 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
   const [kinder, setKinder] = useState<'keine' | 'ein_kind' | 'mehrere' | null>(analysis?.kinder ?? null);
   const [bildung, setBildung] = useState<'tief' | 'mittel' | 'hoch' | null>(analysis?.bildung ?? null);
   const [auto, setAuto] = useState<'kein_auto' | 'ein_auto' | 'mehrere_autos' | null>(analysis?.auto ?? null);
+
+  // ── B2B state ──────────────────────────────────────────────────────────
   const [branche, setBranche] = useState(analysis?.branche || '');
   const [nogaCode, setNogaCode] = useState(analysis?.nogaCode || '');
-  const [unternehmensgroesse, setUnternehmensgroesse] = useState<'klein' | 'mittel' | 'gross' | null>(
-    analysis?.unternehmensgroesse ?? null
+  const [unternehmensgroesse, setUnternehmensgroesse] = useState<UnternehmensgroesseOption[]>(
+    Array.isArray(analysis?.unternehmensgroesse) ? analysis.unternehmensgroesse : []
   );
+  const [showBrancheSuggestions, setShowBrancheSuggestions] = useState(false);
 
+  // ── Helpers ────────────────────────────────────────────────────────────
   const toggleCanton = (code: string) => {
     if (region.includes(code)) {
       setRegion(region.filter(c => c !== code));
@@ -212,7 +236,9 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
     setAuto(analysis?.auto ?? null);
     setBranche(analysis?.branche || '');
     setNogaCode(analysis?.nogaCode || '');
-    setUnternehmensgroesse(analysis?.unternehmensgroesse ?? null);
+    setUnternehmensgroesse(
+      Array.isArray(analysis?.unternehmensgroesse) ? analysis.unternehmensgroesse : []
+    );
   };
 
   const handleNext = () => {
@@ -241,20 +267,29 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
     nextStep();
   };
 
-  // Build found-box rows
+  // ── Found-box rows ─────────────────────────────────────────────────────
   const foundRows: { label: string; value: string }[] = [];
   if (analysis?.organisation) foundRows.push({ label: 'Organisation', value: analysis.organisation });
   if (analysis?.region?.length) foundRows.push({ label: 'Region', value: analysis.region.join(', ') });
-  if (!isB2B) {
-    if (analysis?.alter?.length) foundRows.push({ label: 'Alter', value: analysis.alter.map(a => ALTER_LABELS[a]).join(', ') });
-    if (analysis?.wohnlage?.length) foundRows.push({ label: 'Wohnlage', value: analysis.wohnlage.map(w => WOHNLAGE_LABELS[w]).join(', ') });
-    if (analysis?.lifecycle?.length) foundRows.push({ label: 'Lebenssituation', value: analysis.lifecycle.map(l => LIFECYCLE_LABELS[l]).join(', ') });
-  }
   if (isB2B) {
     if (analysis?.branche) foundRows.push({ label: 'Branche', value: analysis.branche });
-    if (analysis?.unternehmensgroesse) foundRows.push({ label: 'Grösse', value: { klein: 'Klein (1–9)', mittel: 'Mittel (10–249)', gross: 'Gross (250+)' }[analysis.unternehmensgroesse] });
+    if (analysis?.nogaCode) foundRows.push({ label: 'NOGA', value: analysis.nogaCode });
+    if (Array.isArray(analysis?.unternehmensgroesse) && analysis.unternehmensgroesse.length) {
+      foundRows.push({
+        label: 'Grösse',
+        value: analysis.unternehmensgroesse.map(g => GROESSE_LABELS[g]).join(', '),
+      });
+    }
+  } else {
+    if (analysis?.alter?.length)
+      foundRows.push({ label: 'Alter', value: analysis.alter.map(a => ALTER_LABELS[a]).join(', ') });
+    if (analysis?.wohnlage?.length)
+      foundRows.push({ label: 'Wohnlage', value: analysis.wohnlage.map(w => WOHNLAGE_LABELS[w]).join(', ') });
+    if (analysis?.lifecycle?.length)
+      foundRows.push({ label: 'Lebenssituation', value: analysis.lifecycle.map(l => LIFECYCLE_LABELS[l]).join(', ') });
   }
-  if (analysis?.sprache?.length) foundRows.push({ label: 'Sprache', value: analysis.sprache.map(s => SPRACHE_LABELS[s]).join(', ') });
+  if (analysis?.sprache?.length)
+    foundRows.push({ label: 'Sprache', value: analysis.sprache.map(s => SPRACHE_LABELS[s]).join(', ') });
 
   const showNotice = !analysis || analysis.needsManualInput || (!isB2B && !analysis.einkommen);
 
@@ -284,10 +319,12 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
         </div>
 
         <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
-          Gut schaut&apos;s aus.
+          {isB2B ? 'Deine Zielunternehmen.' : 'Gut schaut\u2019s aus.'}
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
-          Stimmt das so – oder weisst du es besser? Alles ist anpassbar.
+          {isB2B
+            ? 'Welche Unternehmen willst du erreichen? Alles ist anpassbar.'
+            : 'Stimmt das so – oder weisst du es besser? Alles ist anpassbar.'}
         </p>
 
         {/* Found box */}
@@ -314,12 +351,14 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
             <span>
               {!analysis
                 ? 'Wir konnten keine Angaben von deiner Website lesen. Bitte füll die Felder manuell aus.'
-                : 'Einkommen und Wohnsituation konnten wir nicht eindeutig erkennen. Ergänze diese nach Bedarf.'}
+                : isB2B
+                  ? 'Bitte ergänze Branche und Zielgruppen-Grösse für eine präzise Reichweite.'
+                  : 'Einkommen und Wohnsituation konnten wir nicht eindeutig erkennen. Ergänze diese nach Bedarf.'}
             </span>
           </div>
         )}
 
-        {/* Region card */}
+        {/* ── Region (shared B2C + B2B) ─────────────────────────────────── */}
         <div style={card}>
           <div style={clabel}>Region – Kantone</div>
           <div style={{ fontSize: '12px', color: C.muted, marginBottom: '10px' }}>
@@ -332,7 +371,6 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
               </Tbtn>
             ))}
           </div>
-          {/* City reveal */}
           {activeCantonsWithCities.map(code => (
             <div key={code} style={{ marginTop: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.muted, marginBottom: '5px' }}>
@@ -349,103 +387,234 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
           ))}
         </div>
 
-        {/* Alter */}
-        <div style={card}>
-          <div style={clabel}>Alter</div>
-          <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-            {(['jung', 'mittel', 'alt'] as AlterOption[]).map(opt => (
-              <Tbtn key={opt} active={alter.includes(opt)} onClick={() => setAlter(toggleArr(alter, opt))}>
-                {ALTER_LABELS[opt]}
-              </Tbtn>
-            ))}
-          </div>
-        </div>
+        {/* ── B2C-only fields ────────────────────────────────────────────── */}
+        {!isB2B && (
+          <>
+            {/* Alter */}
+            <div style={card}>
+              <div style={clabel}>Alter</div>
+              <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                {(['jung', 'mittel', 'alt'] as AlterOption[]).map(opt => (
+                  <Tbtn key={opt} active={alter.includes(opt)} onClick={() => setAlter(toggleArr(alter, opt))}>
+                    {ALTER_LABELS[opt]}
+                  </Tbtn>
+                ))}
+              </div>
+            </div>
 
-        {/* Wohnlage + Einkommen (two col) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={clabel}>Wohnlage</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {(['staedtisch', 'agglo', 'laendlich'] as WohnlageOption[]).map(opt => (
-                <Tbtn key={opt} col active={wohnlage.includes(opt)} onClick={() => setWohnlage(toggleArr(wohnlage, opt))}>
-                  {WOHNLAGE_LABELS[opt]}
-                </Tbtn>
-              ))}
+            {/* Wohnlage + Einkommen */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div style={{ ...card, marginBottom: 0 }}>
+                <div style={clabel}>Wohnlage</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {(['staedtisch', 'agglo', 'laendlich'] as WohnlageOption[]).map(opt => (
+                    <Tbtn key={opt} col active={wohnlage.includes(opt)} onClick={() => setWohnlage(toggleArr(wohnlage, opt))}>
+                      {WOHNLAGE_LABELS[opt]}
+                    </Tbtn>
+                  ))}
+                </div>
+              </div>
+              <div style={{ ...card, marginBottom: 0 }}>
+                <div style={clabel}>Einkommen</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {(['tief', 'mittel', 'hoch'] as const).map(opt => (
+                    <Tbtn key={opt} col active={einkommen === opt} onClick={() => setEinkommen(einkommen === opt ? null : opt)}>
+                      {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    </Tbtn>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={clabel}>Einkommen</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {(['tief', 'mittel', 'hoch'] as const).map(opt => (
-                <Tbtn key={opt} col active={einkommen === opt} onClick={() => setEinkommen(einkommen === opt ? null : opt)}>
-                  {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                </Tbtn>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Lebenssituation */}
-        <div style={card}>
-          <div style={clabel}>Lebenssituation</div>
-          <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-            {(['singles', 'junge_paare', 'junge_familien', 'familien_aeltere_kinder', 'eltern_erwachsene_kinder'] as LifecycleOption[]).map(opt => (
-              <Tbtn key={opt} active={lifecycle.includes(opt)} onClick={() => setLifecycle(toggleArr(lifecycle, opt))}>
-                {LIFECYCLE_LABELS[opt]}
-              </Tbtn>
-            ))}
-          </div>
-        </div>
+            {/* Lebenssituation */}
+            <div style={card}>
+              <div style={clabel}>Lebenssituation</div>
+              <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                {(['singles', 'junge_paare', 'junge_familien', 'familien_aeltere_kinder', 'eltern_erwachsene_kinder'] as LifecycleOption[]).map(opt => (
+                  <Tbtn key={opt} active={lifecycle.includes(opt)} onClick={() => setLifecycle(toggleArr(lifecycle, opt))}>
+                    {LIFECYCLE_LABELS[opt]}
+                  </Tbtn>
+                ))}
+              </div>
+            </div>
 
-        {/* Wohnsituation + Kinder (two col) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={clabel}>Wohnsituation</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {([['mieter', 'Mieter'], ['eigentuemer', 'Eigentümer']] as const).map(([val, lbl]) => (
-                <Tbtn key={val} col active={wohnsituation === val} onClick={() => setWohnsituation(wohnsituation === val ? null : val)}>
-                  {lbl}
-                </Tbtn>
-              ))}
+            {/* Wohnsituation + Kinder */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div style={{ ...card, marginBottom: 0 }}>
+                <div style={clabel}>Wohnsituation</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {([['mieter', 'Mieter'], ['eigentuemer', 'Eigentümer']] as const).map(([val, lbl]) => (
+                    <Tbtn key={val} col active={wohnsituation === val} onClick={() => setWohnsituation(wohnsituation === val ? null : val)}>
+                      {lbl}
+                    </Tbtn>
+                  ))}
+                </div>
+              </div>
+              <div style={{ ...card, marginBottom: 0 }}>
+                <div style={clabel}>Kinder</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {([['keine', 'Keine'], ['ein_kind', 'Ein Kind'], ['mehrere', 'Mehrere']] as const).map(([val, lbl]) => (
+                    <Tbtn key={val} col active={kinder === val} onClick={() => setKinder(kinder === val ? null : val)}>
+                      {lbl}
+                    </Tbtn>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={clabel}>Kinder</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {([['keine', 'Keine'], ['ein_kind', 'Ein Kind'], ['mehrere', 'Mehrere']] as const).map(([val, lbl]) => (
-                <Tbtn key={val} col active={kinder === val} onClick={() => setKinder(kinder === val ? null : val)}>
-                  {lbl}
-                </Tbtn>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Bildung + Auto (two col) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={clabel}>Bildung</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {(['tief', 'mittel', 'hoch'] as const).map(opt => (
-                <Tbtn key={opt} col active={bildung === opt} onClick={() => setBildung(bildung === opt ? null : opt)}>
-                  {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                </Tbtn>
-              ))}
+            {/* Bildung + Auto */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div style={{ ...card, marginBottom: 0 }}>
+                <div style={clabel}>Bildung</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {(['tief', 'mittel', 'hoch'] as const).map(opt => (
+                    <Tbtn key={opt} col active={bildung === opt} onClick={() => setBildung(bildung === opt ? null : opt)}>
+                      {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    </Tbtn>
+                  ))}
+                </div>
+              </div>
+              <div style={{ ...card, marginBottom: 0 }}>
+                <div style={clabel}>Auto</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {([['kein_auto', 'Kein Auto'], ['ein_auto', 'Ein Auto'], ['mehrere_autos', 'Mehrere']] as const).map(([val, lbl]) => (
+                    <Tbtn key={val} col active={auto === val} onClick={() => setAuto(auto === val ? null : val)}>
+                      {lbl}
+                    </Tbtn>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-          <div style={{ ...card, marginBottom: 0 }}>
-            <div style={clabel}>Auto</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {([['kein_auto', 'Kein Auto'], ['ein_auto', 'Ein Auto'], ['mehrere_autos', 'Mehrere']] as const).map(([val, lbl]) => (
-                <Tbtn key={val} col active={auto === val} onClick={() => setAuto(auto === val ? null : val)}>
-                  {lbl}
-                </Tbtn>
-              ))}
-            </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Sprache */}
+        {/* ── B2B-only fields ────────────────────────────────────────────── */}
+        {isB2B && (
+          <>
+            {/* Organisation */}
+            <div style={card}>
+              <div style={clabel}>Organisation</div>
+              <input
+                style={inputStyle}
+                placeholder="Firmenname"
+                value={organisation}
+                onChange={e => setOrganisation(e.target.value)}
+              />
+            </div>
+
+            {/* Branche + NOGA */}
+            <div style={card}>
+              <div style={clabel}>Branche & NOGA-Code</div>
+
+              {/* Suggestion chips */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ fontSize: '12px', color: C.muted, marginBottom: '7px' }}>
+                  Branche wählen:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {BRANCHE_SUGGESTIONS.map(s => {
+                    const isActive = branche === s.label;
+                    return (
+                      <button
+                        key={s.label}
+                        type="button"
+                        onClick={() => {
+                          setBranche(s.label);
+                          setNogaCode(s.noga);
+                          setShowBrancheSuggestions(false);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '100px',
+                          border: `1.5px solid ${isActive ? C.primary : C.border}`,
+                          background: isActive ? C.primary : C.white,
+                          color: isActive ? '#fff' : C.muted,
+                          fontFamily: 'var(--font-outfit), sans-serif',
+                          fontSize: '12px',
+                          fontWeight: isActive ? 600 : 500,
+                          cursor: 'pointer',
+                          transition: 'all .15s',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {s.label}
+                        {s.range && (
+                          <span style={{ opacity: 0.6, marginLeft: '4px', fontSize: '10px' }}>
+                            {s.range}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Free-text inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'start' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: '5px' }}>Freitext Branche</div>
+                  <input
+                    style={inputStyle}
+                    placeholder="z.B. Detailhandel"
+                    value={branche}
+                    onChange={e => setBranche(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: '5px' }}>NOGA-Code</div>
+                  <input
+                    style={{ ...inputStyle, width: '80px' }}
+                    placeholder="z.B. 47"
+                    maxLength={3}
+                    value={nogaCode}
+                    onChange={e => setNogaCode(e.target.value.replace(/\D/g, ''))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Unternehmensgrösse */}
+            <div style={card}>
+              <div style={clabel}>Unternehmensgrösse</div>
+              <div style={{ fontSize: '12px', color: C.muted, marginBottom: '10px' }}>
+                Mehrfachauswahl möglich
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {(['micro', 'klein', 'mittel', 'gross'] as UnternehmensgroesseOption[]).map(opt => {
+                  const active = unternehmensgroesse.includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setUnternehmensgroesse(toggleArr(unternehmensgroesse, opt))}
+                      style={{
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        border: `1.5px solid ${active ? C.primary : C.border}`,
+                        background: active ? C.pl : C.white,
+                        cursor: 'pointer',
+                        transition: 'all .15s',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: '13px', color: active ? C.pd : C.taupe }}>
+                        {GROESSE_LABELS[opt]}
+                      </div>
+                      <div style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>
+                        {opt === 'micro' && 'Ø 4 erreichbare MA'}
+                        {opt === 'klein' && 'Ø 18 erreichbare MA'}
+                        {opt === 'mittel' && 'Ø 80 erreichbare MA'}
+                        {opt === 'gross' && 'Ø 300 erreichbare MA'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Sprache (shared) ──────────────────────────────────────────── */}
         <div style={card}>
           <div style={clabel}>Sprache</div>
           <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
@@ -456,31 +625,6 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
             ))}
           </div>
         </div>
-
-        {/* B2B extra fields */}
-        {isB2B && (
-          <>
-            <div style={card}>
-              <div style={clabel}>Organisation</div>
-              <input style={inputStyle} placeholder="Firmenname" value={organisation} onChange={e => setOrganisation(e.target.value)} />
-            </div>
-            <div style={card}>
-              <div style={clabel}>Branche</div>
-              <input style={inputStyle} placeholder="z.B. Detailhandel" value={branche} onChange={e => setBranche(e.target.value)} />
-              <input style={{ ...inputStyle, marginTop: '8px' }} placeholder="NOGA-Code (optional)" value={nogaCode} onChange={e => setNogaCode(e.target.value)} />
-            </div>
-            <div style={card}>
-              <div style={clabel}>Unternehmensgrösse</div>
-              <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                {([['klein', 'Klein (1–9)'], ['mittel', 'Mittel (10–249)'], ['gross', 'Gross (250+)']] as const).map(([val, lbl]) => (
-                  <Tbtn key={val} active={unternehmensgroesse === val} onClick={() => setUnternehmensgroesse(unternehmensgroesse === val ? null : val)}>
-                    {lbl}
-                  </Tbtn>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
 
         {/* CTA */}
         <button
@@ -497,7 +641,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
           onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
         >
-          Ja, das stimmt – weiter →
+          {isB2B ? 'Zielgruppe bestätigen →' : 'Ja, das stimmt – weiter →'}
         </button>
 
         <br />

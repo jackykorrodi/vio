@@ -105,11 +105,11 @@ ABSOLUTE REGELN:
 FELDDEFINITIONEN:
 - organisation: Exakter Firmenname aus Logo, H1 oder Footer. Wenn unklar: null
 - beschreibung: 1-2 Sätze was die Organisation macht. Wenn unklar: null
-- branche: Hauptbranche des Unternehmens (z.B. "IT & Software", "Bauwesen", "Gesundheitswesen", "Handel", "Gastronomie", "Finanzdienstleistungen", "Bildung", "Industrie"). Wenn unklar: null
-- nogaCode: 2-stelliger NOGA-Code (z.B. "62" für IT, "41" für Bau, "86" für Gesundheit, "47" für Detailhandel). Nur wenn klar ableitbar. Sonst null
+- branche: Hauptbranche als NOGA-Kategoriename. Wähle aus: "Detailhandel", "Gastronomie & Hotellerie", "Bau & Handwerk", "Gesundheit & Soziales", "Bildung", "Finanz & Versicherung", "Immobilien", "IT & Kommunikation", "Produktion & Industrie", "Transport & Logistik", "Öffentliche Verwaltung", "Andere". Wenn unklar: null
+- nogaCode: 2-stelliger NOGA-Code. Beispiele: "47"=Detailhandel, "55"=Gastronomie, "41"=Bau, "86"=Gesundheit, "85"=Bildung, "64"=Finanz, "68"=Immobilien, "58"=IT/Kommunikation, "10"=Industrie, "49"=Transport, "84"=Verwaltung. Nur wenn klar ableitbar. Sonst null
 - region: Nur wenn Schweizer Kanton, Stadt oder Adresse EXPLIZIT erwähnt. Kürzel: ZH, BE, LU, UR, SZ, OW, NW, GL, ZG, FR, SO, BS, BL, SH, AR, AI, SG, GR, AG, TG, TI, VD, VS, NE, GE, JU. Sonst []
-- sprache: Welche Sprachen werden auf der Website verwendet? "de", "fr", "it". Mindestens []
-- unternehmensgroesse: Aus Mitarbeiterzahl, Jahresumsatz, Anzahl Standorte. "klein"=bis 9 MA, "mittel"=10-249 MA, "gross"=250+ MA. Sonst null
+- sprache: Welche Sprachen werden auf der Website verwendet? "de", "fr", "it". Mindestens ["de"]
+- unternehmensgroesse: Array mit Unternehmensgrössenklassen der ZIELKUNDEN (nicht des Werbenden selbst). Mögliche Werte: "micro" (1–9 MA), "klein" (10–49 MA), "mittel" (50–249 MA), "gross" (250+ MA). Mehrere möglich. Wenn unklar: []
 
 CONTENT:
 ${scrapedContent.substring(0, 5000)}
@@ -122,7 +122,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
   "nogaCode": null,
   "region": [],
   "sprache": ["de"],
-  "unternehmensgroesse": null
+  "unternehmensgroesse": []
 }`;
 
     try {
@@ -154,7 +154,9 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             // B2B fields
             branche: geminiData.branche ?? null,
             nogaCode: geminiData.nogaCode ?? null,
-            unternehmensgroesse: geminiData.unternehmensgroesse ?? null,
+            unternehmensgroesse: Array.isArray(geminiData.unternehmensgroesse)
+              ? geminiData.unternehmensgroesse
+              : [],
             // Meta
             needsManualInput: !geminiData.organisation,
             isManualFallback: false,
@@ -178,7 +180,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             // B2B fields empty for B2C
             branche: null,
             nogaCode: null,
-            unternehmensgroesse: null,
+            unternehmensgroesse: [],
             // Meta
             needsManualInput: !geminiData.organisation,
             isManualFallback: false,
