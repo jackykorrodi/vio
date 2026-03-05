@@ -459,6 +459,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   useEffect(() => { redraw(); }, [redraw]);
 
+  // Re-draw when switching tabs (canvases stay mounted but need a fresh paint)
+  useEffect(() => { redraw(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── File uploads ──
   const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -820,80 +823,66 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             ))}
           </div>
 
-          {/* DOOH canvases */}
-          {activeTab === 'dooh' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {DOOH_FORMATS.map(fmt => {
-                const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
-                return (
-                  <div key={fmt.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
-                      <button
-                        type="button"
-                        onClick={() => download(fmt.id, fmt.label)}
-                        style={{
-                          fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl,
-                          border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer',
-                          fontFamily: 'var(--font-outfit), sans-serif',
-                        }}
-                      >
-                        ↓ JPG
-                      </button>
-                    </div>
-                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}` }}>
-                      <canvas
-                        ref={el => { canvasRefs.current[fmt.id] = el; }}
-                        style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
-                      />
-                    </div>
+          {/* DOOH canvases — always mounted, hidden when tab inactive */}
+          <div style={{ display: activeTab === 'dooh' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
+            {DOOH_FORMATS.map(fmt => {
+              const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
+              return (
+                <div key={fmt.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => download(fmt.id, fmt.label)}
+                      style={{
+                        fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl,
+                        border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer',
+                        fontFamily: 'var(--font-outfit), sans-serif',
+                      }}
+                    >
+                      ↓ JPG
+                    </button>
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Display canvases */}
-          {activeTab === 'display' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {DISPLAY_FORMATS.map(fmt => {
-                const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
-                return (
-                  <div key={fmt.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
-                      <button
-                        type="button"
-                        onClick={() => download(fmt.id, fmt.label)}
-                        style={{
-                          fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl,
-                          border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer',
-                          fontFamily: 'var(--font-outfit), sans-serif',
-                        }}
-                      >
-                        ↓ JPG
-                      </button>
-                    </div>
-                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}`, display: 'inline-block' }}>
-                      <canvas
-                        ref={el => { canvasRefs.current[fmt.id] = el; }}
-                        style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
-                      />
-                    </div>
+                  <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}` }}>
+                    <canvas
+                      ref={el => { canvasRefs.current[fmt.id] = el; }}
+                      style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
+                    />
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+              );
+            })}
+          </div>
 
-          {/* All canvases rendered (but hidden when tab not active) – kept in DOM for download */}
-          <div style={{ display: 'none' }}>
-            {(activeTab === 'dooh' ? DISPLAY_FORMATS : DOOH_FORMATS).map(fmt => (
-              <canvas
-                key={fmt.id}
-                ref={el => { canvasRefs.current[fmt.id] = el; }}
-              />
-            ))}
+          {/* Display canvases — always mounted, hidden when tab inactive */}
+          <div style={{ display: activeTab === 'display' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
+            {DISPLAY_FORMATS.map(fmt => {
+              const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
+              return (
+                <div key={fmt.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => download(fmt.id, fmt.label)}
+                      style={{
+                        fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl,
+                        border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer',
+                        fontFamily: 'var(--font-outfit), sans-serif',
+                      }}
+                    >
+                      ↓ JPG
+                    </button>
+                  </div>
+                  <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}`, display: 'inline-block' }}>
+                    <canvas
+                      ref={el => { canvasRefs.current[fmt.id] = el; }}
+                      style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* CTA buttons */}

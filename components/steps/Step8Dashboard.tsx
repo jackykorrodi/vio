@@ -25,9 +25,9 @@ const page: React.CSSProperties = {
 
 const card: React.CSSProperties = {
   background: C.white,
-  borderRadius: '14px',
+  borderRadius: '12px',
   border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
+  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
   padding: '20px 22px',
   marginBottom: '14px',
 };
@@ -147,29 +147,29 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
 
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ ...card, marginBottom: 0, textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>
+          <div style={{ ...card, marginBottom: 0, textAlign: 'center', background: C.primary, border: 'none' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '10px' }}>
               Menschen erreicht
             </div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '38px', color: C.taupe, letterSpacing: '-.03em', lineHeight: 1, marginBottom: '4px' }}>
+            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '38px', color: '#fff', letterSpacing: '-.03em', lineHeight: 1, marginBottom: '4px' }}>
               0
             </div>
-            <div style={{ fontSize: '12px', color: C.muted }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)' }}>
               von ~{formatNumber(reach)} möglich
             </div>
-            <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 600, color: C.primary, background: C.pl, borderRadius: '100px', padding: '3px 10px', display: 'inline-block' }}>
+            <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 600, color: C.primary, background: '#fff', borderRadius: '100px', padding: '3px 10px', display: 'inline-block' }}>
               startet bald
             </div>
           </div>
 
-          <div style={{ ...card, marginBottom: 0, textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>
+          <div style={{ ...card, marginBottom: 0, textAlign: 'center', background: C.taupe, border: 'none' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '10px' }}>
               Kontakte pro Person
             </div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '38px', color: C.taupe, letterSpacing: '-.03em', lineHeight: 1, marginBottom: '4px' }}>
+            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '38px', color: '#fff', letterSpacing: '-.03em', lineHeight: 1, marginBottom: '4px' }}>
               3×
             </div>
-            <div style={{ fontSize: '12px', color: C.muted }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
               Ø Kontaktfrequenz / Woche
             </div>
           </div>
@@ -177,7 +177,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
 
         {/* Cards row: Kampagnenstart, Laufzeit, Kanal-Mix */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ ...card, marginBottom: 0 }}>
+          <div style={{ ...card, marginBottom: 0, background: '#F0EBE3', border: '1px solid #DDD5C8' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
               Kampagnenstart
             </div>
@@ -186,7 +186,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
             </div>
           </div>
 
-          <div style={{ ...card, marginBottom: 0 }}>
+          <div style={{ ...card, marginBottom: 0, background: '#F0EBE3', border: '1px solid #DDD5C8' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
               Laufzeit
             </div>
@@ -198,7 +198,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
             </div>
           </div>
 
-          <div style={{ ...card, marginBottom: 0 }}>
+          <div style={{ ...card, marginBottom: 0, background: '#F0EBE3', border: '1px solid #DDD5C8' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
               Kanal-Mix
             </div>
@@ -212,7 +212,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
         </div>
 
         {/* Progress bar */}
-        <div style={card}>
+        <div style={{ ...card, borderLeft: `4px solid ${C.primary}`, paddingLeft: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>
               Kampagnenfortschritt
@@ -246,7 +246,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
                   <span style={{ color: C.muted, fontSize: '12px' }}>~{formatNumber(reachPerRegion)}</span>
                 </div>
                 <div style={{ background: C.border, borderRadius: '100px', height: '5px', overflow: 'hidden' }}>
-                  <div style={{ width: '100%', height: '100%', background: `linear-gradient(90deg, ${C.primary}, ${C.pd})`, borderRadius: '100px', opacity: 0.35 }} />
+                  <div style={{ width: '100%', height: '100%', background: C.primary, borderRadius: '100px' }} />
                 </div>
               </div>
             )) : (
@@ -255,24 +255,24 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
           </div>
 
           {/* Budget card */}
-          <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '14px' }}>
+          <div style={{ ...card, display: 'flex', flexDirection: 'column', background: C.taupe, border: 'none' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: '14px' }}>
               Budget
             </div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '28px', color: C.taupe, letterSpacing: '-.03em', marginBottom: '2px' }}>
+            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '28px', color: '#fff', letterSpacing: '-.03em', marginBottom: '2px' }}>
               {formatCHF(briefing.budget)}
             </div>
-            <div style={{ fontSize: '12px', color: C.muted, marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
               Ausgegeben: {formatCHF(0)}
             </div>
-            <div style={{ height: '1px', background: C.border, marginBottom: '12px' }} />
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.15)', marginBottom: '12px' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '5px' }}>
-              <span style={{ color: C.muted }}>DOOH</span>
-              <span style={{ color: C.taupe, fontWeight: 600 }}>{formatCHF(doohBudget)}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)' }}>DOOH</span>
+              <span style={{ color: '#fff', fontWeight: 600 }}>{formatCHF(doohBudget)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '16px' }}>
-              <span style={{ color: C.muted }}>Display</span>
-              <span style={{ color: C.taupe, fontWeight: 600 }}>{formatCHF(displayBudget)}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)' }}>Display</span>
+              <span style={{ color: '#fff', fontWeight: 600 }}>{formatCHF(displayBudget)}</span>
             </div>
             <div style={{ marginTop: 'auto' }}>
               <a
@@ -280,19 +280,19 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
                 style={{
                   display: 'block',
                   textAlign: 'center',
-                  background: C.pl,
-                  border: `1.5px solid ${C.primary}`,
+                  background: C.primary,
+                  border: 'none',
                   borderRadius: '100px',
                   padding: '10px 16px',
                   fontSize: '13px',
                   fontWeight: 600,
-                  color: C.pd,
+                  color: '#fff',
                   textDecoration: 'none',
                   fontFamily: 'var(--font-outfit), sans-serif',
                   transition: 'all .15s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = C.primary; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = C.pl; (e.currentTarget as HTMLAnchorElement).style.color = C.pd; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = C.pd; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = C.primary; }}
               >
                 Mehr Menschen erreichen ↗
               </a>

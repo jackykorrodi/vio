@@ -80,29 +80,50 @@ export default function CampaignFlow() {
           VIO
         </a>
 
-        {/* Progress dots — completed ones are clickable */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(step => {
+        {/* Step indicator — completed steps are clickable */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((step, i) => {
             const done = step < currentStep;
             const active = step === currentStep;
+            const future = step > currentStep;
             return (
-              <button
-                key={step}
-                onClick={() => { if (done) setCurrentStep(step); }}
-                title={done ? `Zurück zu Schritt ${step}` : undefined}
-                style={{
-                  width: active ? '42px' : '28px',
-                  height: '3px', borderRadius: '2px', border: 'none', padding: 0,
-                  backgroundColor: (active || done) ? C.primary : C.border,
-                  opacity: done ? 0.45 : 1,
-                  cursor: done ? 'pointer' : 'default',
-                  transition: 'all .3s',
-                }}
-              />
+              <div key={step} style={{ display: 'flex', alignItems: 'center' }}>
+                {i > 0 && (
+                  <div style={{
+                    width: '16px', height: '1.5px',
+                    background: done ? C.primary : C.border,
+                    flexShrink: 0, margin: '0 1px',
+                    transition: 'background .3s',
+                  }} />
+                )}
+                <button
+                  type="button"
+                  onClick={() => { if (done) setCurrentStep(step); }}
+                  title={done ? `Zurück zu Schritt ${step}` : undefined}
+                  style={{
+                    width: '28px', height: '28px',
+                    borderRadius: '50%', border: 'none', padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: active ? C.primary : done ? C.primary : C.border,
+                    opacity: future ? 0.4 : done ? 0.75 : 1,
+                    cursor: done ? 'pointer' : 'default',
+                    transition: 'all .25s',
+                    flexShrink: 0,
+                    fontSize: '11px', fontWeight: 700,
+                    color: (active || done) ? '#fff' : C.muted,
+                    fontFamily: 'var(--font-outfit), sans-serif',
+                    outline: 'none',
+                  }}
+                  onMouseEnter={e => { if (done) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.1)'; } }}
+                  onMouseLeave={e => { if (done) { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.transform = 'none'; } }}
+                >
+                  {done ? '✓' : step}
+                </button>
+              </div>
             );
           })}
-          <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '6px' }}>
-            Schritt {currentStep} von 8
+          <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '8px' }}>
+            Schritt {currentStep}/8
           </span>
         </div>
       </nav>
