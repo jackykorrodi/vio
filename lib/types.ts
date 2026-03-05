@@ -39,6 +39,7 @@ export interface AnalysisResult {
   ogImage: string;
   ogLogo: string;
   favicon: string;
+  themeColor?: string;
 }
 
 export interface BriefingData {

@@ -158,7 +158,7 @@ function drawLeaderboard(
 
   // Logo left ~18%
   if (cfg.logoMode === 'image' && cfg.logoEl) {
-    const lh = Math.min(h * 0.48, FS.logo * 2.2);
+    const lh = Math.min(h * 0.48, Math.max(36, FS.logo * 2.2));
     const lw = (cfg.logoEl.naturalWidth / cfg.logoEl.naturalHeight) * lh;
     ctx.drawImage(cfg.logoEl, pad, cy - lh / 2, Math.min(lw, w * 0.16), lh);
   } else if (cfg.orgText) {
@@ -205,12 +205,14 @@ function drawStandard(
   isDooh: boolean,
 ) {
   const isSplit = cfg.bgStyle === 'split';
-  const tX = isSplit ? w * 0.58 : pad;
+  const tX = isSplit ? w * 0.52 : pad;
   const tMaxW = isSplit ? w - tX - pad : w - pad * 2;
 
   // Logo
   if (cfg.logoMode === 'image' && cfg.logoEl) {
-    const lh = FS.logo * 2;
+    const lh = isDooh
+      ? (w > h ? Math.max(80, FS.logo * 2) : Math.max(64, FS.logo * 2))
+      : Math.max(36, FS.logo * 2);
     const lw = (cfg.logoEl.naturalWidth / cfg.logoEl.naturalHeight) * lh;
     ctx.drawImage(cfg.logoEl, tX, pad, Math.min(lw, tMaxW), lh);
   } else if (cfg.orgText) {
@@ -304,19 +306,19 @@ function drawAd(canvas: HTMLCanvasElement, cfg: DrawConfig, w: number, h: number
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
     } else { // split
-      // left 54% = image
+      // left 48% = image
       ctx.save();
       ctx.beginPath();
-      ctx.rect(0, 0, w * 0.54, h);
+      ctx.rect(0, 0, w * 0.48, h);
       ctx.clip();
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
       ctx.restore();
-      // gradient bridge
-      const g = ctx.createLinearGradient(w * 0.46, 0, w * 0.62, 0);
+      // gradient bridge 40%–52%
+      const g = ctx.createLinearGradient(w * 0.40, 0, w * 0.52, 0);
       g.addColorStop(0, hexToRgba(cfg.bgColor, 0));
       g.addColorStop(1, hexToRgba(cfg.bgColor, 1));
       ctx.fillStyle = g;
-      ctx.fillRect(w * 0.46, 0, w * 0.16, h);
+      ctx.fillRect(w * 0.40, 0, w * 0.12, h);
     }
   } else {
     // No image: subtle diagonal gradient
@@ -362,6 +364,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const analysis = briefing.analysis;
   const ogImageUrl = analysis?.ogImage || '';
   const ogLogoUrl = analysis?.ogLogo || analysis?.favicon || '';
+  const themeColor = analysis?.themeColor || '';
 
   // ── Ad state ──
   const [orgText, setOrgText] = useState(analysis?.organisation || '');
@@ -370,9 +373,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [subline, setSubline] = useState('');
   const [cta, setCta] = useState('Jetzt informieren');
   const [bgStyle, setBgStyle] = useState<'overlay' | 'pure' | 'split'>('overlay');
-  const [bgColor, setBgColor] = useState('#C1666B');
+  const [bgColor, setBgColor] = useState(themeColor || '#C1666B');
   const [textColor, setTextColor] = useState('#FFFFFF');
-  const [accentColor, setAccentColor] = useState('#C1666B');
+  const [accentColor, setAccentColor] = useState(themeColor || '#C1666B');
   const [logoMode, setLogoMode] = useState<'text' | 'image'>('text');
 
   // ── Image elements ──
@@ -405,12 +408,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   // ── Load bg image via proxy ──
   useEffect(() => {
+    console.log('[VIO AdCreator] ogImage URL from Firecrawl:', ogImageUrl || '(none)');
     if (!ogImageUrl) { setOgImageStatus('none'); return; }
     setOgImageStatus('loading');
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => { setBgImageEl(img); setOgImageStatus('ok'); };
-    img.onerror = () => setOgImageStatus('error');
+    img.onerror = () => {
+      console.warn('[VIO AdCreator] ogImage proxy failed for URL:', ogImageUrl);
+      setOgImageStatus('error');
+    };
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogImageUrl)}`;
   }, [ogImageUrl]);
 
@@ -502,6 +509,12 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     setKiLoading(false);
   };
 
+  // ── Auto-generate KI headlines on mount ──
+  useEffect(() => {
+    generateKiHeadlines();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Save & next ──
   const handleWeiter = () => {
     updateBriefing({
@@ -566,6 +579,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               </span>
               {statusBadge(ogImageStatus, 'Hintergrundbild')}
               {statusBadge(ogLogoStatus, 'Logo')}
+              {(ogImageStatus === 'error' || (ogImageStatus === 'none' && !ogImageUrl)) && (
+                <span style={{ fontSize: '11px', color: C.muted, width: '100%', marginTop: '2px' }}>
+                  Kein Bild von der Website gefunden – bitte hochladen
+                </span>
+              )}
             </div>
 
             {/* Org */}
@@ -766,6 +784,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                       style={{ width: '30px', height: '30px', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: 0 }}
                     />
                     <span style={{ fontSize: '13px', color: C.taupe }}>{lbl}</span>
+                    {lbl === 'Hauptfarbe' && themeColor && (
+                      <span style={{ fontSize: '10px', color: C.teal, background: '#e8f5f2', borderRadius: '4px', padding: '2px 6px', marginLeft: '2px' }}>
+                        Von Website
+                      </span>
+                    )}
                     <span style={{ fontSize: '11px', color: C.muted, marginLeft: 'auto', fontFamily: 'monospace' }}>{val}</span>
                   </div>
                 ))}

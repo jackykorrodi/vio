@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     let ogImage = '';
     let ogLogo = '';
     let favicon = '';
+    let themeColor = '';
 
     try {
       const firecrawlTimeout = new Promise<never>((_, reject) =>
@@ -39,7 +40,10 @@ export async function POST(request: NextRequest) {
       ogImage = (crawlResult as any).metadata?.ogImage || '';
       ogLogo = (crawlResult as any).metadata?.ogLogo || '';
       favicon = (crawlResult as any).metadata?.favicon || '';
+      themeColor = (crawlResult as any).metadata?.themeColor || (crawlResult as any).metadata?.['theme-color'] || '';
       console.log('Title:', pageTitle);
+      console.log('ogImage:', ogImage);
+      console.log('themeColor:', themeColor);
       console.log('Content length:', scrapedContent.length);
     } catch (e) {
       console.error('Firecrawl error:', e);
@@ -170,6 +174,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             ogImage,
             ogLogo,
             favicon,
+            themeColor,
           }
         : {
             organisation: geminiData.organisation ?? null,
@@ -197,6 +202,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             ogImage,
             ogLogo,
             favicon,
+            themeColor,
           };
 
       return NextResponse.json(analysis);
