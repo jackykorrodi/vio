@@ -7,7 +7,7 @@ import Step1Entry from '@/components/steps/Step1Entry';
 import Step2Analysis from '@/components/steps/Step2Analysis';
 import Step3Audience from '@/components/steps/Step3Audience';
 import Step4Budget from '@/components/steps/Step4Budget';
-import Step5Creative from '@/components/steps/Step5Creative';
+import Step5AdCreator from '@/components/steps/Step5AdCreator';
 import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
 import Step8Dashboard from '@/components/steps/Step8Dashboard';
@@ -169,7 +169,7 @@ export default function CampaignFlow() {
       )}
 
       {currentStep === 5 && (
-        <Step5Creative
+        <Step5AdCreator
           briefing={briefing}
           updateBriefing={updateBriefing}
           nextStep={nextStep}

@@ -36,6 +36,9 @@ export interface AnalysisResult {
   needsManualInput: boolean;
   isManualFallback: boolean;
   pageTitle: string;
+  ogImage: string;
+  ogLogo: string;
+  favicon: string;
 }
 
 export interface BriefingData {
@@ -53,6 +56,14 @@ export interface BriefingData {
   // Step 5
   werbemittel: 'upload' | 'erstellen' | 'spaeter' | null;
   uploadedFiles: string[];
+  werbemittelErstellt: boolean;
+  adHeadline: string;
+  adSubline: string;
+  adCta: string;
+  adBgStyle: 'overlay' | 'pure' | 'split' | null;
+  adBgColor: string;
+  adTextColor: string;
+  adAccentColor: string;
   // Step 6
   vorname: string;
   nachname: string;
@@ -76,6 +87,14 @@ export const initialBriefing: BriefingData = {
   b2bReach: null,
   werbemittel: null,
   uploadedFiles: [],
+  werbemittelErstellt: false,
+  adHeadline: '',
+  adSubline: '',
+  adCta: '',
+  adBgStyle: null,
+  adBgColor: '',
+  adTextColor: '',
+  adAccentColor: '',
   vorname: '',
   nachname: '',
   email: '',

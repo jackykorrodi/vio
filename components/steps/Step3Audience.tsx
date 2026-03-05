@@ -262,6 +262,9 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
       needsManualInput: false,
       isManualFallback: analysis?.isManualFallback || false,
       pageTitle: analysis?.pageTitle || '',
+      ogImage: analysis?.ogImage || '',
+      ogLogo: analysis?.ogLogo || '',
+      favicon: analysis?.favicon || '',
     };
     updateBriefing({ analysis: updated });
     nextStep();

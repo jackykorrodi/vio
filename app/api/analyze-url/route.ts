@@ -22,6 +22,9 @@ export async function POST(request: NextRequest) {
 
     let scrapedContent = '';
     let pageTitle = '';
+    let ogImage = '';
+    let ogLogo = '';
+    let favicon = '';
 
     try {
       const firecrawlTimeout = new Promise<never>((_, reject) =>
@@ -33,6 +36,9 @@ export async function POST(request: NextRequest) {
       ]);
       scrapedContent = (crawlResult as { markdown?: string; metadata?: { title?: string } }).markdown || '';
       pageTitle = (crawlResult as { markdown?: string; metadata?: { title?: string } }).metadata?.title || '';
+      ogImage = (crawlResult as any).metadata?.ogImage || '';
+      ogLogo = (crawlResult as any).metadata?.ogLogo || '';
+      favicon = (crawlResult as any).metadata?.favicon || '';
       console.log('Title:', pageTitle);
       console.log('Content length:', scrapedContent.length);
     } catch (e) {
@@ -161,6 +167,9 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             needsManualInput: !geminiData.organisation,
             isManualFallback: false,
             pageTitle,
+            ogImage,
+            ogLogo,
+            favicon,
           }
         : {
             organisation: geminiData.organisation ?? null,
@@ -185,6 +194,9 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             needsManualInput: !geminiData.organisation,
             isManualFallback: false,
             pageTitle,
+            ogImage,
+            ogLogo,
+            favicon,
           };
 
       return NextResponse.json(analysis);
