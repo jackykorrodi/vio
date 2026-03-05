@@ -172,6 +172,9 @@ export default function HomePage() {
           <a href="#whom" style={{ fontSize: '14px', color: C.muted, textDecoration: 'none', fontWeight: 500 }}>
             Für wen
           </a>
+          <a href="#warum" style={{ fontSize: '14px', color: C.muted, textDecoration: 'none', fontWeight: 500 }}>
+            Warum VIO
+          </a>
           <button
             type="button"
             onClick={() => router.push('/campaign')}
@@ -513,7 +516,7 @@ export default function HomePage() {
       </section>
 
       {/* ── REASON WHY ──────────────────────────────────────────────────── */}
-      <section style={{ padding: '100px clamp(20px, 5vw, 56px)' }}>
+      <section id="warum" style={{ padding: '100px clamp(20px, 5vw, 56px)' }}>
         <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
           <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
             <div style={{
