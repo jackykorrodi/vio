@@ -22,6 +22,7 @@ const C = {
 export default function CampaignFlow() {
   const searchParams = useSearchParams();
   const urlParam = searchParams.get('url') || '';
+  const resumeParam = searchParams.get('resume') || '';
 
   const [currentStep, setCurrentStep] = useState(1);
   const [briefing, setBriefing] = useState<BriefingData>({
@@ -29,6 +30,7 @@ export default function CampaignFlow() {
     url: urlParam,
   });
   const [analysisRunKey, setAnalysisRunKey] = useState(0);
+  const [resumeLoaded, setResumeLoaded] = useState(false);
 
   const updateBriefing = (data: Partial<BriefingData>) => {
     setBriefing(prev => ({ ...prev, ...data }));
@@ -52,6 +54,24 @@ export default function CampaignFlow() {
     setAnalysisRunKey(k => k + 1);
     setCurrentStep(2);
   };
+
+  // Restore session from ?resume= param (base64 encoded partial BriefingData)
+  useEffect(() => {
+    if (!resumeParam) return;
+    try {
+      const decoded = JSON.parse(atob(resumeParam)) as Partial<BriefingData>;
+      setBriefing(prev => ({ ...prev, ...decoded }));
+      setCurrentStep(5);
+      setResumeLoaded(true);
+    } catch { /* ignore malformed resume param */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Generate sessionId the first time the user reaches Step 5
+  useEffect(() => {
+    if (currentStep === 5 && !briefing.sessionId) {
+      updateBriefing({ sessionId: crypto.randomUUID() });
+    }
+  }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll to top on every step transition.
   useEffect(() => {
@@ -145,6 +165,23 @@ export default function CampaignFlow() {
           >
             ← Zurück
           </button>
+        </div>
+      )}
+
+      {/* ── Welcome-back banner (resume flow) ── */}
+      {resumeLoaded && (
+        <div style={{
+          maxWidth: '720px', margin: '12px auto 0', padding: '0 20px',
+        }}>
+          <div style={{
+            background: '#E8F5F2', border: '1px solid #2A7F7F',
+            borderRadius: '10px', padding: '12px 18px',
+            fontSize: '13px', color: '#2A7F7F', fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <span>✓</span>
+            Willkommen zurück – dein letzter Stand wurde geladen.
+          </div>
         </div>
       )}
 

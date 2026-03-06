@@ -366,17 +366,17 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const ogLogoUrl = analysis?.ogLogo || analysis?.favicon || '';
   const themeColor = analysis?.themeColor || '';
 
-  // ── Ad state ──
+  // ── Ad state — initialised from briefing so resume works ──
   const [orgText, setOrgText] = useState(analysis?.organisation || '');
   const [lpUrl, setLpUrl] = useState(briefing.url || '');
-  const [headline, setHeadline] = useState('');
-  const [subline, setSubline] = useState('');
-  const [cta, setCta] = useState('Jetzt informieren');
-  const [bgStyle, setBgStyle] = useState<'overlay' | 'pure' | 'split'>('overlay');
-  const [bgColor, setBgColor] = useState(themeColor || '#C1666B');
-  const [textColor, setTextColor] = useState('#FFFFFF');
-  const [accentColor, setAccentColor] = useState(themeColor || '#C1666B');
-  const [logoMode, setLogoMode] = useState<'text' | 'image'>('text');
+  const [headline, setHeadline] = useState(briefing.adHeadline || '');
+  const [subline, setSubline] = useState(briefing.adSubline || '');
+  const [cta, setCta] = useState(briefing.adCta || 'Jetzt informieren');
+  const [bgStyle, setBgStyle] = useState<'overlay' | 'pure' | 'split'>((briefing.adBgStyle as 'overlay' | 'pure' | 'split') || 'overlay');
+  const [bgColor, setBgColor] = useState(briefing.adBgColor || themeColor || '#C1666B');
+  const [textColor, setTextColor] = useState(briefing.adTextColor || '#FFFFFF');
+  const [accentColor, setAccentColor] = useState(briefing.adAccentColor || themeColor || '#C1666B');
+  const [logoMode, setLogoMode] = useState<'text' | 'image'>(briefing.adLogoMode || 'text');
 
   // ── Image elements ──
   const [bgImageEl, setBgImageEl] = useState<HTMLImageElement | null>(null);
@@ -390,9 +390,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [activeTab, setActiveTab] = useState<'dooh' | 'display'>('dooh');
   const [kiLoading, setKiLoading] = useState(false);
   const [headlineSuggestions, setHeadlineSuggestions] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // ── Canvas refs ──
   const canvasRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load fonts ──
   useEffect(() => {
@@ -462,6 +464,41 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   // Re-draw when switching tabs (canvases stay mounted but need a fresh paint)
   useEffect(() => { redraw(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Debounced auto-save to /api/save-session ──
+  useEffect(() => {
+    if (!briefing.sessionId) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaveStatus('saving');
+    saveTimerRef.current = setTimeout(async () => {
+      // Keep briefing in sync with current ad state
+      updateBriefing({
+        adHeadline: headline, adSubline: subline, adCta: cta,
+        adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
+        adAccentColor: accentColor, adLogoMode: logoMode,
+      });
+      try {
+        await fetch('/api/save-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: briefing.sessionId,
+            dealId: briefing.dealId || null,
+            adCreatorState: {
+              adHeadline: headline, adSubline: subline, adCta: cta,
+              adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
+              adAccentColor: accentColor, adLogoMode: logoMode,
+              logoUrl: ogLogoUrl, bgImageUrl: ogImageUrl,
+              sessionId: briefing.sessionId,
+            },
+          }),
+        });
+        setSaveStatus('saved');
+      } catch { setSaveStatus('idle'); }
+    }, 2000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headline, subline, cta, bgStyle, bgColor, textColor, accentColor, logoMode]);
+
   // ── File uploads ──
   const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -530,6 +567,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       adBgColor: bgColor,
       adTextColor: textColor,
       adAccentColor: accentColor,
+      adLogoMode: logoMode,
     });
     nextStep();
   };
@@ -577,9 +615,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
             {/* Status bar */}
             <div style={{ background: C.bg, borderRadius: '8px', padding: '10px 12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase', width: '100%', marginBottom: '2px' }}>
-                Von Website geladen
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase' }}>
+                  Von Website geladen
+                </span>
+                {briefing.sessionId && saveStatus !== 'idle' && (
+                  <span style={{ fontSize: '10px', color: saveStatus === 'saved' ? C.teal : C.muted, fontWeight: 600 }}>
+                    {saveStatus === 'saving' ? 'Speichert…' : 'Gespeichert ✓'}
+                  </span>
+                )}
+              </div>
               {statusBadge(ogImageStatus, 'Hintergrundbild')}
               {statusBadge(ogLogoStatus, 'Logo')}
               {(ogImageStatus === 'error' || (ogImageStatus === 'none' && !ogImageUrl)) && (

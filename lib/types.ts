@@ -65,6 +65,10 @@ export interface BriefingData {
   adBgColor: string;
   adTextColor: string;
   adAccentColor: string;
+  adLogoMode?: 'text' | 'image';
+  // Session persistence
+  sessionId?: string;
+  dealId?: string;
   // Step 6
   vorname: string;
   nachname: string;

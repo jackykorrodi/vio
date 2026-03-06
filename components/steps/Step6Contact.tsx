@@ -86,6 +86,9 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
         setLoading(false);
         return;
       }
+      if (data.dealId) {
+        updateBriefing({ dealId: data.dealId });
+      }
       if (data.navigateTo && goToStep) {
         goToStep(data.navigateTo);
       } else {
