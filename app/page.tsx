@@ -300,6 +300,61 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── 5 VORTEILE – above the fold ─────────────────────────────────── */}
+      <section id="warum-vio" style={{ padding: '24px clamp(16px, 4vw, 48px)', backgroundColor: C.bg, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: '12px',
+          }}>
+            {[
+              { ico: '⚡', title: 'In 2 Minuten live', desc: 'Keine Agentur, kein Fachwissen, kein wochenlanger Vorlauf.' },
+              { ico: '💰', title: 'Faire Preise', desc: 'All-in Preis, kein Kleingedrucktes. Ab CHF\u00A02\'500.' },
+              { ico: '📍', title: 'DOOH + Online', desc: 'Digitale Plakate und Online-Banner in einer Buchung.' },
+              { ico: '👥', title: 'Echte Reichweite', desc: 'Konkrete Personenzahlen – nicht abstrakte Metriken.' },
+              { ico: '🤝', title: 'Persönlich', desc: 'Echte Menschen hinter VIO. Wir antworten direkt.' },
+            ].map((v) => (
+              <div
+                key={v.title}
+                style={{
+                  backgroundColor: '#FAF7F2',
+                  borderRadius: '12px',
+                  border: '1px solid #EDE8E1',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}
+              >
+                <span style={{ fontSize: '20px', lineHeight: 1 }}>{v.ico}</span>
+                <div style={{
+                  fontFamily: 'var(--font-fraunces), Georgia, serif',
+                  fontSize: '15px', fontWeight: 400, color: C.taupe,
+                  letterSpacing: '-.01em', lineHeight: 1.2,
+                }}>
+                  {v.title}
+                </div>
+                <p style={{
+                  fontSize: '12px', color: C.muted, lineHeight: 1.5, margin: 0,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>
+                  {v.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <style>{`
+          @media (max-width: 900px) {
+            #warum-vio > div > div { grid-template-columns: repeat(3, 1fr) !important; }
+          }
+          @media (max-width: 560px) {
+            #warum-vio > div > div { grid-template-columns: repeat(2, 1fr) !important; }
+          }
+        `}</style>
+      </section>
+
       {/* ── HOW IT WORKS ────────────────────────────────────────────────── */}
       <section id="how" style={{ padding: '100px clamp(20px, 5vw, 56px)' }}>
         <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
@@ -507,101 +562,6 @@ export default function HomePage() {
                   </h3>
                   <p style={{ fontSize: '14px', color: 'rgba(255,255,255,.6)', lineHeight: 1.65 }}>
                     {w.desc}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── 5 VORTEILE ──────────────────────────────────────────────────── */}
-      <section id="warum-vio" style={{ padding: '100px clamp(20px, 5vw, 56px)', backgroundColor: C.bg }}>
-        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
-          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <div style={{
-              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
-              color: C.primary, textTransform: 'uppercase', marginBottom: '14px',
-            }}>
-              Warum VIO?
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-fraunces), Georgia, serif',
-              fontSize: 'clamp(28px, 4vw, 46px)',
-              fontWeight: 400, letterSpacing: '-.02em', color: C.taupe,
-            }}>
-              5 Gründe, die überzeugen.
-            </h2>
-          </Reveal>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-            {[
-              {
-                ico: '⚡',
-                title: 'In 2 Minuten live',
-                desc: 'Keine Agentur, kein Fachwissen, kein wochenlanger Vorlauf. Du gibst deine Website ein – wir übernehmen den Rest.',
-              },
-              {
-                ico: '💰',
-                title: 'Faire Preise, keine Überraschungen',
-                desc: 'Du siehst immer den All-in Preis. Kein Fachjargon, kein Kleingedrucktes. Einstieg ab CHF 2\'500.',
-              },
-              {
-                ico: '📍',
-                title: 'DOOH + Online in einer Buchung',
-                desc: 'Digitale Plakate und Online-Banner gleichzeitig. Zwei Kanäle, eine Buchung, maximale Wirkung.',
-              },
-              {
-                ico: '👥',
-                title: 'Echte Reichweite in deiner Region',
-                desc: 'Wir zeigen dir konkret wie viele Menschen du erreichst – in Personen, nicht in abstrakten Zahlen.',
-              },
-              {
-                ico: '🤝',
-                title: 'Persönlich wenn du es willst',
-                desc: 'Hinter VIO stehen echte Menschen. Fragen? Wir antworten – direkt, ohne Warteschleife.',
-              },
-            ].map((v, i) => (
-              <Reveal key={v.title} delay={i * 80}>
-                <div
-                  style={{
-                    backgroundColor: '#FAF7F2',
-                    borderRadius: '16px',
-                    border: `1px solid ${C.border}`,
-                    padding: '26px 24px',
-                    height: '100%',
-                    boxShadow: '0 1px 4px rgba(44,44,62,.06)',
-                    transition: 'transform .2s, box-shadow .2s',
-                    cursor: 'default',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'translateY(-4px)';
-                    el.style.boxShadow = '0 10px 28px rgba(44,44,62,.10)';
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'none';
-                    el.style.boxShadow = '0 1px 4px rgba(44,44,62,.06)';
-                  }}
-                >
-                  <div style={{
-                    width: '44px', height: '44px', borderRadius: '12px',
-                    background: C.pl, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '22px', marginBottom: '16px',
-                    border: `1px solid rgba(193,102,107,.15)`,
-                  }}>
-                    {v.ico}
-                  </div>
-                  <h3 style={{
-                    fontFamily: 'var(--font-fraunces), Georgia, serif',
-                    fontSize: '20px', fontWeight: 400, color: C.taupe, marginBottom: '8px',
-                    letterSpacing: '-.01em',
-                  }}>
-                    {v.title}
-                  </h3>
-                  <p style={{ fontSize: '14px', color: C.muted, lineHeight: 1.65 }}>
-                    {v.desc}
                   </p>
                 </div>
               </Reveal>
