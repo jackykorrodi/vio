@@ -66,9 +66,10 @@ export interface BriefingData {
   adTextColor: string;
   adAccentColor: string;
   adLogoMode?: 'text' | 'image';
-  adBgImageData?: string;    // base64 data URL for persistence
-  adLogoImageData?: string;  // base64 data URL for persistence
-  werbemittelService?: 'selbst' | 'erstellen' | 'spaeter'; // option chosen in Step 5
+  adBgImageData?: string;     // base64 data URL for persistence
+  adLogoImageData?: string;   // base64 data URL for persistence
+  werbemittelService?: 'upload' | 'später' | 'erstellen'; // option chosen in Step 5
+  werbemittelFiles?: string[];  // uploaded file names for option A
   // Session persistence
   sessionId?: string;
   dealId?: string;

@@ -113,14 +113,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
     transition: 'all .2s',
   });
 
-  const werbemittelLabel: Record<string, string> = {
-    upload: 'Hochladen',
-    erstellen: 'Erstellen lassen',
-    spaeter: 'Später',
-  };
-
-  const werbemittelErstellt = briefing.werbemittelErstellt;
-  const adHeadline = briefing.adHeadline;
+  const wms = briefing.werbemittelService;
 
   return (
     <section style={{ backgroundColor: C.bg }}>
@@ -152,7 +145,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
               ['Laufzeit', `${briefing.laufzeit} Wochen`],
               ['Region', briefing.analysis?.region?.join(', ') || '—'],
               ['Reichweite', briefing.reach ? `~${formatNumber(briefing.reach)}` : '—'],
-              ['Werbemittel', werbemittelErstellt ? `✓ Erstellt` : (briefing.werbemittel ? werbemittelLabel[briefing.werbemittel] : '—')],
+              ['Werbemittel', wms === 'upload' ? '✓ Hochgeladen' : wms === 'erstellen' ? '✓ Erstellt' : wms === 'später' ? '⏳ Nachgereicht' : '—'],
               ['Typ', briefing.campaignType === 'b2c' ? 'B2C' : 'B2B'],
             ].map(([lbl, val]) => (
               <div key={lbl}>
@@ -164,23 +157,31 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
         </div>
 
         {/* Werbemittel status */}
-        {werbemittelErstellt && adHeadline ? (
+        {wms === 'erstellen' ? (
           <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ fontSize: '24px' }}>✅</div>
+            <div style={{ fontSize: '22px' }}>✅</div>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel erstellt</div>
-              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Headline: «{adHeadline}»</div>
+              {briefing.adHeadline && <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Headline: «{briefing.adHeadline}»</div>}
             </div>
           </div>
-        ) : (
-          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ fontSize: '22px' }}>📋</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: C.taupe }}>Werbemittel erstellen lassen</div>
-              <p style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Noch kein Werbemittel erstellt – du kannst es hochladen, erstellen lassen (+CHF 500) oder später einreichen.</p>
+        ) : wms === 'upload' ? (
+          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontSize: '22px' }}>✅</div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel hochgeladen</div>
+              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Deine Dateien werden nach dem Abschluss verarbeitet.</div>
             </div>
           </div>
-        )}
+        ) : wms === 'später' ? (
+          <div style={{ background: '#FFF8EC', border: `1.5px solid #E6AC3A`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontSize: '22px' }}>⏳</div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#7A5C00' }}>Werbemittel werden nach Buchung nachgereicht</div>
+              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Du erhältst eine E-Mail mit allen technischen Spezifikationen.</div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Abschluss cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>

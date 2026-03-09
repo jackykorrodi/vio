@@ -364,15 +364,17 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const ogLogoUrl = analysis?.ogLogo || analysis?.favicon || '';
   const themeColor = analysis?.themeColor || '';
 
-  // ── Option selection (A: selbst, B: erstellen, C: spaeter) ──
-  const [selectedOption, setSelectedOption] = useState<'selbst' | 'erstellen' | 'spaeter' | null>(
-    briefing.werbemittelService || (briefing.adHeadline ? 'selbst' : null)
-  );
+  // ── Option selection (A: upload, B: später, C: erstellen) ──
+  const initOption = (): 'upload' | 'später' | 'erstellen' | null => {
+    const svc = briefing.werbemittelService;
+    if (svc === 'upload' || svc === 'später' || svc === 'erstellen') return svc;
+    if (briefing.adHeadline) return 'erstellen';
+    return null;
+  };
+  const [selectedOption, setSelectedOption] = useState<'upload' | 'später' | 'erstellen' | null>(initOption);
 
-  // ── "Erstellen lassen" brief form ──
-  const [erstellenBeschreibung, setErstellenBeschreibung] = useState('');
-  const [erstellenZielgruppe, setErstellenZielgruppe] = useState('');
-  const [erstellenStil, setErstellenStil] = useState('');
+  // ── Uploaded ad files (option A) ──
+  const [uploadedAdFiles, setUploadedAdFiles] = useState<File[]>([]);
 
   // ── Ad state — initialised from briefing so resume works ──
   const [orgText, setOrgText] = useState(analysis?.organisation || '');
@@ -618,7 +620,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   };
 
   useEffect(() => {
-    if (selectedOption === 'selbst') generateKiHeadlines();
+    if (selectedOption === 'erstellen') generateKiHeadlines();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOption]);
 
@@ -654,7 +656,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     updateBriefing({
       werbemittel: 'erstellen',
       werbemittelErstellt: true,
-      werbemittelService: 'selbst',
+      werbemittelService: 'erstellen',
       adHeadline: headline,
       adSubline: subline,
       adCta: cta,
@@ -667,13 +669,14 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     nextStep();
   };
 
-  const handleSkip = () => {
-    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false, werbemittelService: 'spaeter' });
+  const handleUploadWeiter = () => {
+    const fileNames = uploadedAdFiles.map(f => f.name);
+    updateBriefing({ werbemittel: 'upload', werbemittelErstellt: true, werbemittelService: 'upload', werbemittelFiles: fileNames });
     nextStep();
   };
 
-  const handleErstellenWeiter = () => {
-    updateBriefing({ werbemittel: 'erstellen', werbemittelErstellt: false, werbemittelService: 'erstellen' });
+  const handleSpäterWeiter = () => {
+    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false, werbemittelService: 'später' });
     nextStep();
   };
 
@@ -691,28 +694,28 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   const optionCards = [
     {
-      id: 'selbst' as const,
-      ico: '🎨',
-      title: 'Selbst erstellen',
-      sub: 'Im Browser gestalten – für DOOH und Display.',
+      id: 'upload' as const,
+      ico: '📤',
+      title: 'Eigene Werbemittel hochladen',
+      sub: 'Lade deine fertigen Werbemittel direkt hoch.',
+      badge: 'Kostenlos',
+      badgeColor: { background: '#E8F5F5', color: C.teal },
+    },
+    {
+      id: 'später' as const,
+      ico: '📅',
+      title: 'Später hochladen',
+      sub: 'Du bekommst nach der Buchung eine E-Mail mit allen Spezifikationen.',
       badge: 'Kostenlos',
       badgeColor: { background: '#E8F5F5', color: C.teal },
     },
     {
       id: 'erstellen' as const,
-      ico: '✏️',
-      title: 'Erstellen lassen',
-      sub: 'Unser Team gestaltet dein Werbemittel professionell.',
-      badge: '+CHF 500',
+      ico: '🎨',
+      title: 'Im Browser erstellen',
+      sub: 'Erstelle deine Werbemittel direkt hier – DOOH und Display, exportierbar als JPG.',
+      badge: 'CHF 500 Add-on',
       badgeColor: { background: C.pl, color: C.pd },
-    },
-    {
-      id: 'spaeter' as const,
-      ico: '📁',
-      title: 'Später hochladen',
-      sub: 'Du schickst das Werbemittel vor Kampagnenstart ein.',
-      badge: 'Flexibel',
-      badgeColor: { background: C.bg, color: C.muted },
     },
   ];
 
@@ -766,81 +769,80 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
       </div>
 
-      {/* ── Option B: Erstellen lassen ── */}
-      {selectedOption === 'erstellen' && (
+      {/* ── Option A: Eigene Werbemittel hochladen ── */}
+      {selectedOption === 'upload' && (
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 20px 40px' }}>
           <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '24px' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '16px' }}>
-              Brief für unser Kreativ-Team
+              Werbemittel hochladen
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <span style={label}>Beschreibung deines Angebots</span>
-                <textarea
-                  value={erstellenBeschreibung}
-                  onChange={e => setErstellenBeschreibung(e.target.value)}
-                  placeholder="Was bietest du an? Was macht dich besonders?"
-                  rows={3}
-                  style={{ ...inputStyle, resize: 'vertical' }}
-                />
+            <label style={{ display: 'block', cursor: 'pointer', marginBottom: '16px' }}>
+              <div style={{
+                border: `2px dashed ${uploadedAdFiles.length > 0 ? C.teal : C.border}`,
+                borderRadius: '12px', padding: '32px 20px', textAlign: 'center',
+                background: uploadedAdFiles.length > 0 ? '#F0FAF7' : C.bg,
+                transition: 'all .2s',
+              }}>
+                <div style={{ fontSize: '36px', marginBottom: '10px' }}>📤</div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: C.taupe, marginBottom: '4px' }}>
+                  {uploadedAdFiles.length > 0 ? `${uploadedAdFiles.length} Datei(en) ausgewählt` : 'Dateien hierher ziehen oder klicken'}
+                </div>
+                <div style={{ fontSize: '12px', color: C.muted }}>JPG, PNG, MP4 – max. 50 MB pro Datei</div>
+                {uploadedAdFiles.length > 0 && (
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {uploadedAdFiles.map((f, i) => (
+                      <div key={i} style={{ fontSize: '12px', color: C.teal, fontWeight: 500 }}>
+                        ✓ {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB)
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
-                <span style={label}>Zielgruppe</span>
-                <input
-                  type="text"
-                  value={erstellenZielgruppe}
-                  onChange={e => setErstellenZielgruppe(e.target.value)}
-                  placeholder="z.B. Familien mit Kindern, KMU-Inhaber, 30–55 Jahre"
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <span style={label}>Stil-Präferenz</span>
-                <input
-                  type="text"
-                  value={erstellenStil}
-                  onChange={e => setErstellenStil(e.target.value)}
-                  placeholder="z.B. modern & minimalistisch, warm & einladend"
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={handleErstellenWeiter}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  background: C.primary, color: '#fff', border: 'none',
-                  borderRadius: '100px', padding: '14px 28px',
-                  fontFamily: 'var(--font-outfit), sans-serif', fontSize: '15px', fontWeight: 600,
-                  cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+              <input
+                type="file"
+                accept="image/jpeg,image/png,video/mp4"
+                multiple
+                style={{ display: 'none' }}
+                onChange={e => {
+                  const files = Array.from(e.target.files || []);
+                  setUploadedAdFiles(prev => [...prev, ...files]);
                 }}
-              >
-                Weiter zum Abschluss →
-              </button>
-            </div>
-            <p style={{ fontSize: '12px', color: C.muted, marginTop: '10px' }}>
-              +CHF 500 wird zum Kampagnenbudget hinzugerechnet. Unser Team meldet sich innerhalb von 24h.
+              />
+            </label>
+            <p style={{ fontSize: '12px', color: C.muted, marginBottom: '16px' }}>
+              Benötigte Formate: DOOH 1920×1080px, 1080×1920px · Display 970×250px, 300×250px, 300×600px
             </p>
+            <button
+              type="button"
+              onClick={handleUploadWeiter}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: C.primary, color: '#fff', border: 'none',
+                borderRadius: '100px', padding: '14px 28px',
+                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '15px', fontWeight: 600,
+                cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+              }}
+            >
+              {uploadedAdFiles.length > 0 ? 'Weiter zum Abschluss →' : 'Ohne Dateien weiter →'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* ── Option C: Später hochladen ── */}
-      {selectedOption === 'spaeter' && (
+      {/* ── Option B: Später hochladen ── */}
+      {selectedOption === 'später' && (
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 20px 40px' }}>
           <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📁</div>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📅</div>
             <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '20px', fontWeight: 400, color: C.taupe, marginBottom: '8px' }}>
-              Du lädst das Werbemittel später hoch.
+              Du lädst das Werbemittel nach der Buchung hoch.
             </h3>
             <p style={{ fontSize: '13px', color: C.muted, lineHeight: 1.65, marginBottom: '20px' }}>
-              Du erhältst nach dem Abschluss eine E-Mail mit Anweisungen zum Hochladen. Deine Kampagne startet erst nach Freigabe des Werbemittels.
+              Du erhältst nach dem Abschluss eine E-Mail mit allen technischen Spezifikationen. Deine Kampagne startet nach Freigabe des Werbemittels.
             </p>
             <button
               type="button"
-              onClick={handleSkip}
+              onClick={handleSpäterWeiter}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '8px',
                 background: C.primary, color: '#fff', border: 'none',
@@ -855,8 +857,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
       )}
 
-      {/* ── Option A: Selbst erstellen (Ad Creator) ── */}
-      {selectedOption === 'selbst' && (
+      {/* ── Option C: Im Browser erstellen (Ad Creator) ── */}
+      {selectedOption === 'erstellen' && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 80px', display: 'flex', gap: '28px', alignItems: 'flex-start' }}>
 
           {/* ── Sidebar ── */}
@@ -1205,7 +1207,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               </button>
               <button
                 type="button"
-                onClick={handleSkip}
+                onClick={handleSpäterWeiter}
                 style={{
                   background: 'none', border: `1.5px solid ${C.border}`, borderRadius: '100px',
                   padding: '15px 24px', fontFamily: 'var(--font-outfit), sans-serif',
