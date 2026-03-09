@@ -119,6 +119,9 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
     spaeter: 'Später',
   };
 
+  const werbemittelErstellt = briefing.werbemittelErstellt;
+  const adHeadline = briefing.adHeadline;
+
   return (
     <section style={{ backgroundColor: C.bg }}>
       <div style={page}>
@@ -149,7 +152,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
               ['Laufzeit', `${briefing.laufzeit} Wochen`],
               ['Region', briefing.analysis?.region?.join(', ') || '—'],
               ['Reichweite', briefing.reach ? `~${formatNumber(briefing.reach)}` : '—'],
-              ['Werbemittel', briefing.werbemittel ? werbemittelLabel[briefing.werbemittel] : '—'],
+              ['Werbemittel', werbemittelErstellt ? `✓ Erstellt` : (briefing.werbemittel ? werbemittelLabel[briefing.werbemittel] : '—')],
               ['Typ', briefing.campaignType === 'b2c' ? 'B2C' : 'B2B'],
             ].map(([lbl, val]) => (
               <div key={lbl}>
@@ -159,6 +162,25 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             ))}
           </div>
         </div>
+
+        {/* Werbemittel status */}
+        {werbemittelErstellt && adHeadline ? (
+          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontSize: '24px' }}>✅</div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel erstellt</div>
+              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Headline: «{adHeadline}»</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ fontSize: '22px' }}>📋</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: C.taupe }}>Werbemittel erstellen lassen</div>
+              <p style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Noch kein Werbemittel erstellt – du kannst es hochladen, erstellen lassen (+CHF 500) oder später einreichen.</p>
+            </div>
+          </div>
+        )}
 
         {/* Abschluss cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
@@ -261,6 +283,18 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
               placeholder="Muster AG"
               value={briefing.firma}
               onChange={e => updateBriefing({ firma: e.target.value })}
+              style={inputStyle()}
+            />
+          </div>
+
+          {/* Agenturcode */}
+          <div style={{ marginTop: '12px' }}>
+            <div style={hint}>Agenturcode (optional)</div>
+            <input
+              type="text"
+              placeholder="z.B. AWS2024 oder VIO-PARTNER"
+              value={briefing.agenturcode || ''}
+              onChange={e => updateBriefing({ agenturcode: e.target.value })}
               style={inputStyle()}
             />
           </div>

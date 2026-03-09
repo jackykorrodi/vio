@@ -66,10 +66,14 @@ export interface BriefingData {
   adTextColor: string;
   adAccentColor: string;
   adLogoMode?: 'text' | 'image';
+  adBgImageData?: string;    // base64 data URL for persistence
+  adLogoImageData?: string;  // base64 data URL for persistence
+  werbemittelService?: 'selbst' | 'erstellen' | 'spaeter'; // option chosen in Step 5
   // Session persistence
   sessionId?: string;
   dealId?: string;
   // Step 6
+  agenturcode?: string;
   vorname: string;
   nachname: string;
   email: string;

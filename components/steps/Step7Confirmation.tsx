@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 
 const C = {
@@ -41,6 +42,76 @@ const nextSteps = [
 ];
 
 const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL;
+
+function FeedbackCard({ briefing }: { briefing: BriefingData }) {
+  const [feedbackText, setFeedbackText] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle');
+
+  const handleSubmit = async () => {
+    if (!feedbackText.trim()) return;
+    setStatus('sending');
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feedback: feedbackText,
+          briefingId: briefing.dealId || null,
+          email: briefing.email || null,
+        }),
+      });
+    } catch { /* silent */ }
+    setStatus('done');
+  };
+
+  if (status === 'done') {
+    return (
+      <div style={{ background: '#FAF7F2', border: `1px solid ${C.border}`, borderRadius: '14px', padding: '20px 22px', marginTop: '20px', textAlign: 'center' }}>
+        <span style={{ fontSize: '24px' }}>🙏</span>
+        <p style={{ fontSize: '14px', fontWeight: 600, color: C.taupe, marginTop: '8px' }}>Danke für dein Feedback!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: '#FAF7F2', border: `1px solid ${C.border}`, borderRadius: '14px', padding: '20px 22px', marginTop: '20px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
+        Eine kurze Frage
+      </div>
+      <p style={{ fontSize: '14px', color: C.taupe, fontWeight: 600, marginBottom: '10px' }}>
+        Was würdest du dir im Buchungsflow wünschen, um noch effizienter zu sein?
+      </p>
+      <textarea
+        value={feedbackText}
+        onChange={e => setFeedbackText(e.target.value)}
+        placeholder="Dein Feedback..."
+        rows={3}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          padding: '10px 12px', borderRadius: '8px',
+          border: `1px solid ${C.border}`, background: C.white,
+          fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', color: C.taupe,
+          outline: 'none', resize: 'vertical', marginBottom: '10px',
+        }}
+      />
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={status === 'sending' || !feedbackText.trim()}
+        style={{
+          background: C.taupe, color: '#fff', border: 'none',
+          borderRadius: '100px', padding: '10px 22px',
+          fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
+          cursor: status === 'sending' || !feedbackText.trim() ? 'default' : 'pointer',
+          opacity: status === 'sending' || !feedbackText.trim() ? 0.6 : 1,
+          transition: 'all .18s',
+        }}
+      >
+        {status === 'sending' ? 'Wird gesendet…' : 'Senden'}
+      </button>
+    </div>
+  );
+}
 
 export default function Step7Confirmation({ briefing, nextStep }: Props) {
   return (
@@ -159,6 +230,8 @@ export default function Step7Confirmation({ briefing, nextStep }: Props) {
             </a>
           )}
         </div>
+
+        <FeedbackCard briefing={briefing} />
 
         <style>{`@keyframes bi{0%{transform:scale(.4);opacity:0;}70%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}}`}</style>
       </div>

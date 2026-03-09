@@ -156,7 +156,6 @@ function drawLeaderboard(
 ) {
   const cy = h / 2;
 
-  // Logo left ~18%
   if (cfg.logoMode === 'image' && cfg.logoEl) {
     const lh = Math.min(h * 0.48, Math.max(36, FS.logo * 2.2));
     const lw = (cfg.logoEl.naturalWidth / cfg.logoEl.naturalHeight) * lh;
@@ -169,7 +168,6 @@ function drawLeaderboard(
     ctx.globalAlpha = 1;
   }
 
-  // Headline + subline center
   const hlX = w * 0.22;
   ctx.font = `300 ${FS.headline}px Fraunces, Georgia, serif`;
   ctx.fillStyle = tc;
@@ -183,7 +181,6 @@ function drawLeaderboard(
     ctx.globalAlpha = 1;
   }
 
-  // CTA right
   const ctaText = cfg.cta || 'Jetzt informieren';
   ctx.font = `600 ${FS.cta}px Outfit, sans-serif`;
   const ctaW = ctx.measureText(ctaText).width + 28;
@@ -208,7 +205,6 @@ function drawStandard(
   const tX = isSplit ? w * 0.52 : pad;
   const tMaxW = isSplit ? w - tX - pad : w - pad * 2;
 
-  // Logo
   if (cfg.logoMode === 'image' && cfg.logoEl) {
     const lh = isDooh
       ? (w > h ? Math.max(80, FS.logo * 2) : Math.max(64, FS.logo * 2))
@@ -223,14 +219,12 @@ function drawStandard(
     ctx.globalAlpha = 1;
   }
 
-  // Headline
   const isPure = cfg.bgStyle === 'pure' && cfg.bgImageEl;
   const hlBaseY = isPure ? h * 0.60 : h * 0.45;
   ctx.font = `300 ${FS.headline}px Fraunces, Georgia, serif`;
   ctx.fillStyle = tc;
   const hlEndY = fillWrapped(ctx, cfg.headline || 'Ihre Botschaft hier', tX, hlBaseY, tMaxW, FS.headline * 1.18, 3);
 
-  // Subline
   let nextY = hlEndY + FS.subline * 0.9;
   if (cfg.subline) {
     ctx.font = `400 ${FS.subline}px Outfit, sans-serif`;
@@ -241,7 +235,6 @@ function drawStandard(
     nextY = slEndY + FS.subline * 0.65;
   }
 
-  // CTA button
   const ctaText = cfg.cta || 'Jetzt informieren';
   const ctaPx = Math.max(10, FS.cta * 0.7);
   const ctaPy = Math.max(7, FS.cta * 0.46);
@@ -254,7 +247,6 @@ function drawStandard(
   ctx.fillStyle = contrastColor(cfg.accentColor);
   ctx.fillText(ctaText, tX + ctaPx, ctaTop + ctaPy + FS.cta * 0.8);
 
-  // Domain (bottom-left of text area)
   if (cfg.lpUrl) {
     const domain = cfg.lpUrl.replace(/^https?:\/\//, '').split('/')[0];
     ctx.font = `400 ${FS.domain}px Outfit, sans-serif`;
@@ -264,7 +256,6 @@ function drawStandard(
     ctx.globalAlpha = 1;
   }
 
-  // QR code (DOOH only, bottom-right)
   if (isDooh && cfg.qrEl && FS.qr > 0) {
     const qrSize = FS.qr;
     const qrPad = qrSize * 0.1;
@@ -286,7 +277,6 @@ function drawAd(canvas: HTMLCanvasElement, cfg: DrawConfig, w: number, h: number
   const isLB = w >= 900 && h <= 300;
   const FS = getFontSizes(w, h);
 
-  // Background base fill
   ctx.fillStyle = cfg.bgColor;
   ctx.fillRect(0, 0, w, h);
 
@@ -305,15 +295,13 @@ function drawAd(canvas: HTMLCanvasElement, cfg: DrawConfig, w: number, h: number
       g.addColorStop(1, 'rgba(0,0,0,0.82)');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
-    } else { // split
-      // left 48% = image
+    } else {
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, w * 0.48, h);
       ctx.clip();
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
       ctx.restore();
-      // gradient bridge 40%–52%
       const g = ctx.createLinearGradient(w * 0.40, 0, w * 0.52, 0);
       g.addColorStop(0, hexToRgba(cfg.bgColor, 0));
       g.addColorStop(1, hexToRgba(cfg.bgColor, 1));
@@ -321,7 +309,6 @@ function drawAd(canvas: HTMLCanvasElement, cfg: DrawConfig, w: number, h: number
       ctx.fillRect(w * 0.40, 0, w * 0.12, h);
     }
   } else {
-    // No image: subtle diagonal gradient
     const g = ctx.createLinearGradient(0, 0, w * 0.6, h);
     g.addColorStop(0, cfg.bgColor);
     g.addColorStop(1, shadeHex(cfg.bgColor, -30));
@@ -336,6 +323,17 @@ function drawAd(canvas: HTMLCanvasElement, cfg: DrawConfig, w: number, h: number
   } else {
     drawStandard(ctx, cfg, w, h, pad, tc, FS, isDooh);
   }
+}
+
+// ─── Helper: load Image from dataURL ─────────────────────────────────────────
+
+function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -366,6 +364,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const ogLogoUrl = analysis?.ogLogo || analysis?.favicon || '';
   const themeColor = analysis?.themeColor || '';
 
+  // ── Option selection (A: selbst, B: erstellen, C: spaeter) ──
+  const [selectedOption, setSelectedOption] = useState<'selbst' | 'erstellen' | 'spaeter' | null>(
+    briefing.werbemittelService || (briefing.adHeadline ? 'selbst' : null)
+  );
+
+  // ── "Erstellen lassen" brief form ──
+  const [erstellenBeschreibung, setErstellenBeschreibung] = useState('');
+  const [erstellenZielgruppe, setErstellenZielgruppe] = useState('');
+  const [erstellenStil, setErstellenStil] = useState('');
+
   // ── Ad state — initialised from briefing so resume works ──
   const [orgText, setOrgText] = useState(analysis?.organisation || '');
   const [lpUrl, setLpUrl] = useState(briefing.url || '');
@@ -392,6 +400,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [headlineSuggestions, setHeadlineSuggestions] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  // ── "Später weiterarbeiten" button ──
+  const [saveLinkStatus, setSaveLinkStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [saveLinkEmail, setSaveLinkEmail] = useState(briefing.email || '');
+
   // ── Canvas refs ──
   const canvasRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -408,8 +420,27 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     document.fonts.ready.then(() => setFontsLoaded(true));
   }, []);
 
-  // ── Load bg image via proxy ──
+  // ── On mount: restore persisted images from briefing ──
   useEffect(() => {
+    if (briefing.adBgImageData) {
+      loadImageFromDataUrl(briefing.adBgImageData).then(img => {
+        setBgImageEl(img);
+        setOgImageStatus('ok');
+      }).catch(() => {});
+    }
+    if (briefing.adLogoImageData) {
+      loadImageFromDataUrl(briefing.adLogoImageData).then(img => {
+        setLogoEl(img);
+        setLogoMode('image');
+        setOgLogoStatus('ok');
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Load bg image via proxy (only if no persisted data) ──
+  useEffect(() => {
+    if (briefing.adBgImageData) return; // already restored from cache
     console.log('[VIO AdCreator] ogImage URL from Firecrawl:', ogImageUrl || '(none)');
     if (!ogImageUrl) { setOgImageStatus('none'); return; }
     setOgImageStatus('loading');
@@ -421,10 +452,12 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       setOgImageStatus('error');
     };
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogImageUrl)}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ogImageUrl]);
 
-  // ── Load logo via proxy ──
+  // ── Load logo via proxy (only if no persisted data) ──
   useEffect(() => {
+    if (briefing.adLogoImageData) return; // already restored from cache
     if (!ogLogoUrl) { setOgLogoStatus('none'); return; }
     setOgLogoStatus('loading');
     const img = new Image();
@@ -432,6 +465,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     img.onload = () => { setLogoEl(img); setLogoMode('image'); setOgLogoStatus('ok'); };
     img.onerror = () => setOgLogoStatus('error');
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogLogoUrl)}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ogLogoUrl]);
 
   // ── QR code ──
@@ -449,6 +483,40 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     })();
   }, [lpUrl]);
 
+  // ── Persist bgImageEl to briefing as base64 ──
+  useEffect(() => {
+    if (!bgImageEl) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = bgImageEl.naturalWidth || bgImageEl.width;
+    canvas.height = bgImageEl.naturalHeight || bgImageEl.height;
+    if (canvas.width === 0 || canvas.height === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(bgImageEl, 0, 0);
+    try {
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      updateBriefing({ adBgImageData: dataUrl });
+    } catch { /* tainted canvas if cross-origin */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bgImageEl]);
+
+  // ── Persist logoEl to briefing as base64 ──
+  useEffect(() => {
+    if (!logoEl) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = logoEl.naturalWidth || logoEl.width;
+    canvas.height = logoEl.naturalHeight || logoEl.height;
+    if (canvas.width === 0 || canvas.height === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(logoEl, 0, 0);
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      updateBriefing({ adLogoImageData: dataUrl });
+    } catch { /* tainted canvas */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logoEl]);
+
   // ── Redraw all canvases ──
   const redraw = useCallback(() => {
     if (!fontsLoaded) return;
@@ -461,7 +529,6 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   useEffect(() => { redraw(); }, [redraw]);
 
-  // Re-draw when switching tabs (canvases stay mounted but need a fresh paint)
   useEffect(() => { redraw(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Debounced auto-save to /api/save-session ──
@@ -470,7 +537,6 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveStatus('saving');
     saveTimerRef.current = setTimeout(async () => {
-      // Keep briefing in sync with current ad state
       updateBriefing({
         adHeadline: headline, adSubline: subline, adCta: cta,
         adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
@@ -505,9 +571,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
       const img = new Image();
       img.onload = () => { setBgImageEl(img); setOgImageStatus('ok'); };
-      img.src = ev.target?.result as string;
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   };
@@ -517,19 +584,20 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
       const img = new Image();
       img.onload = () => { setLogoEl(img); setLogoMode('image'); setOgLogoStatus('ok'); };
-      img.src = ev.target?.result as string;
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   };
 
   // ── Download ──
-  const download = (id: string, label: string) => {
+  const download = (id: string, lbl: string) => {
     const canvas = canvasRefs.current[id];
     if (!canvas) return;
     const a = document.createElement('a');
-    a.download = `vio-${label.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`;
+    a.download = `vio-${lbl.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`;
     a.href = canvas.toDataURL('image/jpeg', 0.95);
     a.click();
   };
@@ -549,17 +617,44 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     setKiLoading(false);
   };
 
-  // ── Auto-generate KI headlines on mount ──
   useEffect(() => {
-    generateKiHeadlines();
+    if (selectedOption === 'selbst') generateKiHeadlines();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedOption]);
+
+  // ── "Später weiterarbeiten" send link ──
+  const handleSendLink = async () => {
+    const email = saveLinkEmail.trim();
+    if (!email) return;
+    setSaveLinkStatus('loading');
+    try {
+      await fetch('/api/save-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: briefing.sessionId,
+          dealId: briefing.dealId || null,
+          email,
+          sendResumeEmail: true,
+          adCreatorState: {
+            adHeadline: headline, adSubline: subline, adCta: cta,
+            adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
+            adAccentColor: accentColor, adLogoMode: logoMode,
+          },
+        }),
+      });
+      setSaveLinkStatus('sent');
+    } catch {
+      setSaveLinkStatus('error');
+    }
+  };
 
   // ── Save & next ──
   const handleWeiter = () => {
     updateBriefing({
       werbemittel: 'erstellen',
       werbemittelErstellt: true,
+      werbemittelService: 'selbst',
       adHeadline: headline,
       adSubline: subline,
       adCta: cta,
@@ -573,21 +668,55 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   };
 
   const handleSkip = () => {
-    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false });
+    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false, werbemittelService: 'spaeter' });
+    nextStep();
+  };
+
+  const handleErstellenWeiter = () => {
+    updateBriefing({ werbemittel: 'erstellen', werbemittelErstellt: false, werbemittelService: 'erstellen' });
     nextStep();
   };
 
   // ── Status badge helper ──
-  const statusBadge = (s: 'none' | 'loading' | 'ok' | 'error', label: string) => (
+  const statusBadge = (s: 'none' | 'loading' | 'ok' | 'error', lbl: string) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: s === 'ok' ? C.teal : C.muted }}>
       <span style={{ fontSize: '10px' }}>{s === 'ok' ? '✓' : s === 'loading' ? '…' : '–'}</span>
-      {label}
+      {lbl}
     </span>
   );
 
   const wordCount = headline.trim() ? headline.trim().split(/\s+/).length : 0;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ─── Option cards ─────────────────────────────────────────────────────────
+
+  const optionCards = [
+    {
+      id: 'selbst' as const,
+      ico: '🎨',
+      title: 'Selbst erstellen',
+      sub: 'Im Browser gestalten – für DOOH und Display.',
+      badge: 'Kostenlos',
+      badgeColor: { background: '#E8F5F5', color: C.teal },
+    },
+    {
+      id: 'erstellen' as const,
+      ico: '✏️',
+      title: 'Erstellen lassen',
+      sub: 'Unser Team gestaltet dein Werbemittel professionell.',
+      badge: '+CHF 500',
+      badgeColor: { background: C.pl, color: C.pd },
+    },
+    {
+      id: 'spaeter' as const,
+      ico: '📁',
+      title: 'Später hochladen',
+      sub: 'Du schickst das Werbemittel vor Kampagnenstart ein.',
+      badge: 'Flexibel',
+      badgeColor: { background: C.bg, color: C.muted },
+    },
+  ];
+
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <section style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
       {/* Eyebrow + title */}
@@ -602,369 +731,496 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           Werbemittel erstellen.
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '24px', lineHeight: 1.6 }}>
-          Gestalte deine Anzeigen direkt im Browser – für DOOH und Display.
+          Wie möchtest du dein Werbemittel bereitstellen?
         </p>
+
+        {/* ── Option cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
+          {optionCards.map(opt => {
+            const active = selectedOption === opt.id;
+            return (
+              <div
+                key={opt.id}
+                onClick={() => setSelectedOption(opt.id)}
+                style={{
+                  background: active ? C.pl : C.white,
+                  borderRadius: '14px',
+                  border: `2px solid ${active ? C.primary : C.border}`,
+                  padding: '18px 16px',
+                  cursor: 'pointer',
+                  transition: 'all .2s',
+                  textAlign: 'center',
+                }}
+                onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; } }}
+                onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = C.border; } }}
+              >
+                <div style={{ fontSize: '26px', marginBottom: '8px' }}>{opt.ico}</div>
+                <div style={{ fontWeight: 700, fontSize: '14px', color: C.taupe, marginBottom: '5px' }}>{opt.title}</div>
+                <div style={{ fontSize: '11px', color: C.muted, lineHeight: 1.5, marginBottom: '10px' }}>{opt.sub}</div>
+                <div style={{ ...opt.badgeColor, display: 'inline-block', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>
+                  {opt.badge}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Main layout: sidebar + canvas */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 80px', display: 'flex', gap: '28px', alignItems: 'flex-start' }}>
-
-        {/* ── Sidebar ── */}
-        <aside style={{ width: '320px', flexShrink: 0, position: 'sticky', top: '72px' }}>
-          <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-            {/* Status bar */}
-            <div style={{ background: C.bg, borderRadius: '8px', padding: '10px 12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase' }}>
-                  Von Website geladen
-                </span>
-                {briefing.sessionId && saveStatus !== 'idle' && (
-                  <span style={{ fontSize: '10px', color: saveStatus === 'saved' ? C.teal : C.muted, fontWeight: 600 }}>
-                    {saveStatus === 'saving' ? 'Speichert…' : 'Gespeichert ✓'}
-                  </span>
-                )}
+      {/* ── Option B: Erstellen lassen ── */}
+      {selectedOption === 'erstellen' && (
+        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 20px 40px' }}>
+          <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '24px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '16px' }}>
+              Brief für unser Kreativ-Team
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <span style={label}>Beschreibung deines Angebots</span>
+                <textarea
+                  value={erstellenBeschreibung}
+                  onChange={e => setErstellenBeschreibung(e.target.value)}
+                  placeholder="Was bietest du an? Was macht dich besonders?"
+                  rows={3}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
               </div>
-              {statusBadge(ogImageStatus, 'Hintergrundbild')}
-              {statusBadge(ogLogoStatus, 'Logo')}
-              {(ogImageStatus === 'error' || (ogImageStatus === 'none' && !ogImageUrl)) && (
-                <span style={{ fontSize: '11px', color: C.muted, width: '100%', marginTop: '2px' }}>
-                  Kein Bild von der Website gefunden – bitte hochladen
-                </span>
-              )}
-            </div>
-
-            {/* Org */}
-            <div>
-              <span style={label}>Marke / Organisation</span>
-              <input
-                type="text"
-                value={orgText}
-                onChange={e => setOrgText(e.target.value)}
-                placeholder="Firmenname"
-                style={inputStyle}
-              />
-            </div>
-
-            {/* URL */}
-            <div>
-              <span style={label}>Landingpage URL</span>
-              <input
-                type="url"
-                value={lpUrl}
-                onChange={e => setLpUrl(e.target.value)}
-                placeholder="https://…"
-                style={inputStyle}
-              />
-            </div>
-
-            {/* Headline */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                <span style={{ ...label, marginBottom: 0 }}>Headline</span>
-                <span style={{ fontSize: '11px', color: wordCount > 5 ? C.primary : C.muted }}>
-                  {wordCount}/5 Wörter
-                </span>
+              <div>
+                <span style={label}>Zielgruppe</span>
+                <input
+                  type="text"
+                  value={erstellenZielgruppe}
+                  onChange={e => setErstellenZielgruppe(e.target.value)}
+                  placeholder="z.B. Familien mit Kindern, KMU-Inhaber, 30–55 Jahre"
+                  style={inputStyle}
+                />
               </div>
-              <input
-                type="text"
-                value={headline}
-                onChange={e => setHeadline(e.target.value)}
-                placeholder="Max. 5 Wörter empfohlen"
-                style={inputStyle}
-              />
-              {/* KI button */}
+              <div>
+                <span style={label}>Stil-Präferenz</span>
+                <input
+                  type="text"
+                  value={erstellenStil}
+                  onChange={e => setErstellenStil(e.target.value)}
+                  placeholder="z.B. modern & minimalistisch, warm & einladend"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
               <button
                 type="button"
-                onClick={generateKiHeadlines}
-                disabled={kiLoading}
+                onClick={handleErstellenWeiter}
                 style={{
-                  marginTop: '7px', fontSize: '11px', fontWeight: 600,
-                  color: C.primary, background: C.pl, border: 'none',
-                  borderRadius: '100px', padding: '5px 12px',
-                  cursor: kiLoading ? 'default' : 'pointer', opacity: kiLoading ? 0.6 : 1,
-                  fontFamily: 'var(--font-outfit), sans-serif',
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  background: C.primary, color: '#fff', border: 'none',
+                  borderRadius: '100px', padding: '14px 28px',
+                  fontFamily: 'var(--font-outfit), sans-serif', fontSize: '15px', fontWeight: 600,
+                  cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
                 }}
               >
-                {kiLoading ? '…' : '✦ KI Headlines'}
+                Weiter zum Abschluss →
               </button>
-              {headlineSuggestions.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                  {headlineSuggestions.map((hl, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setHeadline(hl)}
-                      style={{
-                        textAlign: 'left', fontSize: '12px', color: C.taupe,
-                        background: headline === hl ? C.pl : C.bg,
-                        border: `1px solid ${headline === hl ? C.primary : C.border}`,
-                        borderRadius: '6px', padding: '6px 10px',
-                        cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif',
-                      }}
-                    >
-                      {hl}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-
-            {/* Subline */}
-            <div>
-              <span style={label}>Subline</span>
-              <input
-                type="text"
-                value={subline}
-                onChange={e => setSubline(e.target.value)}
-                placeholder="Kurze Ergänzung…"
-                style={inputStyle}
-              />
-            </div>
-
-            {/* CTA */}
-            <div>
-              <span style={label}>Call to Action</span>
-              <input
-                type="text"
-                value={cta}
-                onChange={e => setCta(e.target.value)}
-                placeholder="Jetzt informieren"
-                style={inputStyle}
-              />
-            </div>
-
-            {/* Logo section */}
-            <div>
-              <span style={label}>Logo</span>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                {(['text', 'image'] as const).map(m => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setLogoMode(m)}
-                    style={{
-                      flex: 1, fontSize: '12px', fontWeight: 600,
-                      padding: '7px', borderRadius: '7px', border: 'none', cursor: 'pointer',
-                      background: logoMode === m ? C.primary : C.bg,
-                      color: logoMode === m ? '#fff' : C.taupe,
-                      fontFamily: 'var(--font-outfit), sans-serif',
-                    }}
-                  >
-                    {m === 'text' ? 'Text' : 'Bild'}
-                  </button>
-                ))}
-              </div>
-              {logoMode === 'image' && (
-                <label style={{ display: 'block', cursor: 'pointer' }}>
-                  <div style={{
-                    border: `1.5px dashed ${C.border}`, borderRadius: '8px',
-                    padding: '10px', textAlign: 'center', background: C.bg,
-                    fontSize: '12px', color: C.muted,
-                  }}>
-                    {logoEl ? '✓ Logo geladen – ersetzen' : '↑ Logo hochladen'}
-                  </div>
-                  <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
-                </label>
-              )}
-            </div>
-
-            {/* Background image */}
-            <div>
-              <span style={label}>Hintergrundbild</span>
-              {bgImageEl && ogImageStatus === 'ok' && (
-                <div style={{
-                  width: '100%', height: '60px', borderRadius: '6px', marginBottom: '7px',
-                  backgroundImage: `url(/api/proxy-image?url=${encodeURIComponent(ogImageUrl)})`,
-                  backgroundSize: 'cover', backgroundPosition: 'center',
-                  border: `1px solid ${C.border}`,
-                }} />
-              )}
-              <label style={{ display: 'block', cursor: 'pointer' }}>
-                <div style={{
-                  border: `1.5px dashed ${C.border}`, borderRadius: '8px',
-                  padding: '10px', textAlign: 'center', background: C.bg,
-                  fontSize: '12px', color: C.muted,
-                }}>
-                  {bgImageEl ? '↑ Bild ersetzen' : '↑ Bild hochladen'}
-                </div>
-                <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
-              </label>
-            </div>
-
-            {/* Background style */}
-            <div>
-              <span style={label}>Hintergrundstil</span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {([['overlay', 'A Overlay'], ['pure', 'B Bild pur'], ['split', 'C Split']] as const).map(([v, l]) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setBgStyle(v)}
-                    style={{
-                      flex: 1, fontSize: '11px', fontWeight: 600, padding: '7px 4px',
-                      borderRadius: '7px', border: `1.5px solid ${bgStyle === v ? C.primary : C.border}`,
-                      background: bgStyle === v ? C.pl : C.white,
-                      color: bgStyle === v ? C.pd : C.taupe,
-                      cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif',
-                    }}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Colors */}
-            <div>
-              <span style={label}>Farben</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {([
-                  ['Hauptfarbe', bgColor, setBgColor],
-                  ['Textfarbe', textColor, setTextColor],
-                  ['CTA-Farbe', accentColor, setAccentColor],
-                ] as [string, string, (v: string) => void][]).map(([lbl, val, setter]) => (
-                  <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <input
-                      type="color"
-                      value={val}
-                      onChange={e => setter(e.target.value)}
-                      style={{ width: '30px', height: '30px', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: 0 }}
-                    />
-                    <span style={{ fontSize: '13px', color: C.taupe }}>{lbl}</span>
-                    {lbl === 'Hauptfarbe' && themeColor && (
-                      <span style={{ fontSize: '10px', color: C.teal, background: '#e8f5f2', borderRadius: '4px', padding: '2px 6px', marginLeft: '2px' }}>
-                        Von Website
-                      </span>
-                    )}
-                    <span style={{ fontSize: '11px', color: C.muted, marginLeft: 'auto', fontFamily: 'monospace' }}>{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p style={{ fontSize: '12px', color: C.muted, marginTop: '10px' }}>
+              +CHF 500 wird zum Kampagnenbudget hinzugerechnet. Unser Team meldet sich innerhalb von 24h.
+            </p>
           </div>
-        </aside>
+        </div>
+      )}
 
-        {/* ── Canvas area ── */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
-            {(['dooh', 'display'] as const).map(tab => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '9px 20px', borderRadius: '100px',
-                  border: `1.5px solid ${activeTab === tab ? C.primary : C.border}`,
-                  fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
-                  background: activeTab === tab ? C.primary : C.white,
-                  color: activeTab === tab ? '#fff' : C.taupe,
-                  cursor: 'pointer',
-                }}
-              >
-                {tab === 'dooh' ? 'DOOH' : 'Display'}
-              </button>
-            ))}
-          </div>
-
-          {/* DOOH canvases — always mounted, hidden when tab inactive */}
-          <div style={{ display: activeTab === 'dooh' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
-            {DOOH_FORMATS.map(fmt => {
-              const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
-              return (
-                <div key={fmt.id}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
-                    <button
-                      type="button"
-                      onClick={() => download(fmt.id, fmt.label)}
-                      style={{
-                        fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl,
-                        border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer',
-                        fontFamily: 'var(--font-outfit), sans-serif',
-                      }}
-                    >
-                      ↓ JPG
-                    </button>
-                  </div>
-                  <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}` }}>
-                    <canvas
-                      ref={el => { canvasRefs.current[fmt.id] = el; }}
-                      style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Display canvases — always mounted, hidden when tab inactive */}
-          <div style={{ display: activeTab === 'display' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
-            {DISPLAY_FORMATS.map(fmt => {
-              const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
-              return (
-                <div key={fmt.id}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
-                    <button
-                      type="button"
-                      onClick={() => download(fmt.id, fmt.label)}
-                      style={{
-                        fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl,
-                        border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer',
-                        fontFamily: 'var(--font-outfit), sans-serif',
-                      }}
-                    >
-                      ↓ JPG
-                    </button>
-                  </div>
-                  <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}`, display: 'inline-block' }}>
-                    <canvas
-                      ref={el => { canvasRefs.current[fmt.id] = el; }}
-                      style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* CTA buttons */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-            <button
-              type="button"
-              onClick={handleWeiter}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: C.primary, color: '#fff', border: 'none',
-                borderRadius: '100px', padding: '15px 32px',
-                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
-                cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-                transition: 'all .18s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
-            >
-              Weiter zum Abschluss →
-            </button>
+      {/* ── Option C: Später hochladen ── */}
+      {selectedOption === 'spaeter' && (
+        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 20px 40px' }}>
+          <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📁</div>
+            <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '20px', fontWeight: 400, color: C.taupe, marginBottom: '8px' }}>
+              Du lädst das Werbemittel später hoch.
+            </h3>
+            <p style={{ fontSize: '13px', color: C.muted, lineHeight: 1.65, marginBottom: '20px' }}>
+              Du erhältst nach dem Abschluss eine E-Mail mit Anweisungen zum Hochladen. Deine Kampagne startet erst nach Freigabe des Werbemittels.
+            </p>
             <button
               type="button"
               onClick={handleSkip}
               style={{
-                background: 'none', border: `1.5px solid ${C.border}`, borderRadius: '100px',
-                padding: '15px 24px', fontFamily: 'var(--font-outfit), sans-serif',
-                fontSize: '15px', fontWeight: 500, color: C.muted, cursor: 'pointer',
-                transition: 'all .18s',
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: C.primary, color: '#fff', border: 'none',
+                borderRadius: '100px', padding: '14px 28px',
+                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '15px', fontWeight: 600,
+                cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = C.muted; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}
             >
-              Überspringen
+              Weiter zum Abschluss →
             </button>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Option A: Selbst erstellen (Ad Creator) ── */}
+      {selectedOption === 'selbst' && (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 80px', display: 'flex', gap: '28px', alignItems: 'flex-start' }}>
+
+          {/* ── Sidebar ── */}
+          <aside style={{ width: '320px', flexShrink: 0, position: 'sticky', top: '72px' }}>
+            <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Status bar */}
+              <div style={{ background: C.bg, borderRadius: '8px', padding: '10px 12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase' }}>
+                    Von Website geladen
+                  </span>
+                  {briefing.sessionId && saveStatus !== 'idle' && (
+                    <span style={{ fontSize: '10px', color: saveStatus === 'saved' ? C.teal : C.muted, fontWeight: 600 }}>
+                      {saveStatus === 'saving' ? 'Speichert…' : 'Gespeichert ✓'}
+                    </span>
+                  )}
+                </div>
+                {statusBadge(ogImageStatus, 'Hintergrundbild')}
+                {statusBadge(ogLogoStatus, 'Logo')}
+                {(ogImageStatus === 'error' || (ogImageStatus === 'none' && !ogImageUrl)) && (
+                  <span style={{ fontSize: '11px', color: C.muted, width: '100%', marginTop: '2px' }}>
+                    Kein Bild von der Website gefunden – bitte hochladen
+                  </span>
+                )}
+              </div>
+
+              {/* Org */}
+              <div>
+                <span style={label}>Marke / Organisation</span>
+                <input type="text" value={orgText} onChange={e => setOrgText(e.target.value)} placeholder="Firmenname" style={inputStyle} />
+              </div>
+
+              {/* URL */}
+              <div>
+                <span style={label}>Landingpage URL</span>
+                <input type="url" value={lpUrl} onChange={e => setLpUrl(e.target.value)} placeholder="https://…" style={inputStyle} />
+              </div>
+
+              {/* Headline */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                  <span style={{ ...label, marginBottom: 0 }}>Headline</span>
+                  <span style={{ fontSize: '11px', color: wordCount > 5 ? C.primary : C.muted }}>
+                    {wordCount}/5 Wörter
+                  </span>
+                </div>
+                <input type="text" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Max. 5 Wörter empfohlen" style={inputStyle} />
+                <button
+                  type="button"
+                  onClick={generateKiHeadlines}
+                  disabled={kiLoading}
+                  style={{
+                    marginTop: '7px', fontSize: '11px', fontWeight: 600,
+                    color: C.primary, background: C.pl, border: 'none',
+                    borderRadius: '100px', padding: '5px 12px',
+                    cursor: kiLoading ? 'default' : 'pointer', opacity: kiLoading ? 0.6 : 1,
+                    fontFamily: 'var(--font-outfit), sans-serif',
+                  }}
+                >
+                  {kiLoading ? '…' : '✦ KI Headlines'}
+                </button>
+                {headlineSuggestions.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                    {headlineSuggestions.map((hl, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setHeadline(hl)}
+                        style={{
+                          textAlign: 'left', fontSize: '12px', color: C.taupe,
+                          background: headline === hl ? C.pl : C.bg,
+                          border: `1px solid ${headline === hl ? C.primary : C.border}`,
+                          borderRadius: '6px', padding: '6px 10px',
+                          cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif',
+                        }}
+                      >
+                        {hl}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Subline */}
+              <div>
+                <span style={label}>Subline</span>
+                <input type="text" value={subline} onChange={e => setSubline(e.target.value)} placeholder="Kurze Ergänzung…" style={inputStyle} />
+              </div>
+
+              {/* CTA */}
+              <div>
+                <span style={label}>Call to Action</span>
+                <input type="text" value={cta} onChange={e => setCta(e.target.value)} placeholder="Jetzt informieren" style={inputStyle} />
+              </div>
+
+              {/* Logo */}
+              <div>
+                <span style={label}>Logo</span>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                  {(['text', 'image'] as const).map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setLogoMode(m)}
+                      style={{
+                        flex: 1, fontSize: '12px', fontWeight: 600,
+                        padding: '7px', borderRadius: '7px', border: 'none', cursor: 'pointer',
+                        background: logoMode === m ? C.primary : C.bg,
+                        color: logoMode === m ? '#fff' : C.taupe,
+                        fontFamily: 'var(--font-outfit), sans-serif',
+                      }}
+                    >
+                      {m === 'text' ? 'Text' : 'Bild'}
+                    </button>
+                  ))}
+                </div>
+                {logoMode === 'image' && (
+                  <label style={{ display: 'block', cursor: 'pointer' }}>
+                    <div style={{ border: `1.5px dashed ${C.border}`, borderRadius: '8px', padding: '10px', textAlign: 'center', background: C.bg, fontSize: '12px', color: C.muted }}>
+                      {logoEl ? '✓ Logo geladen – ersetzen' : '↑ Logo hochladen'}
+                    </div>
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+                  </label>
+                )}
+              </div>
+
+              {/* Background image */}
+              <div>
+                <span style={label}>Hintergrundbild</span>
+                {bgImageEl && ogImageStatus === 'ok' && !briefing.adBgImageData && (
+                  <div style={{
+                    width: '100%', height: '60px', borderRadius: '6px', marginBottom: '7px',
+                    backgroundImage: `url(/api/proxy-image?url=${encodeURIComponent(ogImageUrl)})`,
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    border: `1px solid ${C.border}`,
+                  }} />
+                )}
+                {briefing.adBgImageData && bgImageEl && (
+                  <div style={{
+                    width: '100%', height: '60px', borderRadius: '6px', marginBottom: '7px',
+                    backgroundImage: `url(${briefing.adBgImageData})`,
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    border: `1px solid ${C.border}`,
+                  }} />
+                )}
+                <label style={{ display: 'block', cursor: 'pointer' }}>
+                  <div style={{ border: `1.5px dashed ${C.border}`, borderRadius: '8px', padding: '10px', textAlign: 'center', background: C.bg, fontSize: '12px', color: C.muted }}>
+                    {bgImageEl ? '↑ Bild ersetzen' : '↑ Bild hochladen'}
+                  </div>
+                  <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+
+              {/* Background style */}
+              <div>
+                <span style={label}>Hintergrundstil</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {([['overlay', 'A Overlay'], ['pure', 'B Bild pur'], ['split', 'C Split']] as const).map(([v, l]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setBgStyle(v)}
+                      style={{
+                        flex: 1, fontSize: '11px', fontWeight: 600, padding: '7px 4px',
+                        borderRadius: '7px', border: `1.5px solid ${bgStyle === v ? C.primary : C.border}`,
+                        background: bgStyle === v ? C.pl : C.white,
+                        color: bgStyle === v ? C.pd : C.taupe,
+                        cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif',
+                      }}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div>
+                <span style={label}>Farben</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {([
+                    ['Hauptfarbe', bgColor, setBgColor],
+                    ['Textfarbe', textColor, setTextColor],
+                    ['CTA-Farbe', accentColor, setAccentColor],
+                  ] as [string, string, (v: string) => void][]).map(([lbl, val, setter]) => (
+                    <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="color"
+                        value={val}
+                        onChange={e => setter(e.target.value)}
+                        style={{ width: '30px', height: '30px', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: 0 }}
+                      />
+                      <span style={{ fontSize: '13px', color: C.taupe }}>{lbl}</span>
+                      {lbl === 'Hauptfarbe' && themeColor && (
+                        <span style={{ fontSize: '10px', color: C.teal, background: '#e8f5f2', borderRadius: '4px', padding: '2px 6px', marginLeft: '2px' }}>
+                          Von Website
+                        </span>
+                      )}
+                      <span style={{ fontSize: '11px', color: C.muted, marginLeft: 'auto', fontFamily: 'monospace' }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── "Später weiterarbeiten" button ── */}
+              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '14px' }}>
+                {saveLinkStatus === 'sent' ? (
+                  <div style={{ background: '#E8F5F2', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: C.teal, fontWeight: 600 }}>
+                    ✓ Link wurde an {saveLinkEmail} gesendet
+                  </div>
+                ) : (
+                  <>
+                    {!briefing.email && (
+                      <input
+                        type="email"
+                        value={saveLinkEmail}
+                        onChange={e => setSaveLinkEmail(e.target.value)}
+                        placeholder="deine@email.ch"
+                        style={{ ...inputStyle, marginBottom: '8px' }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSendLink}
+                      disabled={saveLinkStatus === 'loading'}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        background: C.taupe, color: '#fff', border: 'none',
+                        borderRadius: '100px', padding: '11px 16px',
+                        fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
+                        cursor: saveLinkStatus === 'loading' ? 'default' : 'pointer',
+                        opacity: saveLinkStatus === 'loading' ? 0.7 : 1,
+                        transition: 'all .18s',
+                      }}
+                    >
+                      {saveLinkStatus === 'loading' ? 'Wird gesendet…' : '💾 Link zum Weiterarbeiten senden'}
+                    </button>
+                    {saveLinkStatus === 'error' && (
+                      <p style={{ fontSize: '12px', color: C.primary, marginTop: '6px', textAlign: 'center' }}>
+                        Fehler beim Senden. Bitte versuche es erneut.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+            </div>
+          </aside>
+
+          {/* ── Canvas area ── */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
+              {(['dooh', 'display'] as const).map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '9px 20px', borderRadius: '100px',
+                    border: `1.5px solid ${activeTab === tab ? C.primary : C.border}`,
+                    fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
+                    background: activeTab === tab ? C.primary : C.white,
+                    color: activeTab === tab ? '#fff' : C.taupe,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {tab === 'dooh' ? 'DOOH' : 'Display'}
+                </button>
+              ))}
+            </div>
+
+            {/* DOOH canvases */}
+            <div style={{ display: activeTab === 'dooh' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
+              {DOOH_FORMATS.map(fmt => {
+                const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
+                return (
+                  <div key={fmt.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => download(fmt.id, fmt.label)}
+                        style={{ fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl, border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}
+                      >
+                        ↓ JPG
+                      </button>
+                    </div>
+                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}` }}>
+                      <canvas
+                        ref={el => { canvasRefs.current[fmt.id] = el; }}
+                        style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Display canvases */}
+            <div style={{ display: activeTab === 'display' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
+              {DISPLAY_FORMATS.map(fmt => {
+                const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
+                return (
+                  <div key={fmt.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => download(fmt.id, fmt.label)}
+                        style={{ fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl, border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}
+                      >
+                        ↓ JPG
+                      </button>
+                    </div>
+                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}`, display: 'inline-block' }}>
+                      <canvas
+                        ref={el => { canvasRefs.current[fmt.id] = el; }}
+                        style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* CTA buttons */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
+              <button
+                type="button"
+                onClick={handleWeiter}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  background: C.primary, color: '#fff', border: 'none',
+                  borderRadius: '100px', padding: '15px 32px',
+                  fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
+                  cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+                  transition: 'all .18s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+              >
+                Weiter zum Abschluss →
+              </button>
+              <button
+                type="button"
+                onClick={handleSkip}
+                style={{
+                  background: 'none', border: `1.5px solid ${C.border}`, borderRadius: '100px',
+                  padding: '15px 24px', fontFamily: 'var(--font-outfit), sans-serif',
+                  fontSize: '15px', fontWeight: 500, color: C.muted, cursor: 'pointer',
+                  transition: 'all .18s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.muted; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}
+              >
+                Überspringen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

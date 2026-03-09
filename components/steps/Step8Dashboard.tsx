@@ -2,6 +2,81 @@
 
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
+
+function FeedbackCard({ briefing }: { briefing: BriefingData }) {
+  const [feedbackText, setFeedbackText] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle');
+
+  const C8 = {
+    primary: '#C1666B', pd: '#A84E53', taupe: '#5C4F3D',
+    muted: '#8A8490', border: '#EDE8E0', bg: '#FAF7F2', white: '#FFFFFF',
+  };
+
+  const handleSubmit = async () => {
+    if (!feedbackText.trim()) return;
+    setStatus('sending');
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feedback: feedbackText,
+          briefingId: briefing.dealId || null,
+          email: briefing.email || null,
+        }),
+      });
+    } catch { /* silent */ }
+    setStatus('done');
+  };
+
+  if (status === 'done') {
+    return (
+      <div style={{ background: C8.bg, border: `1px solid ${C8.border}`, borderRadius: '14px', padding: '20px 22px', marginTop: '20px', textAlign: 'center' }}>
+        <span style={{ fontSize: '24px' }}>🙏</span>
+        <p style={{ fontSize: '14px', fontWeight: 600, color: C8.taupe, marginTop: '8px' }}>Danke für dein Feedback!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: C8.bg, border: `1px solid ${C8.border}`, borderRadius: '14px', padding: '20px 22px', marginTop: '20px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C8.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
+        Eine kurze Frage
+      </div>
+      <p style={{ fontSize: '14px', color: C8.taupe, fontWeight: 600, marginBottom: '10px' }}>
+        Was würdest du dir im Buchungsflow wünschen, um noch effizienter zu sein?
+      </p>
+      <textarea
+        value={feedbackText}
+        onChange={e => setFeedbackText(e.target.value)}
+        placeholder="Dein Feedback..."
+        rows={3}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          padding: '10px 12px', borderRadius: '8px',
+          border: `1px solid ${C8.border}`, background: C8.white,
+          fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', color: C8.taupe,
+          outline: 'none', resize: 'vertical', marginBottom: '10px',
+        }}
+      />
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={status === 'sending' || !feedbackText.trim()}
+        style={{
+          background: C8.taupe, color: '#fff', border: 'none',
+          borderRadius: '100px', padding: '10px 22px',
+          fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
+          cursor: status === 'sending' || !feedbackText.trim() ? 'default' : 'pointer',
+          opacity: status === 'sending' || !feedbackText.trim() ? 0.6 : 1,
+          transition: 'all .18s',
+        }}
+      >
+        {status === 'sending' ? 'Wird gesendet…' : 'Senden'}
+      </button>
+    </div>
+  );
+}
 import { calculateReach, formatNumber, formatCHF } from '@/lib/calculations';
 
 const C = {
@@ -367,6 +442,8 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
         <div style={{ textAlign: 'center', fontSize: '12px', color: C.muted, marginTop: '8px' }}>
           🔒 Sichere Verbindung · Keine versteckten Kosten
         </div>
+
+        <FeedbackCard briefing={briefing} />
 
       </div>
     </section>

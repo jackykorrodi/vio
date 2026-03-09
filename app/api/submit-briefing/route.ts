@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
             vio_session_id: briefing.sessionId,
             vio_ad_creator_state: JSON.stringify(adCreatorState),
           } : {}),
+          // Agenturcode
+          ...(briefing.agenturcode ? { vio_agenturcode: briefing.agenturcode } : {}),
         },
         ...(contactId ? {
           associations: [
