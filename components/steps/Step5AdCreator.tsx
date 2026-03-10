@@ -115,17 +115,24 @@ function hexRgba(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-// ── FIX #3: simplified suggestion tags ──────────────────────────────────────
-function makeSuggestions(org: string, domain: string) {
+// ── Headline suggestion chips: Klassisch / Frech / Speziell ─────────────────
+function makeSuggestions(org: string, domain: string, headlines?: string[]) {
+  const hl = headlines && headlines.length >= 3
+    ? [
+        { text: headlines[0], tag: 'Klassisch' },
+        { text: headlines[1], tag: 'Frech'     },
+        { text: headlines[2], tag: 'Speziell'  },
+      ]
+    : [
+        { text: org ? `${org} – für Sie`                       : 'Jetzt entdecken',  tag: 'Klassisch' },
+        { text: org ? `Wer braucht schon mehr als ${org}?`     : 'Einfach gut',       tag: 'Frech'     },
+        { text: org ? `${org} – nah bei Ihnen`                 : 'Weil es zählt',     tag: 'Speziell'  },
+      ];
   return {
-    hl: [
-      { text: `Willkommen bei ${org}`, tag: 'kurz' },
-      { text: `Jetzt ${org} entdecken`, tag: 'einladend' },
-      { text: `${org} – echt gut`,      tag: 'prägnant' },
-    ],
+    hl,
     sub: [
-      { text: domain,                     tag: 'Domain' },
-      { text: 'Jetzt online informieren', tag: 'generisch' },
+      { text: domain,                     tag: 'Domain'    },
+      { text: 'Jetzt online informieren', tag: 'Generisch' },
     ],
   };
 }
@@ -333,7 +340,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     try { return new URL(briefing.url).hostname.replace('www.', ''); } catch { return briefing.url || ''; }
   })();
   const initOrg  = ana?.organisation || '';
-  const initSugs = makeSuggestions(initOrg, initDomain);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initHeadlines = (ana as any)?.headlines as string[] | undefined;
+  const initSugs = makeSuggestions(initOrg, initDomain, initHeadlines);
 
   // ── Text state ──────────────────────────────────────────────────────────────
   const [org,      setOrg]      = useState(initOrg);
@@ -405,13 +414,18 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [selEl, setSelEl] = useState<string | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
-  // FIX #5: on mount, load bg + logo from briefingData/analysis immediately
+  // Load bg image, logo and theme color from analysis on mount (and whenever analysis becomes available)
   useEffect(() => {
-    const rawBg   = briefing.adBgImageData  || ana?.ogImage  || '';
-    const rawLogo = briefing.adLogoImageData || ana?.ogLogo   || ana?.favicon || '';
+    if (!ana) return;
 
+    // themeColor → colors.bg (only if user hasn't set a custom color in this session)
+    if (ana.themeColor && !briefing.adBgColor) {
+      setColors(prev => ({ ...prev, bg: ana.themeColor! }));
+    }
+
+    // ogImage → bgUrl (proxy external URLs to avoid CORS)
+    const rawBg = briefing.adBgImageData || ana.ogImage || '';
     if (rawBg) {
-      // Proxy external URLs to avoid CORS
       const bgSrc = rawBg.startsWith('data:') ? rawBg
                   : rawBg.startsWith('http')  ? `/api/proxy-image?url=${encodeURIComponent(rawBg)}`
                   : rawBg;
@@ -419,14 +433,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       setBgThumb(bgSrc);
     }
 
+    // ogLogo → logoUrl
+    const rawLogo = briefing.adLogoImageData || ana.ogLogo || ana.favicon || '';
     if (rawLogo) {
-      const logoSrc = rawLogo.startsWith('data:') ? rawLogo
-                    : rawLogo.startsWith('http')  ? rawLogo  // favicons are usually small, load directly
-                    : rawLogo;
-      setLogoUrl(logoSrc);
-      setLogoThumb(logoSrc);
+      setLogoUrl(rawLogo);
+      setLogoThumb(rawLogo);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ana]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Global drag listeners ────────────────────────────────────────────────────
   useEffect(() => {
@@ -504,7 +517,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     try { fastDomain = new URL(url).hostname.replace('www.', ''); } catch { fastDomain = rawUrl; }
     const fastOrg     = fastDomain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const fastLogoUrl = `https://www.google.com/s2/favicons?domain=${fastDomain}&sz=128`;
-    const fastSugs    = makeSuggestions(fastOrg, fastDomain);
+    const fastSugs    = makeSuggestions(fastOrg, fastDomain, undefined);
 
     setOrg(fastOrg);
     setLpUrl(url);
@@ -534,7 +547,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       const newOrg = result.organisation || fastOrg;
       const newLogoUrl = result.ogLogo || result.favicon || fastLogoUrl;
       const newColor   = result.themeColor || colors.bg;
-      const newSugs    = makeSuggestions(newOrg, fastDomain);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiHeadlines = (result as any)?.headlines as string[] | undefined;
+      const newSugs    = makeSuggestions(newOrg, fastDomain, apiHeadlines);
 
       setOrg(newOrg);
       setColors(prev => ({ ...prev, bg: newColor }));
@@ -968,7 +983,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               <div className="ac-format-header">
                 <div>
                   <div className="ac-format-name">Querformat</div>
-                  <div className="ac-format-spec">1920 × 1080 px · skaliert 845 × 475</div>
+                  <div className="ac-format-spec">1920 × 1080 px</div>
                 </div>
               </div>
               <AdPreview fmtId="quer" width={845} height={475} {...previewProps} />
@@ -979,7 +994,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               <div className="ac-format-header">
                 <div>
                   <div className="ac-format-name">Hochformat</div>
-                  <div className="ac-format-spec">1080 × 1920 px · skaliert 259 × 461</div>
+                  <div className="ac-format-spec">1080 × 1920 px</div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
