@@ -3,7 +3,21 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function POST(request: NextRequest) {
   try {
-    const { organisation, beschreibung, url } = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ headlines: [] }, { status: 400 });
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ headlines: [] }, { status: 400 });
+    }
+    const inputBody = body as Record<string, unknown>;
+
+    // Validate and sanitise inputs
+    const organisation = typeof inputBody.organisation === 'string' ? inputBody.organisation.slice(0, 200) : '';
+    const beschreibung = typeof inputBody.beschreibung === 'string' ? inputBody.beschreibung.slice(0, 500) : '';
+    const url = typeof inputBody.url === 'string' ? inputBody.url.slice(0, 2048) : '';
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -24,8 +38,8 @@ Antworte NUR mit einem JSON-Array von 5 Strings (kein Text davor/danach, keine B
 ["Headline 1", "Headline 2", "Headline 3", "Headline 4", "Headline 5"]`;
 
     const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim();
-    const clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const rawResponse = result.response.text().trim();
+    const clean = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const headlines = JSON.parse(clean);
 
     return NextResponse.json({ headlines });

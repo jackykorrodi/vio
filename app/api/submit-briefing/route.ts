@@ -1,26 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@hubspot/api-client';
+import { AssociationSpecAssociationCategoryEnum } from '@hubspot/api-client/lib/codegen/crm/deals';
+import { BriefingData } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   console.log('[submit-briefing] route hit');
 
   try {
-    const briefing = await request.json();
-    console.log('[submit-briefing] received briefing for:', briefing.email, '| abschluss:', briefing.abschluss);
+    let briefing: Record<string, unknown>;
+    try {
+      const raw = await request.json();
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+      }
+      briefing = raw as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    // Validate required fields
+    if (!briefing.email || typeof briefing.email !== 'string' || !briefing.email.includes('@')) {
+      return NextResponse.json({ error: 'Gültige E-Mail-Adresse erforderlich' }, { status: 400 });
+    }
+    if (typeof briefing.vorname !== 'string' || briefing.vorname.length > 100) {
+      return NextResponse.json({ error: 'Ungültiger Vorname' }, { status: 400 });
+    }
+    if (typeof briefing.nachname !== 'string' || briefing.nachname.length > 100) {
+      return NextResponse.json({ error: 'Ungültiger Nachname' }, { status: 400 });
+    }
+    if ((briefing.email as string).length > 254) {
+      return NextResponse.json({ error: 'E-Mail-Adresse zu lang' }, { status: 400 });
+    }
+    if (briefing.abschluss !== 'offerte' && briefing.abschluss !== 'buchen') {
+      return NextResponse.json({ error: 'Ungültiger Abschluss-Wert' }, { status: 400 });
+    }
+
+    // All required fields validated — safe to treat as BriefingData
+    const b = briefing as unknown as BriefingData;
+
+    console.log('[submit-briefing] received briefing for:', b.email, '| abschluss:', b.abschluss);
 
     const hubspot = new Client({ accessToken: process.env.HUBSPOT_ACCESS_TOKEN! });
     let contactId: string | null = null;
 
     // ── Create HubSpot contact ──────────────────────────────────────────────
     try {
-      console.log('[submit-briefing] creating HubSpot contact for:', briefing.email);
+      console.log('[submit-briefing] creating HubSpot contact for:', b.email);
       const contact = await hubspot.crm.contacts.basicApi.create({
         properties: {
-          firstname: briefing.vorname,
-          lastname: briefing.nachname,
-          email: briefing.email,
-          phone: briefing.telefon,
-          company: briefing.firma,
+          firstname: b.vorname,
+          lastname: b.nachname,
+          email: b.email,
+          phone: b.telefon,
+          company: b.firma,
         },
       });
       contactId = contact.id;
@@ -35,45 +67,45 @@ export async function POST(request: NextRequest) {
     try {
       console.log('[submit-briefing] creating HubSpot deal, contactId:', contactId);
       const adCreatorState = {
-        adHeadline: briefing.adHeadline,
-        adSubline: briefing.adSubline,
-        adCta: briefing.adCta,
-        adBgStyle: briefing.adBgStyle,
-        adBgColor: briefing.adBgColor,
-        adTextColor: briefing.adTextColor,
-        adAccentColor: briefing.adAccentColor,
-        adLogoMode: briefing.adLogoMode,
-        sessionId: briefing.sessionId,
+        adHeadline: b.adHeadline,
+        adSubline: b.adSubline,
+        adCta: b.adCta,
+        adBgStyle: b.adBgStyle,
+        adBgColor: b.adBgColor,
+        adTextColor: b.adTextColor,
+        adAccentColor: b.adAccentColor,
+        adLogoMode: b.adLogoMode,
+        sessionId: b.sessionId,
       };
       const dealPayload: Parameters<typeof hubspot.crm.deals.basicApi.create>[0] = {
         properties: {
-          dealname: `VIO – ${briefing.analysis?.organisation || briefing.firma || briefing.email} – ${briefing.budget} CHF`,
-          amount: String(briefing.budget),
-          dealstage: briefing.abschluss === 'buchen' ? 'closedwon' : 'presentationscheduled',
+          dealname: `VIO – ${b.analysis?.organisation || b.firma || b.email} – ${b.budget} CHF`,
+          amount: String(b.budget),
+          dealstage: b.abschluss === 'buchen' ? 'closedwon' : 'presentationscheduled',
           pipeline: 'default',
           description: JSON.stringify({
-            url: briefing.url,
-            campaignType: briefing.campaignType,
-            analysis: briefing.analysis,
-            reach: briefing.reach,
-            laufzeit: briefing.laufzeit,
-            startDate: briefing.startDate,
-            werbemittel: briefing.werbemittel,
-            abschluss: briefing.abschluss,
+            url: b.url,
+            campaignType: b.campaignType,
+            analysis: b.analysis,
+            reach: b.reach,
+            laufzeit: b.laufzeit,
+            startDate: b.startDate,
+            werbemittel: b.werbemittel,
+            abschluss: b.abschluss,
           }),
           // Session persistence custom properties
-          ...(briefing.sessionId ? {
-            vio_session_id: briefing.sessionId,
+          ...(b.sessionId ? {
+            vio_session_id: b.sessionId,
             vio_ad_creator_state: JSON.stringify(adCreatorState),
           } : {}),
           // Agenturcode
-          ...(briefing.agenturcode ? { vio_agenturcode: briefing.agenturcode } : {}),
+          ...(b.agenturcode ? { vio_agenturcode: b.agenturcode } : {}),
         },
         ...(contactId ? {
           associations: [
             {
               to: { id: contactId },
-              types: [{ associationCategory: 'HUBSPOT_DEFINED' as any, associationTypeId: 3 }],
+              types: [{ associationCategory: AssociationSpecAssociationCategoryEnum.HubspotDefined, associationTypeId: 3 }],
             },
           ],
         } : {}),
@@ -87,11 +119,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Send resume link email ──────────────────────────────────────────────
-    if (briefing.sessionId && briefing.email && process.env.RESEND_API_KEY) {
+    if (b.sessionId && b.email && process.env.RESEND_API_KEY) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vio-beta.vercel.app';
-        const resumeUrl = `${appUrl}/campaign/resume/${briefing.sessionId}`;
-        const vorname = briefing.vorname || 'du';
+        const resumeUrl = `${appUrl}/campaign/resume/${b.sessionId}`;
+        const vorname = b.vorname || 'du';
         await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -100,12 +132,12 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             from: 'VIO Team <noreply@vio.swiss>',
-            to: briefing.email,
+            to: b.email,
             subject: 'Deine VIO Kampagne – jederzeit weiter bearbeiten',
             text: `Hallo ${vorname},\n\ndu kannst deine Kampagne jederzeit weiter bearbeiten – auch wenn du jetzt keine Zeit hast.\n\nKlick einfach auf diesen Link:\n${resumeUrl}\n\nAlles wird genau so sein wie du es verlassen hast.\n\nBis bald,\nDas VIO Team`,
           }),
         });
-        console.log('[submit-briefing] resume email sent to:', briefing.email);
+        console.log('[submit-briefing] resume email sent to:', b.email);
       } catch (e) {
         console.error('[submit-briefing] resume email failed (silent):', e);
       }

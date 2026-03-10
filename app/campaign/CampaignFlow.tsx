@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step1Entry from '@/components/steps/Step1Entry';
@@ -32,9 +32,9 @@ export default function CampaignFlow() {
   const [analysisRunKey, setAnalysisRunKey] = useState(0);
   const [resumeLoaded, setResumeLoaded] = useState(false);
 
-  const updateBriefing = (data: Partial<BriefingData>) => {
+  const updateBriefing = useCallback((data: Partial<BriefingData>) => {
     setBriefing(prev => ({ ...prev, ...data }));
-  };
+  }, []);
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 

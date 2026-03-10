@@ -5,13 +5,40 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export async function POST(request: NextRequest) {
   try {
     console.log('=== API CALLED ===');
-    const { url, campaignType } = await request.json();
+
+    // --- Input validation ---
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { url, campaignType } = body as Record<string, unknown>;
+
+    if (!url || typeof url !== 'string') {
+      return NextResponse.json({ error: 'URL fehlt' }, { status: 400 });
+    }
+    if (url.length > 2048) {
+      return NextResponse.json({ error: 'URL zu lang' }, { status: 400 });
+    }
+    if (campaignType !== undefined && typeof campaignType !== 'string') {
+      return NextResponse.json({ error: 'Ungültiger campaignType' }, { status: 400 });
+    }
+
     console.log('URL received:', url);
     console.log('FIRECRAWL KEY exists:', !!process.env.FIRECRAWL_API_KEY);
     console.log('GEMINI KEY exists:', !!process.env.GEMINI_API_KEY);
-    if (!url) return NextResponse.json({ error: 'URL fehlt' }, { status: 400 });
 
-    let cleanUrl = url.trim();
+    let cleanUrl = (url as string).trim();
+    // Reject non-http(s) schemes explicitly
+    if (/^[a-z][a-z0-9+\-.]*:/i.test(cleanUrl) &&
+        !cleanUrl.startsWith('http://') &&
+        !cleanUrl.startsWith('https://')) {
+      return NextResponse.json({ error: 'Ungültiges URL-Schema' }, { status: 400 });
+    }
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
       cleanUrl = 'https://' + cleanUrl;
     }
@@ -35,12 +62,22 @@ export async function POST(request: NextRequest) {
         firecrawl.scrape(cleanUrl, { formats: ['markdown'], waitFor: 2000 }),
         firecrawlTimeout,
       ]);
-      scrapedContent = (crawlResult as { markdown?: string; metadata?: { title?: string } }).markdown || '';
-      pageTitle = (crawlResult as { markdown?: string; metadata?: { title?: string } }).metadata?.title || '';
-      ogImage = (crawlResult as any).metadata?.ogImage || '';
-      ogLogo = (crawlResult as any).metadata?.ogLogo || '';
-      favicon = (crawlResult as any).metadata?.favicon || '';
-      themeColor = (crawlResult as any).metadata?.themeColor || (crawlResult as any).metadata?.['theme-color'] || '';
+      type CrawlMeta = {
+        title?: string;
+        ogImage?: string;
+        ogLogo?: string;
+        favicon?: string;
+        themeColor?: string;
+        'theme-color'?: string;
+      };
+      type CrawlResult = { markdown?: string; metadata?: CrawlMeta };
+      const typed = crawlResult as CrawlResult;
+      scrapedContent = typed.markdown || '';
+      pageTitle = typed.metadata?.title || '';
+      ogImage = typed.metadata?.ogImage || '';
+      ogLogo = typed.metadata?.ogLogo || '';
+      favicon = typed.metadata?.favicon || '';
+      themeColor = typed.metadata?.themeColor || typed.metadata?.['theme-color'] || '';
       console.log('Title:', pageTitle);
       console.log('ogImage:', ogImage);
       console.log('themeColor:', themeColor);
