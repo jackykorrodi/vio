@@ -1,396 +1,429 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { BriefingData } from '@/lib/types';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ElPos = { left: number; top: number };                // %
-type FormatPositions = Record<string, ElPos>;
-type FormatSizes     = Record<string, number>;             // px (or box-size for qr)
-type AllPositions    = Record<string, FormatPositions>;
-type AllSizes        = Record<string, FormatSizes>;
-type SelMap          = Record<string, string | null>;
-type BgStyle         = 'overlay' | 'pure' | 'split';
-type AnimType        = 'cta' | 'qr' | 'hl' | 'none';
-type LogoMode        = 'text' | 'bild';
 
 interface Props {
   briefing: BriefingData;
-  updateBriefing: (d: Partial<BriefingData>) => void;
+  updateBriefing: (data: Partial<BriefingData>) => void;
   nextStep: () => void;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+type ElPos = { top: number; left: number };
+type FormatPositions = Record<string, ElPos>;
+type AllPositions = Record<string, FormatPositions>;
+type AllSizes = Record<string, Record<string, number>>;
 
-const TC   = '#C1666B';
-const TAUP = '#5C4F3D';
-const CRM  = '#FAF7F2';
-const BDR  = '#DDD5C8';
-const TXT  = '#2C2416';
-const MUT  = '#8a7a67';
-const GRN  = '#4CAF7D';
-const YLW  = '#E8A838';
-const RED  = '#E05252';
+interface Colors {
+  bg: string;
+  hl: string;
+  sub: string;
+  logo: string;
+  ctaTxt: string;
+  ctaBg: string;
+  domain: string;
+}
 
-const FONTS = [
-  { id: 'fraunces', label: 'Fraunces', sub: 'Elegant',  css: "'Fraunces',serif",       italic: true  },
-  { id: 'outfit',   label: 'Outfit',   sub: 'Modern',   css: "'Outfit',sans-serif",    italic: false },
-  { id: 'playfair', label: 'Playfair', sub: 'Klassisch', css: "'Playfair Display',serif", italic: true },
-  { id: 'inter',    label: 'Inter',    sub: 'Corporate', css: "'Inter',sans-serif",     italic: false },
-] as const;
-type FontId = (typeof FONTS)[number]['id'];
+interface DragState {
+  fmtId: string;
+  elId: string;
+  startPos: ElPos;
+  startMouse: { x: number; y: number };
+  layerEl: HTMLElement;
+}
 
-const ANIM_OPTIONS = [
-  { id: 'cta'  as AnimType, ico: '👆', label: 'CTA-Button' },
-  { id: 'qr'   as AnimType, ico: '📱', label: 'QR-Code'    },
-  { id: 'hl'   as AnimType, ico: '✏️', label: 'Headline'   },
-  { id: 'none' as AnimType, ico: '⏸',  label: 'Statisch'   },
-] as const;
-
-const ANIM_TIPS: Record<AnimType, string> = {
-  cta:  '✓ CTA pulsiert sanft – zieht Blicke an',
-  qr:   '✓ QR-Code blendet ein und aus',
-  hl:   '✓ Headline gleitet von links ein',
-  none: '⏸ Alle Elemente statisch',
+// Default positions from V11b HTML (converted bottom/right → top/left approx.)
+const DEF_POS: AllPositions = {
+  quer: {
+    logo:   { top: 5,  left: 3  },
+    hl:     { top: 30, left: 3  },
+    sub:    { top: 62, left: 3  },
+    cta:    { top: 88, left: 3  },
+    domain: { top: 88, left: 72 },
+    qr:     { top: 84, left: 88 },
+  },
+  hoch: {
+    logo:   { top: 4,  left: 6  },
+    hl:     { top: 24, left: 6  },
+    sub:    { top: 54, left: 6  },
+    cta:    { top: 82, left: 6  },
+    domain: { top: 90, left: 6  },
+    qr:     { top: 85, left: 80 },
+  },
+  wide: {
+    logo: { top: 43, left: 2  },
+    hl:   { top: 43, left: 20 },
+    sub:  { top: 68, left: 20 },
+    cta:  { top: 43, left: 82 },
+  },
+  med: {
+    logo: { top: 6,  left: 6 },
+    hl:   { top: 28, left: 6 },
+    sub:  { top: 58, left: 6 },
+    cta:  { top: 85, left: 6 },
+  },
+  tall: {
+    logo: { top: 4,  left: 6 },
+    hl:   { top: 22, left: 6 },
+    sub:  { top: 50, left: 6 },
+    cta:  { top: 82, left: 6 },
+  },
 };
 
-const BS_DESCS: Record<BgStyle, string> = {
-  overlay: 'Farbige Schicht über dem Bild – Texte gut lesbar',
-  pure:    'Volles Bild ohne Overlay – maximale Bildwirkung',
-  split:   'Links Farbe, rechts Bild – strukturiertes Layout',
+// Default font sizes from V11b HTML
+const DEF_SIZES: AllSizes = {
+  quer: { logo: 18, hl: 60, sub: 22, cta: 18, domain: 14, qr: 72 },
+  hoch: { logo: 12, hl: 26, sub: 11, cta: 11, domain: 9,  qr: 44 },
+  wide: { logo: 14, hl: 22, sub: 13, cta: 14 },
+  med:  { logo: 11, hl: 20, sub: 11, cta: 11 },
+  tall: { logo: 12, hl: 28, sub: 13, cta: 13 },
+};
+
+// Resize deltas per element per format
+const RESIZE_DELTA: Record<string, Record<string, number>> = {
+  quer: { logo: 1, hl: 2, sub: 1, cta: 1, domain: 1, qr: 4 },
+  hoch: { logo: 1, hl: 1, sub: 1, cta: 1, domain: 1, qr: 3 },
+  wide: { logo: 1, hl: 1, sub: 1, cta: 1 },
+  med:  { logo: 1, hl: 1, sub: 1, cta: 1 },
+  tall: { logo: 1, hl: 1, sub: 1, cta: 1 },
 };
 
 const FOCUS_POS = [
-  ['0% 0%',  '50% 0%',  '100% 0%' ],
-  ['0% 50%', '50% 50%', '100% 50%'],
-  ['0% 100%','50% 100%','100% 100%'],
+  ['0% 0%',   '50% 0%',   '100% 0%'  ],
+  ['0% 50%',  '50% 50%',  '100% 50%' ],
+  ['0% 100%', '50% 100%', '100% 100%'],
 ];
 
-// Default element positions (left%, top%)
-const DEF_POS: AllPositions = {
-  quer: { logo: {left:5,top:5}, hl: {left:5,top:32}, sub: {left:5,top:58}, cta: {left:5,top:86}, domain: {left:72,top:86}, qr: {left:88,top:85} },
-  hoch: { logo: {left:7,top:5}, hl: {left:7,top:26}, sub: {left:7,top:52}, cta: {left:7,top:79}, domain: {left:7,top:89}, qr:  {left:82,top:90} },
-  wide: { logo: {left:2,top:36}, hl: {left:22,top:36}, cta: {left:82,top:36} },
-  med:  { logo: {left:6,top:6}, hl: {left:6,top:30}, cta: {left:6,top:84}, qr: {left:82,top:84} },
-  tall: { logo: {left:6,top:5}, hl: {left:6,top:22}, sub: {left:6,top:48}, cta: {left:6,top:79}, qr: {left:82,top:88} },
+const ANIM_TIPS: Record<string, string> = {
+  cta:  '✓ CTA pulsiert sanft',
+  qr:   '✓ QR blendet ein/aus',
+  hl:   '✓ Headline gleitet ein',
+  none: '⏸ Statisch',
 };
 
-// Default element font sizes (px). QR = box dimension.
-const DEF_SIZES: AllSizes = {
-  quer: { logo:14, hl:32, sub:13, cta:12, domain:10, qr:40 },
-  hoch: { logo:10, hl:16, sub:9,  cta:9,  domain:8,  qr:26 },
-  wide: { logo:10, hl:12,         cta:10                    },
-  med:  { logo:9,  hl:14,         cta:9,               qr:22 },
-  tall: { logo:8,  hl:12, sub:8,  cta:8,               qr:18 },
-};
-
-// Resize delta per format+element
-const RESIZE_DELTA: Record<string, Record<string, number>> = {
-  quer: { logo:2, hl:2, sub:1, cta:1, domain:1, qr:4 },
-  hoch: { logo:1, hl:1, sub:1, cta:1, domain:1, qr:3 },
-  wide: { logo:1, hl:1, cta:1 },
-  med:  { logo:1, hl:1, cta:1, qr:2 },
-  tall: { logo:1, hl:1, sub:1, cta:1, qr:2 },
-};
-
-// Elements per format (order matters for rendering)
-const FORMAT_ELS: Record<string, string[]> = {
-  quer: ['logo','hl','sub','cta','domain','qr'],
-  hoch: ['logo','hl','sub','cta','domain','qr'],
-  wide: ['logo','hl','cta'],
-  med:  ['logo','hl','cta','qr'],
-  tall: ['logo','hl','sub','cta','qr'],
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function hexRgba(hex: string, a: number) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
+function hexRgba(hex: string, a: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${a})`;
 }
 
-function deepCopy<T>(o: T): T { return JSON.parse(JSON.stringify(o)); }
-
-function qualityInfo(w: number, h: number): { cls: string; label: string } {
-  if (w >= 1920 && h >= 1080) return { cls: 'qg', label: `Top (${w} × ${h} px)` };
-  if (w >= 1200)               return { cls: 'qw', label: `Könnte unscharf (${w} × ${h} px)` };
-  return                              { cls: 'qb', label: `Zu klein für DOOH (${w} × ${h} px)` };
+function makeSuggestions(org: string, domain: string) {
+  return {
+    hl: [
+      { text: `Willkommen bei ${org}`, tag: 'DOOH · generiert' },
+      { text: `Jetzt ${org} entdecken`, tag: 'Display · generiert' },
+      { text: `${org} – echt gut`,      tag: 'DOOH · kurz' },
+    ],
+    sub: [
+      { text: domain,                       tag: 'Domain' },
+      { text: 'Jetzt online informieren',   tag: 'Generisch' },
+    ],
+  };
 }
 
-// ─── AdEl: one draggable element ─────────────────────────────────────────────
+// ─── Ad Preview Component ────────────────────────────────────────────────────
 
-interface AdElProps {
-  fmtId:    string;
-  elId:     string;
-  pos:      ElPos;
-  size:     number;
-  sel:      boolean;
-  dragging: boolean;
-  delta:    number;
-  onSelect: (fmtId: string, elId: string) => void;
+interface PreviewProps {
+  fmtId: string;
+  width: number;
+  height: number;
+  positions: AllPositions;
+  sizes: AllSizes;
+  colors: Colors;
+  headline: string;
+  subline: string;
+  cta: string;
+  domain: string;
+  org: string;
+  bgUrl: string;
+  logoUrl: string;
+  logoMode: 'text' | 'image';
+  bgStyle: 'overlay' | 'pure' | 'split';
+  anim: string;
+  bgPos: string;
+  lpUrl: string;
+  selEl: string | null;
+  onElMouseDown: (e: React.MouseEvent, fmtId: string, elId: string) => void;
+  onLayerClick: (fmtId: string) => void;
   onResize: (fmtId: string, elId: string, delta: number) => void;
-  onDragStart: (fmtId: string, elId: string, e: React.MouseEvent) => void;
-  // content
-  headline:  string;
-  subline:   string;
-  ctaText:   string;
-  logoText:  string;
-  logoMode:  LogoMode;
-  logoImgSrc: string | null;
-  domainTxt: string;
-  fontCss:   string;
-  textColor: string;
-  ctaColor:  string;
 }
 
-function AdEl(p: AdElProps) {
-  const { fmtId, elId, pos, size, sel, dragging, delta } = p;
+function AdPreview({
+  fmtId, width, height, positions, sizes, colors,
+  headline, subline, cta, domain, org,
+  bgUrl, logoUrl, logoMode, bgStyle, anim, bgPos, lpUrl,
+  selEl, onElMouseDown, onLayerClick, onResize,
+}: PreviewProps) {
+  const pos    = positions[fmtId] || DEF_POS[fmtId] || {};
+  const sz     = sizes[fmtId]     || DEF_SIZES[fmtId] || {};
+  const hasQr  = fmtId === 'quer' || fmtId === 'hoch';
+  const elD    = RESIZE_DELTA[fmtId] || {};
 
-  const tbBtn = (sign: number) => (
-    <button
-      className="ac-tb-btn"
-      onMouseDown={e => e.stopPropagation()}
-      onClick={e => { e.stopPropagation(); p.onResize(fmtId, elId, sign * delta); }}
-    >
-      {sign > 0 ? 'A+' : 'A−'}
-    </button>
-  );
+  const animClass  = anim !== 'none' ? `anim-${anim}` : '';
+  const styleClass = bgStyle === 'pure'  ? 'pure-mode'
+                   : bgStyle === 'split' ? 'split-mode'
+                   : '';
 
-  const toolbar = (
-    <div className="ac-tb">
-      {tbBtn(-1)}<div className="ac-tb-sep"/>{tbBtn(1)}
-    </div>
-  );
+  function isSel(el: string) { return selEl === `${fmtId}:${el}`; }
 
-  let content: React.ReactNode = null;
-
-  if (elId === 'logo') {
-    if (p.logoMode === 'bild' && p.logoImgSrc) {
-      content = <img className="ac-logo-img" src={p.logoImgSrc} alt="Logo" style={{ fontSize: size }} />;
-    } else {
-      content = <div className="ac-logo-txt" style={{ fontFamily: p.fontCss, fontSize: size, color: p.textColor }}>{p.logoText}</div>;
-    }
-  } else if (elId === 'hl') {
-    content = <div className="ac-hl" style={{ fontFamily: p.fontCss, fontSize: size, color: p.textColor }}>{p.headline}</div>;
-  } else if (elId === 'sub') {
-    content = <div className="ac-sub" style={{ fontSize: size, color: hexRgba(p.textColor, 0.72) }}>{p.subline}</div>;
-  } else if (elId === 'cta') {
-    content = <div className="ac-cta" style={{ fontSize: size, color: p.ctaColor }}>{p.ctaText}</div>;
-  } else if (elId === 'domain') {
-    content = <div className="ac-domain" style={{ fontSize: size }}>{p.domainTxt}</div>;
-  } else if (elId === 'qr') {
-    content = <div className="ac-qr" style={{ width: size, height: size, fontSize: Math.round(size * 0.55) }}>⬛</div>;
+  function Toolbar({ elId, delta }: { elId: string; delta: number }) {
+    return (
+      <div className="ac-tb">
+        <button
+          className="ac-tb-btn"
+          onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, -delta); }}
+        >
+          {elId === 'qr' ? '−' : 'A−'}
+        </button>
+        <div className="ac-tb-sep" />
+        <button
+          className="ac-tb-btn"
+          onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, delta); }}
+        >
+          {elId === 'qr' ? '+' : 'A+'}
+        </button>
+      </div>
+    );
   }
 
   return (
     <div
-      className={`ac-el${sel ? ' sel' : ''}${dragging ? ' dragging' : ''}`}
-      style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
-      onMouseDown={e => {
-        if ((e.target as HTMLElement).closest('.ac-tb')) return;
-        p.onSelect(fmtId, elId);
-        p.onDragStart(fmtId, elId, e);
-      }}
+      className={`ad-wrap ac-ad ${animClass} ${styleClass}`.trim()}
+      style={{ width, height, flexShrink: 0 }}
     >
-      {toolbar}
-      {content}
-    </div>
-  );
-}
+      {/* Background */}
+      <div
+        className="ac-bg"
+        style={{
+          backgroundColor:   colors.bg,
+          backgroundImage:   bgUrl ? `url('${bgUrl}')` : undefined,
+          backgroundPosition: bgPos,
+        }}
+      />
+      {/* Overlay */}
+      <div className="ac-ov" style={{ background: hexRgba(colors.bg, 0.82) }} />
+      {/* Split color */}
+      <div className="ac-sc" style={{ background: colors.bg }} />
 
-// ─── AdFormat: one ad preview with all its elements ──────────────────────────
-
-interface AdFormatProps {
-  fmtId:      string;
-  positions:  FormatPositions;
-  sizes:      FormatSizes;
-  selected:   string | null;
-  draggingEl: string | null;
-  headline:   string;
-  subline:    string;
-  ctaText:    string;
-  logoText:   string;
-  logoMode:   LogoMode;
-  logoImgSrc: string | null;
-  domainTxt:  string;
-  fontCss:    string;
-  textColor:  string;
-  ctaColor:   string;
-  mainColor:  string;
-  bgDataUrl:  string | null;
-  focusPos:   string;
-  bgStyle:    BgStyle;
-  animation:  AnimType;
-  layerRef:   (el: HTMLDivElement | null) => void;
-  onSelect:   (fmtId: string, elId: string) => void;
-  onDeselect: (fmtId: string) => void;
-  onResize:   (fmtId: string, elId: string, delta: number) => void;
-  onDragStart:(fmtId: string, elId: string, e: React.MouseEvent) => void;
-}
-
-function AdFormat(p: AdFormatProps) {
-  const els = FORMAT_ELS[p.fmtId] || [];
-  const animClass = p.animation !== 'none' ? ` anim-${p.animation}` : '';
-  const styleClass = `${p.bgStyle}-mode`;
-
-  const bgStyle: React.CSSProperties = p.bgDataUrl
-    ? { backgroundImage: `url('${p.bgDataUrl}')`, backgroundPosition: p.focusPos }
-    : { background: `linear-gradient(135deg,${p.mainColor} 0%,${TAUP} 100%)` };
-
-  const ovColor = hexRgba(p.mainColor, 0.82);
-
-  return (
-    <div className={`ac-ad ac-${p.fmtId}${animClass} ${styleClass}`}>
-      <div className="ac-bg"  style={bgStyle} />
-      <div className="ac-ov"  style={{ background: ovColor }} />
-      <div className="ac-sc"  style={{ background: p.mainColor }} />
+      {/* Drag layer */}
       <div
         className="ac-dl"
-        ref={p.layerRef}
-        onMouseDown={e => { if (e.target === e.currentTarget) p.onDeselect(p.fmtId); }}
+        onMouseDown={e => { if (e.target === e.currentTarget) onLayerClick(fmtId); }}
       >
-        {els.map(elId => (
-          <AdEl
-            key={elId}
-            fmtId={p.fmtId}
-            elId={elId}
-            pos={p.positions[elId] || { left: 5, top: 10 }}
-            size={p.sizes[elId] || 12}
-            sel={p.selected === elId}
-            dragging={p.selected === elId && p.draggingEl === elId}
-            delta={RESIZE_DELTA[p.fmtId]?.[elId] ?? 1}
-            onSelect={p.onSelect}
-            onResize={p.onResize}
-            onDragStart={p.onDragStart}
-            headline={p.headline}
-            subline={p.subline}
-            ctaText={p.ctaText}
-            logoText={p.logoText}
-            logoMode={p.logoMode}
-            logoImgSrc={p.logoImgSrc}
-            domainTxt={p.domainTxt}
-            fontCss={p.fontCss}
-            textColor={p.textColor}
-            ctaColor={p.ctaColor}
-          />
-        ))}
+
+        {/* Logo */}
+        <div
+          className={`ac-el${isSel('logo') ? ' sel' : ''}`}
+          style={{ top: `${pos.logo?.top ?? 5}%`, left: `${pos.logo?.left ?? 3}%` }}
+          onMouseDown={e => onElMouseDown(e, fmtId, 'logo')}
+        >
+          <Toolbar elId="logo" delta={elD.logo ?? 1} />
+          {logoMode === 'image' && logoUrl ? (
+            <img
+              className="ac-logo-img"
+              src={logoUrl}
+              alt=""
+              style={{ height: sz.logo ?? 18 }}
+            />
+          ) : (
+            <div className="ac-logo-txt" style={{ fontSize: sz.logo ?? 18, color: colors.logo }}>
+              {org || 'Organisation'}
+            </div>
+          )}
+        </div>
+
+        {/* Headline */}
+        <div
+          className={`ac-el${isSel('hl') ? ' sel' : ''}`}
+          style={{
+            top:      `${pos.hl?.top  ?? 30}%`,
+            left:     `${pos.hl?.left ?? 3}%`,
+            maxWidth: fmtId === 'quer' ? '55%' : fmtId === 'hoch' ? '82%' : '85%',
+          }}
+          onMouseDown={e => onElMouseDown(e, fmtId, 'hl')}
+        >
+          <Toolbar elId="hl" delta={elD.hl ?? 2} />
+          <div className="ac-hl" style={{ fontSize: sz.hl ?? 28, color: colors.hl }}>
+            {headline || 'Headline'}
+          </div>
+        </div>
+
+        {/* Subline */}
+        <div
+          className={`ac-el${isSel('sub') ? ' sel' : ''}`}
+          style={{ top: `${pos.sub?.top ?? 62}%`, left: `${pos.sub?.left ?? 3}%` }}
+          onMouseDown={e => onElMouseDown(e, fmtId, 'sub')}
+        >
+          <Toolbar elId="sub" delta={elD.sub ?? 1} />
+          <div className="ac-sub" style={{ fontSize: sz.sub ?? 13, color: colors.sub }}>
+            {subline}
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div
+          className={`ac-el${isSel('cta') ? ' sel' : ''}`}
+          style={{ top: `${pos.cta?.top ?? 88}%`, left: `${pos.cta?.left ?? 3}%` }}
+          onMouseDown={e => onElMouseDown(e, fmtId, 'cta')}
+        >
+          <Toolbar elId="cta" delta={elD.cta ?? 1} />
+          <div
+            className="ac-cta"
+            style={{
+              fontSize:   sz.cta ?? 12,
+              padding:    fmtId === 'quer' ? '10px 24px'
+                        : fmtId === 'hoch' ? '6px 14px'
+                        : fmtId === 'wide' ? '8px 18px'
+                        : fmtId === 'tall' ? '8px 18px'
+                        : '5px 12px',
+              color:      colors.ctaTxt,
+              background: colors.ctaBg,
+            }}
+          >
+            {cta || 'Jetzt entdecken →'}
+          </div>
+        </div>
+
+        {/* Domain – DOOH only */}
+        {hasQr && (
+          <div
+            className={`ac-el${isSel('domain') ? ' sel' : ''}`}
+            style={{ top: `${pos.domain?.top ?? 88}%`, left: `${pos.domain?.left ?? 72}%` }}
+            onMouseDown={e => onElMouseDown(e, fmtId, 'domain')}
+          >
+            <Toolbar elId="domain" delta={elD.domain ?? 1} />
+            <div className="ac-domain" style={{ fontSize: sz.domain ?? 12, color: colors.domain }}>
+              {domain}
+            </div>
+          </div>
+        )}
+
+        {/* QR – DOOH only */}
+        {hasQr && (
+          <div
+            className={`ac-el${isSel('qr') ? ' sel' : ''}`}
+            style={{ top: `${pos.qr?.top ?? 84}%`, left: `${pos.qr?.left ?? 80}%` }}
+            onMouseDown={e => onElMouseDown(e, fmtId, 'qr')}
+          >
+            <Toolbar elId="qr" delta={elD.qr ?? 4} />
+            <div className="ac-qr" style={{ width: sz.qr ?? 60, height: sz.qr ?? 60 }}>
+              <QRCodeSVG
+                value={lpUrl || 'https://vio.ch'}
+                size={sz.qr ?? 60}
+                bgColor="#ffffff"
+                fgColor="#000000"
+              />
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
-  const analysis   = briefing.analysis;
-  const ogImageUrl = analysis?.ogImage  || '';
-  const ogLogoUrl  = analysis?.ogLogo   || analysis?.favicon || '';
-  const themeColor = analysis?.themeColor || TC;
-  const orgName    = analysis?.organisation || '';
+  const ana = briefing.analysis;
 
-  // ── Option selection (upload / später / erstellen) ──
-  const initOpt = (): 'upload' | 'später' | 'erstellen' | null => {
-    const svc = briefing.werbemittelService;
-    if (svc === 'upload' || svc === 'später' || svc === 'erstellen') return svc;
-    return null;
-  };
-  const [selOption, setSelOption]   = useState<'upload' | 'später' | 'erstellen' | null>(initOpt);
-  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
-  const [dropOver,   setDropOver]   = useState(false);
+  const initDomain = (() => {
+    try { return new URL(briefing.url).hostname.replace('www.', ''); } catch { return briefing.url || ''; }
+  })();
+  const initOrg  = ana?.organisation || '';
+  const initSugs = makeSuggestions(initOrg, initDomain);
 
-  // ── Ad creator state ──
-  const [activeTab,  setActiveTab]  = useState<'dooh' | 'display'>('dooh');
-  const [headline,   setHeadline]   = useState(briefing.adHeadline || '');
-  const [subline,    setSubline]    = useState(briefing.adSubline  || '');
-  const [ctaText,    setCtaText]    = useState(briefing.adCta      || 'Jetzt informieren');
-  const [urlText,    setUrlText]    = useState(briefing.url        || '');
-  const [logoMode,   setLogoMode]   = useState<LogoMode>(briefing.adLogoMode === 'image' ? 'bild' : 'text');
-  const [logoTxt,    setLogoTxt]    = useState(orgName);
-  const [font,       setFont]       = useState<FontId>((briefing.adFont as FontId) || 'fraunces');
-  const [mainColor,  setMainColor]  = useState(briefing.adBgColor    || themeColor || TC);
-  const [textColor,  setTextColor]  = useState(briefing.adTextColor  || '#FFFFFF');
-  const [ctaColor,   setCtaColor]   = useState(briefing.adAccentColor || TAUP);
-  const [bgDataUrl,  setBgDataUrl]  = useState<string | null>(briefing.adBgImageData || null);
-  const [bgQual,     setBgQual]     = useState<{cls:string;label:string}|null>(null);
-  const [logoImgSrc, setLogoImgSrc] = useState<string | null>(briefing.adLogoImageData || null);
-  const [focusRow,   setFocusRow]   = useState(briefing.adFocusY ?? 1);
-  const [focusCol,   setFocusCol]   = useState(briefing.adFocusX ?? 1);
-  const [bgStyle,    setBgStyle]    = useState<BgStyle>((briefing.adBgStyle as BgStyle) || 'overlay');
-  const [animation,  setAnimation]  = useState<AnimType>((briefing.adAnimation as AnimType) || 'cta');
+  // ── Text ────────────────────────────────────────────────────────────────────
+  const [org,      setOrg]      = useState(initOrg);
+  const [headline, setHeadline] = useState(briefing.adHeadline || initSugs.hl[0]?.text || '');
+  const [subline,  setSubline]  = useState(briefing.adSubline  || initSugs.sub[0]?.text || '');
+  const [cta,      setCta]      = useState(briefing.adCta      || 'Jetzt reservieren →');
+  const [lpUrl,    setLpUrl]    = useState(briefing.url        || '');
+  const [crawlUrl, setCrawlUrl] = useState(briefing.url        || '');
 
-  // ── KI headlines ──
-  const [kiSugs,   setKiSugs]   = useState<string[]>([]);
-  const [kiLoading,setKiLoading]= useState(false);
+  // ── Crawl UI ────────────────────────────────────────────────────────────────
+  const [crawlStatus, setCrawlStatus] = useState('Im echten Flow automatisch befüllt.');
+  const [crawlAssets, setCrawlAssets] = useState<{ color: string; logoUrl: string; text: string } | null>(null);
 
-  // ── Save link ──
-  const [linkEmail,  setLinkEmail]  = useState(briefing.email || '');
-  const [linkStatus, setLinkStatus] = useState<'idle'|'loading'|'sent'|'error'>('idle');
+  // ── Suggestions ─────────────────────────────────────────────────────────────
+  const [hlSugs,      setHlSugs]      = useState(initSugs.hl);
+  const [subSugs,     setSubSugs]     = useState(initSugs.sub);
+  const [activeHlSug, setActiveHlSug] = useState<number | null>(0);
+  const [activeSubSug,setActiveSubSug]= useState<number | null>(0);
 
-  // ── Submitting ──
-  const [submitting, setSubmitting] = useState(false);
+  // ── Logo ────────────────────────────────────────────────────────────────────
+  const [logoMode,  setLogoMode]  = useState<'text' | 'image'>(briefing.adLogoMode || 'image');
+  const [logoUrl,   setLogoUrl]   = useState(briefing.adLogoImageData || ana?.ogLogo || ana?.favicon || '');
+  const [logoThumb, setLogoThumb] = useState(briefing.adLogoImageData || ana?.ogLogo || ana?.favicon || '');
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
-  // ── Per-format drag & drop positions ──
-  const [positions, setPositions] = useState<AllPositions>(() => {
-    const saved = briefing.adPositionsQuer;
-    if (saved) {
-      return {
-        quer: (briefing.adPositionsQuer as unknown as FormatPositions) || deepCopy(DEF_POS.quer),
-        hoch: (briefing.adPositionsHoch as unknown as FormatPositions) || deepCopy(DEF_POS.hoch),
-        wide: deepCopy(DEF_POS.wide),
-        med:  deepCopy(DEF_POS.med),
-        tall: deepCopy(DEF_POS.tall),
-      };
-    }
-    return deepCopy(DEF_POS);
+  // ── Background ──────────────────────────────────────────────────────────────
+  const [bgUrl,    setBgUrl]    = useState(briefing.adBgImageData || ana?.ogImage || '');
+  const [bgThumb,  setBgThumb]  = useState(briefing.adBgImageData || ana?.ogImage || '');
+  const [qualInfo, setQualInfo] = useState<{ cls: string; text: string } | null>(null);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+
+  // ── Style & animation ───────────────────────────────────────────────────────
+  const [bgStyle,   setBgStyle]   = useState<'overlay' | 'pure' | 'split'>(briefing.adBgStyle || 'overlay');
+  const [bgPos,     setBgPos]     = useState('50% 50%');
+  const [focusSel,  setFocusSel]  = useState<[number, number]>([1, 1]);
+  const [anim,      setAnim]      = useState(briefing.adAnimation || 'cta');
+  const [activeTab, setActiveTab] = useState<'dooh' | 'display'>('dooh');
+
+  // ── Colors ──────────────────────────────────────────────────────────────────
+  const themeColor = ana?.themeColor || '#C1666B';
+  const [colors, setColors] = useState<Colors>({
+    bg:     briefing.adBgColor   || themeColor,
+    hl:     briefing.adTextColor || '#FFFFFF',
+    sub:    '#FFFFFF',
+    logo:   '#FFFFFF',
+    ctaTxt: briefing.adAccentColor || '#5C4F3D',
+    ctaBg:  '#FFFFFF',
+    domain: '#FFFFFF',
   });
 
-  // ── Per-format element sizes ──
-  const [sizes, setSizes] = useState<AllSizes>(deepCopy(DEF_SIZES));
+  // ── Positions & Sizes ───────────────────────────────────────────────────────
+  const [positions, setPositions] = useState<AllPositions>(() => ({
+    quer: { ...DEF_POS.quer },
+    hoch: { ...DEF_POS.hoch },
+    wide: { ...DEF_POS.wide },
+    med:  { ...DEF_POS.med  },
+    tall: { ...DEF_POS.tall },
+  }));
+  const [sizes, setSizes] = useState<AllSizes>(() => ({
+    quer: { ...DEF_SIZES.quer },
+    hoch: { ...DEF_SIZES.hoch },
+    wide: { ...DEF_SIZES.wide },
+    med:  { ...DEF_SIZES.med  },
+    tall: { ...DEF_SIZES.tall },
+  }));
 
-  // ── Selected element per format ──
-  const [selected,   setSelected]   = useState<SelMap>({ quer:null, hoch:null, wide:null, med:null, tall:null });
-  const [draggingEl, setDraggingEl] = useState<string | null>(null);
+  // ── Selection & Drag ────────────────────────────────────────────────────────
+  const [selEl,  setSelEl]  = useState<string | null>(null);
+  const dragRef = useRef<DragState | null>(null);
 
-  // ── Drag state ref ──
-  const dragRef = useRef<{
-    fmtId: string; elId: string;
-    startPos: ElPos; startMouse: { x: number; y: number };
-    layerEl: HTMLElement;
-  } | null>(null);
-
-  // ── Layer refs ──
-  const layerRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  function setLayerRef(fmtId: string) {
-    return (el: HTMLDivElement | null) => { layerRefs.current[fmtId] = el; };
-  }
-
-  // ── Global drag listeners ──
   useEffect(() => {
     function onMove(e: MouseEvent) {
-      if (!dragRef.current) return;
-      const { fmtId, elId, startPos, startMouse, layerEl } = dragRef.current;
-      const rect = layerEl.getBoundingClientRect();
-      const dx = ((e.clientX - startMouse.x) / rect.width)  * 100;
-      const dy = ((e.clientY - startMouse.y) / rect.height) * 100;
+      const d = dragRef.current;
+      if (!d) return;
+      const rect = d.layerEl.getBoundingClientRect();
+      const dx = ((e.clientX - d.startMouse.x) / rect.width)  * 100;
+      const dy = ((e.clientY - d.startMouse.y) / rect.height) * 100;
       setPositions(prev => ({
         ...prev,
-        [fmtId]: {
-          ...prev[fmtId],
-          [elId]: {
-            left: Math.max(0, Math.min(90, startPos.left + dx)),
-            top:  Math.max(0, Math.min(90, startPos.top  + dy)),
+        [d.fmtId]: {
+          ...prev[d.fmtId],
+          [d.elId]: {
+            left: Math.max(0, Math.min(90, d.startPos.left + dx)),
+            top:  Math.max(0, Math.min(90, d.startPos.top  + dy)),
           },
         },
       }));
     }
-    function onUp() {
-      dragRef.current = null;
-      setDraggingEl(null);
-    }
+    function onUp() { dragRef.current = null; }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup',   onUp);
     return () => {
@@ -399,555 +432,526 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     };
   }, []);
 
-  // ── Load fonts ──
-  useEffect(() => {
-    if (document.getElementById('vio-v9-fonts')) return;
-    const link = document.createElement('link');
-    link.id   = 'vio-v9-fonts';
-    link.rel  = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=Outfit:wght@300;400;500;600&family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap';
-    document.head.appendChild(link);
-  }, []);
-
-  // ── Load bg image via proxy ──
-  useEffect(() => {
-    if (bgDataUrl || !ogImageUrl) return;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      const ctx = c.getContext('2d'); if (!ctx) return;
-      ctx.drawImage(img, 0, 0);
-      try { setBgDataUrl(c.toDataURL('image/jpeg', 0.85)); } catch { /* cross-origin */ }
-    };
-    img.src = `/api/proxy-image?url=${encodeURIComponent(ogImageUrl)}`;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ogImageUrl]);
-
-  // ── Load logo image via proxy ──
-  useEffect(() => {
-    if (logoImgSrc || !ogLogoUrl) return;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      const ctx = c.getContext('2d'); if (!ctx) return;
-      ctx.drawImage(img, 0, 0);
-      try { setLogoImgSrc(c.toDataURL('image/png')); setLogoMode('bild'); } catch { /* cross-origin */ }
-    };
-    img.src = `/api/proxy-image?url=${encodeURIComponent(ogLogoUrl)}`;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ogLogoUrl]);
-
-  // ── Fetch KI headlines ──
-  useEffect(() => {
-    if (selOption !== 'erstellen' || kiSugs.length > 0) return;
-    setKiLoading(true);
-    fetch('/api/generate-headlines', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organisation: orgName, beschreibung: analysis?.beschreibung, url: briefing.url }),
-    })
-      .then(r => r.json())
-      .then(d => { if (d.headlines?.length) setKiSugs(d.headlines); })
-      .catch(() => {})
-      .finally(() => setKiLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selOption]);
-
-  // ── Drag handlers ──
-  const handleDragStart = useCallback((fmtId: string, elId: string, e: React.MouseEvent) => {
+  const handleElMouseDown = useCallback((e: React.MouseEvent, fmtId: string, elId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    const layerEl = layerRefs.current[fmtId];
+    const layerEl = (e.currentTarget as HTMLElement).closest('.ac-dl') as HTMLElement;
     if (!layerEl) return;
-    const startPos = positions[fmtId]?.[elId] || { left: 5, top: 5 };
-    dragRef.current = { fmtId, elId, startPos: { ...startPos }, startMouse: { x: e.clientX, y: e.clientY }, layerEl };
-    setDraggingEl(elId);
+    const curPos = positions[fmtId]?.[elId] ?? DEF_POS[fmtId]?.[elId] ?? { top: 5, left: 5 };
+    dragRef.current = {
+      fmtId, elId,
+      startPos:   { ...curPos },
+      startMouse: { x: e.clientX, y: e.clientY },
+      layerEl,
+    };
+    setSelEl(`${fmtId}:${elId}`);
   }, [positions]);
 
-  const handleSelect = useCallback((fmtId: string, elId: string) => {
-    setSelected(prev => {
-      const next: SelMap = {};
-      Object.keys(prev).forEach(k => { next[k] = k === fmtId ? elId : null; });
-      return next;
-    });
-  }, []);
-
-  const handleDeselect = useCallback((fmtId: string) => {
-    setSelected(prev => ({ ...prev, [fmtId]: null }));
-  }, []);
+  const handleLayerClick = useCallback((_fmtId: string) => { setSelEl(null); }, []);
 
   const handleResize = useCallback((fmtId: string, elId: string, delta: number) => {
-    setSizes(prev => ({
-      ...prev,
-      [fmtId]: { ...prev[fmtId], [elId]: Math.max(6, Math.min(80, (prev[fmtId][elId] || 12) + delta)) },
-    }));
+    setSizes(prev => {
+      const fmt = { ...(prev[fmtId] || {}) };
+      if (elId === 'qr') {
+        fmt.qr = Math.max(20, (fmt.qr ?? 60) + delta * 3);
+      } else {
+        fmt[elId] = Math.max(6, Math.min(120, (fmt[elId] ?? 12) + delta));
+      }
+      return { ...prev, [fmtId]: fmt };
+    });
   }, []);
 
-  // ── Bg image upload ──
-  function loadBgFile(file: File) {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const url = ev.target?.result as string;
-      const img = new Image();
-      img.onload = () => {
-        setBgDataUrl(url);
-        setBgQual(qualityInfo(img.naturalWidth, img.naturalHeight));
-      };
-      img.src = url;
-    };
-    reader.readAsDataURL(file);
-  }
+  // ── Domain derived from lpUrl ────────────────────────────────────────────────
+  const domain = (() => {
+    try { return new URL(lpUrl).hostname.replace('www.', ''); }
+    catch { return lpUrl || ''; }
+  })();
 
-  // ── Send resume link ──
-  async function handleSendLink() {
-    if (!linkEmail.trim()) return;
-    setLinkStatus('loading');
+  // ── Crawl ────────────────────────────────────────────────────────────────────
+  const handleCrawl = async () => {
+    const url = crawlUrl.trim();
+    if (!url) return;
+    setCrawlStatus('Lade Daten…');
     try {
-      await fetch('/api/save-session', {
+      const res = await fetch('/api/analyze-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: briefing.sessionId, dealId: briefing.dealId, email: linkEmail.trim(), sendResumeEmail: true }),
+        body: JSON.stringify({ url, campaignType: briefing.campaignType }),
       });
-      setLinkStatus('sent');
-    } catch { setLinkStatus('error'); }
-  }
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const result = data.analysis || data;
+      const newOrg = result.organisation || '';
+      let newDomain = '';
+      try { newDomain = new URL(url).hostname.replace('www.', ''); } catch { newDomain = url; }
+      const newLogoUrl = result.ogLogo || result.favicon
+        || `https://www.google.com/s2/favicons?domain=${newDomain}&sz=128`;
+      const newColor = result.themeColor || '#C1666B';
+      const newSugs  = makeSuggestions(newOrg, newDomain);
 
-  // ── Submit (erstellen) ──
-  async function handleWeiter() {
-    setSubmitting(true);
-    updateBriefing({
-      werbemittel: 'erstellen', werbemittelErstellt: true, werbemittelService: 'erstellen',
-      adHeadline: headline, adSubline: subline, adCta: ctaText,
-      adBgStyle: bgStyle as 'overlay'|'pure'|'split',
-      adBgColor: mainColor, adTextColor: textColor, adAccentColor: ctaColor,
-      adLogoMode: logoMode === 'bild' ? 'image' : 'text',
-      adFont: font, adFocusX: focusCol, adFocusY: focusRow,
-      adAnimation: animation,
-      adBgImageData:   bgDataUrl   || undefined,
-      adLogoImageData: logoImgSrc  || undefined,
-      adPositionsQuer: positions.quer as unknown as Record<string, { x: number; y: number }>,
-      adPositionsHoch: positions.hoch as unknown as Record<string, { x: number; y: number }>,
-    });
-    try {
-      await fetch('/api/generate-ads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: briefing.dealId, adConfig: { headline, subline, ctaText, font, mainColor, textColor, ctaColor, bgStyle, animation } }),
-      });
-    } catch { /* non-fatal */ }
-    setSubmitting(false);
-    nextStep();
-  }
-
-  function handleUploadWeiter() {
-    updateBriefing({ werbemittel: 'upload', werbemittelErstellt: true, werbemittelService: 'upload', werbemittelFiles: uploadFiles.map(f => f.name) });
-    nextStep();
-  }
-
-  function handleSpäterWeiter() {
-    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false, werbemittelService: 'später' });
-    nextStep();
-  }
-
-  // ── Derived ──
-  const fontCss   = FONTS.find(f => f.id === font)?.css ?? FONTS[0].css;
-  const focusPos  = FOCUS_POS[focusRow]?.[focusCol] ?? '50% 50%';
-  const domainTxt = urlText.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-  // Shared format props
-  const fmtShared = {
-    headline, subline, ctaText, logoText: logoTxt, logoMode,
-    logoImgSrc, domainTxt, fontCss, textColor, ctaColor,
-    mainColor, bgDataUrl, focusPos, bgStyle, animation,
-    onSelect: handleSelect, onDeselect: handleDeselect,
-    onResize: handleResize, onDragStart: handleDragStart,
+      setOrg(newOrg);
+      setLpUrl(url);
+      setLogoUrl(newLogoUrl); setLogoThumb(newLogoUrl); setLogoMode('image');
+      setColors(prev => ({ ...prev, bg: newColor }));
+      setHlSugs(newSugs.hl);  setSubSugs(newSugs.sub);
+      setHeadline(newSugs.hl[0]?.text || '');
+      setSubline(newSugs.sub[0]?.text || '');
+      setActiveHlSug(0); setActiveSubSug(0);
+      if (result.ogImage) { setBgUrl(result.ogImage); setBgThumb(result.ogImage); }
+      setCrawlAssets({ color: newColor, logoUrl: newLogoUrl, text: `${newDomain} · Logo + Farbe geladen` });
+      setCrawlStatus('✓ Geladen – bitte Bild manuell hochladen');
+    } catch {
+      setCrawlStatus('Fehler beim Laden – bitte URL prüfen');
+    }
   };
 
-  function fmtProps(id: string) {
-    return {
-      ...fmtShared,
-      fmtId:      id,
-      positions:  positions[id] || DEF_POS[id],
-      sizes:      sizes[id]     || DEF_SIZES[id],
-      selected:   selected[id] ?? null,
-      draggingEl: draggingEl,
-      layerRef:   setLayerRef(id),
+  // ── Logo image ───────────────────────────────────────────────────────────────
+  const loadLogoFromFile = (file: File) => {
+    const r = new FileReader();
+    r.onload = e => {
+      const data = e.target?.result as string;
+      setLogoUrl(data); setLogoThumb(data);
     };
-  }
+    r.readAsDataURL(file);
+  };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ──────────────────────────────────────────────────────────────────────────
+  // ── BG image ─────────────────────────────────────────────────────────────────
+  const loadBgFromUrl = (url: string) => { setBgUrl(url); setBgThumb(url); };
+  const loadBgFromFile = (file: File) => {
+    const r = new FileReader();
+    r.onload = e => {
+      const data = e.target?.result as string;
+      const img  = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if      (w >= 1920 && h >= 1080) setQualInfo({ cls: 'ac-qdot-g', text: `Top (${w}×${h})` });
+        else if (w >= 1200)              setQualInfo({ cls: 'ac-qdot-w', text: `Evtl. unscharf (${w}×${h})` });
+        else                              setQualInfo({ cls: 'ac-qdot-b', text: `Zu klein (${w}×${h})` });
+      };
+      img.src = data;
+      setBgUrl(data); setBgThumb(data);
+    };
+    r.readAsDataURL(file);
+  };
 
-  const optionCards = [
-    { id: 'upload'    as const, ico: '📤', title: 'Eigene Werbemittel hochladen', desc: 'JPEG, PNG oder MP4.' },
-    { id: 'später'    as const, ico: '⏳', title: 'Später hochladen',             desc: 'Nach Buchung einreichen.' },
-    { id: 'erstellen' as const, ico: '✏️', title: 'Im Browser erstellen',         desc: 'Inkl. VIO-Erstellung.', badge: '+CHF 500' },
-  ];
+  // ── Submit ───────────────────────────────────────────────────────────────────
+  const handleSubmit = () => {
+    updateBriefing({
+      adHeadline:      headline,
+      adSubline:       subline,
+      adCta:           cta,
+      adBgStyle:       bgStyle,
+      adBgColor:       colors.bg,
+      adTextColor:     colors.hl,
+      adAccentColor:   colors.ctaTxt,
+      adLogoMode:      logoMode,
+      adBgImageData:   bgUrl,
+      adLogoImageData: logoUrl,
+      adAnimation:     anim,
+      adPositionsQuer: positions.quer as unknown as Record<string, { x: number; y: number }>,
+    });
+    nextStep();
+  };
 
+  // ─── Shared preview props ────────────────────────────────────────────────────
+  const previewProps = {
+    positions, sizes, colors, headline, subline, cta, domain, org,
+    bgUrl, logoUrl, logoMode, bgStyle, anim, bgPos, lpUrl,
+    selEl,
+    onElMouseDown: handleElMouseDown,
+    onLayerClick:  handleLayerClick,
+    onResize:      handleResize,
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div>
-      {/* Step header */}
-      <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(22px,3vw,28px)', fontWeight: 700, color: TAUP, marginBottom: 8 }}>Werbemittel</h2>
-      <p style={{ fontSize: 14, color: MUT, marginBottom: 20 }}>Wie möchten Sie Ihre Werbemittel bereitstellen?</p>
+    <div className="ad-creator" style={{ display: 'flex', minHeight: '80vh', fontFamily: "'Outfit', sans-serif" }}>
 
-      {/* Option cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
-        {optionCards.map(opt => (
-          <button key={opt.id} onClick={() => setSelOption(opt.id)}
-            style={{ border: `2px solid ${selOption === opt.id ? TC : BDR}`, borderRadius: 12, padding: '16px 14px', background: selOption === opt.id ? '#FDF3F3' : '#fff', cursor: 'pointer', textAlign: 'left', position: 'relative', transition: 'all .15s', fontFamily: 'inherit' }}>
-            {opt.badge && <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 700, color: '#fff', background: TC, borderRadius: 20, padding: '2px 7px' }}>{opt.badge}</span>}
-            <div style={{ fontSize: 22, marginBottom: 6 }}>{opt.ico}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: TAUP, marginBottom: 4 }}>{opt.title}</div>
-            <div style={{ fontSize: 12, color: MUT, lineHeight: 1.4 }}>{opt.desc}</div>
-          </button>
-        ))}
-      </div>
+      {/* ══════════════ SIDEBAR ══════════════ */}
+      <div className="ac-sidebar">
 
-      {/* ── Option A: Upload ── */}
-      {selOption === 'upload' && (
-        <div>
-          <div onDragOver={e => { e.preventDefault(); setDropOver(true); }} onDragLeave={() => setDropOver(false)}
-            onDrop={e => { e.preventDefault(); setDropOver(false); const fs = Array.from(e.dataTransfer.files).filter(f => /image\/(jpeg|png)|video\/mp4/.test(f.type)); setUploadFiles(p => [...p, ...fs]); }}
-            onClick={() => document.getElementById('vio-upload-files')?.click()}
-            style={{ border: `2px dashed ${dropOver ? TC : BDR}`, borderRadius: 12, padding: '36px', textAlign: 'center', background: dropOver ? '#FDF3F3' : CRM, cursor: 'pointer', marginBottom: 12 }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: TAUP, marginBottom: 4 }}>Dateien hierher ziehen oder klicken</div>
-            <div style={{ fontSize: 12, color: MUT }}>JPEG · PNG · MP4 · max. 50 MB</div>
-            <input id="vio-upload-files" type="file" multiple accept="image/jpeg,image/png,video/mp4" style={{ display: 'none' }}
-              onChange={e => setUploadFiles(p => [...p, ...Array.from(e.target.files || [])])} />
+        {/* Crawl card */}
+        <div className="ac-crawl-card">
+          <div className="ac-crawl-label">🔗 Von Website laden</div>
+          <div className="ac-crawl-row">
+            <input
+              type="url"
+              className="ac-crawl-inp"
+              placeholder="https://deine-website.ch"
+              value={crawlUrl}
+              onChange={e => setCrawlUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCrawl()}
+            />
+            <button className="ac-crawl-btn" onClick={handleCrawl}>Laden</button>
           </div>
-          {uploadFiles.map((f, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#fff', border: `1px solid ${BDR}`, borderRadius: 8, marginBottom: 6 }}>
-              <span>📄</span><span style={{ flex: 1, fontSize: 13, color: TAUP }}>{f.name}</span>
-              <button onClick={() => setUploadFiles(p => p.filter((_,j)=>j!==i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUT, fontSize: 18 }}>×</button>
+          <div className="ac-crawl-status">{crawlStatus}</div>
+          {crawlAssets && (
+            <div className="ac-crawl-assets">
+              <div className="ac-crawl-chip" style={{ background: crawlAssets.color }} />
+              {crawlAssets.logoUrl && <img className="ac-crawl-logo" src={crawlAssets.logoUrl} alt="" />}
+              <span className="ac-crawl-txt">{crawlAssets.text}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Kampagne */}
+        <div className="ac-stitle">Kampagne</div>
+
+        <div className="ac-fg">
+          <label>Organisation / Marke</label>
+          <input type="text" className="ac-inp" value={org} onChange={e => setOrg(e.target.value)} />
+        </div>
+
+        {/* Headline */}
+        <div className="ac-fg">
+          <label>Headline</label>
+          <div className="ac-sug-wrap">
+            {hlSugs.map((s, i) => (
+              <div
+                key={i}
+                className={`ac-sug-chip${activeHlSug === i ? ' active' : ''}`}
+                onClick={() => { setHeadline(s.text); setActiveHlSug(i); }}
+              >
+                {s.text}<span className="ac-sug-tag">{s.tag}</span>
+              </div>
+            ))}
+          </div>
+          <input
+            type="text" className="ac-inp" placeholder="Eigene Headline…"
+            value={headline}
+            onChange={e => { setHeadline(e.target.value); setActiveHlSug(null); }}
+          />
+        </div>
+
+        {/* Subline */}
+        <div className="ac-fg">
+          <label>Subline <span style={{ fontWeight: 300, fontSize: 10 }}>(optional)</span></label>
+          <div className="ac-sug-wrap">
+            {subSugs.map((s, i) => (
+              <div
+                key={i}
+                className={`ac-sug-chip${activeSubSug === i ? ' active' : ''}`}
+                onClick={() => { setSubline(s.text); setActiveSubSug(i); }}
+              >
+                {s.text}<span className="ac-sug-tag">{s.tag}</span>
+              </div>
+            ))}
+          </div>
+          <input
+            type="text" className="ac-inp" placeholder="Eigene Subline…"
+            value={subline}
+            onChange={e => { setSubline(e.target.value); setActiveSubSug(null); }}
+          />
+        </div>
+
+        <div className="ac-fg">
+          <label>CTA-Button</label>
+          <input type="text" className="ac-inp" value={cta} onChange={e => setCta(e.target.value)} />
+        </div>
+
+        <div className="ac-fg">
+          <label>Landingpage URL (QR Code)</label>
+          <input type="url" className="ac-inp" value={lpUrl} onChange={e => setLpUrl(e.target.value)} />
+        </div>
+
+        <div className="ac-hr" />
+
+        {/* Logo */}
+        <div className="ac-stitle">Logo</div>
+        <div className="ac-logo-mode">
+          <button
+            className={`ac-logo-mode-btn${logoMode === 'text' ? ' active' : ''}`}
+            onClick={() => setLogoMode('text')}
+          >Text</button>
+          <button
+            className={`ac-logo-mode-btn${logoMode === 'image' ? ' active' : ''}`}
+            onClick={() => setLogoMode('image')}
+          >Bild-Logo</button>
+        </div>
+
+        {logoMode === 'text' && (
+          <div className="ac-fg" style={{ marginTop: 7 }}>
+            <input type="text" className="ac-inp" value={org} onChange={e => setOrg(e.target.value)} />
+          </div>
+        )}
+
+        {logoMode === 'image' && (
+          <div className="ac-fg" style={{ marginTop: 7 }}>
+            {logoThumb && <img className="ac-img-thumb" src={logoThumb} alt="" />}
+            <div className="ac-img-row">
+              <input
+                type="url" className="ac-img-inp" placeholder="https://… (auto befüllt)"
+                value={logoUrl}
+                onChange={e => { setLogoUrl(e.target.value); setLogoThumb(e.target.value); }}
+              />
+              <label className="ac-img-upload">
+                📁
+                <input
+                  ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => e.target.files?.[0] && loadLogoFromFile(e.target.files[0])}
+                />
+              </label>
+            </div>
+          </div>
+        )}
+
+        <div className="ac-hr" />
+
+        {/* Hintergrundbild */}
+        <div className="ac-stitle">Hintergrundbild</div>
+        <div className="ac-fg">
+          {bgThumb && <img className="ac-img-thumb" src={bgThumb} alt="" />}
+          <div className="ac-img-row">
+            <input
+              type="url" className="ac-img-inp" placeholder="https://… (auto befüllt)"
+              value={bgUrl}
+              onChange={e => loadBgFromUrl(e.target.value)}
+            />
+            <label className="ac-img-upload">
+              📁
+              <input
+                ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={e => e.target.files?.[0] && loadBgFromFile(e.target.files[0])}
+              />
+            </label>
+          </div>
+          {qualInfo && (
+            <div className="ac-qual-row">
+              <div className={`ac-qdot ${qualInfo.cls}`} />
+              <div className="ac-qual-txt">{qualInfo.text}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="ac-fg">
+          <label>Bildstil</label>
+          <div className="ac-style-row">
+            {(['overlay', 'pure', 'split'] as const).map(s => (
+              <button
+                key={s}
+                className={`ac-style-btn${bgStyle === s ? ' active' : ''}`}
+                onClick={() => setBgStyle(s)}
+              >
+                {s === 'overlay' ? 'Overlay' : s === 'pure' ? 'Bild pur' : 'Split'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="ac-fg">
+          <label>Bildfokus</label>
+          <div className="ac-focus-wrap">
+            <div
+              className="ac-focus-bg"
+              style={{
+                backgroundImage:    bgUrl ? `url('${bgUrl}')` : undefined,
+                backgroundPosition: bgPos,
+              }}
+            />
+            <div className="ac-focus-inner">
+              {[0, 1, 2].map(r =>
+                [0, 1, 2].map(c => (
+                  <div
+                    key={`${r}-${c}`}
+                    className={`ac-fcell${focusSel[0] === r && focusSel[1] === c ? ' active' : ''}`}
+                    onClick={() => { setFocusSel([r, c]); setBgPos(FOCUS_POS[r][c]); }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: '#8a7a67', textAlign: 'center', marginTop: 3 }}>
+            Klicke auf den wichtigsten Bildbereich
+          </div>
+        </div>
+
+        <div className="ac-hr" />
+
+        {/* Farben */}
+        <div className="ac-stitle">Farben</div>
+        <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 8 }}>
+          Jedes Element hat eine eigene Farbe
+        </div>
+
+        <div className="ac-fg">
+          <label>Hintergrundfarbe / Overlay</label>
+          <div className="ac-ci-row">
+            <input
+              type="color" value={colors.bg}
+              onChange={e => setColors(prev => ({ ...prev, bg: e.target.value }))}
+            />
+            <span className="ac-hex-lbl">{colors.bg}</span>
+          </div>
+        </div>
+
+        <div className="ac-color-grid">
+          {(
+            [
+              ['hl',     'Headline'  ],
+              ['sub',    'Subline'   ],
+              ['logo',   'Logo-Text' ],
+              ['ctaTxt', 'CTA Text'  ],
+              ['ctaBg',  'CTA Bubble'],
+              ['domain', 'Domain'    ],
+            ] as [keyof Colors, string][]
+          ).map(([key, label]) => (
+            <div key={key} className="ac-ci">
+              <label>{label}</label>
+              <div className="ac-ci-row">
+                <input
+                  type="color" value={colors[key]}
+                  onChange={e => setColors(prev => ({ ...prev, [key]: e.target.value }))}
+                />
+                <span className="ac-hex-lbl">{colors[key]}</span>
+              </div>
             </div>
           ))}
-          <button onClick={handleUploadWeiter} disabled={uploadFiles.length === 0}
-            style={{ width: '100%', padding: 13, borderRadius: 10, background: uploadFiles.length === 0 ? BDR : TC, color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: uploadFiles.length === 0 ? 'not-allowed' : 'pointer', marginTop: 8 }}>
-            Weiter mit hochgeladenen Werbemitteln →
+        </div>
+
+        <div className="ac-hr" />
+
+        {/* Animation */}
+        <div className="ac-stitle">
+          Bewegung{' '}
+          <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>
+            (alle Formate)
+          </span>
+        </div>
+        <div className="ac-anim-grid">
+          {[
+            { id: 'cta',  icon: '👆', label: 'CTA-Button' },
+            { id: 'qr',   icon: '📱', label: 'QR-Code'    },
+            { id: 'hl',   icon: '✏️', label: 'Headline'   },
+            { id: 'none', icon: '⏸',  label: 'Statisch'   },
+          ].map(({ id, icon, label }) => (
+            <button
+              key={id}
+              className={`ac-anim-btn${anim === id ? ' active' : ''}`}
+              onClick={() => setAnim(id)}
+            >
+              <span>{icon}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="ac-anim-tip">{ANIM_TIPS[anim]}</div>
+
+        <div className="ac-hr" />
+
+        {/* Submit */}
+        <div className="ac-submit-sec">
+          <button className="ac-btn-p" onClick={handleSubmit}>
+            ✓ Werbemittel einreichen
+          </button>
+          <button className="ac-btn-s">
+            💾 Link zum Weiterarbeiten senden
           </button>
         </div>
-      )}
 
-      {/* ── Option B: Später ── */}
-      {selOption === 'später' && (
-        <div style={{ background: '#FFFBF0', border: '1px solid #F5D87A', borderRadius: 12, padding: '24px' }}>
-          <div style={{ fontSize: 22, marginBottom: 8 }}>⏳</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: TAUP, marginBottom: 8 }}>Werbemittel nach Buchung einreichen</div>
-          <p style={{ fontSize: 13, color: MUT, lineHeight: 1.6, marginBottom: 20 }}>Sie erhalten nach der Buchung eine E-Mail mit allen Anforderungen. Werbemittel können bis 5 Werktage vor Kampagnenstart eingereicht werden.</p>
-          <button onClick={handleSpäterWeiter} style={{ padding: '11px 24px', borderRadius: 10, background: TC, color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-            Weiter ohne Werbemittel →
-          </button>
+      </div>
+      {/* ═══════════════════════════════════════ */}
+
+      {/* ══════════════ CANVAS ══════════════ */}
+      <div className="ac-canvas">
+
+        {/* Tabs */}
+        <div className="ac-tabs">
+          {(['dooh', 'display'] as const).map(t => (
+            <button
+              key={t}
+              className={`ac-tab${activeTab === t ? ' active' : ''}`}
+              onClick={() => setActiveTab(t)}
+            >
+              {t === 'dooh' ? 'DOOH' : 'Display'}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* ── Option C: Erstellen (V9 Ad Creator) ── */}
-      {selOption === 'erstellen' && (
-        <div className="ad-creator" style={{ display: 'flex', gap: 0, border: `1px solid ${BDR}`, borderRadius: 14, overflow: 'hidden', minHeight: 600 }}>
-
-          {/* ══ SIDEBAR ══ */}
-          <div className="ac-sidebar">
-
-            {/* Auto-loaded badge */}
-            {(bgDataUrl || logoImgSrc) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#F0FFF6', border: '1px solid #B8E8CC', borderRadius: 7, padding: '7px 11px', fontSize: 11, color: '#2E7D52' }}>
-                <div style={{ width: 6, height: 6, background: GRN, borderRadius: '50%', flexShrink: 0 }} />
-                Farben, Logo und Bild von Website geladen
-              </div>
-            )}
-
-            {/* Headline */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Headline wählen</div>
-              {kiLoading && <div style={{ fontSize: 12, color: MUT, fontStyle: 'italic' }}>Generiere Vorschläge…</div>}
-              {kiSugs.map((s, i) => (
-                <div key={i} className={`ac-hl-opt${headline === s ? ' active' : ''}`} onClick={() => setHeadline(s)}>
-                  <span className="ac-hl-txt">{s}</span>
-                  <span className="ac-hl-wc">{s.trim().split(/\s+/).length} W.</span>
-                  <span className="ac-hl-chk">✓</span>
-                </div>
-              ))}
-              <input className="ac-inp" type="text" placeholder="Eigene Headline…" value={kiSugs.includes(headline) ? '' : headline}
-                onChange={e => { setHeadline(e.target.value); }} />
+        {/* DOOH */}
+        {activeTab === 'dooh' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="sec-label" style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', display: 'flex', alignItems: 'center', gap: 10 }}>
+              DOOH Formate
+              <span style={{ flex: 1, height: 1, background: '#DDD5C8', display: 'block' }} />
             </div>
 
-            {/* Subline */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Subline <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
-              <input className="ac-inp" type="text" value={subline} onChange={e => setSubline(e.target.value)} placeholder="z.B. Baden, Luzernstr. 6" />
-            </div>
-
-            {/* CTA */}
-            <div className="ac-sec">
-              <div className="ac-lbl">CTA-Button Text</div>
-              <input className="ac-inp" type="text" value={ctaText} onChange={e => setCtaText(e.target.value)} />
-            </div>
-
-            {/* URL */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Landingpage URL <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>(QR Code)</span></div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input className="ac-inp" type="text" value={urlText} onChange={e => setUrlText(e.target.value)} style={{ flex: 1 }} />
-                <span className="ac-url-badge" style={{ color: urlText.trim() ? GRN : RED }}>{urlText.trim() ? 'QR ✓' : 'QR –'}</span>
-              </div>
-            </div>
-
-            <div className="ac-hr" />
-
-            {/* Logo */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Logo</div>
-              <div className="ac-toggle">
-                <button className={`ac-tog${logoMode === 'text' ? ' active' : ''}`} onClick={() => setLogoMode('text')}>Text</button>
-                <button className={`ac-tog${logoMode === 'bild' ? ' active' : ''}`} onClick={() => setLogoMode('bild')}>Bild</button>
-              </div>
-              {logoMode === 'text' && (
-                <input className="ac-inp" type="text" value={logoTxt} onChange={e => setLogoTxt(e.target.value)} placeholder="z.B. Restaurant Lemon" />
-              )}
-              {logoMode === 'bild' && logoImgSrc && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: CRM, border: `1px solid ${BDR}`, borderRadius: 7, padding: '8px 10px' }}>
-                  <img src={logoImgSrc} alt="Logo" style={{ height: 26, width: 'auto', maxWidth: 64, objectFit: 'contain', borderRadius: 3 }} />
-                  <div>
-                    <div style={{ fontSize: 11, color: GRN, fontWeight: 500 }}>✓ Von Website geladen</div>
-                    <div style={{ fontSize: 10, color: MUT }}>{domainTxt}</div>
-                  </div>
-                  <label style={{ marginLeft: 'auto', fontSize: 11, color: MUT, cursor: 'pointer', textDecoration: 'underline', flexShrink: 0 }}>
-                    ersetzen
-                    <input type="file" accept="image/*" style={{ display: 'none' }}
-                      onChange={e => { if (e.target.files?.[0]) { const r = new FileReader(); r.onload = ev => { setLogoImgSrc(ev.target?.result as string); setLogoMode('bild'); }; r.readAsDataURL(e.target.files[0]); }}} />
-                  </label>
-                </div>
-              )}
-              {logoMode === 'bild' && !logoImgSrc && (
-                <label className="ac-upload" style={{ cursor: 'pointer' }}>
-                  <span style={{ fontSize: 14 }}>🖼️ Logo hochladen</span>
-                  <input type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={e => { if (e.target.files?.[0]) { const r = new FileReader(); r.onload = ev => { setLogoImgSrc(ev.target?.result as string); }; r.readAsDataURL(e.target.files[0]); }}} />
-                </label>
-              )}
-            </div>
-
-            <div className="ac-hr" />
-
-            {/* Font */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Schriftart</div>
-              <div className="ac-font-grid">
-                {FONTS.map(f => (
-                  <div key={f.id} className={`ac-font-btn${font === f.id ? ' active' : ''}`} onClick={() => setFont(f.id)}>
-                    <span style={{ fontFamily: f.css, fontSize: 12, color: TXT }}>{f.label}</span>
-                    <span style={{ fontFamily: f.css, fontSize: 10, color: MUT, fontStyle: f.italic ? 'italic' : 'normal' }}>{f.sub}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tip */}
-            <div style={{ fontSize: 10, color: MUT, background: '#F0EBE3', borderRadius: 6, padding: '7px 9px' }}>
-              💡 Element anklicken → Grösse mit <b>A− A+</b> anpassen oder verschieben
-            </div>
-
-            <div className="ac-hr" />
-
-            {/* Colors */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Farben</div>
-              <div className="ac-color-row">
-                {[
-                  { id: 'main', label: 'Hauptfarbe', val: mainColor, set: setMainColor, auto: true },
-                  { id: 'text', label: 'Textfarbe',  val: textColor, set: setTextColor, auto: false },
-                  { id: 'cta',  label: 'CTA-Farbe',  val: ctaColor,  set: setCtaColor,  auto: true },
-                ].map(c => (
-                  <div key={c.id} className="ac-color-col">
-                    <div className="ac-cp-wrap">
-                      <div className="ac-swatch" style={{ background: c.val, border: c.val === '#FFFFFF' ? `1.5px solid ${BDR}` : undefined }}>
-                        {c.auto && <span className="ac-auto-tag">Auto</span>}
-                      </div>
-                      <input type="color" value={c.val} onChange={e => c.set(e.target.value)} title={c.label} />
-                    </div>
-                    <div className="ac-color-lbl">{c.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="ac-hr" />
-
-            {/* Hintergrundbild */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Hintergrundbild</div>
-              {bgDataUrl ? (
-                <div className="ac-upload loaded" onClick={() => document.getElementById('vio-bg-file')?.click()}>
-                  <img src={bgDataUrl} alt="" style={{ width: '100%', height: 64, objectFit: 'cover', borderRadius: 5, display: 'block' }} />
-                  <div className="ac-upload-hover">↑ Bild ersetzen</div>
-                </div>
-              ) : (
-                <div className="ac-upload" onClick={() => document.getElementById('vio-bg-file')?.click()}>
-                  <span style={{ fontSize: 20 }}>🖼️</span>
-                  <span style={{ fontSize: 12, color: MUT }}>Bild hochladen oder von Website</span>
-                </div>
-              )}
-              <input type="file" id="vio-bg-file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) loadBgFile(e.target.files[0]); }} />
-              {bgQual && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: bgQual.cls === 'qg' ? GRN : bgQual.cls === 'qw' ? YLW : RED }} />
-                  <span style={{ fontSize: 11, color: MUT }}>{bgQual.label}</span>
-                </div>
-              )}
-              {!bgQual && bgDataUrl && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: GRN, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: MUT }}>Bildqualität: Top</span>
-                </div>
-              )}
-            </div>
-
-            {/* Bildstil */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Bildstil</div>
-              <div className="ac-toggle">
-                {(['overlay','pure','split'] as BgStyle[]).map(s => (
-                  <button key={s} className={`ac-tog${bgStyle === s ? ' active' : ''}`} onClick={() => setBgStyle(s)}>
-                    {s === 'overlay' ? 'Overlay' : s === 'pure' ? 'Reines Bild' : 'Split'}
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize: 10, color: MUT, background: '#F0EBE3', borderRadius: 6, padding: '6px 8px' }}>
-                {BS_DESCS[bgStyle]}
-              </div>
-            </div>
-
-            {/* Bildfokus */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Bildfokus</div>
-              <div className="ac-focus-wrap">
-                <div className="ac-focus-bg" style={bgDataUrl ? { backgroundImage: `url('${bgDataUrl}')` } : { background: `linear-gradient(135deg,${mainColor},${TAUP})` }} />
-                <div className="ac-focus-inner">
-                  {[0,1,2].flatMap(r => [0,1,2].map(c => (
-                    <div key={`${r}-${c}`} className={`ac-fcell${focusRow===r && focusCol===c ? ' active' : ''}`}
-                      onClick={() => { setFocusRow(r); setFocusCol(c); }} />
-                  )))}
+            {/* Quer 845×475 */}
+            <div className="ac-format-card">
+              <div className="ac-format-header">
+                <div>
+                  <div className="ac-format-name">Querformat</div>
+                  <div className="ac-format-spec">1920 × 1080 px</div>
                 </div>
               </div>
-              <div style={{ fontSize: 10, color: MUT, textAlign: 'center' }}>Klicke auf den wichtigsten Bildbereich</div>
+              <AdPreview fmtId="quer" width={845} height={475} {...previewProps} />
             </div>
 
-            <div className="ac-hr" />
-
-            {/* Animation */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Bewegtes Element <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>(alle Formate)</span></div>
-              <div className="ac-dyn-grid">
-                {ANIM_OPTIONS.map(a => (
-                  <div key={a.id} className={`ac-dyn-btn${animation === a.id ? ' active' : ''}`} onClick={() => setAnimation(a.id)}>
-                    <span style={{ fontSize: 14 }}>{a.ico}</span>
-                    {a.label}
-                  </div>
-                ))}
+            {/* Hoch 259×461 */}
+            <div className="ac-format-card">
+              <div className="ac-format-header">
+                <div>
+                  <div className="ac-format-name">Hochformat</div>
+                  <div className="ac-format-spec">1080 × 1920 px</div>
+                </div>
               </div>
-              <div style={{ fontSize: 11, background: TAUP, color: 'white', padding: '5px 8px', borderRadius: 6 }}>
-                {ANIM_TIPS[animation]}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
+                <AdPreview fmtId="hoch" width={259} height={461} {...previewProps} />
               </div>
-            </div>
-
-            <div className="ac-hr" />
-
-            {/* Save link */}
-            <div className="ac-sec">
-              <div className="ac-lbl">Link zum Weiterarbeiten</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input className="ac-inp" type="email" value={linkEmail} onChange={e => setLinkEmail(e.target.value)} placeholder="ihre@email.ch" style={{ flex: 1 }} />
-                <button className="ac-btn-s" style={{ width: 'auto', padding: '7px 12px', whiteSpace: 'nowrap' }}
-                  onClick={handleSendLink} disabled={linkStatus === 'loading' || linkStatus === 'sent'}>
-                  {linkStatus === 'sent' ? '✓' : linkStatus === 'loading' ? '…' : 'Senden'}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4, borderTop: `1px solid ${BDR}` }}>
-              <button className="ac-btn-p" onClick={handleWeiter} disabled={submitting || !headline.trim()}>
-                {submitting ? 'Wird gespeichert…' : '✓ Werbemittel einreichen'}
-              </button>
-              <button className="ac-btn-s" onClick={handleSendLink}>
-                💾 Link zum Weiterarbeiten senden
-              </button>
             </div>
           </div>
+        )}
 
-          {/* ══ CANVAS ══ */}
-          <div className="ac-canvas">
-
-            {/* Tabs + hint */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-              <div className="ac-tabs">
-                <button className={`ac-tab${activeTab === 'dooh' ? ' active' : ''}`} onClick={() => setActiveTab('dooh')}>DOOH</button>
-                <button className={`ac-tab${activeTab === 'display' ? ' active' : ''}`} onClick={() => setActiveTab('display')}>Display</button>
-              </div>
-              <div style={{ fontSize: 11, color: MUT }}>Element anklicken → verschieben oder Grösse anpassen</div>
+        {/* Display */}
+        {activeTab === 'display' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', display: 'flex', alignItems: 'center', gap: 10 }}>
+              Display Formate
+              <span style={{ flex: 1, height: 1, background: '#DDD5C8', display: 'block' }} />
             </div>
 
-            {/* DOOH tab */}
-            {activeTab === 'dooh' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-                {/* Quer */}
-                <div className="ac-pcard">
-                  <div className="ac-pcard-hdr">DOOH Querformat <span className="ac-pcard-dim">1920 × 1080 px</span></div>
-                  <AdFormat {...fmtProps('quer')} />
-                </div>
-
-                {/* Hoch */}
-                <div className="ac-pcard">
-                  <div className="ac-pcard-hdr">DOOH Hochformat <span className="ac-pcard-dim">1080 × 1920 px</span></div>
-                  <div className="ac-hoch-wrap">
-                    <AdFormat {...fmtProps('hoch')} />
-                  </div>
+            {/* Billboard 970×250 scaled */}
+            <div className="ac-format-card">
+              <div className="ac-format-header">
+                <div>
+                  <div className="ac-format-name">Billboard</div>
+                  <div className="ac-format-spec">970 × 250 px</div>
                 </div>
               </div>
-            )}
-
-            {/* Display tab */}
-            {activeTab === 'display' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-                {/* Wide 970×250 */}
-                <div className="ac-pcard">
-                  <div className="ac-pcard-hdr">Display Banner <span className="ac-pcard-dim">970 × 250 px</span></div>
-                  <AdFormat {...fmtProps('wide')} />
-                </div>
-
-                {/* Med + Tall */}
-                <div className="ac-pcard">
-                  <div className="ac-pcard-hdr">Display Rectangle &amp; Skyscraper</div>
-                  <div className="ac-disp-pair">
-                    <div className="ac-disp-item">
-                      <AdFormat {...fmtProps('med')} />
-                      <div className="ac-dim-lbl">300 × 250 px</div>
-                    </div>
-                    <div className="ac-disp-item">
-                      <AdFormat {...fmtProps('tall')} />
-                      <div className="ac-dim-lbl">300 × 600 px</div>
-                    </div>
-                  </div>
+              <div style={{ overflow: 'hidden', borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.12)' }}>
+                <div style={{ transformOrigin: 'top left', transform: 'scale(0.845)', width: 970, height: 250, position: 'relative' }}>
+                  <AdPreview fmtId="wide" width={970} height={250} {...previewProps} />
                 </div>
               </div>
-            )}
+              {/* Height placeholder for scaled content: 250 * 0.845 ≈ 211px */}
+              <div style={{ height: 211, marginTop: -211, pointerEvents: 'none' }} />
+            </div>
+
+            {/* Med 300×250 + Tall 300×600 */}
+            <div className="ac-format-card">
+              <div className="ac-format-header">
+                <div>
+                  <div className="ac-format-name">Rectangle &amp; Half Page</div>
+                  <div className="ac-format-spec">300 × 250 / 300 × 600 px</div>
+                </div>
+              </div>
+              <div className="display-pair">
+                <div className="display-item">
+                  <AdPreview fmtId="med" width={300} height={250} {...previewProps} />
+                  <div className="dim-lbl">300 × 250 px</div>
+                </div>
+                <div className="display-item">
+                  <AdPreview fmtId="tall" width={300} height={600} {...previewProps} />
+                  <div className="dim-lbl">300 × 600 px</div>
+                </div>
+              </div>
+            </div>
+
           </div>
-        </div>
-      )}
+        )}
 
-      {/* No option selected */}
-      {!selOption && (
-        <p style={{ fontSize: 13, color: MUT, textAlign: 'center', padding: '12px 0' }}>
-          Bitte wählen Sie eine Option oben aus.
-        </p>
-      )}
+      </div>
+      {/* ═══════════════════════════════════ */}
+
     </div>
   );
 }
