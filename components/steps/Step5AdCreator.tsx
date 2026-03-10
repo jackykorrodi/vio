@@ -1,239 +1,283 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BriefingData } from '@/lib/types';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const C = {
-  primary: '#C1666B', pl: '#F9ECEC', pd: '#A84E53',
-  taupe: '#5C4F3D', muted: '#8A8490', border: '#EDE8E0',
-  bg: '#FAF7F2', white: '#FFFFFF', teal: '#2A7F7F',
-} as const;
-
-const FONTS = [
-  { id: 'fraunces', label: 'Fraunces', css: "'Fraunces', serif" },
-  { id: 'outfit',   label: 'Outfit',   css: "'Outfit', sans-serif" },
-  { id: 'georgia',  label: 'Georgia',  css: 'Georgia, serif' },
-  { id: 'helvetica',label: 'Helvetica',css: 'Helvetica, Arial, sans-serif' },
-] as const;
-type FontId = (typeof FONTS)[number]['id'];
-
-const ANIMS = [
-  { id: 'none',  label: 'Keine'      },
-  { id: 'fade',  label: 'Einblenden' },
-  { id: 'slide', label: 'Eingleiten' },
-  { id: 'pulse', label: 'Pulsieren'  },
-] as const;
-type AnimId = (typeof ANIMS)[number]['id'];
-
-// ─── Drag & Drop Types ────────────────────────────────────────────────────────
-
-type ElId = 'logo' | 'headline' | 'subline' | 'cta';
-type Pos  = { x: number; y: number };
-type Positions = Record<ElId, Pos>;
-
-const DEF_QUER: Positions = {
-  logo:     { x: 4, y: 5  },
-  headline: { x: 4, y: 30 },
-  subline:  { x: 4, y: 50 },
-  cta:      { x: 4, y: 68 },
-};
-const DEF_HOCH: Positions = {
-  logo:     { x: 5, y: 4  },
-  headline: { x: 5, y: 38 },
-  subline:  { x: 5, y: 52 },
-  cta:      { x: 5, y: 66 },
-};
-
-// ─── Component Props ──────────────────────────────────────────────────────────
+type ElPos = { left: number; top: number };                // %
+type FormatPositions = Record<string, ElPos>;
+type FormatSizes     = Record<string, number>;             // px (or box-size for qr)
+type AllPositions    = Record<string, FormatPositions>;
+type AllSizes        = Record<string, FormatSizes>;
+type SelMap          = Record<string, string | null>;
+type BgStyle         = 'overlay' | 'pure' | 'split';
+type AnimType        = 'cta' | 'qr' | 'hl' | 'none';
+type LogoMode        = 'text' | 'bild';
 
 interface Props {
   briefing: BriefingData;
-  updateBriefing: (data: Partial<BriefingData>) => void;
+  updateBriefing: (d: Partial<BriefingData>) => void;
   nextStep: () => void;
   isActive: boolean;
 }
 
-interface AdConfig {
-  headline:   string;
-  subline:    string;
-  cta:        string;
-  logoText:   string;
-  logoImage:  string | null;
-  showLogo:   boolean;
-  bgColor:    string;
-  textColor:  string;
-  accentColor: string;
-  fontCss:    string;
-  fontScale:  number;
-  bgImage:    string | null;
-  focusX:     number;
-  focusY:     number;
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TC   = '#C1666B';
+const TAUP = '#5C4F3D';
+const CRM  = '#FAF7F2';
+const BDR  = '#DDD5C8';
+const TXT  = '#2C2416';
+const MUT  = '#8a7a67';
+const GRN  = '#4CAF7D';
+const YLW  = '#E8A838';
+const RED  = '#E05252';
+
+const FONTS = [
+  { id: 'fraunces', label: 'Fraunces', sub: 'Elegant',  css: "'Fraunces',serif",       italic: true  },
+  { id: 'outfit',   label: 'Outfit',   sub: 'Modern',   css: "'Outfit',sans-serif",    italic: false },
+  { id: 'playfair', label: 'Playfair', sub: 'Klassisch', css: "'Playfair Display',serif", italic: true },
+  { id: 'inter',    label: 'Inter',    sub: 'Corporate', css: "'Inter',sans-serif",     italic: false },
+] as const;
+type FontId = (typeof FONTS)[number]['id'];
+
+const ANIM_OPTIONS = [
+  { id: 'cta'  as AnimType, ico: '👆', label: 'CTA-Button' },
+  { id: 'qr'   as AnimType, ico: '📱', label: 'QR-Code'    },
+  { id: 'hl'   as AnimType, ico: '✏️', label: 'Headline'   },
+  { id: 'none' as AnimType, ico: '⏸',  label: 'Statisch'   },
+] as const;
+
+const ANIM_TIPS: Record<AnimType, string> = {
+  cta:  '✓ CTA pulsiert sanft – zieht Blicke an',
+  qr:   '✓ QR-Code blendet ein und aus',
+  hl:   '✓ Headline gleitet von links ein',
+  none: '⏸ Alle Elemente statisch',
+};
+
+const BS_DESCS: Record<BgStyle, string> = {
+  overlay: 'Farbige Schicht über dem Bild – Texte gut lesbar',
+  pure:    'Volles Bild ohne Overlay – maximale Bildwirkung',
+  split:   'Links Farbe, rechts Bild – strukturiertes Layout',
+};
+
+const FOCUS_POS = [
+  ['0% 0%',  '50% 0%',  '100% 0%' ],
+  ['0% 50%', '50% 50%', '100% 50%'],
+  ['0% 100%','50% 100%','100% 100%'],
+];
+
+// Default element positions (left%, top%)
+const DEF_POS: AllPositions = {
+  quer: { logo: {left:5,top:5}, hl: {left:5,top:32}, sub: {left:5,top:58}, cta: {left:5,top:86}, domain: {left:72,top:86}, qr: {left:88,top:85} },
+  hoch: { logo: {left:7,top:5}, hl: {left:7,top:26}, sub: {left:7,top:52}, cta: {left:7,top:79}, domain: {left:7,top:89}, qr:  {left:82,top:90} },
+  wide: { logo: {left:2,top:36}, hl: {left:22,top:36}, cta: {left:82,top:36} },
+  med:  { logo: {left:6,top:6}, hl: {left:6,top:30}, cta: {left:6,top:84}, qr: {left:82,top:84} },
+  tall: { logo: {left:6,top:5}, hl: {left:6,top:22}, sub: {left:6,top:48}, cta: {left:6,top:79}, qr: {left:82,top:88} },
+};
+
+// Default element font sizes (px). QR = box dimension.
+const DEF_SIZES: AllSizes = {
+  quer: { logo:14, hl:32, sub:13, cta:12, domain:10, qr:40 },
+  hoch: { logo:10, hl:16, sub:9,  cta:9,  domain:8,  qr:26 },
+  wide: { logo:10, hl:12,         cta:10                    },
+  med:  { logo:9,  hl:14,         cta:9,               qr:22 },
+  tall: { logo:8,  hl:12, sub:8,  cta:8,               qr:18 },
+};
+
+// Resize delta per format+element
+const RESIZE_DELTA: Record<string, Record<string, number>> = {
+  quer: { logo:2, hl:2, sub:1, cta:1, domain:1, qr:4 },
+  hoch: { logo:1, hl:1, sub:1, cta:1, domain:1, qr:3 },
+  wide: { logo:1, hl:1, cta:1 },
+  med:  { logo:1, hl:1, cta:1, qr:2 },
+  tall: { logo:1, hl:1, sub:1, cta:1, qr:2 },
+};
+
+// Elements per format (order matters for rendering)
+const FORMAT_ELS: Record<string, string[]> = {
+  quer: ['logo','hl','sub','cta','domain','qr'],
+  hoch: ['logo','hl','sub','cta','domain','qr'],
+  wide: ['logo','hl','cta'],
+  med:  ['logo','hl','cta','qr'],
+  tall: ['logo','hl','sub','cta','qr'],
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function hexRgba(hex: string, a: number) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
 }
 
-// ─── Draggable element ────────────────────────────────────────────────────────
+function deepCopy<T>(o: T): T { return JSON.parse(JSON.stringify(o)); }
 
-function DragEl({
-  id, pos, onMove, sw, sh, children,
-}: {
-  id: ElId; pos: Pos;
-  onMove: (id: ElId, p: Pos) => void;
-  sw: number; sh: number;
-  children: React.ReactNode;
-}) {
-  const drag = useRef<{ sp: Pos; sm: { x: number; y: number } } | null>(null);
+function qualityInfo(w: number, h: number): { cls: string; label: string } {
+  if (w >= 1920 && h >= 1080) return { cls: 'qg', label: `Top (${w} × ${h} px)` };
+  if (w >= 1200)               return { cls: 'qw', label: `Könnte unscharf (${w} × ${h} px)` };
+  return                              { cls: 'qb', label: `Zu klein für DOOH (${w} × ${h} px)` };
+}
+
+// ─── AdEl: one draggable element ─────────────────────────────────────────────
+
+interface AdElProps {
+  fmtId:    string;
+  elId:     string;
+  pos:      ElPos;
+  size:     number;
+  sel:      boolean;
+  dragging: boolean;
+  delta:    number;
+  onSelect: (fmtId: string, elId: string) => void;
+  onResize: (fmtId: string, elId: string, delta: number) => void;
+  onDragStart: (fmtId: string, elId: string, e: React.MouseEvent) => void;
+  // content
+  headline:  string;
+  subline:   string;
+  ctaText:   string;
+  logoText:  string;
+  logoMode:  LogoMode;
+  logoImgSrc: string | null;
+  domainTxt: string;
+  fontCss:   string;
+  textColor: string;
+  ctaColor:  string;
+}
+
+function AdEl(p: AdElProps) {
+  const { fmtId, elId, pos, size, sel, dragging, delta } = p;
+
+  const tbBtn = (sign: number) => (
+    <button
+      className="ac-tb-btn"
+      onMouseDown={e => e.stopPropagation()}
+      onClick={e => { e.stopPropagation(); p.onResize(fmtId, elId, sign * delta); }}
+    >
+      {sign > 0 ? 'A+' : 'A−'}
+    </button>
+  );
+
+  const toolbar = (
+    <div className="ac-tb">
+      {tbBtn(-1)}<div className="ac-tb-sep"/>{tbBtn(1)}
+    </div>
+  );
+
+  let content: React.ReactNode = null;
+
+  if (elId === 'logo') {
+    if (p.logoMode === 'bild' && p.logoImgSrc) {
+      content = <img className="ac-logo-img" src={p.logoImgSrc} alt="Logo" style={{ fontSize: size }} />;
+    } else {
+      content = <div className="ac-logo-txt" style={{ fontFamily: p.fontCss, fontSize: size, color: p.textColor }}>{p.logoText}</div>;
+    }
+  } else if (elId === 'hl') {
+    content = <div className="ac-hl" style={{ fontFamily: p.fontCss, fontSize: size, color: p.textColor }}>{p.headline}</div>;
+  } else if (elId === 'sub') {
+    content = <div className="ac-sub" style={{ fontSize: size, color: hexRgba(p.textColor, 0.72) }}>{p.subline}</div>;
+  } else if (elId === 'cta') {
+    content = <div className="ac-cta" style={{ fontSize: size, color: p.ctaColor }}>{p.ctaText}</div>;
+  } else if (elId === 'domain') {
+    content = <div className="ac-domain" style={{ fontSize: size }}>{p.domainTxt}</div>;
+  } else if (elId === 'qr') {
+    content = <div className="ac-qr" style={{ width: size, height: size, fontSize: Math.round(size * 0.55) }}>⬛</div>;
+  }
 
   return (
     <div
-      style={{
-        position: 'absolute', left: `${pos.x}%`, top: `${pos.y}%`,
-        cursor: 'grab', zIndex: 10, userSelect: 'none',
-        outline: '1.5px dashed rgba(255,255,255,0.35)',
-        outlineOffset: 3, borderRadius: 2,
+      className={`ac-el${sel ? ' sel' : ''}${dragging ? ' dragging' : ''}`}
+      style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
+      onMouseDown={e => {
+        if ((e.target as HTMLElement).closest('.ac-tb')) return;
+        p.onSelect(fmtId, elId);
+        p.onDragStart(fmtId, elId, e);
       }}
-      onPointerDown={(e) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        drag.current = { sp: { ...pos }, sm: { x: e.clientX, y: e.clientY } };
-      }}
-      onPointerMove={(e) => {
-        if (!drag.current) return;
-        const dx = e.clientX - drag.current.sm.x;
-        const dy = e.clientY - drag.current.sm.y;
-        onMove(id, {
-          x: Math.max(0, Math.min(88, drag.current.sp.x + (dx / sw) * 100)),
-          y: Math.max(0, Math.min(90, drag.current.sp.y + (dy / sh) * 100)),
-        });
-      }}
-      onPointerUp={() => { drag.current = null; }}
     >
-      {children}
+      {toolbar}
+      {content}
     </div>
   );
 }
 
-// ─── DOOH Preview (with drag & drop) ─────────────────────────────────────────
+// ─── AdFormat: one ad preview with all its elements ──────────────────────────
 
-function DoohPreview({
-  w, h, screenW, positions, onMove, cfg,
-}: {
-  w: number; h: number; screenW: number;
-  positions: Positions;
-  onMove: (id: ElId, p: Pos) => void;
-  cfg: AdConfig;
-}) {
-  const scale   = screenW / w;
-  const screenH = Math.round(h * scale);
-  const {
-    headline, subline, cta, logoText, logoImage, showLogo,
-    bgColor, textColor, accentColor, fontCss, fontScale,
-    bgImage, focusX, focusY,
-  } = cfg;
-  const hB  = Math.round(w * 0.042 * fontScale);
-  const bpx = (['left', 'center', 'right'] as const)[focusX] ?? 'center';
-  const bpy = (['top',  'center', 'bottom'] as const)[focusY] ?? 'center';
-  const elP = { onMove, sw: screenW, sh: screenH };
-
-  return (
-    <div style={{ width: screenW, height: screenH, position: 'relative', overflow: 'hidden', borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.18)', flexShrink: 0 }}>
-      <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'relative', backgroundColor: bgColor, overflow: 'hidden' }}>
-
-        {bgImage && (
-          <img src={bgImage} alt="" draggable={false}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${bpx} ${bpy}`, pointerEvents: 'none' }} />
-        )}
-        {bgImage && (
-          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${bgColor}E0 0%, ${bgColor}70 50%, transparent 100%)`, pointerEvents: 'none' }} />
-        )}
-
-        {showLogo && (
-          <DragEl id="logo" pos={positions.logo} {...elP}>
-            {logoImage
-              ? <img src={logoImage} alt="Logo" draggable={false}
-                  style={{ maxHeight: h * 0.09, maxWidth: w * 0.22, objectFit: 'contain', display: 'block' }} />
-              : <span style={{ fontFamily: fontCss, fontSize: hB * 0.48, fontWeight: 800, color: textColor, backgroundColor: accentColor + '30', border: `${Math.max(2, Math.round(h * 0.003))}px solid ${accentColor}`, borderRadius: Math.round(h * 0.012), padding: `${Math.round(h * 0.01)}px ${Math.round(w * 0.014)}px`, display: 'inline-block' }}>
-                  {logoText || 'LOGO'}
-                </span>
-            }
-          </DragEl>
-        )}
-
-        <DragEl id="headline" pos={positions.headline} {...elP}>
-          <div style={{ fontFamily: fontCss, fontSize: hB, fontWeight: 800, color: textColor, lineHeight: 1.15, maxWidth: w * 0.72, textShadow: bgImage ? '0 2px 10px rgba(0,0,0,0.3)' : undefined }}>
-            {headline || 'Ihre Schlagzeile hier'}
-          </div>
-        </DragEl>
-
-        <DragEl id="subline" pos={positions.subline} {...elP}>
-          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.52), color: textColor, opacity: 0.88, lineHeight: 1.45, maxWidth: w * 0.65, textShadow: bgImage ? '0 1px 5px rgba(0,0,0,0.2)' : undefined }}>
-            {subline || 'Ihr Untertitel hier'}
-          </div>
-        </DragEl>
-
-        <DragEl id="cta" pos={positions.cta} {...elP}>
-          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.48), fontWeight: 700, color: '#fff', backgroundColor: accentColor, padding: `${Math.round(h * 0.018)}px ${Math.round(w * 0.027)}px`, borderRadius: Math.round(h * 0.018), display: 'inline-block', boxShadow: '0 3px 12px rgba(0,0,0,0.2)' }}>
-            {cta || 'Jetzt entdecken'}
-          </div>
-        </DragEl>
-      </div>
-    </div>
-  );
+interface AdFormatProps {
+  fmtId:      string;
+  positions:  FormatPositions;
+  sizes:      FormatSizes;
+  selected:   string | null;
+  draggingEl: string | null;
+  headline:   string;
+  subline:    string;
+  ctaText:    string;
+  logoText:   string;
+  logoMode:   LogoMode;
+  logoImgSrc: string | null;
+  domainTxt:  string;
+  fontCss:    string;
+  textColor:  string;
+  ctaColor:   string;
+  mainColor:  string;
+  bgDataUrl:  string | null;
+  focusPos:   string;
+  bgStyle:    BgStyle;
+  animation:  AnimType;
+  layerRef:   (el: HTMLDivElement | null) => void;
+  onSelect:   (fmtId: string, elId: string) => void;
+  onDeselect: (fmtId: string) => void;
+  onResize:   (fmtId: string, elId: string, delta: number) => void;
+  onDragStart:(fmtId: string, elId: string, e: React.MouseEvent) => void;
 }
 
-// ─── Display Preview (static auto-layout) ────────────────────────────────────
+function AdFormat(p: AdFormatProps) {
+  const els = FORMAT_ELS[p.fmtId] || [];
+  const animClass = p.animation !== 'none' ? ` anim-${p.animation}` : '';
+  const styleClass = `${p.bgStyle}-mode`;
 
-function DisplayPreview({
-  w, h, screenW, cfg,
-}: {
-  w: number; h: number; screenW: number; cfg: AdConfig;
-}) {
-  const scale   = screenW / w;
-  const screenH = Math.round(h * scale);
-  const {
-    headline, subline, cta, logoText, logoImage, showLogo,
-    bgColor, textColor, accentColor, fontCss, fontScale,
-    bgImage, focusX, focusY,
-  } = cfg;
-  const hB        = Math.round(w * 0.07 * fontScale);
-  const bpx       = (['left', 'center', 'right'] as const)[focusX] ?? 'center';
-  const bpy       = (['top',  'center', 'bottom'] as const)[focusY] ?? 'center';
-  const isWide    = w > h;
-  const pH        = Math.round(h * (isWide ? 0.14 : 0.08));
-  const pW        = Math.round(w * 0.06);
+  const bgStyle: React.CSSProperties = p.bgDataUrl
+    ? { backgroundImage: `url('${p.bgDataUrl}')`, backgroundPosition: p.focusPos }
+    : { background: `linear-gradient(135deg,${p.mainColor} 0%,${TAUP} 100%)` };
+
+  const ovColor = hexRgba(p.mainColor, 0.82);
 
   return (
-    <div style={{ width: screenW, height: screenH, position: 'relative', overflow: 'hidden', borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', flexShrink: 0 }}>
-      <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'relative', backgroundColor: bgColor, display: 'flex', flexDirection: isWide ? 'row' : 'column', alignItems: isWide ? 'center' : 'flex-start', gap: Math.round(w * 0.03), padding: `${pH}px ${pW}px`, overflow: 'hidden' }}>
-
-        {bgImage && (
-          <img src={bgImage} alt="" draggable={false}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${bpx} ${bpy}`, pointerEvents: 'none' }} />
-        )}
-        {bgImage && (
-          <div style={{ position: 'absolute', inset: 0, background: isWide ? `linear-gradient(90deg, ${bgColor}EE 0%, ${bgColor}99 55%, transparent 100%)` : `linear-gradient(180deg, ${bgColor}DD 0%, ${bgColor}66 80%, transparent 100%)`, pointerEvents: 'none' }} />
-        )}
-
-        <div style={{ position: 'relative', flex: isWide ? 1 : undefined, zIndex: 1 }}>
-          {showLogo && (
-            logoImage
-              ? <img src={logoImage} alt="Logo" style={{ maxHeight: h * 0.22, maxWidth: w * 0.18, objectFit: 'contain', display: 'block', marginBottom: Math.round(h * 0.05) }} />
-              : <div style={{ fontFamily: fontCss, fontSize: hB * 0.42, fontWeight: 800, color: textColor, display: 'inline-block', backgroundColor: accentColor + '30', border: `2px solid ${accentColor}`, borderRadius: Math.round(h * 0.06), padding: `${Math.round(h * 0.04)}px ${Math.round(w * 0.025)}px`, marginBottom: Math.round(h * 0.05) }}>
-                  {logoText || 'LOGO'}
-                </div>
-          )}
-          <div style={{ fontFamily: fontCss, fontSize: hB, fontWeight: 800, color: textColor, lineHeight: 1.15, marginBottom: Math.round(h * 0.04) }}>
-            {headline || 'Ihre Schlagzeile'}
-          </div>
-          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.5), color: textColor, opacity: 0.85, lineHeight: 1.4 }}>
-            {subline || 'Unterzeile'}
-          </div>
-        </div>
-
-        <div style={{ position: 'relative', zIndex: 1, flexShrink: 0, alignSelf: isWide ? 'center' : 'flex-start', marginTop: isWide ? 0 : Math.round(h * 0.06) }}>
-          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.44), fontWeight: 700, color: '#fff', backgroundColor: accentColor, padding: `${Math.round(h * 0.09)}px ${Math.round(w * 0.04)}px`, borderRadius: Math.round(h * 0.07), whiteSpace: 'nowrap', display: 'inline-block' }}>
-            {cta || 'Jetzt entdecken'}
-          </div>
-        </div>
+    <div className={`ac-ad ac-${p.fmtId}${animClass} ${styleClass}`}>
+      <div className="ac-bg"  style={bgStyle} />
+      <div className="ac-ov"  style={{ background: ovColor }} />
+      <div className="ac-sc"  style={{ background: p.mainColor }} />
+      <div
+        className="ac-dl"
+        ref={p.layerRef}
+        onMouseDown={e => { if (e.target === e.currentTarget) p.onDeselect(p.fmtId); }}
+      >
+        {els.map(elId => (
+          <AdEl
+            key={elId}
+            fmtId={p.fmtId}
+            elId={elId}
+            pos={p.positions[elId] || { left: 5, top: 10 }}
+            size={p.sizes[elId] || 12}
+            sel={p.selected === elId}
+            dragging={p.selected === elId && p.draggingEl === elId}
+            delta={RESIZE_DELTA[p.fmtId]?.[elId] ?? 1}
+            onSelect={p.onSelect}
+            onResize={p.onResize}
+            onDragStart={p.onDragStart}
+            headline={p.headline}
+            subline={p.subline}
+            ctaText={p.ctaText}
+            logoText={p.logoText}
+            logoMode={p.logoMode}
+            logoImgSrc={p.logoImgSrc}
+            domainTxt={p.domainTxt}
+            fontCss={p.fontCss}
+            textColor={p.textColor}
+            ctaColor={p.ctaColor}
+          />
+        ))}
       </div>
     </div>
   );
@@ -243,551 +287,626 @@ function DisplayPreview({
 
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
   const analysis   = briefing.analysis;
-  const ogImageUrl = analysis?.ogImage || '';
-  const ogLogoUrl  = analysis?.ogLogo || analysis?.favicon || '';
-  const themeColor = analysis?.themeColor || '';
+  const ogImageUrl = analysis?.ogImage  || '';
+  const ogLogoUrl  = analysis?.ogLogo   || analysis?.favicon || '';
+  const themeColor = analysis?.themeColor || TC;
+  const orgName    = analysis?.organisation || '';
 
-  // ── Option selection ──
-  const initOption = (): 'upload' | 'später' | 'erstellen' | null => {
+  // ── Option selection (upload / später / erstellen) ──
+  const initOpt = (): 'upload' | 'später' | 'erstellen' | null => {
     const svc = briefing.werbemittelService;
     if (svc === 'upload' || svc === 'später' || svc === 'erstellen') return svc;
-    if (briefing.adHeadline) return 'erstellen';
     return null;
   };
-  const [selectedOption, setSelectedOption] = useState<'upload' | 'später' | 'erstellen' | null>(initOption);
-  const [uploadedAdFiles, setUploadedAdFiles] = useState<File[]>([]);
-  const [isDraggingOver,  setIsDraggingOver]  = useState(false);
+  const [selOption, setSelOption]   = useState<'upload' | 'später' | 'erstellen' | null>(initOpt);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [dropOver,   setDropOver]   = useState(false);
 
-  // ── Ad state ──
-  const [headline,    setHeadline]    = useState(briefing.adHeadline   || '');
-  const [subline,     setSubline]     = useState(briefing.adSubline    || '');
-  const [cta,         setCta]         = useState(briefing.adCta        || 'Jetzt informieren');
-  const [bgColor,     setBgColor]     = useState(briefing.adBgColor    || themeColor || '#C1666B');
-  const [textColor,   setTextColor]   = useState(briefing.adTextColor  || '#FFFFFF');
-  const [accentColor, setAccentColor] = useState(briefing.adAccentColor || themeColor || '#C1666B');
-  const [font,        setFont]        = useState<FontId>((briefing.adFont as FontId) || 'fraunces');
-  const [fontScale,   setFontScale]   = useState(briefing.adFontScale ?? 1.0);
-  const [showLogo,    setShowLogo]    = useState(true);
-  const [logoMode,    setLogoMode]    = useState<'text' | 'image'>(briefing.adLogoMode || 'text');
-  const [focusX,      setFocusX]      = useState(briefing.adFocusX ?? 1);
-  const [focusY,      setFocusY]      = useState(briefing.adFocusY ?? 1);
-  const [animation,   setAnimation]   = useState<AnimId>((briefing.adAnimation as AnimId) || 'none');
-  const [activeTab,   setActiveTab]   = useState<'dooh' | 'display'>('dooh');
-
-  // ── Positions ──
-  const [posQuer, setPosQuer] = useState<Positions>(() =>
-    briefing.adPositionsQuer ? (briefing.adPositionsQuer as Positions) : { ...DEF_QUER }
-  );
-  const [posHoch, setPosHoch] = useState<Positions>(() =>
-    briefing.adPositionsHoch ? (briefing.adPositionsHoch as Positions) : { ...DEF_HOCH }
-  );
-
-  // ── Images ──
-  const [bgImage,   setBgImage]   = useState<string | null>(briefing.adBgImageData   || null);
-  const [logoImage, setLogoImage] = useState<string | null>(briefing.adLogoImageData || null);
-  const logoText = analysis?.organisation || briefing.adLogoText || '';
+  // ── Ad creator state ──
+  const [activeTab,  setActiveTab]  = useState<'dooh' | 'display'>('dooh');
+  const [headline,   setHeadline]   = useState(briefing.adHeadline || '');
+  const [subline,    setSubline]    = useState(briefing.adSubline  || '');
+  const [ctaText,    setCtaText]    = useState(briefing.adCta      || 'Jetzt informieren');
+  const [urlText,    setUrlText]    = useState(briefing.url        || '');
+  const [logoMode,   setLogoMode]   = useState<LogoMode>(briefing.adLogoMode === 'image' ? 'bild' : 'text');
+  const [logoTxt,    setLogoTxt]    = useState(orgName);
+  const [font,       setFont]       = useState<FontId>((briefing.adFont as FontId) || 'fraunces');
+  const [mainColor,  setMainColor]  = useState(briefing.adBgColor    || themeColor || TC);
+  const [textColor,  setTextColor]  = useState(briefing.adTextColor  || '#FFFFFF');
+  const [ctaColor,   setCtaColor]   = useState(briefing.adAccentColor || TAUP);
+  const [bgDataUrl,  setBgDataUrl]  = useState<string | null>(briefing.adBgImageData || null);
+  const [bgQual,     setBgQual]     = useState<{cls:string;label:string}|null>(null);
+  const [logoImgSrc, setLogoImgSrc] = useState<string | null>(briefing.adLogoImageData || null);
+  const [focusRow,   setFocusRow]   = useState(briefing.adFocusY ?? 1);
+  const [focusCol,   setFocusCol]   = useState(briefing.adFocusX ?? 1);
+  const [bgStyle,    setBgStyle]    = useState<BgStyle>((briefing.adBgStyle as BgStyle) || 'overlay');
+  const [animation,  setAnimation]  = useState<AnimType>((briefing.adAnimation as AnimType) || 'cta');
 
   // ── KI headlines ──
-  const [kiLoading,    setKiLoading]    = useState(false);
-  const [headlineSugs, setHeadlineSugs] = useState<string[]>([]);
+  const [kiSugs,   setKiSugs]   = useState<string[]>([]);
+  const [kiLoading,setKiLoading]= useState(false);
 
   // ── Save link ──
-  const [saveLinkStatus, setSaveLinkStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
-  const [saveLinkEmail,  setSaveLinkEmail]  = useState(briefing.email || '');
+  const [linkEmail,  setLinkEmail]  = useState(briefing.email || '');
+  const [linkStatus, setLinkStatus] = useState<'idle'|'loading'|'sent'|'error'>('idle');
 
-  // ── Submit ──
+  // ── Submitting ──
   const [submitting, setSubmitting] = useState(false);
 
-  // Load Google Fonts
+  // ── Per-format drag & drop positions ──
+  const [positions, setPositions] = useState<AllPositions>(() => {
+    const saved = briefing.adPositionsQuer;
+    if (saved) {
+      return {
+        quer: (briefing.adPositionsQuer as unknown as FormatPositions) || deepCopy(DEF_POS.quer),
+        hoch: (briefing.adPositionsHoch as unknown as FormatPositions) || deepCopy(DEF_POS.hoch),
+        wide: deepCopy(DEF_POS.wide),
+        med:  deepCopy(DEF_POS.med),
+        tall: deepCopy(DEF_POS.tall),
+      };
+    }
+    return deepCopy(DEF_POS);
+  });
+
+  // ── Per-format element sizes ──
+  const [sizes, setSizes] = useState<AllSizes>(deepCopy(DEF_SIZES));
+
+  // ── Selected element per format ──
+  const [selected,   setSelected]   = useState<SelMap>({ quer:null, hoch:null, wide:null, med:null, tall:null });
+  const [draggingEl, setDraggingEl] = useState<string | null>(null);
+
+  // ── Drag state ref ──
+  const dragRef = useRef<{
+    fmtId: string; elId: string;
+    startPos: ElPos; startMouse: { x: number; y: number };
+    layerEl: HTMLElement;
+  } | null>(null);
+
+  // ── Layer refs ──
+  const layerRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  function setLayerRef(fmtId: string) {
+    return (el: HTMLDivElement | null) => { layerRefs.current[fmtId] = el; };
+  }
+
+  // ── Global drag listeners ──
   useEffect(() => {
-    if (document.getElementById('vio-adcreator-fonts')) return;
+    function onMove(e: MouseEvent) {
+      if (!dragRef.current) return;
+      const { fmtId, elId, startPos, startMouse, layerEl } = dragRef.current;
+      const rect = layerEl.getBoundingClientRect();
+      const dx = ((e.clientX - startMouse.x) / rect.width)  * 100;
+      const dy = ((e.clientY - startMouse.y) / rect.height) * 100;
+      setPositions(prev => ({
+        ...prev,
+        [fmtId]: {
+          ...prev[fmtId],
+          [elId]: {
+            left: Math.max(0, Math.min(90, startPos.left + dx)),
+            top:  Math.max(0, Math.min(90, startPos.top  + dy)),
+          },
+        },
+      }));
+    }
+    function onUp() {
+      dragRef.current = null;
+      setDraggingEl(null);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup',   onUp);
+    };
+  }, []);
+
+  // ── Load fonts ──
+  useEffect(() => {
+    if (document.getElementById('vio-v9-fonts')) return;
     const link = document.createElement('link');
-    link.id  = 'vio-adcreator-fonts';
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,800&family=Outfit:wght@400;600;700&display=swap';
+    link.id   = 'vio-v9-fonts';
+    link.rel  = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=Outfit:wght@300;400;500;600&family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap';
     document.head.appendChild(link);
   }, []);
 
-  // Load bg image from ogImage via proxy (only if nothing cached)
+  // ── Load bg image via proxy ──
   useEffect(() => {
-    if (bgImage || !ogImageUrl) return;
+    if (bgDataUrl || !ogImageUrl) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d'); if (!ctx) return;
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d'); if (!ctx) return;
       ctx.drawImage(img, 0, 0);
-      try { setBgImage(canvas.toDataURL('image/jpeg', 0.85)); } catch { /* cross-origin */ }
+      try { setBgDataUrl(c.toDataURL('image/jpeg', 0.85)); } catch { /* cross-origin */ }
     };
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogImageUrl)}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ogImageUrl]);
 
-  // Load logo from ogLogo via proxy (only if nothing cached)
+  // ── Load logo image via proxy ──
   useEffect(() => {
-    if (logoImage || !ogLogoUrl) return;
+    if (logoImgSrc || !ogLogoUrl) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d'); if (!ctx) return;
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d'); if (!ctx) return;
       ctx.drawImage(img, 0, 0);
-      try { setLogoImage(canvas.toDataURL('image/png')); setLogoMode('image'); } catch { /* cross-origin */ }
+      try { setLogoImgSrc(c.toDataURL('image/png')); setLogoMode('bild'); } catch { /* cross-origin */ }
     };
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogLogoUrl)}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ogLogoUrl]);
 
-  // Fetch KI headlines when option C first selected
+  // ── Fetch KI headlines ──
   useEffect(() => {
-    if (selectedOption !== 'erstellen' || headlineSugs.length > 0) return;
+    if (selOption !== 'erstellen' || kiSugs.length > 0) return;
     setKiLoading(true);
     fetch('/api/generate-headlines', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organisation: analysis?.organisation, beschreibung: analysis?.beschreibung, url: briefing.url }),
+      body: JSON.stringify({ organisation: orgName, beschreibung: analysis?.beschreibung, url: briefing.url }),
     })
       .then(r => r.json())
-      .then(d => setHeadlineSugs(d.headlines || []))
+      .then(d => { if (d.headlines?.length) setKiSugs(d.headlines); })
       .catch(() => {})
       .finally(() => setKiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOption]);
+  }, [selOption]);
 
-  // ── Handlers ──
-  const handleBgUpload = (file: File) => {
+  // ── Drag handlers ──
+  const handleDragStart = useCallback((fmtId: string, elId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const layerEl = layerRefs.current[fmtId];
+    if (!layerEl) return;
+    const startPos = positions[fmtId]?.[elId] || { left: 5, top: 5 };
+    dragRef.current = { fmtId, elId, startPos: { ...startPos }, startMouse: { x: e.clientX, y: e.clientY }, layerEl };
+    setDraggingEl(elId);
+  }, [positions]);
+
+  const handleSelect = useCallback((fmtId: string, elId: string) => {
+    setSelected(prev => {
+      const next: SelMap = {};
+      Object.keys(prev).forEach(k => { next[k] = k === fmtId ? elId : null; });
+      return next;
+    });
+  }, []);
+
+  const handleDeselect = useCallback((fmtId: string) => {
+    setSelected(prev => ({ ...prev, [fmtId]: null }));
+  }, []);
+
+  const handleResize = useCallback((fmtId: string, elId: string, delta: number) => {
+    setSizes(prev => ({
+      ...prev,
+      [fmtId]: { ...prev[fmtId], [elId]: Math.max(6, Math.min(80, (prev[fmtId][elId] || 12) + delta)) },
+    }));
+  }, []);
+
+  // ── Bg image upload ──
+  function loadBgFile(file: File) {
     const reader = new FileReader();
-    reader.onload = e => setBgImage(e.target?.result as string ?? null);
+    reader.onload = ev => {
+      const url = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        setBgDataUrl(url);
+        setBgQual(qualityInfo(img.naturalWidth, img.naturalHeight));
+      };
+      img.src = url;
+    };
     reader.readAsDataURL(file);
-  };
+  }
 
-  const handleLogoUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = e => { setLogoImage(e.target?.result as string ?? null); setLogoMode('image'); };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSendLink = async () => {
-    if (!saveLinkEmail.trim()) return;
-    setSaveLinkStatus('loading');
+  // ── Send resume link ──
+  async function handleSendLink() {
+    if (!linkEmail.trim()) return;
+    setLinkStatus('loading');
     try {
       await fetch('/api/save-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: briefing.sessionId, dealId: briefing.dealId, email: saveLinkEmail.trim(), sendResumeEmail: true }),
+        body: JSON.stringify({ sessionId: briefing.sessionId, dealId: briefing.dealId, email: linkEmail.trim(), sendResumeEmail: true }),
       });
-      setSaveLinkStatus('sent');
-    } catch { setSaveLinkStatus('error'); }
-  };
+      setLinkStatus('sent');
+    } catch { setLinkStatus('error'); }
+  }
 
-  const handleUploadWeiter = () => {
-    updateBriefing({ werbemittel: 'upload', werbemittelErstellt: true, werbemittelService: 'upload', werbemittelFiles: uploadedAdFiles.map(f => f.name) });
-    nextStep();
-  };
-
-  const handleSpäterWeiter = () => {
-    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false, werbemittelService: 'später' });
-    nextStep();
-  };
-
-  const handleWeiter = async () => {
+  // ── Submit (erstellen) ──
+  async function handleWeiter() {
     setSubmitting(true);
-    const adState: Partial<BriefingData> = {
+    updateBriefing({
       werbemittel: 'erstellen', werbemittelErstellt: true, werbemittelService: 'erstellen',
-      adHeadline: headline, adSubline: subline, adCta: cta,
-      adBgColor: bgColor, adTextColor: textColor, adAccentColor: accentColor,
-      adLogoMode: logoMode, adFont: font, adFontScale: fontScale,
-      adFocusX: focusX, adFocusY: focusY, adAnimation: animation,
-      adBgImageData:   bgImage    || undefined,
-      adLogoImageData: logoImage  || undefined,
-      adPositionsQuer: posQuer,
-      adPositionsHoch: posHoch,
-    };
-    updateBriefing(adState);
+      adHeadline: headline, adSubline: subline, adCta: ctaText,
+      adBgStyle: bgStyle as 'overlay'|'pure'|'split',
+      adBgColor: mainColor, adTextColor: textColor, adAccentColor: ctaColor,
+      adLogoMode: logoMode === 'bild' ? 'image' : 'text',
+      adFont: font, adFocusX: focusCol, adFocusY: focusRow,
+      adAnimation: animation,
+      adBgImageData:   bgDataUrl   || undefined,
+      adLogoImageData: logoImgSrc  || undefined,
+      adPositionsQuer: positions.quer as unknown as Record<string, { x: number; y: number }>,
+      adPositionsHoch: positions.hoch as unknown as Record<string, { x: number; y: number }>,
+    });
     try {
       await fetch('/api/generate-ads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: briefing.dealId, adConfig: { headline, subline, cta, font, bgColor, textColor, accentColor, animation } }),
+        body: JSON.stringify({ dealId: briefing.dealId, adConfig: { headline, subline, ctaText, font, mainColor, textColor, ctaColor, bgStyle, animation } }),
       });
     } catch { /* non-fatal */ }
     setSubmitting(false);
     nextStep();
+  }
+
+  function handleUploadWeiter() {
+    updateBriefing({ werbemittel: 'upload', werbemittelErstellt: true, werbemittelService: 'upload', werbemittelFiles: uploadFiles.map(f => f.name) });
+    nextStep();
+  }
+
+  function handleSpäterWeiter() {
+    updateBriefing({ werbemittel: 'spaeter', werbemittelErstellt: false, werbemittelService: 'später' });
+    nextStep();
+  }
+
+  // ── Derived ──
+  const fontCss   = FONTS.find(f => f.id === font)?.css ?? FONTS[0].css;
+  const focusPos  = FOCUS_POS[focusRow]?.[focusCol] ?? '50% 50%';
+  const domainTxt = urlText.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  // Shared format props
+  const fmtShared = {
+    headline, subline, ctaText, logoText: logoTxt, logoMode,
+    logoImgSrc, domainTxt, fontCss, textColor, ctaColor,
+    mainColor, bgDataUrl, focusPos, bgStyle, animation,
+    onSelect: handleSelect, onDeselect: handleDeselect,
+    onResize: handleResize, onDragStart: handleDragStart,
   };
 
-  // Derived
-  const fontCss = FONTS.find(f => f.id === font)?.css ?? FONTS[0].css;
-  const adCfg: AdConfig = {
-    headline, subline, cta, logoText,
-    logoImage: logoMode === 'image' ? logoImage : null,
-    showLogo, bgColor, textColor, accentColor, fontCss, fontScale,
-    bgImage, focusX, focusY,
-  };
+  function fmtProps(id: string) {
+    return {
+      ...fmtShared,
+      fmtId:      id,
+      positions:  positions[id] || DEF_POS[id],
+      sizes:      sizes[id]     || DEF_SIZES[id],
+      selected:   selected[id] ?? null,
+      draggingEl: draggingEl,
+      layerRef:   setLayerRef(id),
+    };
+  }
 
-  // ── Sidebar input style ──
-  const inp: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box', padding: '8px 10px',
-    borderRadius: 8, border: `1px solid ${C.border}`, background: C.white,
-    fontSize: 13, color: C.taupe, fontFamily: 'inherit', outline: 'none',
-  };
+  // ──────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ──────────────────────────────────────────────────────────────────────────
 
-  // ── Color picker rows ──
-  const colorRows = [
-    { label: 'Hintergrund', val: bgColor,     set: setBgColor     },
-    { label: 'Text',        val: textColor,   set: setTextColor   },
-    { label: 'Akzent',      val: accentColor, set: setAccentColor },
-  ];
-
-  // ─── Focus grid cells ──────────────────────────────────────────────────────
-  const focusGrid: Array<{ fx: number; fy: number }> = [];
-  for (let fy = 0; fy < 3; fy++) for (let fx = 0; fx < 3; fx++) focusGrid.push({ fx, fy });
-
-  // ─── Option cards ──────────────────────────────────────────────────────────
   const optionCards = [
-    { id: 'upload'   as const, ico: '📤', title: 'Eigene Werbemittel hochladen', desc: 'JPEG, PNG oder MP4 – Ihre fertigen Dateien.' },
-    { id: 'später'   as const, ico: '⏳', title: 'Später hochladen',             desc: 'Werbemittel nach der Buchung einreichen.' },
-    { id: 'erstellen'as const, ico: '✏️', title: 'Im Browser erstellen',         desc: 'Sujet direkt gestalten. Inkl. VIO-Erstellung.', badge: '+CHF 500' },
+    { id: 'upload'    as const, ico: '📤', title: 'Eigene Werbemittel hochladen', desc: 'JPEG, PNG oder MP4.' },
+    { id: 'später'    as const, ico: '⏳', title: 'Später hochladen',             desc: 'Nach Buchung einreichen.' },
+    { id: 'erstellen' as const, ico: '✏️', title: 'Im Browser erstellen',         desc: 'Inkl. VIO-Erstellung.', badge: '+CHF 500' },
   ];
 
-  // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: "'Outfit', sans-serif" }}>
-      <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 'clamp(22px,3vw,28px)', fontWeight: 700, color: C.taupe, marginBottom: 8 }}>
-        Werbemittel
-      </h2>
-      <p style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>
-        Wie möchten Sie Ihre Werbemittel bereitstellen?
-      </p>
+    <div>
+      {/* Step header */}
+      <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(22px,3vw,28px)', fontWeight: 700, color: TAUP, marginBottom: 8 }}>Werbemittel</h2>
+      <p style={{ fontSize: 14, color: MUT, marginBottom: 20 }}>Wie möchten Sie Ihre Werbemittel bereitstellen?</p>
 
-      {/* ── Option cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+      {/* Option cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 24 }}>
         {optionCards.map(opt => (
-          <button
-            key={opt.id}
-            onClick={() => setSelectedOption(opt.id)}
-            style={{
-              border: `2px solid ${selectedOption === opt.id ? C.primary : C.border}`,
-              borderRadius: 12, padding: '16px 14px',
-              background: selectedOption === opt.id ? C.pl : C.white,
-              cursor: 'pointer', textAlign: 'left', position: 'relative', transition: 'all .15s',
-            }}
-          >
-            {opt.badge && (
-              <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 700, color: C.white, backgroundColor: C.primary, borderRadius: 20, padding: '2px 7px' }}>
-                {opt.badge}
-              </span>
-            )}
+          <button key={opt.id} onClick={() => setSelOption(opt.id)}
+            style={{ border: `2px solid ${selOption === opt.id ? TC : BDR}`, borderRadius: 12, padding: '16px 14px', background: selOption === opt.id ? '#FDF3F3' : '#fff', cursor: 'pointer', textAlign: 'left', position: 'relative', transition: 'all .15s', fontFamily: 'inherit' }}>
+            {opt.badge && <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 700, color: '#fff', background: TC, borderRadius: 20, padding: '2px 7px' }}>{opt.badge}</span>}
             <div style={{ fontSize: 22, marginBottom: 6 }}>{opt.ico}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>{opt.title}</div>
-            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.4 }}>{opt.desc}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: TAUP, marginBottom: 4 }}>{opt.title}</div>
+            <div style={{ fontSize: 12, color: MUT, lineHeight: 1.4 }}>{opt.desc}</div>
           </button>
         ))}
       </div>
 
-      {/* ─────────────────────────────────── Option A: Upload ──────────────────── */}
-      {selectedOption === 'upload' && (
+      {/* ── Option A: Upload ── */}
+      {selOption === 'upload' && (
         <div>
-          <div
-            onDragOver={e => { e.preventDefault(); setIsDraggingOver(true); }}
-            onDragLeave={() => setIsDraggingOver(false)}
-            onDrop={e => {
-              e.preventDefault(); setIsDraggingOver(false);
-              const files = Array.from(e.dataTransfer.files).filter(f => /image\/(jpeg|png)|video\/mp4/.test(f.type));
-              setUploadedAdFiles(prev => [...prev, ...files]);
-            }}
-            onClick={() => document.getElementById('vio-ad-upload-inp')?.click()}
-            style={{ border: `2px dashed ${isDraggingOver ? C.primary : C.border}`, borderRadius: 12, padding: '36px 24px', textAlign: 'center', background: isDraggingOver ? C.pl : C.bg, cursor: 'pointer', marginBottom: 12, transition: 'all .15s' }}
-          >
-            <div style={{ fontSize: 36, marginBottom: 10 }}>📁</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.taupe, marginBottom: 4 }}>Dateien hierher ziehen oder klicken</div>
-            <div style={{ fontSize: 12, color: C.muted }}>JPEG · PNG · MP4 · max. 50 MB pro Datei</div>
-            <input id="vio-ad-upload-inp" type="file" multiple accept="image/jpeg,image/png,video/mp4" style={{ display: 'none' }}
-              onChange={e => { const fs = Array.from(e.target.files || []); setUploadedAdFiles(prev => [...prev, ...fs]); }} />
+          <div onDragOver={e => { e.preventDefault(); setDropOver(true); }} onDragLeave={() => setDropOver(false)}
+            onDrop={e => { e.preventDefault(); setDropOver(false); const fs = Array.from(e.dataTransfer.files).filter(f => /image\/(jpeg|png)|video\/mp4/.test(f.type)); setUploadFiles(p => [...p, ...fs]); }}
+            onClick={() => document.getElementById('vio-upload-files')?.click()}
+            style={{ border: `2px dashed ${dropOver ? TC : BDR}`, borderRadius: 12, padding: '36px', textAlign: 'center', background: dropOver ? '#FDF3F3' : CRM, cursor: 'pointer', marginBottom: 12 }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: TAUP, marginBottom: 4 }}>Dateien hierher ziehen oder klicken</div>
+            <div style={{ fontSize: 12, color: MUT }}>JPEG · PNG · MP4 · max. 50 MB</div>
+            <input id="vio-upload-files" type="file" multiple accept="image/jpeg,image/png,video/mp4" style={{ display: 'none' }}
+              onChange={e => setUploadFiles(p => [...p, ...Array.from(e.target.files || [])])} />
           </div>
-
-          {uploadedAdFiles.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-              {uploadedAdFiles.map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: C.white, border: `1px solid ${C.border}`, borderRadius: 8 }}>
-                  <span style={{ fontSize: 16 }}>📄</span>
-                  <span style={{ fontSize: 13, color: C.taupe, flex: 1 }}>{f.name}</span>
-                  <button onClick={() => setUploadedAdFiles(prev => prev.filter((_, j) => j !== i))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, padding: 0, lineHeight: 1 }}>
-                    ×
-                  </button>
-                </div>
-              ))}
+          {uploadFiles.map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#fff', border: `1px solid ${BDR}`, borderRadius: 8, marginBottom: 6 }}>
+              <span>📄</span><span style={{ flex: 1, fontSize: 13, color: TAUP }}>{f.name}</span>
+              <button onClick={() => setUploadFiles(p => p.filter((_,j)=>j!==i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUT, fontSize: 18 }}>×</button>
             </div>
-          )}
-
-          <button onClick={handleUploadWeiter} disabled={uploadedAdFiles.length === 0}
-            style={{ width: '100%', padding: 13, borderRadius: 10, background: uploadedAdFiles.length === 0 ? C.border : C.primary, color: C.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: uploadedAdFiles.length === 0 ? 'not-allowed' : 'pointer' }}>
+          ))}
+          <button onClick={handleUploadWeiter} disabled={uploadFiles.length === 0}
+            style={{ width: '100%', padding: 13, borderRadius: 10, background: uploadFiles.length === 0 ? BDR : TC, color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: uploadFiles.length === 0 ? 'not-allowed' : 'pointer', marginTop: 8 }}>
             Weiter mit hochgeladenen Werbemitteln →
           </button>
         </div>
       )}
 
-      {/* ─────────────────────────────────── Option B: Später ──────────────────── */}
-      {selectedOption === 'später' && (
-        <div style={{ background: '#FFFBF0', border: '1px solid #F5D87A', borderRadius: 12, padding: '24px', marginBottom: 16 }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.taupe, marginBottom: 8 }}>Werbemittel nach Buchung einreichen</div>
-          <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 20 }}>
-            Sie erhalten nach der Buchung eine E-Mail mit allen Anforderungen (Format, Auflösung, Dateityp).
-            Werbemittel können bis 5 Werktage vor Kampagnenstart eingereicht werden.
-          </p>
-          <button onClick={handleSpäterWeiter}
-            style={{ padding: '11px 24px', borderRadius: 10, background: C.primary, color: C.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+      {/* ── Option B: Später ── */}
+      {selOption === 'später' && (
+        <div style={{ background: '#FFFBF0', border: '1px solid #F5D87A', borderRadius: 12, padding: '24px' }}>
+          <div style={{ fontSize: 22, marginBottom: 8 }}>⏳</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: TAUP, marginBottom: 8 }}>Werbemittel nach Buchung einreichen</div>
+          <p style={{ fontSize: 13, color: MUT, lineHeight: 1.6, marginBottom: 20 }}>Sie erhalten nach der Buchung eine E-Mail mit allen Anforderungen. Werbemittel können bis 5 Werktage vor Kampagnenstart eingereicht werden.</p>
+          <button onClick={handleSpäterWeiter} style={{ padding: '11px 24px', borderRadius: 10, background: TC, color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
             Weiter ohne Werbemittel →
           </button>
         </div>
       )}
 
-      {/* ─────────────────────────────────── Option C: Erstellen ──────────────── */}
-      {selectedOption === 'erstellen' && (
-        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      {/* ── Option C: Erstellen (V9 Ad Creator) ── */}
+      {selOption === 'erstellen' && (
+        <div className="ad-creator" style={{ display: 'flex', gap: 0, border: `1px solid ${BDR}`, borderRadius: 14, overflow: 'hidden', minHeight: 600 }}>
 
-          {/* ══ Sidebar ══ */}
-          <div style={{ width: 320, flexShrink: 0, position: 'sticky', top: 20, maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* ══ SIDEBAR ══ */}
+          <div className="ac-sidebar">
 
-            {/* KI Headlines */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
-                KI-Vorschläge
+            {/* Auto-loaded badge */}
+            {(bgDataUrl || logoImgSrc) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#F0FFF6', border: '1px solid #B8E8CC', borderRadius: 7, padding: '7px 11px', fontSize: 11, color: '#2E7D52' }}>
+                <div style={{ width: 6, height: 6, background: GRN, borderRadius: '50%', flexShrink: 0 }} />
+                Farben, Logo und Bild von Website geladen
               </div>
-              {kiLoading ? (
-                <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>Generiere Vorschläge…</div>
-              ) : headlineSugs.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {headlineSugs.map((s, i) => (
-                    <button key={i} onClick={() => setHeadline(s)}
-                      style={{ textAlign: 'left', background: headline === s ? C.pl : C.bg, border: `1px solid ${headline === s ? C.primary : C.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12, color: C.taupe, cursor: 'pointer', lineHeight: 1.35 }}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <button onClick={() => {
-                  setKiLoading(true);
-                  fetch('/api/generate-headlines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ organisation: analysis?.organisation, beschreibung: analysis?.beschreibung, url: briefing.url }) })
-                    .then(r => r.json()).then(d => setHeadlineSugs(d.headlines || [])).catch(() => {}).finally(() => setKiLoading(false));
-                }} style={{ fontSize: 12, color: C.primary, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
-                  Vorschläge generieren ↺
-                </button>
-              )}
-            </div>
+            )}
 
             {/* Headline */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 5 }}>Headline</label>
-              <textarea value={headline} onChange={e => setHeadline(e.target.value)} rows={2}
-                style={{ ...inp, resize: 'vertical', lineHeight: 1.4 }}
-                placeholder="Ihre Schlagzeile (max. 8 Wörter)" />
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
-                {headline.trim() ? headline.trim().split(/\s+/).length : 0} / 8 Wörter
-              </div>
+            <div className="ac-sec">
+              <div className="ac-lbl">Headline wählen</div>
+              {kiLoading && <div style={{ fontSize: 12, color: MUT, fontStyle: 'italic' }}>Generiere Vorschläge…</div>}
+              {kiSugs.map((s, i) => (
+                <div key={i} className={`ac-hl-opt${headline === s ? ' active' : ''}`} onClick={() => setHeadline(s)}>
+                  <span className="ac-hl-txt">{s}</span>
+                  <span className="ac-hl-wc">{s.trim().split(/\s+/).length} W.</span>
+                  <span className="ac-hl-chk">✓</span>
+                </div>
+              ))}
+              <input className="ac-inp" type="text" placeholder="Eigene Headline…" value={kiSugs.includes(headline) ? '' : headline}
+                onChange={e => { setHeadline(e.target.value); }} />
             </div>
 
             {/* Subline */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 5 }}>Unterzeile</label>
-              <textarea value={subline} onChange={e => setSubline(e.target.value)} rows={2}
-                style={{ ...inp, resize: 'vertical', lineHeight: 1.4 }}
-                placeholder="Kurze Ergänzung (optional)" />
+            <div className="ac-sec">
+              <div className="ac-lbl">Subline <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
+              <input className="ac-inp" type="text" value={subline} onChange={e => setSubline(e.target.value)} placeholder="z.B. Baden, Luzernstr. 6" />
             </div>
 
             {/* CTA */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 5 }}>Call-to-Action</label>
-              <input value={cta} onChange={e => setCta(e.target.value)} style={inp} placeholder="z.B. Jetzt informieren" />
+            <div className="ac-sec">
+              <div className="ac-lbl">CTA-Button Text</div>
+              <input className="ac-inp" type="text" value={ctaText} onChange={e => setCtaText(e.target.value)} />
             </div>
 
-            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
-
-            {/* Font picker */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 8 }}>Schriftart</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                {FONTS.map(f => (
-                  <button key={f.id} onClick={() => setFont(f.id as FontId)}
-                    style={{ padding: '8px', borderRadius: 8, border: `1.5px solid ${font === f.id ? C.primary : C.border}`, background: font === f.id ? C.pl : C.white, cursor: 'pointer', fontFamily: f.css, fontSize: 13, color: C.taupe }}>
-                    {f.label}
-                  </button>
-                ))}
+            {/* URL */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Landingpage URL <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>(QR Code)</span></div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input className="ac-inp" type="text" value={urlText} onChange={e => setUrlText(e.target.value)} style={{ flex: 1 }} />
+                <span className="ac-url-badge" style={{ color: urlText.trim() ? GRN : RED }}>{urlText.trim() ? 'QR ✓' : 'QR –'}</span>
               </div>
             </div>
 
-            {/* Font scale */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 6 }}>
-                Schriftgrösse{' '}
-                <span style={{ textTransform: 'none', fontWeight: 400 }}>{Math.round(fontScale * 100)} %</span>
-              </label>
-              <input type="range" min={0.7} max={1.5} step={0.05} value={fontScale}
-                onChange={e => setFontScale(Number(e.target.value))}
-                style={{ width: '100%', accentColor: C.primary }} />
-            </div>
-
-            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
+            <div className="ac-hr" />
 
             {/* Logo */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted }}>Logo</span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: C.taupe }}>
-                  <input type="checkbox" checked={showLogo} onChange={e => setShowLogo(e.target.checked)} style={{ accentColor: C.primary }} />
-                  Anzeigen
-                </label>
+            <div className="ac-sec">
+              <div className="ac-lbl">Logo</div>
+              <div className="ac-toggle">
+                <button className={`ac-tog${logoMode === 'text' ? ' active' : ''}`} onClick={() => setLogoMode('text')}>Text</button>
+                <button className={`ac-tog${logoMode === 'bild' ? ' active' : ''}`} onClick={() => setLogoMode('bild')}>Bild</button>
               </div>
-              {showLogo && (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => setLogoMode('text')}
-                    style={{ flex: 1, padding: '7px', borderRadius: 8, border: `1.5px solid ${logoMode === 'text' ? C.primary : C.border}`, background: logoMode === 'text' ? C.pl : C.white, cursor: 'pointer', fontSize: 12, color: C.taupe }}>
-                    Text
-                  </button>
-                  <label style={{ flex: 1, padding: '7px', borderRadius: 8, border: `1.5px solid ${logoMode === 'image' ? C.primary : C.border}`, background: logoMode === 'image' ? C.pl : C.white, cursor: 'pointer', fontSize: 12, color: C.taupe, textAlign: 'center', display: 'block' }}>
-                    {logoImage ? '✓ Bild' : 'Bild laden'}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]); }} />
+              {logoMode === 'text' && (
+                <input className="ac-inp" type="text" value={logoTxt} onChange={e => setLogoTxt(e.target.value)} placeholder="z.B. Restaurant Lemon" />
+              )}
+              {logoMode === 'bild' && logoImgSrc && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: CRM, border: `1px solid ${BDR}`, borderRadius: 7, padding: '8px 10px' }}>
+                  <img src={logoImgSrc} alt="Logo" style={{ height: 26, width: 'auto', maxWidth: 64, objectFit: 'contain', borderRadius: 3 }} />
+                  <div>
+                    <div style={{ fontSize: 11, color: GRN, fontWeight: 500 }}>✓ Von Website geladen</div>
+                    <div style={{ fontSize: 10, color: MUT }}>{domainTxt}</div>
+                  </div>
+                  <label style={{ marginLeft: 'auto', fontSize: 11, color: MUT, cursor: 'pointer', textDecoration: 'underline', flexShrink: 0 }}>
+                    ersetzen
+                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { if (e.target.files?.[0]) { const r = new FileReader(); r.onload = ev => { setLogoImgSrc(ev.target?.result as string); setLogoMode('bild'); }; r.readAsDataURL(e.target.files[0]); }}} />
                   </label>
                 </div>
               )}
-            </div>
-
-            {/* Colors */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 10 }}>Farben</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {colorRows.map(({ label, val, set }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <input type="color" value={val} onChange={e => set(e.target.value)}
-                      style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${C.border}`, cursor: 'pointer', padding: 2, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: C.taupe }}>{label}</span>
-                    <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto', fontFamily: 'monospace' }}>{val.toUpperCase()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
-
-            {/* BG image */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 8 }}>Hintergrundbild</label>
-              {bgImage ? (
-                <div style={{ position: 'relative', marginBottom: 10 }}>
-                  <img src={bgImage} alt="" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8, border: `1px solid ${C.border}`, display: 'block' }} />
-                  <button onClick={() => setBgImage(null)}
-                    style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', color: '#fff', cursor: 'pointer', fontSize: 13, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <label style={{ display: 'block', border: `1.5px dashed ${C.border}`, borderRadius: 8, padding: '16px', textAlign: 'center', cursor: 'pointer', marginBottom: 10 }}>
-                  <div style={{ fontSize: 22, marginBottom: 4 }}>🖼️</div>
-                  <div style={{ fontSize: 11, color: C.muted }}>Bild hochladen</div>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleBgUpload(e.target.files[0]); }} />
+              {logoMode === 'bild' && !logoImgSrc && (
+                <label className="ac-upload" style={{ cursor: 'pointer' }}>
+                  <span style={{ fontSize: 14 }}>🖼️ Logo hochladen</span>
+                  <input type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => { if (e.target.files?.[0]) { const r = new FileReader(); r.onload = ev => { setLogoImgSrc(ev.target?.result as string); }; r.readAsDataURL(e.target.files[0]); }}} />
                 </label>
               )}
-
-              {/* Focus grid */}
-              {bgImage && (
-                <div>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Bildausschnitt</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-                    {focusGrid.map(({ fx, fy }) => (
-                      <button key={`${fx}-${fy}`} onClick={() => { setFocusX(fx); setFocusY(fy); }}
-                        style={{ aspectRatio: '1', borderRadius: 4, border: `1.5px solid ${focusX === fx && focusY === fy ? C.primary : C.border}`, background: focusX === fx && focusY === fy ? C.primary : C.white, cursor: 'pointer' }} />
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Animation */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 8 }}>Animation</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-                {ANIMS.map(a => (
-                  <button key={a.id} onClick={() => setAnimation(a.id as AnimId)}
-                    style={{ padding: '8px', borderRadius: 8, border: `1.5px solid ${animation === a.id ? C.primary : C.border}`, background: animation === a.id ? C.pl : C.white, cursor: 'pointer', fontSize: 12, color: C.taupe }}>
-                    {a.label}
-                  </button>
+            <div className="ac-hr" />
+
+            {/* Font */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Schriftart</div>
+              <div className="ac-font-grid">
+                {FONTS.map(f => (
+                  <div key={f.id} className={`ac-font-btn${font === f.id ? ' active' : ''}`} onClick={() => setFont(f.id)}>
+                    <span style={{ fontFamily: f.css, fontSize: 12, color: TXT }}>{f.label}</span>
+                    <span style={{ fontFamily: f.css, fontSize: 10, color: MUT, fontStyle: f.italic ? 'italic' : 'normal' }}>{f.sub}</span>
+                  </div>
                 ))}
               </div>
             </div>
 
-            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
+            {/* Tip */}
+            <div style={{ fontSize: 10, color: MUT, background: '#F0EBE3', borderRadius: 6, padding: '7px 9px' }}>
+              💡 Element anklicken → Grösse mit <b>A− A+</b> anpassen oder verschieben
+            </div>
 
-            {/* Send resume link */}
-            <div style={{ background: C.bg, borderRadius: 10, padding: '12px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.taupe, marginBottom: 8 }}>Später weiterarbeiten</div>
+            <div className="ac-hr" />
+
+            {/* Colors */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Farben</div>
+              <div className="ac-color-row">
+                {[
+                  { id: 'main', label: 'Hauptfarbe', val: mainColor, set: setMainColor, auto: true },
+                  { id: 'text', label: 'Textfarbe',  val: textColor, set: setTextColor, auto: false },
+                  { id: 'cta',  label: 'CTA-Farbe',  val: ctaColor,  set: setCtaColor,  auto: true },
+                ].map(c => (
+                  <div key={c.id} className="ac-color-col">
+                    <div className="ac-cp-wrap">
+                      <div className="ac-swatch" style={{ background: c.val, border: c.val === '#FFFFFF' ? `1.5px solid ${BDR}` : undefined }}>
+                        {c.auto && <span className="ac-auto-tag">Auto</span>}
+                      </div>
+                      <input type="color" value={c.val} onChange={e => c.set(e.target.value)} title={c.label} />
+                    </div>
+                    <div className="ac-color-lbl">{c.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ac-hr" />
+
+            {/* Hintergrundbild */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Hintergrundbild</div>
+              {bgDataUrl ? (
+                <div className="ac-upload loaded" onClick={() => document.getElementById('vio-bg-file')?.click()}>
+                  <img src={bgDataUrl} alt="" style={{ width: '100%', height: 64, objectFit: 'cover', borderRadius: 5, display: 'block' }} />
+                  <div className="ac-upload-hover">↑ Bild ersetzen</div>
+                </div>
+              ) : (
+                <div className="ac-upload" onClick={() => document.getElementById('vio-bg-file')?.click()}>
+                  <span style={{ fontSize: 20 }}>🖼️</span>
+                  <span style={{ fontSize: 12, color: MUT }}>Bild hochladen oder von Website</span>
+                </div>
+              )}
+              <input type="file" id="vio-bg-file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) loadBgFile(e.target.files[0]); }} />
+              {bgQual && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: bgQual.cls === 'qg' ? GRN : bgQual.cls === 'qw' ? YLW : RED }} />
+                  <span style={{ fontSize: 11, color: MUT }}>{bgQual.label}</span>
+                </div>
+              )}
+              {!bgQual && bgDataUrl && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: GRN, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: MUT }}>Bildqualität: Top</span>
+                </div>
+              )}
+            </div>
+
+            {/* Bildstil */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Bildstil</div>
+              <div className="ac-toggle">
+                {(['overlay','pure','split'] as BgStyle[]).map(s => (
+                  <button key={s} className={`ac-tog${bgStyle === s ? ' active' : ''}`} onClick={() => setBgStyle(s)}>
+                    {s === 'overlay' ? 'Overlay' : s === 'pure' ? 'Reines Bild' : 'Split'}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 10, color: MUT, background: '#F0EBE3', borderRadius: 6, padding: '6px 8px' }}>
+                {BS_DESCS[bgStyle]}
+              </div>
+            </div>
+
+            {/* Bildfokus */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Bildfokus</div>
+              <div className="ac-focus-wrap">
+                <div className="ac-focus-bg" style={bgDataUrl ? { backgroundImage: `url('${bgDataUrl}')` } : { background: `linear-gradient(135deg,${mainColor},${TAUP})` }} />
+                <div className="ac-focus-inner">
+                  {[0,1,2].flatMap(r => [0,1,2].map(c => (
+                    <div key={`${r}-${c}`} className={`ac-fcell${focusRow===r && focusCol===c ? ' active' : ''}`}
+                      onClick={() => { setFocusRow(r); setFocusCol(c); }} />
+                  )))}
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: MUT, textAlign: 'center' }}>Klicke auf den wichtigsten Bildbereich</div>
+            </div>
+
+            <div className="ac-hr" />
+
+            {/* Animation */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Bewegtes Element <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>(alle Formate)</span></div>
+              <div className="ac-dyn-grid">
+                {ANIM_OPTIONS.map(a => (
+                  <div key={a.id} className={`ac-dyn-btn${animation === a.id ? ' active' : ''}`} onClick={() => setAnimation(a.id)}>
+                    <span style={{ fontSize: 14 }}>{a.ico}</span>
+                    {a.label}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, background: TAUP, color: 'white', padding: '5px 8px', borderRadius: 6 }}>
+                {ANIM_TIPS[animation]}
+              </div>
+            </div>
+
+            <div className="ac-hr" />
+
+            {/* Save link */}
+            <div className="ac-sec">
+              <div className="ac-lbl">Link zum Weiterarbeiten</div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={saveLinkEmail} onChange={e => setSaveLinkEmail(e.target.value)}
-                  placeholder="ihre@email.ch" style={{ ...inp, flex: 1, fontSize: 12, padding: '7px 9px' }} />
-                <button onClick={handleSendLink} disabled={saveLinkStatus === 'loading' || saveLinkStatus === 'sent'}
-                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: C.primary, color: C.white, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {saveLinkStatus === 'sent' ? '✓ Gesendet' : saveLinkStatus === 'loading' ? '…' : 'Link senden'}
+                <input className="ac-inp" type="email" value={linkEmail} onChange={e => setLinkEmail(e.target.value)} placeholder="ihre@email.ch" style={{ flex: 1 }} />
+                <button className="ac-btn-s" style={{ width: 'auto', padding: '7px 12px', whiteSpace: 'nowrap' }}
+                  onClick={handleSendLink} disabled={linkStatus === 'loading' || linkStatus === 'sent'}>
+                  {linkStatus === 'sent' ? '✓' : linkStatus === 'loading' ? '…' : 'Senden'}
                 </button>
               </div>
-              {saveLinkStatus === 'error' && <div style={{ fontSize: 11, color: C.pd, marginTop: 5 }}>Fehler – bitte erneut versuchen.</div>}
             </div>
 
             {/* Submit */}
-            <button onClick={handleWeiter} disabled={submitting || !headline.trim()}
-              style={{ width: '100%', padding: 13, borderRadius: 10, background: !headline.trim() || submitting ? C.border : C.primary, color: C.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: !headline.trim() || submitting ? 'not-allowed' : 'pointer', transition: 'background .15s' }}>
-              {submitting ? 'Wird gespeichert…' : 'Werbemittel speichern & weiter →'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4, borderTop: `1px solid ${BDR}` }}>
+              <button className="ac-btn-p" onClick={handleWeiter} disabled={submitting || !headline.trim()}>
+                {submitting ? 'Wird gespeichert…' : '✓ Werbemittel einreichen'}
+              </button>
+              <button className="ac-btn-s" onClick={handleSendLink}>
+                💾 Link zum Weiterarbeiten senden
+              </button>
+            </div>
           </div>
 
-          {/* ══ Preview area ══ */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* ══ CANVAS ══ */}
+          <div className="ac-canvas">
 
-            {/* Tab bar */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              {(['dooh', 'display'] as const).map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  style={{ padding: '8px 18px', borderRadius: 20, border: `1.5px solid ${activeTab === tab ? C.primary : C.border}`, background: activeTab === tab ? C.pl : C.white, color: activeTab === tab ? C.primary : C.muted, fontWeight: activeTab === tab ? 700 : 400, fontSize: 13, cursor: 'pointer', transition: 'all .15s' }}>
-                  {tab === 'dooh' ? 'DOOH Plakatwand' : 'Display Anzeigen'}
-                </button>
-              ))}
+            {/* Tabs + hint */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div className="ac-tabs">
+                <button className={`ac-tab${activeTab === 'dooh' ? ' active' : ''}`} onClick={() => setActiveTab('dooh')}>DOOH</button>
+                <button className={`ac-tab${activeTab === 'display' ? ' active' : ''}`} onClick={() => setActiveTab('display')}>Display</button>
+              </div>
+              <div style={{ fontSize: 11, color: MUT }}>Element anklicken → verschieben oder Grösse anpassen</div>
             </div>
 
             {/* DOOH tab */}
             {activeTab === 'dooh' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                 {/* Quer */}
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 6 }}>
-                    Querformat · 1920 × 1080 px
-                  </div>
-                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
-                    Elemente per Drag &amp; Drop verschieben
-                  </div>
-                  <DoohPreview w={1920} h={1080} screenW={600}
-                    positions={posQuer} onMove={(id, p) => setPosQuer(prev => ({ ...prev, [id]: p }))}
-                    cfg={adCfg} />
-                  <button onClick={() => setPosQuer({ ...DEF_QUER })}
-                    style={{ marginTop: 8, fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-                    Layout zurücksetzen
-                  </button>
+                <div className="ac-pcard">
+                  <div className="ac-pcard-hdr">DOOH Querformat <span className="ac-pcard-dim">1920 × 1080 px</span></div>
+                  <AdFormat {...fmtProps('quer')} />
                 </div>
 
                 {/* Hoch */}
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 6 }}>
-                    Hochformat · 1080 × 1920 px
-                  </div>
-                  <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-                    <DoohPreview w={1080} h={1920} screenW={270}
-                      positions={posHoch} onMove={(id, p) => setPosHoch(prev => ({ ...prev, [id]: p }))}
-                      cfg={adCfg} />
-                    <button onClick={() => setPosHoch({ ...DEF_HOCH })}
-                      style={{ fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', marginTop: 4 }}>
-                      Zurücksetzen
-                    </button>
+                <div className="ac-pcard">
+                  <div className="ac-pcard-hdr">DOOH Hochformat <span className="ac-pcard-dim">1080 × 1920 px</span></div>
+                  <div className="ac-hoch-wrap">
+                    <AdFormat {...fmtProps('hoch')} />
                   </div>
                 </div>
               </div>
@@ -795,25 +914,26 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
             {/* Display tab */}
             {activeTab === 'display' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>
-                    Billboard · 970 × 250 px
-                  </div>
-                  <DisplayPreview w={970} h={250} screenW={600} cfg={adCfg} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Wide 970×250 */}
+                <div className="ac-pcard">
+                  <div className="ac-pcard-hdr">Display Banner <span className="ac-pcard-dim">970 × 250 px</span></div>
+                  <AdFormat {...fmtProps('wide')} />
                 </div>
-                <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>
-                      Medium Rectangle · 300 × 250 px
+
+                {/* Med + Tall */}
+                <div className="ac-pcard">
+                  <div className="ac-pcard-hdr">Display Rectangle &amp; Skyscraper</div>
+                  <div className="ac-disp-pair">
+                    <div className="ac-disp-item">
+                      <AdFormat {...fmtProps('med')} />
+                      <div className="ac-dim-lbl">300 × 250 px</div>
                     </div>
-                    <DisplayPreview w={300} h={250} screenW={280} cfg={adCfg} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>
-                      Half Page · 300 × 600 px
+                    <div className="ac-disp-item">
+                      <AdFormat {...fmtProps('tall')} />
+                      <div className="ac-dim-lbl">300 × 600 px</div>
                     </div>
-                    <DisplayPreview w={300} h={600} screenW={220} cfg={adCfg} />
                   </div>
                 </div>
               </div>
@@ -823,8 +943,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       )}
 
       {/* No option selected */}
-      {!selectedOption && (
-        <p style={{ fontSize: 13, color: C.muted, textAlign: 'center', padding: '12px 0' }}>
+      {!selOption && (
+        <p style={{ fontSize: 13, color: MUT, textAlign: 'center', padding: '12px 0' }}>
           Bitte wählen Sie eine Option oben aus.
         </p>
       )}

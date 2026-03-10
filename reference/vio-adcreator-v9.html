@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO Ad Creator – V9</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=Outfit:wght@300;400;500;600&family=Playfair+Display:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --tc: #C1666B;
+  --taupe: #5C4F3D;
+  --cream: #FAF7F2;
+  --cream2: #F0EBE3;
+  --border: #DDD5C8;
+  --text: #2C2416;
+  --muted: #8a7a67;
+  --green: #4CAF7D;
+  --yellow: #E8A838;
+  --red: #E05252;
+  --main-color: #C1666B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Outfit', sans-serif; background: var(--cream); color: var(--text); height: 100vh; overflow: hidden; }
+.app { display: grid; grid-template-columns: 320px 1fr; grid-template-rows: 52px 1fr; height: 100vh; }
+
+/* TOPBAR */
+.topbar { grid-column:1/-1; background:white; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 20px; }
+.vio-logo { font-family:'Fraunces',serif; font-size:19px; color:var(--tc); font-weight:600; }
+.step-pill { background:var(--cream2); color:var(--taupe); font-size:11px; font-weight:500; padding:3px 10px; border-radius:20px; border:1px solid var(--border); }
+.save-ind { font-size:11px; color:var(--green); display:flex; align-items:center; gap:5px; }
+.save-dot { width:6px; height:6px; background:var(--green); border-radius:50%; animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* SIDEBAR */
+.sidebar { background:white; border-right:1px solid var(--border); overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:12px; }
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.lbl { font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+.sec { display:flex; flex-direction:column; gap:6px; }
+.hr { height:1px; background:var(--border); }
+
+/* BADGE */
+.green-badge { display:flex; align-items:center; gap:7px; background:#F0FFF6; border:1px solid #B8E8CC; border-radius:7px; padding:7px 11px; font-size:11px; color:#2E7D52; }
+.green-dot { width:6px; height:6px; background:var(--green); border-radius:50%; flex-shrink:0; }
+
+/* INP */
+.inp { width:100%; background:var(--cream); border:1px solid var(--border); border-radius:7px; padding:8px 10px; font-family:'Outfit'; font-size:13px; color:var(--text); outline:none; transition:border-color .15s; }
+.inp:focus { border-color:var(--tc); }
+
+/* HEADLINE OPTIONS */
+.hl-opt { display:flex; align-items:center; gap:7px; padding:8px 10px; border:1.5px solid var(--border); border-radius:7px; background:var(--cream); cursor:pointer; transition:all .15s; }
+.hl-opt:hover,.hl-opt.active { border-color:var(--tc); background:#FDF3F3; }
+.hl-txt { flex:1; font-family:'Fraunces',serif; font-size:13px; font-weight:300; color:var(--text); }
+.hl-opt.active .hl-txt { color:var(--tc); font-weight:400; }
+.hl-wc { font-size:10px; color:var(--muted); flex-shrink:0; }
+.hl-chk { font-size:12px; opacity:0; }
+.hl-opt.active .hl-chk { opacity:1; }
+
+/* TOGGLE */
+.toggle { display:flex; background:var(--cream2); border-radius:7px; padding:3px; gap:3px; }
+.tog { flex:1; padding:6px; border:none; border-radius:5px; font-family:'Outfit'; font-size:12px; font-weight:500; color:var(--muted); background:transparent; cursor:pointer; transition:all .15s; }
+.tog.active { background:white; color:var(--tc); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+
+/* LOGO BILD ROW */
+.logo-row { display:flex; align-items:center; gap:8px; background:var(--cream); border:1px solid var(--border); border-radius:7px; padding:8px 10px; }
+.logo-img-prev { height:26px; width:auto; max-width:64px; object-fit:contain; border-radius:3px; }
+.logo-auto { font-size:11px; color:var(--green); font-weight:500; }
+.logo-sub2 { font-size:10px; color:var(--muted); margin-top:1px; }
+.replace-lnk { margin-left:auto; font-size:11px; color:var(--muted); cursor:pointer; text-decoration:underline; flex-shrink:0; }
+
+/* FONT GRID */
+.font-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.font-btn { padding:8px 6px; border:1.5px solid var(--border); border-radius:7px; background:var(--cream); cursor:pointer; text-align:center; transition:all .15s; display:flex; flex-direction:column; gap:1px; }
+.font-btn:hover { border-color:var(--taupe); }
+.font-btn.active { border-color:var(--tc); background:#FDF3F3; }
+.fn { font-size:12px; color:var(--text); }
+.fs { font-size:10px; color:var(--muted); }
+
+/* SLIDER */
+.slider-row { display:flex; align-items:center; gap:7px; }
+.sl-lbl { font-size:11px; color:var(--muted); flex-shrink:0; }
+.sl-val { font-size:11px; font-weight:600; color:var(--tc); min-width:28px; text-align:right; flex-shrink:0; }
+input[type=range] { flex:1; -webkit-appearance:none; height:4px; border-radius:2px; outline:none; cursor:pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:white; border:2px solid var(--tc); box-shadow:0 1px 3px rgba(0,0,0,.15); cursor:grab; }
+
+/* COLORS */
+.color-row { display:flex; gap:6px; }
+.color-col { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; position:relative; }
+.color-swatch { width:100%; height:30px; border-radius:7px; border:1.5px solid var(--border); cursor:pointer; position:relative; overflow:hidden; transition:transform .1s; }
+.color-swatch:hover { transform:scale(1.04); }
+.auto-tag { position:absolute; bottom:2px; right:3px; font-size:8px; background:rgba(0,0,0,.35); color:white; padding:1px 3px; border-radius:3px; }
+.color-lbl { font-size:9px; color:var(--muted); }
+/* Color picker positioned right below swatch */
+.cp-wrap { position:relative; width:100%; }
+input[type=color] { position:absolute; top:0; left:0; width:100%; height:30px; opacity:0; cursor:pointer; border:none; padding:0; }
+
+/* UPLOAD */
+.upload-box { border:1.5px dashed var(--border); border-radius:7px; padding:12px; text-align:center; cursor:pointer; background:var(--cream); transition:all .15s; position:relative; min-height:50px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+.upload-box:hover { border-color:var(--tc); background:#FDF3F3; }
+.upload-box.loaded { border-style:solid; border-color:var(--green); padding:0; background:#F0FFF6; }
+.upload-thumb { width:100%; height:64px; object-fit:cover; display:block; border-radius:5px; }
+.upload-hover { position:absolute; inset:0; background:rgba(0,0,0,.4); border-radius:5px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px; opacity:0; transition:opacity .15s; cursor:pointer; }
+.upload-box.loaded:hover .upload-hover { opacity:1; }
+.qual-row { display:flex; align-items:center; gap:5px; }
+.qdot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.qg { background:var(--green); } .qw { background:var(--yellow); } .qb { background:var(--red); }
+
+/* FOCUS */
+.focus-wrap { position:relative; width:100%; aspect-ratio:16/9; border-radius:7px; overflow:hidden; border:1.5px solid var(--border); }
+.focus-bg { position:absolute; inset:0; background-size:cover; background-position:center; }
+.focus-grid-inner { position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); }
+.fcell { cursor:pointer; transition:background .1s; }
+.fcell:hover { background:rgba(255,255,255,.2); }
+.fcell.active { background:rgba(193,102,107,.55); }
+
+/* DYNAMIC */
+.dyn-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.dyn-btn { padding:8px 6px; border:1.5px solid var(--border); border-radius:7px; background:var(--cream); cursor:pointer; text-align:center; font-family:'Outfit'; font-size:11px; font-weight:500; color:var(--muted); transition:all .15s; display:flex; flex-direction:column; gap:2px; align-items:center; }
+.dyn-btn .ico { font-size:14px; }
+.dyn-btn:hover { border-color:var(--taupe); }
+.dyn-btn.active { border-color:var(--tc); background:#FDF3F3; color:var(--tc); font-weight:600; }
+.dyn-tip { font-size:11px; background:var(--taupe); color:white; padding:5px 8px; border-radius:6px; }
+
+/* URL ROW */
+.url-row { display:flex; gap:6px; align-items:center; }
+.url-badge { font-size:10px; color:var(--green); font-weight:500; background:#F0FFF6; border:1px solid #B8E8CC; border-radius:4px; padding:2px 6px; white-space:nowrap; }
+
+/* SUBMIT */
+.submit-area { display:flex; flex-direction:column; gap:6px; padding-top:4px; border-top:1px solid var(--border); }
+.btn-p { width:100%; padding:11px; background:var(--tc); color:white; border:none; border-radius:9px; font-family:'Outfit'; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn-p:hover { background:#b05a5f; transform:translateY(-1px); box-shadow:0 4px 14px rgba(193,102,107,.3); }
+.btn-s { width:100%; padding:8px; background:transparent; color:var(--taupe); border:1.5px solid var(--border); border-radius:9px; font-family:'Outfit'; font-size:12px; cursor:pointer; transition:all .15s; }
+.btn-s:hover { border-color:var(--taupe); background:var(--cream); }
+
+/* CANVAS */
+.canvas-area { background:#E8E3DC; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:18px; }
+.tabs { display:flex; gap:3px; background:white; padding:3px; border-radius:9px; width:fit-content; border:1px solid var(--border); }
+.tab { padding:6px 14px; border-radius:7px; font-size:12px; font-weight:500; cursor:pointer; color:var(--muted); border:none; background:transparent; font-family:'Outfit'; transition:all .15s; }
+.tab.active { background:var(--tc); color:white; }
+.canvas-hint { font-size:11px; color:var(--muted); }
+
+/* PREVIEW CARDS */
+.pcards { display:flex; flex-direction:column; gap:16px; }
+.pcard { background:white; border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.07); }
+.pcard-hdr { padding:8px 13px; font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.pcard-dims { font-size:10px; color:#ccc; font-weight:400; letter-spacing:0; }
+
+/* AD SHELLS */
+.ad { position:relative; overflow:hidden; }
+.ad-bg-layer { position:absolute; inset:0; background-size:cover; background-position:50% 50%; transition:background-position .3s; }
+.ad-overlay-layer { position:absolute; inset:0; background:rgba(193,102,107,.82); }
+
+/* Sizes */
+.ad-quer  { width:100%; aspect-ratio:16/9; }
+.ad-hoch-wrap { padding:14px; background:#E8E3DC; display:flex; justify-content:center; }
+.ad-hoch  { width:150px; aspect-ratio:9/16; }
+.ad-wide  { width:100%; height:56px; }
+.display-pair { display:flex; gap:12px; justify-content:center; align-items:flex-start; padding:14px; background:#E8E3DC; }
+.display-item { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.dim-lbl { font-size:10px; color:var(--muted); }
+.ad-med   { width:180px; aspect-ratio:6/5; }
+.ad-tall  { width:130px; aspect-ratio:1/2; }
+
+/* DRAG LAYER */
+.drag-layer { position:absolute; inset:0; z-index:3; }
+
+/* DRAGGABLE ELEMENTS */
+.draggable {
+  position:absolute;
+  cursor:grab;
+  user-select:none;
+  border-radius:3px;
+  padding:2px 3px;
+}
+.draggable:hover { outline:1.5px dashed rgba(255,255,255,.5); }
+.draggable.sel {
+  outline:2px solid white;
+  z-index:10;
+}
+.draggable.dragging { cursor:grabbing; opacity:.85; z-index:20; }
+
+/* ELEMENT TOOLBAR (appears when element selected) */
+.el-toolbar {
+  position:absolute;
+  top:-28px; left:0;
+  background:rgba(0,0,0,.75);
+  border-radius:5px;
+  display:none;
+  align-items:center;
+  gap:1px;
+  padding:2px;
+  white-space:nowrap;
+  z-index:30;
+}
+.draggable.sel .el-toolbar { display:flex; }
+.tb-btn {
+  background:transparent;
+  border:none;
+  color:white;
+  font-size:11px;
+  font-weight:600;
+  padding:3px 7px;
+  cursor:pointer;
+  border-radius:3px;
+  font-family:'Outfit';
+  transition:background .1s;
+}
+.tb-btn:hover { background:rgba(255,255,255,.2); }
+.tb-sep { width:1px; height:14px; background:rgba(255,255,255,.25); margin:0 1px; }
+
+/* DEFAULT POSITIONS */
+/* QUER */
+#eq-logo   { top:5%;   left:5%; }
+#eq-hl     { top:32%;  left:5%; max-width:58%; }
+#eq-sub    { top:58%;  left:5%; }
+#eq-cta    { bottom:7%; left:5%; }
+#eq-domain { bottom:7%; right:13%; }
+#eq-qr     { bottom:5%; right:4%; }
+/* HOCH */
+#eh-logo   { top:5%;   left:7%; }
+#eh-hl     { top:26%;  left:7%; max-width:80%; }
+#eh-sub    { top:52%;  left:7%; }
+#eh-cta    { bottom:15%; left:7%; }
+#eh-domain { bottom:7%;  left:7%; }
+#eh-qr     { bottom:5%;  right:7%; }
+/* WIDE */
+#ew-logo   { top:50%;  left:2%;  transform:translateY(-50%); }
+#ew-hl     { top:50%;  left:22%; transform:translateY(-50%); max-width:50%; }
+#ew-cta    { top:50%;  right:2%; transform:translateY(-50%); }
+/* MED */
+#em-logo   { top:6%;   left:6%; }
+#em-hl     { top:30%;  left:6%; max-width:85%; }
+#em-cta    { bottom:6%; left:6%; }
+#em-qr     { bottom:6%; right:6%; }
+/* TALL */
+#et-logo   { top:5%;   left:6%; }
+#et-hl     { top:22%;  left:6%; max-width:85%; }
+#et-sub    { top:48%;  left:6%; }
+#et-cta    { bottom:12%; left:6%; }
+#et-qr     { bottom:5%; right:6%; }
+
+/* AD TEXT STYLES */
+.ad-logo-txt { font-family:'Fraunces',serif; color:white; font-weight:600; opacity:.9; white-space:nowrap; font-size:14px; }
+.ad-logo-img { height:26px; width:auto; max-width:72px; object-fit:contain; filter:brightness(0) invert(1); display:block; }
+.ad-hl  { font-family:'Fraunces',serif; color:white; font-weight:300; line-height:1.15; font-size:32px; }
+.ad-sub { color:rgba(255,255,255,.72); font-weight:300; font-size:13px; white-space:nowrap; }
+.ad-cta { background:white; color:#5C4F3D; border-radius:100px; font-family:'Outfit'; font-weight:600; font-size:12px; padding:7px 16px; display:inline-block; white-space:nowrap; }
+.ad-domain { color:rgba(255,255,255,.45); font-size:10px; white-space:nowrap; }
+.ad-qr { background:white; border-radius:3px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+
+/* HOCH sizes (fixed) */
+#eh-logo .ad-logo-txt { font-size:10px; }
+#eh-logo .ad-logo-img { height:18px; }
+#eh-hl   .ad-hl  { font-size:16px; }
+#eh-sub  .ad-sub { font-size:9px; }
+#eh-cta  .ad-cta { font-size:9px; padding:4px 10px; }
+#eh-domain .ad-domain { font-size:8px; }
+#eh-qr   .ad-qr  { width:26px; height:26px; font-size:14px; }
+
+/* WIDE sizes (fixed) */
+#ew-logo .ad-logo-txt { font-size:10px; }
+#ew-logo .ad-logo-img { height:16px; }
+#ew-hl   .ad-hl  { font-size:12px; }
+#ew-cta  .ad-cta { font-size:10px; padding:4px 10px; }
+
+/* MED sizes (fixed) */
+#em-logo .ad-logo-txt { font-size:10px; }
+#em-logo .ad-logo-img { height:16px; }
+#em-hl   .ad-hl  { font-size:14px; }
+#em-cta  .ad-cta { font-size:9px; padding:4px 10px; }
+#em-qr   .ad-qr  { width:22px; height:22px; font-size:12px; }
+
+/* TALL sizes (fixed) */
+#et-logo .ad-logo-txt { font-size:9px; }
+#et-logo .ad-logo-img { height:14px; }
+#et-hl   .ad-hl  { font-size:12px; }
+#et-sub  .ad-sub { font-size:8px; }
+#et-cta  .ad-cta { font-size:9px; padding:3px 8px; }
+#et-qr   .ad-qr  { width:20px; height:20px; font-size:11px; }
+
+/* BG STYLE: PURE – full image no overlay */
+.ad.pure-mode .ad-overlay-layer { opacity:0 !important; }
+
+/* BG STYLE: SPLIT – color left half, image right half */
+.ad.split-mode .ad-overlay-layer { opacity:0 !important; }
+.ad.split-mode .ad-bg-layer { clip-path: inset(0 0 0 50%); }
+.ad.split-mode .ad-split-color {
+  display:block !important;
+  position:absolute; top:0; left:0; width:50%; height:100%;
+  z-index:1;
+  background: var(--main-color);
+}
+
+/* ANIMATIONS */
+@keyframes ctaPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.5)} 50%{box-shadow:0 0 0 7px rgba(255,255,255,0)} }
+@keyframes qrFade   { 0%,100%{opacity:1} 50%{opacity:.1} }
+@keyframes hlSlide  { 0%{opacity:0;transform:translateX(-16px)} 20%{opacity:1;transform:translateX(0)} 80%{opacity:1;transform:translateX(0)} 100%{opacity:0;transform:translateX(-16px)} }
+
+.anim-cta .ad-cta { animation:ctaPulse 2.5s ease-in-out infinite; }
+.anim-qr  .ad-qr  { animation:qrFade 2.5s ease-in-out infinite; }
+.anim-hl  .ad-hl  { animation:hlSlide 3s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="vio-logo">VIO</div>
+    <div class="step-pill">Schritt 5 von 7 – Werbemittel erstellen</div>
+  </div>
+  <div class="save-ind"><div class="save-dot"></div>Gespeichert</div>
+</header>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+  <div class="green-badge"><div class="green-dot"></div>Farben, Logo und Bild von deiner Website geladen</div>
+
+  <!-- HEADLINE -->
+  <div class="sec">
+    <div class="lbl">Headline wählen</div>
+    <div class="hl-opt active" onclick="selHl(this,'Dein Stadtgarten-Erlebnis!')">
+      <span class="hl-txt">Dein Stadtgarten-Erlebnis!</span><span class="hl-wc">3 W.</span><span class="hl-chk">✓</span>
+    </div>
+    <div class="hl-opt" onclick="selHl(this,'Küche & Genuss in Baden')">
+      <span class="hl-txt">Küche & Genuss in Baden</span><span class="hl-wc">5 W.</span><span class="hl-chk">✓</span>
+    </div>
+    <div class="hl-opt" onclick="selHl(this,'Brunch. Burger. Lemon.')">
+      <span class="hl-txt">Brunch. Burger. Lemon.</span><span class="hl-wc">3 W.</span><span class="hl-chk">✓</span>
+    </div>
+    <input class="inp" id="hl-custom" type="text" placeholder="Eigene Headline..." oninput="customHl(this.value)">
+  </div>
+
+  <!-- SUBLINE -->
+  <div class="sec">
+    <div class="lbl">Subline <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></div>
+    <input class="inp" id="sub-inp" type="text" value="Baden, Luzernstr. 6" oninput="setAllText('sub',this.value)">
+  </div>
+
+  <!-- CTA -->
+  <div class="sec">
+    <div class="lbl">CTA-Button Text</div>
+    <input class="inp" id="cta-inp" type="text" value="Jetzt reservieren →" oninput="setAllCta(this.value)">
+  </div>
+
+  <!-- URL -->
+  <div class="sec">
+    <div class="lbl">Landingpage URL <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:9px">(QR Code)</span></div>
+    <div class="url-row">
+      <input class="inp" id="url-inp" type="text" value="https://restaurantlemon.ch/" oninput="setUrl(this.value)" style="flex:1">
+      <span class="url-badge" id="qr-badge">QR ✓</span>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- LOGO -->
+  <div class="sec">
+    <div class="lbl">Logo</div>
+    <div class="toggle">
+      <button class="tog" id="tog-text" onclick="setLogoMode('text')">Text</button>
+      <button class="tog active" id="tog-bild" onclick="setLogoMode('bild')">Bild</button>
+    </div>
+    <div id="logo-text-sec" style="display:none">
+      <input class="inp" id="logo-txt-inp" type="text" placeholder="z.B. Restaurant Lemon" value="Restaurant Lemon" oninput="setLogoText(this.value)">
+    </div>
+    <div id="logo-bild-sec">
+      <div class="logo-row">
+        <!-- Using a colored square as placeholder since external images are blocked in local HTML -->
+        <div style="width:26px;height:26px;background:var(--tc);border-radius:4px;display:flex;align-items:center;justify-content:center;color:white;font-family:'Fraunces',serif;font-size:13px;font-weight:600;flex-shrink:0">L</div>
+        <div>
+          <div class="logo-auto">✓ Von Website geladen</div>
+          <div class="logo-sub2">restaurantlemon.ch</div>
+        </div>
+        <div class="replace-lnk">ersetzen</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- SCHRIFTART -->
+  <div class="sec">
+    <div class="lbl">Schriftart</div>
+    <div class="font-grid">
+      <div class="font-btn active" onclick="setFont(this,&quot;'Fraunces',serif&quot;)">
+        <span class="fn" style="font-family:'Fraunces',serif">Fraunces</span>
+        <span class="fs" style="font-family:'Fraunces',serif;font-style:italic">Elegant</span>
+      </div>
+      <div class="font-btn" onclick="setFont(this,&quot;'Outfit',sans-serif&quot;)">
+        <span class="fn" style="font-family:'Outfit',sans-serif">Outfit</span>
+        <span class="fs" style="font-family:'Outfit',sans-serif">Modern</span>
+      </div>
+      <div class="font-btn" onclick="setFont(this,&quot;'Playfair Display',serif&quot;)">
+        <span class="fn" style="font-family:'Playfair Display',serif">Playfair</span>
+        <span class="fs" style="font-family:'Playfair Display',serif;font-style:italic">Klassisch</span>
+      </div>
+      <div class="font-btn" onclick="setFont(this,&quot;'Inter',sans-serif&quot;)">
+        <span class="fn" style="font-family:'Inter',sans-serif">Inter</span>
+        <span class="fs" style="font-family:'Inter',sans-serif">Corporate</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO -->
+  <div style="font-size:10px;color:var(--muted);background:var(--cream2);border-radius:6px;padding:7px 9px">
+    💡 Element anklicken → Grösse mit <b>A− A+</b> anpassen oder verschieben
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- FARBEN -->
+  <div class="sec">
+    <div class="lbl">Farben</div>
+    <div class="color-row">
+      <div class="color-col">
+        <div class="cp-wrap">
+          <div class="color-swatch" id="sw-main" style="background:#C1666B"><span class="auto-tag">Auto</span></div>
+          <input type="color" value="#C1666B" oninput="applyColor('main',this.value)" title="Hauptfarbe">
+        </div>
+        <div class="color-lbl">Hauptfarbe</div>
+      </div>
+      <div class="color-col">
+        <div class="cp-wrap">
+          <div class="color-swatch" id="sw-text" style="background:#FFFFFF;border:1.5px solid var(--border)"></div>
+          <input type="color" value="#FFFFFF" oninput="applyColor('text',this.value)" title="Textfarbe">
+        </div>
+        <div class="color-lbl">Textfarbe</div>
+      </div>
+      <div class="color-col">
+        <div class="cp-wrap">
+          <div class="color-swatch" id="sw-cta" style="background:#5C4F3D"><span class="auto-tag">Auto</span></div>
+          <input type="color" value="#5C4F3D" oninput="applyColor('cta',this.value)" title="CTA-Farbe">
+        </div>
+        <div class="color-lbl">CTA-Farbe</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- HINTERGRUNDBILD -->
+  <div class="sec">
+    <div class="lbl">Hintergrundbild</div>
+    <!-- Placeholder gradient since external images blocked in local HTML -->
+    <div class="upload-box loaded" id="bg-upload" onclick="document.getElementById('bg-file').click()">
+      <div style="width:100%;height:64px;background:linear-gradient(135deg,#C1666B 0%,#5C4F3D 100%);border-radius:5px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-size:11px">Von Website geladen ✓</div>
+      <div class="upload-hover">↑ Bild ersetzen</div>
+    </div>
+    <div class="qual-row">
+      <div class="qdot qg"></div>
+      <div style="font-size:11px;color:var(--muted)">Bildqualität: Top (1920 × 1080 px)</div>
+    </div>
+    <input type="file" id="bg-file" accept="image/*" style="display:none" onchange="loadBgFile(this)">
+  </div>
+
+  <!-- BILDSTIL -->
+  <div class="sec">
+    <div class="lbl">Bildstil</div>
+    <div class="toggle">
+      <button class="tog active" id="bs-overlay" onclick="setBgStyle('overlay',this)">Overlay</button>
+      <button class="tog" id="bs-pure"   onclick="setBgStyle('pure',this)">Reines Bild</button>
+      <button class="tog" id="bs-split"  onclick="setBgStyle('split',this)">Split</button>
+    </div>
+    <div id="bs-desc" style="font-size:10px;color:var(--muted);background:var(--cream2);border-radius:6px;padding:6px 8px">Farbige Schicht über dem Bild – Texte gut lesbar</div>
+  </div>
+
+  <!-- BILDFOKUS -->
+  <div class="sec">
+    <div class="lbl">Bildfokus</div>
+    <div class="focus-wrap">
+      <div class="focus-bg" id="focus-bg" style="background:linear-gradient(135deg,#C1666B,#5C4F3D)"></div>
+      <div class="focus-grid-inner" id="focus-grid"></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);text-align:center">Klicke auf den wichtigsten Bildbereich</div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- BEWEGUNG -->
+  <div class="sec">
+    <div class="lbl">Bewegtes Element <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:9px">(alle Formate)</span></div>
+    <div class="dyn-grid">
+      <div class="dyn-btn active" onclick="setAnim(this,'cta')"><span class="ico">👆</span>CTA-Button</div>
+      <div class="dyn-btn" onclick="setAnim(this,'qr')"><span class="ico">📱</span>QR-Code</div>
+      <div class="dyn-btn" onclick="setAnim(this,'hl')"><span class="ico">✏️</span>Headline</div>
+      <div class="dyn-btn" onclick="setAnim(this,'none')"><span class="ico">⏸</span>Statisch</div>
+    </div>
+    <div class="dyn-tip" id="dyn-tip">✓ CTA pulsiert sanft – zieht Blicke an</div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="submit-area">
+    <button class="btn-p">✓ Werbemittel einreichen</button>
+    <button class="btn-s">💾 Link zum Weiterarbeiten senden</button>
+  </div>
+
+</aside>
+
+<!-- CANVAS -->
+<main class="canvas-area">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('dooh',this)">DOOH</button>
+      <button class="tab" onclick="showTab('display',this)">Display</button>
+    </div>
+    <div class="canvas-hint">Element anklicken → verschieben oder Grösse anpassen</div>
+  </div>
+
+  <!-- DOOH TAB -->
+  <div id="tab-dooh" class="pcards">
+
+    <!-- QUER -->
+    <div class="pcard">
+      <div class="pcard-hdr">DOOH Querformat <span class="pcard-dims">1920 × 1080 px</span></div>
+      <div class="ad ad-quer anim-cta" id="ad-quer">
+        <div class="ad-bg-layer" id="bg-quer" style="background:linear-gradient(135deg,#8B3A3F 0%,#3D3028 50%,#C1666B 100%)"></div>
+        <div class="ad-overlay-layer" id="ov-quer"></div>
+        <div class="ad-split-color" style="display:none;background:#C1666B"></div>
+        <div class="drag-layer" id="dl-quer">
+          <div class="draggable" id="eq-logo">
+            <div class="el-toolbar">
+              <button class="tb-btn" onclick="resizeEl(event,'eq-logo',-2)">A−</button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onclick="resizeEl(event,'eq-logo',2)">A+</button>
+            </div>
+            <div class="ad-logo-txt" id="logo-txt-quer">Restaurant Lemon</div>
+          </div>
+          <div class="draggable" id="eq-hl">
+            <div class="el-toolbar">
+              <button class="tb-btn" onclick="resizeEl(event,'eq-hl',-2)">A−</button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onclick="resizeEl(event,'eq-hl',2)">A+</button>
+            </div>
+            <div class="ad-hl" id="hl-quer">Dein Stadtgarten-Erlebnis!</div>
+          </div>
+          <div class="draggable" id="eq-sub">
+            <div class="el-toolbar">
+              <button class="tb-btn" onclick="resizeEl(event,'eq-sub',-1)">A−</button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onclick="resizeEl(event,'eq-sub',1)">A+</button>
+            </div>
+            <div class="ad-sub" id="sub-quer">Baden, Luzernstr. 6</div>
+          </div>
+          <div class="draggable" id="eq-cta">
+            <div class="el-toolbar">
+              <button class="tb-btn" onclick="resizeEl(event,'eq-cta',-1)">A−</button>
+              <div class="tb-sep"></div>
+              <button class="tb-btn" onclick="resizeEl(event,'eq-cta',1)">A+</button>
+            </div>
+            <div class="ad-cta" id="cta-quer">Jetzt reservieren →</div>
+          </div>
+          <div class="draggable" id="eq-domain">
+            <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eq-domain',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eq-domain',1)">A+</button></div>
+            <div class="ad-domain">restaurantlemon.ch</div>
+          </div>
+          <div class="draggable" id="eq-qr">
+            <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eq-qr',-4)">−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eq-qr',4)">+</button></div>
+            <div class="ad-qr">⬛</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOCH -->
+    <div class="pcard">
+      <div class="pcard-hdr">DOOH Hochformat <span class="pcard-dims">1080 × 1920 px</span></div>
+      <div class="ad-hoch-wrap">
+        <div class="ad ad-hoch anim-cta" id="ad-hoch">
+          <div class="ad-bg-layer" id="bg-hoch" style="background:linear-gradient(135deg,#8B3A3F 0%,#3D3028 50%,#C1666B 100%)"></div>
+          <div class="ad-overlay-layer" id="ov-hoch"></div>
+          <div class="ad-split-color" style="display:none;background:#C1666B"></div>
+          <div class="drag-layer" id="dl-hoch">
+            <div class="draggable" id="eh-logo">
+              <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eh-logo',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eh-logo',1)">A+</button></div>
+              <div class="ad-logo-txt" id="logo-txt-hoch">Restaurant Lemon</div>
+            </div>
+            <div class="draggable" id="eh-hl">
+              <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eh-hl',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eh-hl',1)">A+</button></div>
+              <div class="ad-hl" id="hl-hoch">Dein Stadtgarten-Erlebnis!</div>
+            </div>
+            <div class="draggable" id="eh-sub">
+              <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eh-sub',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eh-sub',1)">A+</button></div>
+              <div class="ad-sub" id="sub-hoch">Baden, Luzernstr. 6</div>
+            </div>
+            <div class="draggable" id="eh-cta">
+              <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eh-cta',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eh-cta',1)">A+</button></div>
+              <div class="ad-cta" id="cta-hoch">Jetzt reservieren →</div>
+            </div>
+            <div class="draggable" id="eh-domain">
+              <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eh-domain',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eh-domain',1)">A+</button></div>
+              <div class="ad-domain">restaurantlemon.ch</div>
+            </div>
+            <div class="draggable" id="eh-qr">
+              <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'eh-qr',-3)">−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'eh-qr',3)">+</button></div>
+              <div class="ad-qr" style="width:26px;height:26px;font-size:14px">⬛</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DISPLAY TAB -->
+  <div id="tab-display" class="pcards" style="display:none">
+
+    <!-- 970x250 -->
+    <div class="pcard">
+      <div class="pcard-hdr">Display Banner <span class="pcard-dims">970 × 250 px</span></div>
+      <div class="ad ad-wide anim-cta" id="ad-wide">
+        <div class="ad-bg-layer" id="bg-wide" style="background:linear-gradient(135deg,#8B3A3F 0%,#3D3028 50%,#C1666B 100%)"></div>
+        <div class="ad-overlay-layer" id="ov-wide"></div>
+        <div class="ad-split-color" style="display:none;background:#C1666B"></div>
+        <div class="drag-layer" id="dl-wide">
+          <div class="draggable" id="ew-logo">
+            <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'ew-logo',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'ew-logo',1)">A+</button></div>
+            <div class="ad-logo-txt" id="logo-txt-wide" style="font-size:10px">Restaurant Lemon</div>
+          </div>
+          <div class="draggable" id="ew-hl">
+            <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'ew-hl',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'ew-hl',1)">A+</button></div>
+            <div class="ad-hl" id="hl-wide" style="font-size:12px">Dein Stadtgarten-Erlebnis!</div>
+          </div>
+          <div class="draggable" id="ew-cta">
+            <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'ew-cta',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'ew-cta',1)">A+</button></div>
+            <div class="ad-cta" id="cta-wide" style="font-size:10px;padding:4px 10px">Reservieren →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 300x250 + 300x600 -->
+    <div class="pcard">
+      <div class="pcard-hdr">Display Rectangle & Skyscraper</div>
+      <div class="display-pair">
+
+        <div class="display-item">
+          <div class="ad ad-med anim-cta" id="ad-med">
+            <div class="ad-bg-layer" id="bg-med" style="background:linear-gradient(135deg,#8B3A3F 0%,#3D3028 50%,#C1666B 100%)"></div>
+            <div class="ad-overlay-layer" id="ov-med"></div>
+              <div class="ad-split-color" style="display:none;background:#C1666B"></div>
+            <div class="drag-layer" id="dl-med">
+              <div class="draggable" id="em-logo">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'em-logo',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'em-logo',1)">A+</button></div>
+                <div class="ad-logo-txt" id="logo-txt-med" style="font-size:9px">Restaurant Lemon</div>
+              </div>
+              <div class="draggable" id="em-hl">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'em-hl',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'em-hl',1)">A+</button></div>
+                <div class="ad-hl" id="hl-med" style="font-size:14px">Dein Stadtgarten-Erlebnis!</div>
+              </div>
+              <div class="draggable" id="em-cta">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'em-cta',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'em-cta',1)">A+</button></div>
+                <div class="ad-cta" id="cta-med" style="font-size:9px;padding:3px 9px">Reservieren →</div>
+              </div>
+              <div class="draggable" id="em-qr">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'em-qr',-2)">−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'em-qr',2)">+</button></div>
+                <div class="ad-qr" style="width:20px;height:20px;font-size:11px">⬛</div>
+              </div>
+            </div>
+          </div>
+          <div class="dim-lbl">300 × 250 px</div>
+        </div>
+
+        <div class="display-item">
+          <div class="ad ad-tall anim-cta" id="ad-tall">
+            <div class="ad-bg-layer" id="bg-tall" style="background:linear-gradient(135deg,#8B3A3F 0%,#3D3028 50%,#C1666B 100%)"></div>
+            <div class="ad-overlay-layer" id="ov-tall"></div>
+              <div class="ad-split-color" style="display:none;background:#C1666B"></div>
+            <div class="drag-layer" id="dl-tall">
+              <div class="draggable" id="et-logo">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'et-logo',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'et-logo',1)">A+</button></div>
+                <div class="ad-logo-txt" id="logo-txt-tall" style="font-size:8px">Restaurant Lemon</div>
+              </div>
+              <div class="draggable" id="et-hl">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'et-hl',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'et-hl',1)">A+</button></div>
+                <div class="ad-hl" id="hl-tall" style="font-size:12px">Dein Stadtgarten-Erlebnis!</div>
+              </div>
+              <div class="draggable" id="et-sub">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'et-sub',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'et-sub',1)">A+</button></div>
+                <div class="ad-sub" id="sub-tall" style="font-size:8px">Baden, Luzernstr. 6</div>
+              </div>
+              <div class="draggable" id="et-cta">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'et-cta',-1)">A−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'et-cta',1)">A+</button></div>
+                <div class="ad-cta" id="cta-tall" style="font-size:8px;padding:3px 7px">Reservieren →</div>
+              </div>
+              <div class="draggable" id="et-qr">
+                <div class="el-toolbar"><button class="tb-btn" onclick="resizeEl(event,'et-qr',-2)">−</button><div class="tb-sep"></div><button class="tb-btn" onclick="resizeEl(event,'et-qr',2)">+</button></div>
+                <div class="ad-qr" style="width:18px;height:18px;font-size:10px">⬛</div>
+              </div>
+            </div>
+          </div>
+          <div class="dim-lbl">300 × 600 px</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+'use strict';
+
+// ── TABS ──
+function showTab(tab, btn) {
+  document.getElementById('tab-dooh').style.display  = tab === 'dooh'    ? 'flex' : 'none';
+  document.getElementById('tab-display').style.display = tab === 'display' ? 'flex' : 'none';
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── HEADLINE ──
+function selHl(el, text) {
+  document.querySelectorAll('.hl-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('hl-custom').value = '';
+  setAllText('hl', text);
+}
+function customHl(val) {
+  if (!val.trim()) return;
+  document.querySelectorAll('.hl-opt').forEach(o => o.classList.remove('active'));
+  setAllText('hl', val);
+}
+function setAllText(type, val) {
+  const ids = type === 'hl'
+    ? ['hl-quer','hl-hoch','hl-wide','hl-med','hl-tall']
+    : ['sub-quer','sub-hoch','sub-tall'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = val; });
+}
+
+// ── URL / QR ──
+function setUrl(val) {
+  const badge = document.getElementById('qr-badge');
+  const ok = val.trim().length > 0;
+  badge.textContent = ok ? 'QR ✓' : 'QR –';
+  badge.style.color = ok ? 'var(--green)' : 'var(--red)';
+}
+
+// ── LOGO ──
+function setLogoMode(mode) {
+  document.getElementById('tog-text').classList.toggle('active', mode === 'text');
+  document.getElementById('tog-bild').classList.toggle('active', mode === 'bild');
+  document.getElementById('logo-text-sec').style.display = mode === 'text' ? 'block' : 'none';
+  document.getElementById('logo-bild-sec').style.display = mode === 'bild' ? 'block' : 'none';
+}
+function setLogoText(val) {
+  ['logo-txt-quer','logo-txt-hoch','logo-txt-wide','logo-txt-med','logo-txt-tall'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+}
+
+// ── FONT ──
+function setFont(btn, font) {
+  document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.ad-hl').forEach(el => el.style.fontFamily = font);
+  document.querySelectorAll('.ad-logo-txt').forEach(el => el.style.fontFamily = font);
+}
+
+// ── COLORS ──
+function applyColor(which, val) {
+  document.getElementById('sw-' + which).style.background = val;
+  if (which === 'main') {
+    document.querySelectorAll('.ad-overlay-layer').forEach(el => el.style.background = hexRgba(val, .82));
+    document.querySelectorAll('.ad-split-color').forEach(el => el.style.background = val);
+  }
+  if (which === 'text') {
+    document.querySelectorAll('.ad-hl,.ad-sub,.ad-logo-txt,.ad-domain').forEach(el => el.style.color = val);
+  }
+  if (which === 'cta') {
+    document.querySelectorAll('.ad-cta').forEach(el => el.style.color = val);
+  }
+}
+function hexRgba(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ── BG IMAGE ──
+document.getElementById('bg-upload').addEventListener('click', () => document.getElementById('bg-file').click());
+function loadBgFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const url = e.target.result;
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const dot = document.querySelector('.qdot');
+      const txt = dot.nextElementSibling;
+      dot.className = 'qdot';
+      if (w >= 1920 && h >= 1080) {
+        dot.classList.add('qg');
+        txt.textContent = `Bildqualität: Top (${w} × ${h} px)`;
+      } else if (w >= 1200) {
+        dot.classList.add('qw');
+        txt.textContent = `Könnte unscharf wirken (${w} × ${h} px)`;
+      } else {
+        dot.classList.add('qb');
+        txt.textContent = `Zu klein für DOOH (${w} × ${h} px)`;
+      }
+      // Update all bg layers
+      ['quer','hoch','wide','med','tall'].forEach(f => {
+        const el = document.getElementById('bg-' + f);
+        if (el) el.style.background = `url('${url}') center/cover`;
+      });
+      document.getElementById('focus-bg').style.background = `url('${url}') center/cover`;
+      // Update upload thumb area
+      const box = document.getElementById('bg-upload');
+      box.innerHTML = `<img style="width:100%;height:64px;object-fit:cover;border-radius:5px;display:block" src="${url}"><div class="upload-hover">↑ Bild ersetzen</div>`;
+    };
+    img.src = url;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── FOCUS GRID ──
+const FOCUS_POSITIONS = [
+  ['0% 0%','50% 0%','100% 0%'],
+  ['0% 50%','50% 50%','100% 50%'],
+  ['0% 100%','50% 100%','100% 100%']
+];
+(function buildFocusGrid() {
+  const grid = document.getElementById('focus-grid');
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'fcell' + (r === 1 && c === 1 ? ' active' : '');
+      cell.addEventListener('click', () => {
+        document.querySelectorAll('.fcell').forEach(fc => fc.classList.remove('active'));
+        cell.classList.add('active');
+        const pos = FOCUS_POSITIONS[r][c];
+        ['quer','hoch','wide','med','tall'].forEach(f => {
+          const el = document.getElementById('bg-' + f);
+          if (el) {
+            const current = el.style.background;
+            if (current.includes('url(')) {
+              el.style.backgroundPosition = pos;
+            }
+          }
+        });
+      });
+      grid.appendChild(cell);
+    }
+  }
+})();
+
+// ── CTA TEXT ──
+function setAllCta(val) {
+  ['cta-quer','cta-hoch','cta-wide','cta-med','cta-tall'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  });
+}
+
+// ── BG STYLE: Overlay / Pure / Split ──
+const BS_DESCS = {
+  overlay: 'Farbige Schicht über dem Bild – Texte gut lesbar',
+  pure:    'Volles Bild ohne Overlay – maximale Bildwirkung',
+  split:   'Links Farbe, rechts Bild – strukturiertes Layout'
+};
+function setBgStyle(mode, btn) {
+  document.querySelectorAll('#bs-overlay,#bs-pure,#bs-split').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('bs-desc').textContent = BS_DESCS[mode];
+  document.querySelectorAll('.ad').forEach(ad => {
+    ad.classList.remove('overlay-mode','pure-mode','split-mode');
+    ad.classList.add(mode + '-mode');
+    // Show/hide split-color panel
+    ad.querySelectorAll('.ad-split-color').forEach(sc => {
+      sc.style.display = mode === 'split' ? 'block' : 'none';
+    });
+  });
+}
+
+
+const ANIM_TIPS = {
+  cta:  '✓ CTA pulsiert sanft – zieht Blicke an',
+  qr:   '✓ QR-Code blendet ein und aus',
+  hl:   '✓ Headline gleitet von links ein',
+  none: '⏸ Alle Elemente statisch'
+};
+function setAnim(btn, type) {
+  document.querySelectorAll('.dyn-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('dyn-tip').textContent = ANIM_TIPS[type];
+  const allAds = ['ad-quer','ad-hoch','ad-wide','ad-med','ad-tall'];
+  allAds.forEach(id => {
+    const ad = document.getElementById(id);
+    if (!ad) return;
+    ad.classList.remove('anim-cta','anim-qr','anim-hl');
+    if (type !== 'none') ad.classList.add('anim-' + type);
+  });
+}
+
+// ── ELEMENT RESIZE ──
+function resizeEl(e, id, delta) {
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Find the main content child (not the toolbar)
+  const content = el.querySelector('.ad-hl,.ad-sub,.ad-cta,.ad-logo-txt,.ad-domain,.ad-qr');
+  if (!content) return;
+  const current = parseFloat(window.getComputedStyle(content).fontSize);
+  const newSize = Math.max(6, Math.min(80, current + delta));
+  content.style.fontSize = newSize + 'px';
+  // For QR: resize the box itself
+  if (content.classList.contains('ad-qr')) {
+    const currentW = parseFloat(window.getComputedStyle(content).width);
+    content.style.width  = Math.max(14, currentW + delta) + 'px';
+    content.style.height = Math.max(14, currentW + delta) + 'px';
+  }
+}
+
+// ── DRAG & DROP ──
+function initDrag(layerId) {
+  const layer = document.getElementById(layerId);
+  if (!layer) return;
+
+  layer.querySelectorAll('.draggable').forEach(el => {
+    let active = false, sx, sy, sl, st;
+
+    el.addEventListener('mousedown', e => {
+      // Don't drag when clicking toolbar buttons
+      if (e.target.closest('.el-toolbar')) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      active = true;
+      el.classList.add('dragging');
+
+      // Deselect others
+      layer.querySelectorAll('.draggable').forEach(d => d.classList.remove('sel'));
+      el.classList.add('sel');
+
+      const pr = layer.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+
+      sl = ((er.left - pr.left) / pr.width)  * 100;
+      st = ((er.top  - pr.top)  / pr.height) * 100;
+
+      // Normalize to top/left
+      el.style.bottom    = 'auto';
+      el.style.right     = 'auto';
+      el.style.transform = 'none';
+      el.style.left      = sl + '%';
+      el.style.top       = st + '%';
+      sx = e.clientX;
+      sy = e.clientY;
+
+      const onMove = e => {
+        if (!active) return;
+        const pr2 = layer.getBoundingClientRect();
+        const dx = ((e.clientX - sx) / pr2.width)  * 100;
+        const dy = ((e.clientY - sy) / pr2.height) * 100;
+        el.style.left = Math.max(0, Math.min(90, sl + dx)) + '%';
+        el.style.top  = Math.max(0, Math.min(90, st + dy)) + '%';
+      };
+      const onUp = () => {
+        active = false;
+        el.classList.remove('dragging');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  });
+
+  // Deselect on layer background click
+  layer.addEventListener('mousedown', e => {
+    if (e.target === layer) {
+      layer.querySelectorAll('.draggable').forEach(d => d.classList.remove('sel'));
+    }
+  });
+}
+
+// Init all drag layers
+document.addEventListener('DOMContentLoaded', () => {
+  ['dl-quer','dl-hoch','dl-wide','dl-med','dl-tall'].forEach(initDrag);
+
+  // Set default bg style
+  document.querySelectorAll('.ad').forEach(ad => ad.classList.add('overlay-mode'));
+
+  // Init tabs correctly
+  document.getElementById('tab-dooh').style.display = 'flex';
+  document.getElementById('tab-display').style.display = 'none';
+});
+</script>
+</body>
+</html>
