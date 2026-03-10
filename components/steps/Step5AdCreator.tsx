@@ -34,54 +34,59 @@ interface DragState {
   layerEl: HTMLElement;
 }
 
-// Default positions from V11b HTML (converted bottom/right → top/left approx.)
+// ── Default positions (FIX #7: non-overlapping for each format) ──────────────
 const DEF_POS: AllPositions = {
+  // Quer 845×475: logo top-left, hl upper-left large, sub mid-left, cta bottom-left, domain+qr bottom-right
   quer: {
-    logo:   { top: 5,  left: 3  },
-    hl:     { top: 30, left: 3  },
-    sub:    { top: 62, left: 3  },
-    cta:    { top: 88, left: 3  },
-    domain: { top: 88, left: 72 },
-    qr:     { top: 84, left: 88 },
+    logo:   { top: 4,  left: 3  },
+    hl:     { top: 22, left: 3  },
+    sub:    { top: 60, left: 3  },
+    cta:    { top: 82, left: 3  },
+    domain: { top: 85, left: 62 },
+    qr:     { top: 78, left: 88 },
   },
+  // Hoch 259×461: logo top, hl upper-third, sub middle, cta lower, domain+qr bottom
   hoch: {
-    logo:   { top: 4,  left: 6  },
-    hl:     { top: 24, left: 6  },
-    sub:    { top: 54, left: 6  },
-    cta:    { top: 82, left: 6  },
-    domain: { top: 90, left: 6  },
-    qr:     { top: 85, left: 80 },
+    logo:   { top: 3,  left: 6  },
+    hl:     { top: 18, left: 6  },
+    sub:    { top: 50, left: 6  },
+    cta:    { top: 72, left: 6  },
+    domain: { top: 87, left: 6  },
+    qr:     { top: 82, left: 74 },
   },
+  // Wide 970×250: logo left, hl+sub center, cta right — all vertically centered
   wide: {
-    logo: { top: 43, left: 2  },
-    hl:   { top: 43, left: 20 },
-    sub:  { top: 68, left: 20 },
-    cta:  { top: 43, left: 82 },
+    logo: { top: 35, left: 2  },
+    hl:   { top: 22, left: 18 },
+    sub:  { top: 58, left: 18 },
+    cta:  { top: 30, left: 80 },
   },
+  // Med 300×250: logo top, hl mid, sub upper-mid, cta bottom
   med: {
-    logo: { top: 6,  left: 6 },
+    logo: { top: 5,  left: 6 },
     hl:   { top: 28, left: 6 },
-    sub:  { top: 58, left: 6 },
-    cta:  { top: 85, left: 6 },
+    sub:  { top: 56, left: 6 },
+    cta:  { top: 78, left: 6 },
   },
+  // Tall 300×600: logo top, hl upper-third, sub middle, cta lower-third
   tall: {
     logo: { top: 4,  left: 6 },
-    hl:   { top: 22, left: 6 },
-    sub:  { top: 50, left: 6 },
-    cta:  { top: 82, left: 6 },
+    hl:   { top: 18, left: 6 },
+    sub:  { top: 44, left: 6 },
+    cta:  { top: 72, left: 6 },
   },
 };
 
-// Default font sizes from V11b HTML
+// ── Default font sizes ───────────────────────────────────────────────────────
 const DEF_SIZES: AllSizes = {
-  quer: { logo: 18, hl: 60, sub: 22, cta: 18, domain: 14, qr: 72 },
+  quer: { logo: 18, hl: 58, sub: 22, cta: 18, domain: 13, qr: 70 },
   hoch: { logo: 12, hl: 26, sub: 11, cta: 11, domain: 9,  qr: 44 },
   wide: { logo: 14, hl: 22, sub: 13, cta: 14 },
   med:  { logo: 11, hl: 20, sub: 11, cta: 11 },
-  tall: { logo: 12, hl: 28, sub: 13, cta: 13 },
+  tall: { logo: 12, hl: 26, sub: 13, cta: 13 },
 };
 
-// Resize deltas per element per format
+// ── Resize deltas ────────────────────────────────────────────────────────────
 const RESIZE_DELTA: Record<string, Record<string, number>> = {
   quer: { logo: 1, hl: 2, sub: 1, cta: 1, domain: 1, qr: 4 },
   hoch: { logo: 1, hl: 1, sub: 1, cta: 1, domain: 1, qr: 3 },
@@ -110,21 +115,22 @@ function hexRgba(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// ── FIX #3: simplified suggestion tags ──────────────────────────────────────
 function makeSuggestions(org: string, domain: string) {
   return {
     hl: [
-      { text: `Willkommen bei ${org}`, tag: 'DOOH · generiert' },
-      { text: `Jetzt ${org} entdecken`, tag: 'Display · generiert' },
-      { text: `${org} – echt gut`,      tag: 'DOOH · kurz' },
+      { text: `Willkommen bei ${org}`, tag: 'kurz' },
+      { text: `Jetzt ${org} entdecken`, tag: 'einladend' },
+      { text: `${org} – echt gut`,      tag: 'prägnant' },
     ],
     sub: [
-      { text: domain,                       tag: 'Domain' },
-      { text: 'Jetzt online informieren',   tag: 'Generisch' },
+      { text: domain,                     tag: 'Domain' },
+      { text: 'Jetzt online informieren', tag: 'generisch' },
     ],
   };
 }
 
-// ─── Ad Preview Component ────────────────────────────────────────────────────
+// ── Ad Preview Component ─────────────────────────────────────────────────────
 
 interface PreviewProps {
   fmtId: string;
@@ -157,10 +163,10 @@ function AdPreview({
   bgUrl, logoUrl, logoMode, bgStyle, anim, bgPos, lpUrl,
   selEl, onElMouseDown, onLayerClick, onResize,
 }: PreviewProps) {
-  const pos    = positions[fmtId] || DEF_POS[fmtId] || {};
-  const sz     = sizes[fmtId]     || DEF_SIZES[fmtId] || {};
-  const hasQr  = fmtId === 'quer' || fmtId === 'hoch';
-  const elD    = RESIZE_DELTA[fmtId] || {};
+  const pos   = positions[fmtId] || DEF_POS[fmtId] || {};
+  const sz    = sizes[fmtId]     || DEF_SIZES[fmtId] || {};
+  const hasQr = fmtId === 'quer' || fmtId === 'hoch';
+  const elD   = RESIZE_DELTA[fmtId] || {};
 
   const animClass  = anim !== 'none' ? `anim-${anim}` : '';
   const styleClass = bgStyle === 'pure'  ? 'pure-mode'
@@ -172,17 +178,11 @@ function AdPreview({
   function Toolbar({ elId, delta }: { elId: string; delta: number }) {
     return (
       <div className="ac-tb">
-        <button
-          className="ac-tb-btn"
-          onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, -delta); }}
-        >
+        <button className="ac-tb-btn" onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, -delta); }}>
           {elId === 'qr' ? '−' : 'A−'}
         </button>
         <div className="ac-tb-sep" />
-        <button
-          className="ac-tb-btn"
-          onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, delta); }}
-        >
+        <button className="ac-tb-btn" onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, delta); }}>
           {elId === 'qr' ? '+' : 'A+'}
         </button>
       </div>
@@ -198,13 +198,13 @@ function AdPreview({
       <div
         className="ac-bg"
         style={{
-          backgroundColor:   colors.bg,
-          backgroundImage:   bgUrl ? `url('${bgUrl}')` : undefined,
+          backgroundColor:    colors.bg,
+          backgroundImage:    bgUrl ? `url('${bgUrl}')` : undefined,
           backgroundPosition: bgPos,
         }}
       />
       {/* Overlay */}
-      <div className="ac-ov" style={{ background: hexRgba(colors.bg, 0.82) }} />
+      <div className="ac-ov" style={{ background: hexRgba(colors.bg, 0.78) }} />
       {/* Split color */}
       <div className="ac-sc" style={{ background: colors.bg }} />
 
@@ -213,20 +213,20 @@ function AdPreview({
         className="ac-dl"
         onMouseDown={e => { if (e.target === e.currentTarget) onLayerClick(fmtId); }}
       >
-
         {/* Logo */}
         <div
           className={`ac-el${isSel('logo') ? ' sel' : ''}`}
-          style={{ top: `${pos.logo?.top ?? 5}%`, left: `${pos.logo?.left ?? 3}%` }}
+          style={{ top: `${pos.logo?.top ?? 4}%`, left: `${pos.logo?.left ?? 3}%` }}
           onMouseDown={e => onElMouseDown(e, fmtId, 'logo')}
         >
           <Toolbar elId="logo" delta={elD.logo ?? 1} />
+          {/* FIX #4: no filter on logo image */}
           {logoMode === 'image' && logoUrl ? (
             <img
               className="ac-logo-img"
               src={logoUrl}
               alt=""
-              style={{ height: sz.logo ?? 18 }}
+              style={{ height: sz.logo ?? 18, filter: 'none' }}
             />
           ) : (
             <div className="ac-logo-txt" style={{ fontSize: sz.logo ?? 18, color: colors.logo }}>
@@ -239,9 +239,9 @@ function AdPreview({
         <div
           className={`ac-el${isSel('hl') ? ' sel' : ''}`}
           style={{
-            top:      `${pos.hl?.top  ?? 30}%`,
+            top:      `${pos.hl?.top  ?? 22}%`,
             left:     `${pos.hl?.left ?? 3}%`,
-            maxWidth: fmtId === 'quer' ? '55%' : fmtId === 'hoch' ? '82%' : '85%',
+            maxWidth: fmtId === 'quer' ? '58%' : fmtId === 'hoch' ? '82%' : '85%',
           }}
           onMouseDown={e => onElMouseDown(e, fmtId, 'hl')}
         >
@@ -254,7 +254,7 @@ function AdPreview({
         {/* Subline */}
         <div
           className={`ac-el${isSel('sub') ? ' sel' : ''}`}
-          style={{ top: `${pos.sub?.top ?? 62}%`, left: `${pos.sub?.left ?? 3}%` }}
+          style={{ top: `${pos.sub?.top ?? 60}%`, left: `${pos.sub?.left ?? 3}%` }}
           onMouseDown={e => onElMouseDown(e, fmtId, 'sub')}
         >
           <Toolbar elId="sub" delta={elD.sub ?? 1} />
@@ -266,7 +266,7 @@ function AdPreview({
         {/* CTA */}
         <div
           className={`ac-el${isSel('cta') ? ' sel' : ''}`}
-          style={{ top: `${pos.cta?.top ?? 88}%`, left: `${pos.cta?.left ?? 3}%` }}
+          style={{ top: `${pos.cta?.top ?? 82}%`, left: `${pos.cta?.left ?? 3}%` }}
           onMouseDown={e => onElMouseDown(e, fmtId, 'cta')}
         >
           <Toolbar elId="cta" delta={elD.cta ?? 1} />
@@ -291,7 +291,7 @@ function AdPreview({
         {hasQr && (
           <div
             className={`ac-el${isSel('domain') ? ' sel' : ''}`}
-            style={{ top: `${pos.domain?.top ?? 88}%`, left: `${pos.domain?.left ?? 72}%` }}
+            style={{ top: `${pos.domain?.top ?? 85}%`, left: `${pos.domain?.left ?? 62}%` }}
             onMouseDown={e => onElMouseDown(e, fmtId, 'domain')}
           >
             <Toolbar elId="domain" delta={elD.domain ?? 1} />
@@ -305,7 +305,7 @@ function AdPreview({
         {hasQr && (
           <div
             className={`ac-el${isSel('qr') ? ' sel' : ''}`}
-            style={{ top: `${pos.qr?.top ?? 84}%`, left: `${pos.qr?.left ?? 80}%` }}
+            style={{ top: `${pos.qr?.top ?? 78}%`, left: `${pos.qr?.left ?? 86}%` }}
             onMouseDown={e => onElMouseDown(e, fmtId, 'qr')}
           >
             <Toolbar elId="qr" delta={elD.qr ?? 4} />
@@ -319,13 +319,12 @@ function AdPreview({
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ── Main Component ───────────────────────────────────────────────────────────
 
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
   const ana = briefing.analysis;
@@ -336,7 +335,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const initOrg  = ana?.organisation || '';
   const initSugs = makeSuggestions(initOrg, initDomain);
 
-  // ── Text ────────────────────────────────────────────────────────────────────
+  // ── Text state ──────────────────────────────────────────────────────────────
   const [org,      setOrg]      = useState(initOrg);
   const [headline, setHeadline] = useState(briefing.adHeadline || initSugs.hl[0]?.text || '');
   const [subline,  setSubline]  = useState(briefing.adSubline  || initSugs.sub[0]?.text || '');
@@ -345,24 +344,25 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [crawlUrl, setCrawlUrl] = useState(briefing.url        || '');
 
   // ── Crawl UI ────────────────────────────────────────────────────────────────
-  const [crawlStatus, setCrawlStatus] = useState('Im echten Flow automatisch befüllt.');
+  const [crawlStatus, setCrawlStatus] = useState('');
+  const [crawlLoading, setCrawlLoading] = useState(false);
   const [crawlAssets, setCrawlAssets] = useState<{ color: string; logoUrl: string; text: string } | null>(null);
 
   // ── Suggestions ─────────────────────────────────────────────────────────────
-  const [hlSugs,      setHlSugs]      = useState(initSugs.hl);
-  const [subSugs,     setSubSugs]     = useState(initSugs.sub);
-  const [activeHlSug, setActiveHlSug] = useState<number | null>(0);
-  const [activeSubSug,setActiveSubSug]= useState<number | null>(0);
+  const [hlSugs,       setHlSugs]       = useState(initSugs.hl);
+  const [subSugs,      setSubSugs]      = useState(initSugs.sub);
+  const [activeHlSug,  setActiveHlSug]  = useState<number | null>(initOrg ? 0 : null);
+  const [activeSubSug, setActiveSubSug] = useState<number | null>(initOrg ? 0 : null);
 
   // ── Logo ────────────────────────────────────────────────────────────────────
   const [logoMode,  setLogoMode]  = useState<'text' | 'image'>(briefing.adLogoMode || 'image');
-  const [logoUrl,   setLogoUrl]   = useState(briefing.adLogoImageData || ana?.ogLogo || ana?.favicon || '');
-  const [logoThumb, setLogoThumb] = useState(briefing.adLogoImageData || ana?.ogLogo || ana?.favicon || '');
+  const [logoUrl,   setLogoUrl]   = useState('');
+  const [logoThumb, setLogoThumb] = useState('');
   const logoFileRef = useRef<HTMLInputElement>(null);
 
   // ── Background ──────────────────────────────────────────────────────────────
-  const [bgUrl,    setBgUrl]    = useState(briefing.adBgImageData || ana?.ogImage || '');
-  const [bgThumb,  setBgThumb]  = useState(briefing.adBgImageData || ana?.ogImage || '');
+  const [bgUrl,    setBgUrl]    = useState('');
+  const [bgThumb,  setBgThumb]  = useState('');
   const [qualInfo, setQualInfo] = useState<{ cls: string; text: string } | null>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
 
@@ -376,8 +376,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   // ── Colors ──────────────────────────────────────────────────────────────────
   const themeColor = ana?.themeColor || '#C1666B';
   const [colors, setColors] = useState<Colors>({
-    bg:     briefing.adBgColor   || themeColor,
-    hl:     briefing.adTextColor || '#FFFFFF',
+    bg:     briefing.adBgColor     || themeColor,
+    hl:     briefing.adTextColor   || '#FFFFFF',
     sub:    '#FFFFFF',
     logo:   '#FFFFFF',
     ctaTxt: briefing.adAccentColor || '#5C4F3D',
@@ -402,9 +402,33 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   }));
 
   // ── Selection & Drag ────────────────────────────────────────────────────────
-  const [selEl,  setSelEl]  = useState<string | null>(null);
+  const [selEl, setSelEl] = useState<string | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
+  // FIX #5: on mount, load bg + logo from briefingData/analysis immediately
+  useEffect(() => {
+    const rawBg   = briefing.adBgImageData  || ana?.ogImage  || '';
+    const rawLogo = briefing.adLogoImageData || ana?.ogLogo   || ana?.favicon || '';
+
+    if (rawBg) {
+      // Proxy external URLs to avoid CORS
+      const bgSrc = rawBg.startsWith('data:') ? rawBg
+                  : rawBg.startsWith('http')  ? `/api/proxy-image?url=${encodeURIComponent(rawBg)}`
+                  : rawBg;
+      setBgUrl(bgSrc);
+      setBgThumb(bgSrc);
+    }
+
+    if (rawLogo) {
+      const logoSrc = rawLogo.startsWith('data:') ? rawLogo
+                    : rawLogo.startsWith('http')  ? rawLogo  // favicons are usually small, load directly
+                    : rawLogo;
+      setLogoUrl(logoSrc);
+      setLogoThumb(logoSrc);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Global drag listeners ────────────────────────────────────────────────────
   useEffect(() => {
     function onMove(e: MouseEvent) {
       const d = dragRef.current;
@@ -467,11 +491,37 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     catch { return lpUrl || ''; }
   })();
 
-  // ── Crawl ────────────────────────────────────────────────────────────────────
+  // ── FIX #2: Crawl with immediate fast-path ───────────────────────────────────
   const handleCrawl = async () => {
-    const url = crawlUrl.trim();
-    if (!url) return;
-    setCrawlStatus('Lade Daten…');
+    const rawUrl = crawlUrl.trim();
+    if (!rawUrl) return;
+
+    // Normalise URL
+    const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+
+    // ── Fast-path: extract domain immediately, update state without waiting ──
+    let fastDomain = '';
+    try { fastDomain = new URL(url).hostname.replace('www.', ''); } catch { fastDomain = rawUrl; }
+    const fastOrg     = fastDomain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const fastLogoUrl = `https://www.google.com/s2/favicons?domain=${fastDomain}&sz=128`;
+    const fastSugs    = makeSuggestions(fastOrg, fastDomain);
+
+    setOrg(fastOrg);
+    setLpUrl(url);
+    setLogoUrl(fastLogoUrl);
+    setLogoThumb(fastLogoUrl);
+    setLogoMode('image');
+    setHlSugs(fastSugs.hl);
+    setSubSugs(fastSugs.sub);
+    setHeadline(fastSugs.hl[0]?.text || '');
+    setSubline(fastSugs.sub[0]?.text || '');
+    setActiveHlSug(0);
+    setActiveSubSug(0);
+    setCrawlAssets({ color: colors.bg, logoUrl: fastLogoUrl, text: `${fastDomain} · Logo geladen` });
+    setCrawlStatus(`${fastDomain} geladen`);
+
+    // ── Then try full API analysis in background for richer data ──
+    setCrawlLoading(true);
     try {
       const res = await fetch('/api/analyze-url', {
         method: 'POST',
@@ -479,44 +529,56 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         body: JSON.stringify({ url, campaignType: briefing.campaignType }),
       });
       if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data   = await res.json();
       const result = data.analysis || data;
-      const newOrg = result.organisation || '';
-      let newDomain = '';
-      try { newDomain = new URL(url).hostname.replace('www.', ''); } catch { newDomain = url; }
-      const newLogoUrl = result.ogLogo || result.favicon
-        || `https://www.google.com/s2/favicons?domain=${newDomain}&sz=128`;
-      const newColor = result.themeColor || '#C1666B';
-      const newSugs  = makeSuggestions(newOrg, newDomain);
+      const newOrg = result.organisation || fastOrg;
+      const newLogoUrl = result.ogLogo || result.favicon || fastLogoUrl;
+      const newColor   = result.themeColor || colors.bg;
+      const newSugs    = makeSuggestions(newOrg, fastDomain);
 
       setOrg(newOrg);
-      setLpUrl(url);
-      setLogoUrl(newLogoUrl); setLogoThumb(newLogoUrl); setLogoMode('image');
       setColors(prev => ({ ...prev, bg: newColor }));
-      setHlSugs(newSugs.hl);  setSubSugs(newSugs.sub);
+      setLogoUrl(newLogoUrl);
+      setLogoThumb(newLogoUrl);
+      setHlSugs(newSugs.hl);
+      setSubSugs(newSugs.sub);
       setHeadline(newSugs.hl[0]?.text || '');
       setSubline(newSugs.sub[0]?.text || '');
-      setActiveHlSug(0); setActiveSubSug(0);
-      if (result.ogImage) { setBgUrl(result.ogImage); setBgThumb(result.ogImage); }
-      setCrawlAssets({ color: newColor, logoUrl: newLogoUrl, text: `${newDomain} · Logo + Farbe geladen` });
-      setCrawlStatus('✓ Geladen – bitte Bild manuell hochladen');
+      setActiveHlSug(0);
+      setActiveSubSug(0);
+      if (result.ogImage) {
+        const bgSrc = `/api/proxy-image?url=${encodeURIComponent(result.ogImage)}`;
+        setBgUrl(bgSrc);
+        setBgThumb(bgSrc);
+      }
+      setCrawlAssets({ color: newColor, logoUrl: newLogoUrl, text: `${fastDomain} · vollständig geladen` });
+      setCrawlStatus(`✓ ${fastDomain} analysiert`);
     } catch {
-      setCrawlStatus('Fehler beim Laden – bitte URL prüfen');
+      setCrawlStatus(`✓ ${fastDomain} – URL-Analyse übersprungen`);
+    } finally {
+      setCrawlLoading(false);
     }
   };
 
-  // ── Logo image ───────────────────────────────────────────────────────────────
+  // ── Logo file ────────────────────────────────────────────────────────────────
   const loadLogoFromFile = (file: File) => {
     const r = new FileReader();
     r.onload = e => {
       const data = e.target?.result as string;
-      setLogoUrl(data); setLogoThumb(data);
+      setLogoUrl(data);
+      setLogoThumb(data);
     };
     r.readAsDataURL(file);
   };
 
   // ── BG image ─────────────────────────────────────────────────────────────────
-  const loadBgFromUrl = (url: string) => { setBgUrl(url); setBgThumb(url); };
+  const loadBgFromUrl = (url: string) => {
+    if (!url) { setBgUrl(''); setBgThumb(''); return; }
+    const src = url.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
+    setBgUrl(src);
+    setBgThumb(src);
+  };
+
   const loadBgFromFile = (file: File) => {
     const r = new FileReader();
     r.onload = e => {
@@ -529,7 +591,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         else                              setQualInfo({ cls: 'ac-qdot-b', text: `Zu klein (${w}×${h})` });
       };
       img.src = data;
-      setBgUrl(data); setBgThumb(data);
+      setBgUrl(data);
+      setBgThumb(data);
     };
     r.readAsDataURL(file);
   };
@@ -553,7 +616,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     nextStep();
   };
 
-  // ─── Shared preview props ────────────────────────────────────────────────────
+  // ── Shared preview props ─────────────────────────────────────────────────────
   const previewProps = {
     positions, sizes, colors, headline, subline, cta, domain, org,
     bgUrl, logoUrl, logoMode, bgStyle, anim, bgPos, lpUrl,
@@ -563,15 +626,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     onResize:      handleResize,
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="ad-creator" style={{ display: 'flex', minHeight: '80vh', fontFamily: "'Outfit', sans-serif" }}>
+    // FIX #1: grid layout — sidebar left (320px), canvas right (1fr)
+    <div className="ad-creator">
 
-      {/* ══════════════ SIDEBAR ══════════════ */}
+      {/* ══════════════════════ SIDEBAR ══════════════════════ */}
       <div className="ac-sidebar">
 
         {/* Crawl card */}
-        <div className="ac-crawl-card">
+        <div className="ac-crawl-card" style={{ marginBottom: 4 }}>
           <div className="ac-crawl-label">🔗 Von Website laden</div>
           <div className="ac-crawl-row">
             <input
@@ -582,9 +646,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               onChange={e => setCrawlUrl(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCrawl()}
             />
-            <button className="ac-crawl-btn" onClick={handleCrawl}>Laden</button>
+            <button className="ac-crawl-btn" onClick={handleCrawl} disabled={crawlLoading}>
+              {crawlLoading ? '…' : 'Laden'}
+            </button>
           </div>
-          <div className="ac-crawl-status">{crawlStatus}</div>
+          {crawlStatus && <div className="ac-crawl-status">{crawlStatus}</div>}
           {crawlAssets && (
             <div className="ac-crawl-assets">
               <div className="ac-crawl-chip" style={{ background: crawlAssets.color }} />
@@ -594,7 +660,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           )}
         </div>
 
-        {/* Kampagne */}
+        {/* ── Kampagne ── */}
         <div className="ac-stitle">Kampagne</div>
 
         <div className="ac-fg">
@@ -605,6 +671,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         {/* Headline */}
         <div className="ac-fg">
           <label>Headline</label>
+          {/* FIX #3: clear hint label for chips */}
+          <div className="ac-sug-hint">Vorschläge – klicke zum Übernehmen</div>
           <div className="ac-sug-wrap">
             {hlSugs.map((s, i) => (
               <div
@@ -612,12 +680,15 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                 className={`ac-sug-chip${activeHlSug === i ? ' active' : ''}`}
                 onClick={() => { setHeadline(s.text); setActiveHlSug(i); }}
               >
-                {s.text}<span className="ac-sug-tag">{s.tag}</span>
+                <span>{s.text}</span>
+                <span className="ac-sug-tag">{s.tag}</span>
               </div>
             ))}
           </div>
           <input
-            type="text" className="ac-inp" placeholder="Eigene Headline…"
+            type="text"
+            className="ac-inp"
+            placeholder="Eigene Headline…"
             value={headline}
             onChange={e => { setHeadline(e.target.value); setActiveHlSug(null); }}
           />
@@ -625,7 +696,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
         {/* Subline */}
         <div className="ac-fg">
-          <label>Subline <span style={{ fontWeight: 300, fontSize: 10 }}>(optional)</span></label>
+          <label>
+            Subline{' '}
+            <span style={{ fontWeight: 300, fontSize: 10 }}>(optional)</span>
+          </label>
+          <div className="ac-sug-hint">Vorschläge – klicke zum Übernehmen</div>
           <div className="ac-sug-wrap">
             {subSugs.map((s, i) => (
               <div
@@ -633,12 +708,15 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                 className={`ac-sug-chip${activeSubSug === i ? ' active' : ''}`}
                 onClick={() => { setSubline(s.text); setActiveSubSug(i); }}
               >
-                {s.text}<span className="ac-sug-tag">{s.tag}</span>
+                <span>{s.text}</span>
+                <span className="ac-sug-tag">{s.tag}</span>
               </div>
             ))}
           </div>
           <input
-            type="text" className="ac-inp" placeholder="Eigene Subline…"
+            type="text"
+            className="ac-inp"
+            placeholder="Eigene Subline…"
             value={subline}
             onChange={e => { setSubline(e.target.value); setActiveSubSug(null); }}
           />
@@ -654,11 +732,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           <input type="url" className="ac-inp" value={lpUrl} onChange={e => setLpUrl(e.target.value)} />
         </div>
 
-        <div className="ac-hr" />
-
-        {/* Logo */}
+        {/* ── Logo ── */}
         <div className="ac-stitle">Logo</div>
-        <div className="ac-logo-mode">
+
+        <div className="ac-logo-mode" style={{ marginBottom: 8 }}>
           <button
             className={`ac-logo-mode-btn${logoMode === 'text' ? ' active' : ''}`}
             onClick={() => setLogoMode('text')}
@@ -670,24 +747,38 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
 
         {logoMode === 'text' && (
-          <div className="ac-fg" style={{ marginTop: 7 }}>
+          <div className="ac-fg">
+            <label>Text</label>
             <input type="text" className="ac-inp" value={org} onChange={e => setOrg(e.target.value)} />
           </div>
         )}
 
         {logoMode === 'image' && (
-          <div className="ac-fg" style={{ marginTop: 7 }}>
-            {logoThumb && <img className="ac-img-thumb" src={logoThumb} alt="" />}
+          <div className="ac-fg">
+            {/* FIX #4: sidebar thumb shown at full color, no filter */}
+            {logoThumb && (
+              <img
+                className="ac-img-thumb"
+                src={logoThumb}
+                alt=""
+                style={{ filter: 'none', background: '#f0f0f0', objectFit: 'contain' }}
+              />
+            )}
             <div className="ac-img-row">
               <input
-                type="url" className="ac-img-inp" placeholder="https://… (auto befüllt)"
+                type="url"
+                className="ac-img-inp"
+                placeholder="https://… (auto befüllt)"
                 value={logoUrl}
                 onChange={e => { setLogoUrl(e.target.value); setLogoThumb(e.target.value); }}
               />
               <label className="ac-img-upload">
                 📁
                 <input
-                  ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
                   onChange={e => e.target.files?.[0] && loadLogoFromFile(e.target.files[0])}
                 />
               </label>
@@ -695,22 +786,26 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           </div>
         )}
 
-        <div className="ac-hr" />
-
-        {/* Hintergrundbild */}
+        {/* ── Hintergrundbild ── */}
         <div className="ac-stitle">Hintergrundbild</div>
+
         <div className="ac-fg">
           {bgThumb && <img className="ac-img-thumb" src={bgThumb} alt="" />}
           <div className="ac-img-row">
             <input
-              type="url" className="ac-img-inp" placeholder="https://… (auto befüllt)"
-              value={bgUrl}
+              type="url"
+              className="ac-img-inp"
+              placeholder="https://… (auto befüllt)"
+              value={bgUrl.startsWith('/api/proxy') ? '' : bgUrl}
               onChange={e => loadBgFromUrl(e.target.value)}
             />
             <label className="ac-img-upload">
               📁
               <input
-                ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                ref={bgFileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
                 onChange={e => e.target.files?.[0] && loadBgFromFile(e.target.files[0])}
               />
             </label>
@@ -760,31 +855,29 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               )}
             </div>
           </div>
-          <div style={{ fontSize: 10, color: '#8a7a67', textAlign: 'center', marginTop: 3 }}>
+          <div style={{ fontSize: 10, color: '#a8a096', textAlign: 'center', marginTop: 3 }}>
             Klicke auf den wichtigsten Bildbereich
           </div>
         </div>
 
-        <div className="ac-hr" />
-
-        {/* Farben */}
+        {/* ── Farben ── */}
+        {/* FIX #6: 2-col color grid with BG on full width first */}
         <div className="ac-stitle">Farben</div>
-        <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 8 }}>
-          Jedes Element hat eine eigene Farbe
-        </div>
 
         <div className="ac-fg">
           <label>Hintergrundfarbe / Overlay</label>
-          <div className="ac-ci-row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
-              type="color" value={colors.bg}
+              type="color"
+              value={colors.bg}
+              style={{ width: 36, height: 36, border: '1px solid #DDD5C8', borderRadius: 6, padding: 2, cursor: 'pointer', background: 'none' }}
               onChange={e => setColors(prev => ({ ...prev, bg: e.target.value }))}
             />
-            <span className="ac-hex-lbl">{colors.bg}</span>
+            <span className="ac-hex-lbl" style={{ fontSize: 11 }}>{colors.bg}</span>
           </div>
         </div>
 
-        <div className="ac-color-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 10 }}>
           {(
             [
               ['hl',     'Headline'  ],
@@ -795,28 +888,29 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               ['domain', 'Domain'    ],
             ] as [keyof Colors, string][]
           ).map(([key, label]) => (
-            <div key={key} className="ac-ci">
-              <label>{label}</label>
-              <div className="ac-ci-row">
+            <div key={key}>
+              <div style={{ fontSize: 10, fontWeight: 500, color: '#8a7a67', marginBottom: 3 }}>{label}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <input
-                  type="color" value={colors[key]}
+                  type="color"
+                  value={colors[key]}
+                  style={{ width: 28, height: 28, border: '1px solid #DDD5C8', borderRadius: 5, padding: 2, cursor: 'pointer', background: 'none' }}
                   onChange={e => setColors(prev => ({ ...prev, [key]: e.target.value }))}
                 />
-                <span className="ac-hex-lbl">{colors[key]}</span>
+                <span style={{ fontSize: 9, color: '#a8a096' }}>{colors[key]}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="ac-hr" />
-
-        {/* Animation */}
+        {/* ── Animation ── */}
         <div className="ac-stitle">
           Bewegung{' '}
           <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>
             (alle Formate)
           </span>
         </div>
+
         <div className="ac-anim-grid">
           {[
             { id: 'cta',  icon: '👆', label: 'CTA-Button' },
@@ -834,12 +928,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             </button>
           ))}
         </div>
-        <div className="ac-anim-tip">{ANIM_TIPS[anim]}</div>
+        <div className="ac-anim-tip" style={{ marginTop: 6 }}>{ANIM_TIPS[anim]}</div>
 
-        <div className="ac-hr" />
-
-        {/* Submit */}
-        <div className="ac-submit-sec">
+        {/* ── Submit ── */}
+        <div className="ac-submit-sec" style={{ marginTop: 'auto', paddingTop: 16 }}>
           <button className="ac-btn-p" onClick={handleSubmit}>
             ✓ Werbemittel einreichen
           </button>
@@ -849,12 +941,12 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
 
       </div>
-      {/* ═══════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════ */}
 
-      {/* ══════════════ CANVAS ══════════════ */}
+      {/* ══════════════════════ CANVAS ══════════════════════ */}
       <div className="ac-canvas">
 
-        {/* Tabs */}
+        {/* FIX #3: clean tab header only, no section labels below */}
         <div className="ac-tabs">
           {(['dooh', 'display'] as const).map(t => (
             <button
@@ -870,17 +962,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         {/* DOOH */}
         {activeTab === 'dooh' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div className="sec-label" style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', display: 'flex', alignItems: 'center', gap: 10 }}>
-              DOOH Formate
-              <span style={{ flex: 1, height: 1, background: '#DDD5C8', display: 'block' }} />
-            </div>
 
             {/* Quer 845×475 */}
             <div className="ac-format-card">
               <div className="ac-format-header">
                 <div>
                   <div className="ac-format-name">Querformat</div>
-                  <div className="ac-format-spec">1920 × 1080 px</div>
+                  <div className="ac-format-spec">1920 × 1080 px · skaliert 845 × 475</div>
                 </div>
               </div>
               <AdPreview fmtId="quer" width={845} height={475} {...previewProps} />
@@ -891,25 +979,22 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               <div className="ac-format-header">
                 <div>
                   <div className="ac-format-name">Hochformat</div>
-                  <div className="ac-format-spec">1080 × 1920 px</div>
+                  <div className="ac-format-spec">1080 × 1920 px · skaliert 259 × 461</div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
                 <AdPreview fmtId="hoch" width={259} height={461} {...previewProps} />
               </div>
             </div>
+
           </div>
         )}
 
         {/* Display */}
         {activeTab === 'display' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', display: 'flex', alignItems: 'center', gap: 10 }}>
-              Display Formate
-              <span style={{ flex: 1, height: 1, background: '#DDD5C8', display: 'block' }} />
-            </div>
 
-            {/* Billboard 970×250 scaled */}
+            {/* Billboard 970×250 scaled via transform:scale(0.845) */}
             <div className="ac-format-card">
               <div className="ac-format-header">
                 <div>
@@ -922,7 +1007,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                   <AdPreview fmtId="wide" width={970} height={250} {...previewProps} />
                 </div>
               </div>
-              {/* Height placeholder for scaled content: 250 * 0.845 ≈ 211px */}
+              {/* Placeholder: 250 × 0.845 = 211px */}
               <div style={{ height: 211, marginTop: -211, pointerEvents: 'none' }} />
             </div>
 
@@ -950,7 +1035,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         )}
 
       </div>
-      {/* ═══════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════ */}
 
     </div>
   );
