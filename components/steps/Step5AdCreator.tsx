@@ -1,342 +1,52 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BriefingData } from '@/lib/types';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface DrawConfig {
-  orgText: string;
-  lpUrl: string;
-  headline: string;
-  subline: string;
-  cta: string;
-  bgStyle: 'overlay' | 'pure' | 'split';
-  bgColor: string;
-  textColor: string;
-  accentColor: string;
-  logoMode: 'text' | 'image';
-  bgImageEl: HTMLImageElement | null;
-  logoEl: HTMLImageElement | null;
-  qrEl: HTMLImageElement | null;
-}
-
-interface AdFormat {
-  id: string;
-  label: string;
-  w: number;
-  h: number;
-  preview: number;
-  isDooh: boolean;
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
-  white: '#FFFFFF',
-  teal: '#2A7F7F',
+  primary: '#C1666B', pl: '#F9ECEC', pd: '#A84E53',
+  taupe: '#5C4F3D', muted: '#8A8490', border: '#EDE8E0',
+  bg: '#FAF7F2', white: '#FFFFFF', teal: '#2A7F7F',
 } as const;
 
-const DOOH_FORMATS: AdFormat[] = [
-  { id: 'dooh-ls', label: 'Querformat 1920×1080', w: 1920, h: 1080, preview: 640, isDooh: true },
-  { id: 'dooh-pt', label: 'Hochformat 1080×1920', w: 1080, h: 1920, preview: 270, isDooh: true },
-];
+const FONTS = [
+  { id: 'fraunces', label: 'Fraunces', css: "'Fraunces', serif" },
+  { id: 'outfit',   label: 'Outfit',   css: "'Outfit', sans-serif" },
+  { id: 'georgia',  label: 'Georgia',  css: 'Georgia, serif' },
+  { id: 'helvetica',label: 'Helvetica',css: 'Helvetica, Arial, sans-serif' },
+] as const;
+type FontId = (typeof FONTS)[number]['id'];
 
-const DISPLAY_FORMATS: AdFormat[] = [
-  { id: 'disp-970', label: '970×250', w: 970, h: 250, preview: 680, isDooh: false },
-  { id: 'disp-300-250', label: '300×250', w: 300, h: 250, preview: 300, isDooh: false },
-  { id: 'disp-300-600', label: '300×600', w: 300, h: 600, preview: 280, isDooh: false },
-];
+const ANIMS = [
+  { id: 'none',  label: 'Keine'      },
+  { id: 'fade',  label: 'Einblenden' },
+  { id: 'slide', label: 'Eingleiten' },
+  { id: 'pulse', label: 'Pulsieren'  },
+] as const;
+type AnimId = (typeof ANIMS)[number]['id'];
 
-// ─── Canvas helpers ───────────────────────────────────────────────────────────
+// ─── Drag & Drop Types ────────────────────────────────────────────────────────
 
-function hexToRgba(hex: string, alpha: number): string {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
+type ElId = 'logo' | 'headline' | 'subline' | 'cta';
+type Pos  = { x: number; y: number };
+type Positions = Record<ElId, Pos>;
 
-function shadeHex(hex: string, amount: number): string {
-  const h = hex.replace('#', '');
-  const clamp = (v: number) => Math.max(0, Math.min(255, v));
-  const r = clamp(parseInt(h.slice(0, 2), 16) + amount);
-  const g = clamp(parseInt(h.slice(2, 4), 16) + amount);
-  const b = clamp(parseInt(h.slice(4, 6), 16) + amount);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
+const DEF_QUER: Positions = {
+  logo:     { x: 4, y: 5  },
+  headline: { x: 4, y: 30 },
+  subline:  { x: 4, y: 50 },
+  cta:      { x: 4, y: 68 },
+};
+const DEF_HOCH: Positions = {
+  logo:     { x: 5, y: 4  },
+  headline: { x: 5, y: 38 },
+  subline:  { x: 5, y: 52 },
+  cta:      { x: 5, y: 66 },
+};
 
-function contrastColor(hex: string): string {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#1A1A1A' : '#FFFFFF';
-}
-
-function coverCrop(img: HTMLImageElement, ar: number): [number, number, number, number] {
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  const imgAr = iw / ih;
-  let sx = 0, sy = 0, sw = iw, sh = ih;
-  if (imgAr > ar) { sw = sh * ar; sx = (iw - sw) / 2; }
-  else { sh = sw / ar; sy = (ih - sh) / 2; }
-  return [sx, sy, sw, sh];
-}
-
-function fillWrapped(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  baseline: number,
-  maxW: number,
-  lineH: number,
-  maxLines = 4,
-): number {
-  const words = text.split(' ').filter(Boolean);
-  let line = '';
-  let y = baseline;
-  let linesDrawn = 0;
-  for (let i = 0; i < words.length; i++) {
-    const test = line ? `${line} ${words[i]}` : words[i];
-    if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, y);
-      line = words[i];
-      y += lineH;
-      linesDrawn++;
-      if (linesDrawn >= maxLines - 1) { line = words.slice(i).join(' '); break; }
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, y);
-  return y;
-}
-
-function roundFill(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  ctx.fill();
-}
-
-// ─── Draw engine ──────────────────────────────────────────────────────────────
-
-function getFontSizes(w: number, h: number) {
-  const isDooh = w >= 1080 && h >= 1080;
-  const isLB = w >= 900 && h <= 300;
-  if (isDooh && w > h) return { headline: 68, subline: 30, cta: 24, logo: 22, domain: 18, qr: 160 };
-  if (isDooh)          return { headline: 64, subline: 30, cta: 24, logo: 22, domain: 18, qr: 180 };
-  if (isLB)            return { headline: 22, subline: 13, cta: 14, logo: 14, domain: 10, qr: 0 };
-  if (h >= 500)        return { headline: 28, subline: 15, cta: 15, logo: 14, domain: 11, qr: 0 };
-  return                      { headline: 22, subline: 13, cta: 13, logo: 13, domain: 10, qr: 0 };
-}
-
-function drawLeaderboard(
-  ctx: CanvasRenderingContext2D,
-  cfg: DrawConfig,
-  w: number, h: number,
-  pad: number, tc: string,
-  FS: ReturnType<typeof getFontSizes>,
-) {
-  const cy = h / 2;
-
-  if (cfg.logoMode === 'image' && cfg.logoEl) {
-    const lh = Math.min(h * 0.48, Math.max(36, FS.logo * 2.2));
-    const lw = (cfg.logoEl.naturalWidth / cfg.logoEl.naturalHeight) * lh;
-    ctx.drawImage(cfg.logoEl, pad, cy - lh / 2, Math.min(lw, w * 0.16), lh);
-  } else if (cfg.orgText) {
-    ctx.font = `600 ${FS.logo}px Outfit, sans-serif`;
-    ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.88;
-    ctx.fillText(cfg.orgText.toUpperCase(), pad, cy + FS.logo * 0.38);
-    ctx.globalAlpha = 1;
-  }
-
-  const hlX = w * 0.22;
-  ctx.font = `300 ${FS.headline}px Fraunces, Georgia, serif`;
-  ctx.fillStyle = tc;
-  ctx.fillText(cfg.headline || 'Ihre Botschaft hier', hlX, cy + FS.headline * 0.38);
-
-  if (cfg.subline) {
-    ctx.font = `400 ${FS.subline}px Outfit, sans-serif`;
-    ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.68;
-    ctx.fillText(cfg.subline, hlX, cy + FS.headline * 0.38 + FS.headline + 2);
-    ctx.globalAlpha = 1;
-  }
-
-  const ctaText = cfg.cta || 'Jetzt informieren';
-  ctx.font = `600 ${FS.cta}px Outfit, sans-serif`;
-  const ctaW = ctx.measureText(ctaText).width + 28;
-  const ctaH = FS.cta + 18;
-  const ctaX = w - pad - ctaW;
-  const ctaY = cy - ctaH / 2;
-  ctx.fillStyle = cfg.accentColor;
-  roundFill(ctx, ctaX, ctaY, ctaW, ctaH, ctaH / 2);
-  ctx.fillStyle = contrastColor(cfg.accentColor);
-  ctx.fillText(ctaText, ctaX + 14, ctaY + ctaH * 0.73);
-}
-
-function drawStandard(
-  ctx: CanvasRenderingContext2D,
-  cfg: DrawConfig,
-  w: number, h: number,
-  pad: number, tc: string,
-  FS: ReturnType<typeof getFontSizes>,
-  isDooh: boolean,
-) {
-  const isSplit = cfg.bgStyle === 'split';
-  const tX = isSplit ? w * 0.52 : pad;
-  const tMaxW = isSplit ? w - tX - pad : w - pad * 2;
-
-  if (cfg.logoMode === 'image' && cfg.logoEl) {
-    const lh = isDooh
-      ? (w > h ? Math.max(80, FS.logo * 2) : Math.max(64, FS.logo * 2))
-      : Math.max(36, FS.logo * 2);
-    const lw = (cfg.logoEl.naturalWidth / cfg.logoEl.naturalHeight) * lh;
-    ctx.drawImage(cfg.logoEl, tX, pad, Math.min(lw, tMaxW), lh);
-  } else if (cfg.orgText) {
-    ctx.font = `600 ${FS.logo}px Outfit, sans-serif`;
-    ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.85;
-    ctx.fillText(cfg.orgText.toUpperCase(), tX, pad + FS.logo);
-    ctx.globalAlpha = 1;
-  }
-
-  const isPure = cfg.bgStyle === 'pure' && cfg.bgImageEl;
-  const hlBaseY = isPure ? h * 0.60 : h * 0.45;
-  ctx.font = `300 ${FS.headline}px Fraunces, Georgia, serif`;
-  ctx.fillStyle = tc;
-  const hlEndY = fillWrapped(ctx, cfg.headline || 'Ihre Botschaft hier', tX, hlBaseY, tMaxW, FS.headline * 1.18, 3);
-
-  let nextY = hlEndY + FS.subline * 0.9;
-  if (cfg.subline) {
-    ctx.font = `400 ${FS.subline}px Outfit, sans-serif`;
-    ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.72;
-    const slEndY = fillWrapped(ctx, cfg.subline, tX, nextY, tMaxW, FS.subline * 1.4, 3);
-    ctx.globalAlpha = 1;
-    nextY = slEndY + FS.subline * 0.65;
-  }
-
-  const ctaText = cfg.cta || 'Jetzt informieren';
-  const ctaPx = Math.max(10, FS.cta * 0.7);
-  const ctaPy = Math.max(7, FS.cta * 0.46);
-  ctx.font = `600 ${FS.cta}px Outfit, sans-serif`;
-  const ctaW = ctx.measureText(ctaText).width + ctaPx * 2;
-  const ctaH = FS.cta + ctaPy * 2;
-  const ctaTop = nextY + FS.cta * 0.3;
-  ctx.fillStyle = cfg.accentColor;
-  roundFill(ctx, tX, ctaTop, ctaW, ctaH, ctaH / 2);
-  ctx.fillStyle = contrastColor(cfg.accentColor);
-  ctx.fillText(ctaText, tX + ctaPx, ctaTop + ctaPy + FS.cta * 0.8);
-
-  if (cfg.lpUrl) {
-    const domain = cfg.lpUrl.replace(/^https?:\/\//, '').split('/')[0];
-    ctx.font = `400 ${FS.domain}px Outfit, sans-serif`;
-    ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.5;
-    ctx.fillText(domain, tX, h - pad);
-    ctx.globalAlpha = 1;
-  }
-
-  if (isDooh && cfg.qrEl && FS.qr > 0) {
-    const qrSize = FS.qr;
-    const qrPad = qrSize * 0.1;
-    const qrX = w - pad - qrSize - qrPad * 2;
-    const qrY = h - pad - qrSize - qrPad * 2;
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    roundFill(ctx, qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 10);
-    ctx.drawImage(cfg.qrEl, qrX, qrY, qrSize, qrSize);
-  }
-}
-
-function drawAd(canvas: HTMLCanvasElement, cfg: DrawConfig, w: number, h: number, isDooh: boolean) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  canvas.width = w;
-  canvas.height = h;
-
-  const pad = Math.min(w, h) * 0.065;
-  const isLB = w >= 900 && h <= 300;
-  const FS = getFontSizes(w, h);
-
-  ctx.fillStyle = cfg.bgColor;
-  ctx.fillRect(0, 0, w, h);
-
-  if (cfg.bgImageEl) {
-    const img = cfg.bgImageEl;
-    const [sx, sy, sw, sh] = coverCrop(img, w / h);
-
-    if (cfg.bgStyle === 'overlay') {
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
-      ctx.fillStyle = hexToRgba(cfg.bgColor, 0.82);
-      ctx.fillRect(0, 0, w, h);
-    } else if (cfg.bgStyle === 'pure') {
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
-      const g = ctx.createLinearGradient(0, h * 0.36, 0, h);
-      g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,0.82)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
-    } else {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, w * 0.48, h);
-      ctx.clip();
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
-      ctx.restore();
-      const g = ctx.createLinearGradient(w * 0.40, 0, w * 0.52, 0);
-      g.addColorStop(0, hexToRgba(cfg.bgColor, 0));
-      g.addColorStop(1, hexToRgba(cfg.bgColor, 1));
-      ctx.fillStyle = g;
-      ctx.fillRect(w * 0.40, 0, w * 0.12, h);
-    }
-  } else {
-    const g = ctx.createLinearGradient(0, 0, w * 0.6, h);
-    g.addColorStop(0, cfg.bgColor);
-    g.addColorStop(1, shadeHex(cfg.bgColor, -30));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-  }
-
-  const tc = cfg.bgStyle === 'pure' && cfg.bgImageEl ? '#FFFFFF' : cfg.textColor;
-
-  if (isLB) {
-    drawLeaderboard(ctx, cfg, w, h, pad, tc, FS);
-  } else {
-    drawStandard(ctx, cfg, w, h, pad, tc, FS, isDooh);
-  }
-}
-
-// ─── Helper: load Image from dataURL ─────────────────────────────────────────
-
-function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Component Props ──────────────────────────────────────────────────────────
 
 interface Props {
   briefing: BriefingData;
@@ -345,26 +55,199 @@ interface Props {
   isActive: boolean;
 }
 
-const label: React.CSSProperties = {
-  fontSize: '10px', fontWeight: 700, letterSpacing: '.1em',
-  textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: '5px',
-};
+interface AdConfig {
+  headline:   string;
+  subline:    string;
+  cta:        string;
+  logoText:   string;
+  logoImage:  string | null;
+  showLogo:   boolean;
+  bgColor:    string;
+  textColor:  string;
+  accentColor: string;
+  fontCss:    string;
+  fontScale:  number;
+  bgImage:    string | null;
+  focusX:     number;
+  focusY:     number;
+}
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box',
-  padding: '9px 11px', borderRadius: '8px',
-  border: `1px solid ${C.border}`, background: C.white,
-  fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', color: C.taupe,
-  outline: 'none',
-};
+// ─── Draggable element ────────────────────────────────────────────────────────
+
+function DragEl({
+  id, pos, onMove, sw, sh, children,
+}: {
+  id: ElId; pos: Pos;
+  onMove: (id: ElId, p: Pos) => void;
+  sw: number; sh: number;
+  children: React.ReactNode;
+}) {
+  const drag = useRef<{ sp: Pos; sm: { x: number; y: number } } | null>(null);
+
+  return (
+    <div
+      style={{
+        position: 'absolute', left: `${pos.x}%`, top: `${pos.y}%`,
+        cursor: 'grab', zIndex: 10, userSelect: 'none',
+        outline: '1.5px dashed rgba(255,255,255,0.35)',
+        outlineOffset: 3, borderRadius: 2,
+      }}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        drag.current = { sp: { ...pos }, sm: { x: e.clientX, y: e.clientY } };
+      }}
+      onPointerMove={(e) => {
+        if (!drag.current) return;
+        const dx = e.clientX - drag.current.sm.x;
+        const dy = e.clientY - drag.current.sm.y;
+        onMove(id, {
+          x: Math.max(0, Math.min(88, drag.current.sp.x + (dx / sw) * 100)),
+          y: Math.max(0, Math.min(90, drag.current.sp.y + (dy / sh) * 100)),
+        });
+      }}
+      onPointerUp={() => { drag.current = null; }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── DOOH Preview (with drag & drop) ─────────────────────────────────────────
+
+function DoohPreview({
+  w, h, screenW, positions, onMove, cfg,
+}: {
+  w: number; h: number; screenW: number;
+  positions: Positions;
+  onMove: (id: ElId, p: Pos) => void;
+  cfg: AdConfig;
+}) {
+  const scale   = screenW / w;
+  const screenH = Math.round(h * scale);
+  const {
+    headline, subline, cta, logoText, logoImage, showLogo,
+    bgColor, textColor, accentColor, fontCss, fontScale,
+    bgImage, focusX, focusY,
+  } = cfg;
+  const hB  = Math.round(w * 0.042 * fontScale);
+  const bpx = (['left', 'center', 'right'] as const)[focusX] ?? 'center';
+  const bpy = (['top',  'center', 'bottom'] as const)[focusY] ?? 'center';
+  const elP = { onMove, sw: screenW, sh: screenH };
+
+  return (
+    <div style={{ width: screenW, height: screenH, position: 'relative', overflow: 'hidden', borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,0.18)', flexShrink: 0 }}>
+      <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'relative', backgroundColor: bgColor, overflow: 'hidden' }}>
+
+        {bgImage && (
+          <img src={bgImage} alt="" draggable={false}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${bpx} ${bpy}`, pointerEvents: 'none' }} />
+        )}
+        {bgImage && (
+          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${bgColor}E0 0%, ${bgColor}70 50%, transparent 100%)`, pointerEvents: 'none' }} />
+        )}
+
+        {showLogo && (
+          <DragEl id="logo" pos={positions.logo} {...elP}>
+            {logoImage
+              ? <img src={logoImage} alt="Logo" draggable={false}
+                  style={{ maxHeight: h * 0.09, maxWidth: w * 0.22, objectFit: 'contain', display: 'block' }} />
+              : <span style={{ fontFamily: fontCss, fontSize: hB * 0.48, fontWeight: 800, color: textColor, backgroundColor: accentColor + '30', border: `${Math.max(2, Math.round(h * 0.003))}px solid ${accentColor}`, borderRadius: Math.round(h * 0.012), padding: `${Math.round(h * 0.01)}px ${Math.round(w * 0.014)}px`, display: 'inline-block' }}>
+                  {logoText || 'LOGO'}
+                </span>
+            }
+          </DragEl>
+        )}
+
+        <DragEl id="headline" pos={positions.headline} {...elP}>
+          <div style={{ fontFamily: fontCss, fontSize: hB, fontWeight: 800, color: textColor, lineHeight: 1.15, maxWidth: w * 0.72, textShadow: bgImage ? '0 2px 10px rgba(0,0,0,0.3)' : undefined }}>
+            {headline || 'Ihre Schlagzeile hier'}
+          </div>
+        </DragEl>
+
+        <DragEl id="subline" pos={positions.subline} {...elP}>
+          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.52), color: textColor, opacity: 0.88, lineHeight: 1.45, maxWidth: w * 0.65, textShadow: bgImage ? '0 1px 5px rgba(0,0,0,0.2)' : undefined }}>
+            {subline || 'Ihr Untertitel hier'}
+          </div>
+        </DragEl>
+
+        <DragEl id="cta" pos={positions.cta} {...elP}>
+          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.48), fontWeight: 700, color: '#fff', backgroundColor: accentColor, padding: `${Math.round(h * 0.018)}px ${Math.round(w * 0.027)}px`, borderRadius: Math.round(h * 0.018), display: 'inline-block', boxShadow: '0 3px 12px rgba(0,0,0,0.2)' }}>
+            {cta || 'Jetzt entdecken'}
+          </div>
+        </DragEl>
+      </div>
+    </div>
+  );
+}
+
+// ─── Display Preview (static auto-layout) ────────────────────────────────────
+
+function DisplayPreview({
+  w, h, screenW, cfg,
+}: {
+  w: number; h: number; screenW: number; cfg: AdConfig;
+}) {
+  const scale   = screenW / w;
+  const screenH = Math.round(h * scale);
+  const {
+    headline, subline, cta, logoText, logoImage, showLogo,
+    bgColor, textColor, accentColor, fontCss, fontScale,
+    bgImage, focusX, focusY,
+  } = cfg;
+  const hB        = Math.round(w * 0.07 * fontScale);
+  const bpx       = (['left', 'center', 'right'] as const)[focusX] ?? 'center';
+  const bpy       = (['top',  'center', 'bottom'] as const)[focusY] ?? 'center';
+  const isWide    = w > h;
+  const pH        = Math.round(h * (isWide ? 0.14 : 0.08));
+  const pW        = Math.round(w * 0.06);
+
+  return (
+    <div style={{ width: screenW, height: screenH, position: 'relative', overflow: 'hidden', borderRadius: 4, boxShadow: '0 2px 12px rgba(0,0,0,0.12)', flexShrink: 0 }}>
+      <div style={{ width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'relative', backgroundColor: bgColor, display: 'flex', flexDirection: isWide ? 'row' : 'column', alignItems: isWide ? 'center' : 'flex-start', gap: Math.round(w * 0.03), padding: `${pH}px ${pW}px`, overflow: 'hidden' }}>
+
+        {bgImage && (
+          <img src={bgImage} alt="" draggable={false}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${bpx} ${bpy}`, pointerEvents: 'none' }} />
+        )}
+        {bgImage && (
+          <div style={{ position: 'absolute', inset: 0, background: isWide ? `linear-gradient(90deg, ${bgColor}EE 0%, ${bgColor}99 55%, transparent 100%)` : `linear-gradient(180deg, ${bgColor}DD 0%, ${bgColor}66 80%, transparent 100%)`, pointerEvents: 'none' }} />
+        )}
+
+        <div style={{ position: 'relative', flex: isWide ? 1 : undefined, zIndex: 1 }}>
+          {showLogo && (
+            logoImage
+              ? <img src={logoImage} alt="Logo" style={{ maxHeight: h * 0.22, maxWidth: w * 0.18, objectFit: 'contain', display: 'block', marginBottom: Math.round(h * 0.05) }} />
+              : <div style={{ fontFamily: fontCss, fontSize: hB * 0.42, fontWeight: 800, color: textColor, display: 'inline-block', backgroundColor: accentColor + '30', border: `2px solid ${accentColor}`, borderRadius: Math.round(h * 0.06), padding: `${Math.round(h * 0.04)}px ${Math.round(w * 0.025)}px`, marginBottom: Math.round(h * 0.05) }}>
+                  {logoText || 'LOGO'}
+                </div>
+          )}
+          <div style={{ fontFamily: fontCss, fontSize: hB, fontWeight: 800, color: textColor, lineHeight: 1.15, marginBottom: Math.round(h * 0.04) }}>
+            {headline || 'Ihre Schlagzeile'}
+          </div>
+          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.5), color: textColor, opacity: 0.85, lineHeight: 1.4 }}>
+            {subline || 'Unterzeile'}
+          </div>
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 1, flexShrink: 0, alignSelf: isWide ? 'center' : 'flex-start', marginTop: isWide ? 0 : Math.round(h * 0.06) }}>
+          <div style={{ fontFamily: fontCss, fontSize: Math.round(hB * 0.44), fontWeight: 700, color: '#fff', backgroundColor: accentColor, padding: `${Math.round(h * 0.09)}px ${Math.round(w * 0.04)}px`, borderRadius: Math.round(h * 0.07), whiteSpace: 'nowrap', display: 'inline-block' }}>
+            {cta || 'Jetzt entdecken'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
-  const analysis = briefing.analysis;
+  const analysis   = briefing.analysis;
   const ogImageUrl = analysis?.ogImage || '';
-  const ogLogoUrl = analysis?.ogLogo || analysis?.favicon || '';
+  const ogLogoUrl  = analysis?.ogLogo || analysis?.favicon || '';
   const themeColor = analysis?.themeColor || '';
 
-  // ── Option selection (A: upload, B: später, C: erstellen) ──
+  // ── Option selection ──
   const initOption = (): 'upload' | 'später' | 'erstellen' | null => {
     const svc = briefing.werbemittelService;
     if (svc === 'upload' || svc === 'später' || svc === 'erstellen') return svc;
@@ -372,306 +255,135 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     return null;
   };
   const [selectedOption, setSelectedOption] = useState<'upload' | 'später' | 'erstellen' | null>(initOption);
-
-  // ── Uploaded ad files (option A) ──
   const [uploadedAdFiles, setUploadedAdFiles] = useState<File[]>([]);
+  const [isDraggingOver,  setIsDraggingOver]  = useState(false);
 
-  // ── Ad state — initialised from briefing so resume works ──
-  const [orgText, setOrgText] = useState(analysis?.organisation || '');
-  const [lpUrl, setLpUrl] = useState(briefing.url || '');
-  const [headline, setHeadline] = useState(briefing.adHeadline || '');
-  const [subline, setSubline] = useState(briefing.adSubline || '');
-  const [cta, setCta] = useState(briefing.adCta || 'Jetzt informieren');
-  const [bgStyle, setBgStyle] = useState<'overlay' | 'pure' | 'split'>((briefing.adBgStyle as 'overlay' | 'pure' | 'split') || 'overlay');
-  const [bgColor, setBgColor] = useState(briefing.adBgColor || themeColor || '#C1666B');
-  const [textColor, setTextColor] = useState(briefing.adTextColor || '#FFFFFF');
+  // ── Ad state ──
+  const [headline,    setHeadline]    = useState(briefing.adHeadline   || '');
+  const [subline,     setSubline]     = useState(briefing.adSubline    || '');
+  const [cta,         setCta]         = useState(briefing.adCta        || 'Jetzt informieren');
+  const [bgColor,     setBgColor]     = useState(briefing.adBgColor    || themeColor || '#C1666B');
+  const [textColor,   setTextColor]   = useState(briefing.adTextColor  || '#FFFFFF');
   const [accentColor, setAccentColor] = useState(briefing.adAccentColor || themeColor || '#C1666B');
-  const [logoMode, setLogoMode] = useState<'text' | 'image'>(briefing.adLogoMode || 'text');
+  const [font,        setFont]        = useState<FontId>((briefing.adFont as FontId) || 'fraunces');
+  const [fontScale,   setFontScale]   = useState(briefing.adFontScale ?? 1.0);
+  const [showLogo,    setShowLogo]    = useState(true);
+  const [logoMode,    setLogoMode]    = useState<'text' | 'image'>(briefing.adLogoMode || 'text');
+  const [focusX,      setFocusX]      = useState(briefing.adFocusX ?? 1);
+  const [focusY,      setFocusY]      = useState(briefing.adFocusY ?? 1);
+  const [animation,   setAnimation]   = useState<AnimId>((briefing.adAnimation as AnimId) || 'none');
+  const [activeTab,   setActiveTab]   = useState<'dooh' | 'display'>('dooh');
 
-  // ── Image elements ──
-  const [bgImageEl, setBgImageEl] = useState<HTMLImageElement | null>(null);
-  const [logoEl, setLogoEl] = useState<HTMLImageElement | null>(null);
-  const [qrEl, setQrEl] = useState<HTMLImageElement | null>(null);
+  // ── Positions ──
+  const [posQuer, setPosQuer] = useState<Positions>(() =>
+    briefing.adPositionsQuer ? (briefing.adPositionsQuer as Positions) : { ...DEF_QUER }
+  );
+  const [posHoch, setPosHoch] = useState<Positions>(() =>
+    briefing.adPositionsHoch ? (briefing.adPositionsHoch as Positions) : { ...DEF_HOCH }
+  );
 
-  // ── Status ──
-  const [ogImageStatus, setOgImageStatus] = useState<'none' | 'loading' | 'ok' | 'error'>('none');
-  const [ogLogoStatus, setOgLogoStatus] = useState<'none' | 'loading' | 'ok' | 'error'>('none');
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dooh' | 'display'>('dooh');
-  const [kiLoading, setKiLoading] = useState(false);
-  const [headlineSuggestions, setHeadlineSuggestions] = useState<string[]>([]);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  // ── Images ──
+  const [bgImage,   setBgImage]   = useState<string | null>(briefing.adBgImageData   || null);
+  const [logoImage, setLogoImage] = useState<string | null>(briefing.adLogoImageData || null);
+  const logoText = analysis?.organisation || briefing.adLogoText || '';
 
-  // ── "Später weiterarbeiten" button ──
+  // ── KI headlines ──
+  const [kiLoading,    setKiLoading]    = useState(false);
+  const [headlineSugs, setHeadlineSugs] = useState<string[]>([]);
+
+  // ── Save link ──
   const [saveLinkStatus, setSaveLinkStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
-  const [saveLinkEmail, setSaveLinkEmail] = useState(briefing.email || '');
+  const [saveLinkEmail,  setSaveLinkEmail]  = useState(briefing.email || '');
 
-  // ── Canvas refs ──
-  const canvasRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── Submit ──
+  const [submitting, setSubmitting] = useState(false);
 
-  // ── Load fonts ──
+  // Load Google Fonts
   useEffect(() => {
-    if (!document.getElementById('vio-adcreator-fonts')) {
-      const link = document.createElement('link');
-      link.id = 'vio-adcreator-fonts';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400&family=Outfit:wght@400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-    document.fonts.ready.then(() => setFontsLoaded(true));
+    if (document.getElementById('vio-adcreator-fonts')) return;
+    const link = document.createElement('link');
+    link.id  = 'vio-adcreator-fonts';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,800&family=Outfit:wght@400;600;700&display=swap';
+    document.head.appendChild(link);
   }, []);
 
-  // ── On mount: restore persisted images from briefing ──
+  // Load bg image from ogImage via proxy (only if nothing cached)
   useEffect(() => {
-    if (briefing.adBgImageData) {
-      loadImageFromDataUrl(briefing.adBgImageData).then(img => {
-        setBgImageEl(img);
-        setOgImageStatus('ok');
-      }).catch(() => {});
-    }
-    if (briefing.adLogoImageData) {
-      loadImageFromDataUrl(briefing.adLogoImageData).then(img => {
-        setLogoEl(img);
-        setLogoMode('image');
-        setOgLogoStatus('ok');
-      }).catch(() => {});
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Load bg image via proxy (only if no persisted data) ──
-  useEffect(() => {
-    if (briefing.adBgImageData) return; // already restored from cache
-    console.log('[VIO AdCreator] ogImage URL from Firecrawl:', ogImageUrl || '(none)');
-    if (!ogImageUrl) { setOgImageStatus('none'); return; }
-    setOgImageStatus('loading');
+    if (bgImage || !ogImageUrl) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { setBgImageEl(img); setOgImageStatus('ok'); };
-    img.onerror = () => {
-      console.warn('[VIO AdCreator] ogImage proxy failed for URL:', ogImageUrl);
-      setOgImageStatus('error');
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d'); if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      try { setBgImage(canvas.toDataURL('image/jpeg', 0.85)); } catch { /* cross-origin */ }
     };
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogImageUrl)}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ogImageUrl]);
 
-  // ── Load logo via proxy (only if no persisted data) ──
+  // Load logo from ogLogo via proxy (only if nothing cached)
   useEffect(() => {
-    if (briefing.adLogoImageData) return; // already restored from cache
-    if (!ogLogoUrl) { setOgLogoStatus('none'); return; }
-    setOgLogoStatus('loading');
+    if (logoImage || !ogLogoUrl) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => { setLogoEl(img); setLogoMode('image'); setOgLogoStatus('ok'); };
-    img.onerror = () => setOgLogoStatus('error');
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d'); if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      try { setLogoImage(canvas.toDataURL('image/png')); setLogoMode('image'); } catch { /* cross-origin */ }
+    };
     img.src = `/api/proxy-image?url=${encodeURIComponent(ogLogoUrl)}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ogLogoUrl]);
 
-  // ── QR code ──
+  // Fetch KI headlines when option C first selected
   useEffect(() => {
-    if (!lpUrl) { setQrEl(null); return; }
-    (async () => {
-      const QRCode = (await import('qrcode')).default;
-      const dataUrl = await QRCode.toDataURL(lpUrl, {
-        width: 200, margin: 1,
-        color: { dark: '#000000ff', light: '#ffffffff' },
-      });
-      const img = new Image();
-      img.onload = () => setQrEl(img);
-      img.src = dataUrl;
-    })();
-  }, [lpUrl]);
-
-  // ── Persist bgImageEl to briefing as base64 ──
-  useEffect(() => {
-    if (!bgImageEl) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = bgImageEl.naturalWidth || bgImageEl.width;
-    canvas.height = bgImageEl.naturalHeight || bgImageEl.height;
-    if (canvas.width === 0 || canvas.height === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(bgImageEl, 0, 0);
-    try {
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      updateBriefing({ adBgImageData: dataUrl });
-    } catch { /* tainted canvas if cross-origin */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bgImageEl]);
-
-  // ── Persist logoEl to briefing as base64 ──
-  useEffect(() => {
-    if (!logoEl) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = logoEl.naturalWidth || logoEl.width;
-    canvas.height = logoEl.naturalHeight || logoEl.height;
-    if (canvas.width === 0 || canvas.height === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(logoEl, 0, 0);
-    try {
-      const dataUrl = canvas.toDataURL('image/png');
-      updateBriefing({ adLogoImageData: dataUrl });
-    } catch { /* tainted canvas */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logoEl]);
-
-  // ── Redraw all canvases ──
-  const redraw = useCallback(() => {
-    if (!fontsLoaded) return;
-    const cfg: DrawConfig = { orgText, lpUrl, headline, subline, cta, bgStyle, bgColor, textColor, accentColor, logoMode, bgImageEl, logoEl, qrEl };
-    [...DOOH_FORMATS, ...DISPLAY_FORMATS].forEach(fmt => {
-      const canvas = canvasRefs.current[fmt.id];
-      if (canvas) drawAd(canvas, cfg, fmt.w, fmt.h, fmt.isDooh);
-    });
-  }, [fontsLoaded, orgText, lpUrl, headline, subline, cta, bgStyle, bgColor, textColor, accentColor, logoMode, bgImageEl, logoEl, qrEl]);
-
-  useEffect(() => { redraw(); }, [redraw]);
-
-  useEffect(() => { redraw(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Debounced auto-save to /api/save-session ──
-  useEffect(() => {
-    if (!briefing.sessionId) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    setSaveStatus('saving');
-    saveTimerRef.current = setTimeout(async () => {
-      updateBriefing({
-        adHeadline: headline, adSubline: subline, adCta: cta,
-        adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
-        adAccentColor: accentColor, adLogoMode: logoMode,
-      });
-      try {
-        await fetch('/api/save-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: briefing.sessionId,
-            dealId: briefing.dealId || null,
-            adCreatorState: {
-              adHeadline: headline, adSubline: subline, adCta: cta,
-              adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
-              adAccentColor: accentColor, adLogoMode: logoMode,
-              logoUrl: ogLogoUrl, bgImageUrl: ogImageUrl,
-              sessionId: briefing.sessionId,
-            },
-          }),
-        });
-        setSaveStatus('saved');
-      } catch { setSaveStatus('idle'); }
-    }, 2000);
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headline, subline, cta, bgStyle, bgColor, textColor, accentColor, logoMode]);
-
-  // ── File uploads ──
-  const handleBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const dataUrl = ev.target?.result as string;
-      const img = new Image();
-      img.onload = () => { setBgImageEl(img); setOgImageStatus('ok'); };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const dataUrl = ev.target?.result as string;
-      const img = new Image();
-      img.onload = () => { setLogoEl(img); setLogoMode('image'); setOgLogoStatus('ok'); };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ── Download ──
-  const download = (id: string, lbl: string) => {
-    const canvas = canvasRefs.current[id];
-    if (!canvas) return;
-    const a = document.createElement('a');
-    a.download = `vio-${lbl.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`;
-    a.href = canvas.toDataURL('image/jpeg', 0.95);
-    a.click();
-  };
-
-  // ── KI headlines ──
-  const generateKiHeadlines = async () => {
+    if (selectedOption !== 'erstellen' || headlineSugs.length > 0) return;
     setKiLoading(true);
-    try {
-      const res = await fetch('/api/generate-headlines', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ organisation: orgText, beschreibung: analysis?.beschreibung, url: lpUrl }),
-      });
-      const data = await res.json();
-      setHeadlineSuggestions(data.headlines || []);
-    } catch { /* ignore */ }
-    setKiLoading(false);
-  };
-
-  useEffect(() => {
-    if (selectedOption === 'erstellen') generateKiHeadlines();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetch('/api/generate-headlines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organisation: analysis?.organisation, beschreibung: analysis?.beschreibung, url: briefing.url }),
+    })
+      .then(r => r.json())
+      .then(d => setHeadlineSugs(d.headlines || []))
+      .catch(() => {})
+      .finally(() => setKiLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOption]);
 
-  // ── "Später weiterarbeiten" send link ──
+  // ── Handlers ──
+  const handleBgUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => setBgImage(e.target?.result as string ?? null);
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => { setLogoImage(e.target?.result as string ?? null); setLogoMode('image'); };
+    reader.readAsDataURL(file);
+  };
+
   const handleSendLink = async () => {
-    const email = saveLinkEmail.trim();
-    if (!email) return;
+    if (!saveLinkEmail.trim()) return;
     setSaveLinkStatus('loading');
     try {
       await fetch('/api/save-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: briefing.sessionId,
-          dealId: briefing.dealId || null,
-          email,
-          sendResumeEmail: true,
-          adCreatorState: {
-            adHeadline: headline, adSubline: subline, adCta: cta,
-            adBgStyle: bgStyle, adBgColor: bgColor, adTextColor: textColor,
-            adAccentColor: accentColor, adLogoMode: logoMode,
-          },
-        }),
+        body: JSON.stringify({ sessionId: briefing.sessionId, dealId: briefing.dealId, email: saveLinkEmail.trim(), sendResumeEmail: true }),
       });
       setSaveLinkStatus('sent');
-    } catch {
-      setSaveLinkStatus('error');
-    }
-  };
-
-  // ── Save & next ──
-  const handleWeiter = () => {
-    updateBriefing({
-      werbemittel: 'erstellen',
-      werbemittelErstellt: true,
-      werbemittelService: 'erstellen',
-      adHeadline: headline,
-      adSubline: subline,
-      adCta: cta,
-      adBgStyle: bgStyle,
-      adBgColor: bgColor,
-      adTextColor: textColor,
-      adAccentColor: accentColor,
-      adLogoMode: logoMode,
-    });
-    nextStep();
+    } catch { setSaveLinkStatus('error'); }
   };
 
   const handleUploadWeiter = () => {
-    const fileNames = uploadedAdFiles.map(f => f.name);
-    updateBriefing({ werbemittel: 'upload', werbemittelErstellt: true, werbemittelService: 'upload', werbemittelFiles: fileNames });
+    updateBriefing({ werbemittel: 'upload', werbemittelErstellt: true, werbemittelService: 'upload', werbemittelFiles: uploadedAdFiles.map(f => f.name) });
     nextStep();
   };
 
@@ -680,549 +392,442 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     nextStep();
   };
 
-  // ── Status badge helper ──
-  const statusBadge = (s: 'none' | 'loading' | 'ok' | 'error', lbl: string) => (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: s === 'ok' ? C.teal : C.muted }}>
-      <span style={{ fontSize: '10px' }}>{s === 'ok' ? '✓' : s === 'loading' ? '…' : '–'}</span>
-      {lbl}
-    </span>
-  );
+  const handleWeiter = async () => {
+    setSubmitting(true);
+    const adState: Partial<BriefingData> = {
+      werbemittel: 'erstellen', werbemittelErstellt: true, werbemittelService: 'erstellen',
+      adHeadline: headline, adSubline: subline, adCta: cta,
+      adBgColor: bgColor, adTextColor: textColor, adAccentColor: accentColor,
+      adLogoMode: logoMode, adFont: font, adFontScale: fontScale,
+      adFocusX: focusX, adFocusY: focusY, adAnimation: animation,
+      adBgImageData:   bgImage    || undefined,
+      adLogoImageData: logoImage  || undefined,
+      adPositionsQuer: posQuer,
+      adPositionsHoch: posHoch,
+    };
+    updateBriefing(adState);
+    try {
+      await fetch('/api/generate-ads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: briefing.dealId, adConfig: { headline, subline, cta, font, bgColor, textColor, accentColor, animation } }),
+      });
+    } catch { /* non-fatal */ }
+    setSubmitting(false);
+    nextStep();
+  };
 
-  const wordCount = headline.trim() ? headline.trim().split(/\s+/).length : 0;
+  // Derived
+  const fontCss = FONTS.find(f => f.id === font)?.css ?? FONTS[0].css;
+  const adCfg: AdConfig = {
+    headline, subline, cta, logoText,
+    logoImage: logoMode === 'image' ? logoImage : null,
+    showLogo, bgColor, textColor, accentColor, fontCss, fontScale,
+    bgImage, focusX, focusY,
+  };
 
-  // ─── Option cards ─────────────────────────────────────────────────────────
+  // ── Sidebar input style ──
+  const inp: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box', padding: '8px 10px',
+    borderRadius: 8, border: `1px solid ${C.border}`, background: C.white,
+    fontSize: 13, color: C.taupe, fontFamily: 'inherit', outline: 'none',
+  };
 
+  // ── Color picker rows ──
+  const colorRows = [
+    { label: 'Hintergrund', val: bgColor,     set: setBgColor     },
+    { label: 'Text',        val: textColor,   set: setTextColor   },
+    { label: 'Akzent',      val: accentColor, set: setAccentColor },
+  ];
+
+  // ─── Focus grid cells ──────────────────────────────────────────────────────
+  const focusGrid: Array<{ fx: number; fy: number }> = [];
+  for (let fy = 0; fy < 3; fy++) for (let fx = 0; fx < 3; fx++) focusGrid.push({ fx, fy });
+
+  // ─── Option cards ──────────────────────────────────────────────────────────
   const optionCards = [
-    {
-      id: 'upload' as const,
-      ico: '📤',
-      title: 'Eigene Werbemittel hochladen',
-      sub: 'Lade deine fertigen Werbemittel direkt hoch.',
-      badge: 'Kostenlos',
-      badgeColor: { background: '#E8F5F5', color: C.teal },
-    },
-    {
-      id: 'später' as const,
-      ico: '📅',
-      title: 'Später hochladen',
-      sub: 'Du bekommst nach der Buchung eine E-Mail mit allen Spezifikationen.',
-      badge: 'Kostenlos',
-      badgeColor: { background: '#E8F5F5', color: C.teal },
-    },
-    {
-      id: 'erstellen' as const,
-      ico: '🎨',
-      title: 'Im Browser erstellen',
-      sub: 'Erstelle deine Werbemittel direkt hier – DOOH und Display, exportierbar als JPG.',
-      badge: 'CHF 500 Add-on',
-      badgeColor: { background: C.pl, color: C.pd },
-    },
+    { id: 'upload'   as const, ico: '📤', title: 'Eigene Werbemittel hochladen', desc: 'JPEG, PNG oder MP4 – Ihre fertigen Dateien.' },
+    { id: 'später'   as const, ico: '⏳', title: 'Später hochladen',             desc: 'Werbemittel nach der Buchung einreichen.' },
+    { id: 'erstellen'as const, ico: '✏️', title: 'Im Browser erstellen',         desc: 'Sujet direkt gestalten. Inkl. VIO-Erstellung.', badge: '+CHF 500' },
   ];
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <section style={{ backgroundColor: C.bg, minHeight: '100vh' }}>
-      {/* Eyebrow + title */}
-      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '32px 20px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ width: '18px', height: '2px', background: C.primary, borderRadius: '2px' }} />
-          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
-            Schritt 5
-          </span>
-        </div>
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
-          Werbemittel erstellen.
-        </h1>
-        <p style={{ fontSize: '14px', color: C.muted, marginBottom: '24px', lineHeight: 1.6 }}>
-          Wie möchtest du dein Werbemittel bereitstellen?
-        </p>
+    <div style={{ fontFamily: "'Outfit', sans-serif" }}>
+      <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 'clamp(22px,3vw,28px)', fontWeight: 700, color: C.taupe, marginBottom: 8 }}>
+        Werbemittel
+      </h2>
+      <p style={{ fontSize: 14, color: C.muted, marginBottom: 24 }}>
+        Wie möchten Sie Ihre Werbemittel bereitstellen?
+      </p>
 
-        {/* ── Option cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
-          {optionCards.map(opt => {
-            const active = selectedOption === opt.id;
-            return (
-              <div
-                key={opt.id}
-                onClick={() => setSelectedOption(opt.id)}
-                style={{
-                  background: active ? C.pl : C.white,
-                  borderRadius: '14px',
-                  border: `2px solid ${active ? C.primary : C.border}`,
-                  padding: '18px 16px',
-                  cursor: 'pointer',
-                  transition: 'all .2s',
-                  textAlign: 'center',
-                }}
-                onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; } }}
-                onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = C.border; } }}
-              >
-                <div style={{ fontSize: '26px', marginBottom: '8px' }}>{opt.ico}</div>
-                <div style={{ fontWeight: 700, fontSize: '14px', color: C.taupe, marginBottom: '5px' }}>{opt.title}</div>
-                <div style={{ fontSize: '11px', color: C.muted, lineHeight: 1.5, marginBottom: '10px' }}>{opt.sub}</div>
-                <div style={{ ...opt.badgeColor, display: 'inline-block', padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>
-                  {opt.badge}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {/* ── Option cards ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+        {optionCards.map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => setSelectedOption(opt.id)}
+            style={{
+              border: `2px solid ${selectedOption === opt.id ? C.primary : C.border}`,
+              borderRadius: 12, padding: '16px 14px',
+              background: selectedOption === opt.id ? C.pl : C.white,
+              cursor: 'pointer', textAlign: 'left', position: 'relative', transition: 'all .15s',
+            }}
+          >
+            {opt.badge && (
+              <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 700, color: C.white, backgroundColor: C.primary, borderRadius: 20, padding: '2px 7px' }}>
+                {opt.badge}
+              </span>
+            )}
+            <div style={{ fontSize: 22, marginBottom: 6 }}>{opt.ico}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>{opt.title}</div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.4 }}>{opt.desc}</div>
+          </button>
+        ))}
       </div>
 
-      {/* ── Option A: Eigene Werbemittel hochladen ── */}
+      {/* ─────────────────────────────────── Option A: Upload ──────────────────── */}
       {selectedOption === 'upload' && (
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 20px 40px' }}>
-          <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '24px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '16px' }}>
-              Werbemittel hochladen
+        <div>
+          <div
+            onDragOver={e => { e.preventDefault(); setIsDraggingOver(true); }}
+            onDragLeave={() => setIsDraggingOver(false)}
+            onDrop={e => {
+              e.preventDefault(); setIsDraggingOver(false);
+              const files = Array.from(e.dataTransfer.files).filter(f => /image\/(jpeg|png)|video\/mp4/.test(f.type));
+              setUploadedAdFiles(prev => [...prev, ...files]);
+            }}
+            onClick={() => document.getElementById('vio-ad-upload-inp')?.click()}
+            style={{ border: `2px dashed ${isDraggingOver ? C.primary : C.border}`, borderRadius: 12, padding: '36px 24px', textAlign: 'center', background: isDraggingOver ? C.pl : C.bg, cursor: 'pointer', marginBottom: 12, transition: 'all .15s' }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 10 }}>📁</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.taupe, marginBottom: 4 }}>Dateien hierher ziehen oder klicken</div>
+            <div style={{ fontSize: 12, color: C.muted }}>JPEG · PNG · MP4 · max. 50 MB pro Datei</div>
+            <input id="vio-ad-upload-inp" type="file" multiple accept="image/jpeg,image/png,video/mp4" style={{ display: 'none' }}
+              onChange={e => { const fs = Array.from(e.target.files || []); setUploadedAdFiles(prev => [...prev, ...fs]); }} />
+          </div>
+
+          {uploadedAdFiles.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+              {uploadedAdFiles.map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: C.white, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                  <span style={{ fontSize: 16 }}>📄</span>
+                  <span style={{ fontSize: 13, color: C.taupe, flex: 1 }}>{f.name}</span>
+                  <button onClick={() => setUploadedAdFiles(prev => prev.filter((_, j) => j !== i))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 18, padding: 0, lineHeight: 1 }}>
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
-            <label style={{ display: 'block', cursor: 'pointer', marginBottom: '16px' }}>
-              <div style={{
-                border: `2px dashed ${uploadedAdFiles.length > 0 ? C.teal : C.border}`,
-                borderRadius: '12px', padding: '32px 20px', textAlign: 'center',
-                background: uploadedAdFiles.length > 0 ? '#F0FAF7' : C.bg,
-                transition: 'all .2s',
-              }}>
-                <div style={{ fontSize: '36px', marginBottom: '10px' }}>📤</div>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: C.taupe, marginBottom: '4px' }}>
-                  {uploadedAdFiles.length > 0 ? `${uploadedAdFiles.length} Datei(en) ausgewählt` : 'Dateien hierher ziehen oder klicken'}
-                </div>
-                <div style={{ fontSize: '12px', color: C.muted }}>JPG, PNG, MP4 – max. 50 MB pro Datei</div>
-                {uploadedAdFiles.length > 0 && (
-                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {uploadedAdFiles.map((f, i) => (
-                      <div key={i} style={{ fontSize: '12px', color: C.teal, fontWeight: 500 }}>
-                        ✓ {f.name} ({(f.size / 1024 / 1024).toFixed(1)} MB)
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,video/mp4"
-                multiple
-                style={{ display: 'none' }}
-                onChange={e => {
-                  const files = Array.from(e.target.files || []);
-                  setUploadedAdFiles(prev => [...prev, ...files]);
-                }}
-              />
-            </label>
-            <p style={{ fontSize: '12px', color: C.muted, marginBottom: '16px' }}>
-              Benötigte Formate: DOOH 1920×1080px, 1080×1920px · Display 970×250px, 300×250px, 300×600px
-            </p>
-            <button
-              type="button"
-              onClick={handleUploadWeiter}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: C.primary, color: '#fff', border: 'none',
-                borderRadius: '100px', padding: '14px 28px',
-                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '15px', fontWeight: 600,
-                cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-              }}
-            >
-              {uploadedAdFiles.length > 0 ? 'Weiter zum Abschluss →' : 'Ohne Dateien weiter →'}
-            </button>
-          </div>
+          )}
+
+          <button onClick={handleUploadWeiter} disabled={uploadedAdFiles.length === 0}
+            style={{ width: '100%', padding: 13, borderRadius: 10, background: uploadedAdFiles.length === 0 ? C.border : C.primary, color: C.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: uploadedAdFiles.length === 0 ? 'not-allowed' : 'pointer' }}>
+            Weiter mit hochgeladenen Werbemitteln →
+          </button>
         </div>
       )}
 
-      {/* ── Option B: Später hochladen ── */}
+      {/* ─────────────────────────────────── Option B: Später ──────────────────── */}
       {selectedOption === 'später' && (
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '0 20px 40px' }}>
-          <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>📅</div>
-            <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '20px', fontWeight: 400, color: C.taupe, marginBottom: '8px' }}>
-              Du lädst das Werbemittel nach der Buchung hoch.
-            </h3>
-            <p style={{ fontSize: '13px', color: C.muted, lineHeight: 1.65, marginBottom: '20px' }}>
-              Du erhältst nach dem Abschluss eine E-Mail mit allen technischen Spezifikationen. Deine Kampagne startet nach Freigabe des Werbemittels.
-            </p>
-            <button
-              type="button"
-              onClick={handleSpäterWeiter}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: C.primary, color: '#fff', border: 'none',
-                borderRadius: '100px', padding: '14px 28px',
-                fontFamily: 'var(--font-outfit), sans-serif', fontSize: '15px', fontWeight: 600,
-                cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-              }}
-            >
-              Weiter zum Abschluss →
-            </button>
-          </div>
+        <div style={{ background: '#FFFBF0', border: '1px solid #F5D87A', borderRadius: 12, padding: '24px', marginBottom: 16 }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.taupe, marginBottom: 8 }}>Werbemittel nach Buchung einreichen</div>
+          <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 20 }}>
+            Sie erhalten nach der Buchung eine E-Mail mit allen Anforderungen (Format, Auflösung, Dateityp).
+            Werbemittel können bis 5 Werktage vor Kampagnenstart eingereicht werden.
+          </p>
+          <button onClick={handleSpäterWeiter}
+            style={{ padding: '11px 24px', borderRadius: 10, background: C.primary, color: C.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            Weiter ohne Werbemittel →
+          </button>
         </div>
       )}
 
-      {/* ── Option C: Im Browser erstellen (Ad Creator) ── */}
+      {/* ─────────────────────────────────── Option C: Erstellen ──────────────── */}
       {selectedOption === 'erstellen' && (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 80px', display: 'flex', gap: '28px', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
-          {/* ── Sidebar ── */}
-          <aside style={{ width: '320px', flexShrink: 0, position: 'sticky', top: '72px' }}>
-            <div style={{ background: C.white, borderRadius: '14px', border: `1px solid ${C.border}`, padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* ══ Sidebar ══ */}
+          <div style={{ width: 320, flexShrink: 0, position: 'sticky', top: 20, maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-              {/* Status bar */}
-              <div style={{ background: C.bg, borderRadius: '8px', padding: '10px 12px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase' }}>
-                    Von Website geladen
-                  </span>
-                  {briefing.sessionId && saveStatus !== 'idle' && (
-                    <span style={{ fontSize: '10px', color: saveStatus === 'saved' ? C.teal : C.muted, fontWeight: 600 }}>
-                      {saveStatus === 'saving' ? 'Speichert…' : 'Gespeichert ✓'}
-                    </span>
-                  )}
-                </div>
-                {statusBadge(ogImageStatus, 'Hintergrundbild')}
-                {statusBadge(ogLogoStatus, 'Logo')}
-                {(ogImageStatus === 'error' || (ogImageStatus === 'none' && !ogImageUrl)) && (
-                  <span style={{ fontSize: '11px', color: C.muted, width: '100%', marginTop: '2px' }}>
-                    Kein Bild von der Website gefunden – bitte hochladen
-                  </span>
-                )}
+            {/* KI Headlines */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
+                KI-Vorschläge
               </div>
-
-              {/* Org */}
-              <div>
-                <span style={label}>Marke / Organisation</span>
-                <input type="text" value={orgText} onChange={e => setOrgText(e.target.value)} placeholder="Firmenname" style={inputStyle} />
-              </div>
-
-              {/* URL */}
-              <div>
-                <span style={label}>Landingpage URL</span>
-                <input type="url" value={lpUrl} onChange={e => setLpUrl(e.target.value)} placeholder="https://…" style={inputStyle} />
-              </div>
-
-              {/* Headline */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                  <span style={{ ...label, marginBottom: 0 }}>Headline</span>
-                  <span style={{ fontSize: '11px', color: wordCount > 5 ? C.primary : C.muted }}>
-                    {wordCount}/5 Wörter
-                  </span>
-                </div>
-                <input type="text" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Max. 5 Wörter empfohlen" style={inputStyle} />
-                <button
-                  type="button"
-                  onClick={generateKiHeadlines}
-                  disabled={kiLoading}
-                  style={{
-                    marginTop: '7px', fontSize: '11px', fontWeight: 600,
-                    color: C.primary, background: C.pl, border: 'none',
-                    borderRadius: '100px', padding: '5px 12px',
-                    cursor: kiLoading ? 'default' : 'pointer', opacity: kiLoading ? 0.6 : 1,
-                    fontFamily: 'var(--font-outfit), sans-serif',
-                  }}
-                >
-                  {kiLoading ? '…' : '✦ KI Headlines'}
-                </button>
-                {headlineSuggestions.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                    {headlineSuggestions.map((hl, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setHeadline(hl)}
-                        style={{
-                          textAlign: 'left', fontSize: '12px', color: C.taupe,
-                          background: headline === hl ? C.pl : C.bg,
-                          border: `1px solid ${headline === hl ? C.primary : C.border}`,
-                          borderRadius: '6px', padding: '6px 10px',
-                          cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif',
-                        }}
-                      >
-                        {hl}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Subline */}
-              <div>
-                <span style={label}>Subline</span>
-                <input type="text" value={subline} onChange={e => setSubline(e.target.value)} placeholder="Kurze Ergänzung…" style={inputStyle} />
-              </div>
-
-              {/* CTA */}
-              <div>
-                <span style={label}>Call to Action</span>
-                <input type="text" value={cta} onChange={e => setCta(e.target.value)} placeholder="Jetzt informieren" style={inputStyle} />
-              </div>
-
-              {/* Logo */}
-              <div>
-                <span style={label}>Logo</span>
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                  {(['text', 'image'] as const).map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setLogoMode(m)}
-                      style={{
-                        flex: 1, fontSize: '12px', fontWeight: 600,
-                        padding: '7px', borderRadius: '7px', border: 'none', cursor: 'pointer',
-                        background: logoMode === m ? C.primary : C.bg,
-                        color: logoMode === m ? '#fff' : C.taupe,
-                        fontFamily: 'var(--font-outfit), sans-serif',
-                      }}
-                    >
-                      {m === 'text' ? 'Text' : 'Bild'}
+              {kiLoading ? (
+                <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>Generiere Vorschläge…</div>
+              ) : headlineSugs.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {headlineSugs.map((s, i) => (
+                    <button key={i} onClick={() => setHeadline(s)}
+                      style={{ textAlign: 'left', background: headline === s ? C.pl : C.bg, border: `1px solid ${headline === s ? C.primary : C.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12, color: C.taupe, cursor: 'pointer', lineHeight: 1.35 }}>
+                      {s}
                     </button>
                   ))}
                 </div>
-                {logoMode === 'image' && (
-                  <label style={{ display: 'block', cursor: 'pointer' }}>
-                    <div style={{ border: `1.5px dashed ${C.border}`, borderRadius: '8px', padding: '10px', textAlign: 'center', background: C.bg, fontSize: '12px', color: C.muted }}>
-                      {logoEl ? '✓ Logo geladen – ersetzen' : '↑ Logo hochladen'}
-                    </div>
-                    <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
-                  </label>
-                )}
-              </div>
+              ) : (
+                <button onClick={() => {
+                  setKiLoading(true);
+                  fetch('/api/generate-headlines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ organisation: analysis?.organisation, beschreibung: analysis?.beschreibung, url: briefing.url }) })
+                    .then(r => r.json()).then(d => setHeadlineSugs(d.headlines || [])).catch(() => {}).finally(() => setKiLoading(false));
+                }} style={{ fontSize: 12, color: C.primary, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                  Vorschläge generieren ↺
+                </button>
+              )}
+            </div>
 
-              {/* Background image */}
-              <div>
-                <span style={label}>Hintergrundbild</span>
-                {bgImageEl && ogImageStatus === 'ok' && !briefing.adBgImageData && (
-                  <div style={{
-                    width: '100%', height: '60px', borderRadius: '6px', marginBottom: '7px',
-                    backgroundImage: `url(/api/proxy-image?url=${encodeURIComponent(ogImageUrl)})`,
-                    backgroundSize: 'cover', backgroundPosition: 'center',
-                    border: `1px solid ${C.border}`,
-                  }} />
-                )}
-                {briefing.adBgImageData && bgImageEl && (
-                  <div style={{
-                    width: '100%', height: '60px', borderRadius: '6px', marginBottom: '7px',
-                    backgroundImage: `url(${briefing.adBgImageData})`,
-                    backgroundSize: 'cover', backgroundPosition: 'center',
-                    border: `1px solid ${C.border}`,
-                  }} />
-                )}
-                <label style={{ display: 'block', cursor: 'pointer' }}>
-                  <div style={{ border: `1.5px dashed ${C.border}`, borderRadius: '8px', padding: '10px', textAlign: 'center', background: C.bg, fontSize: '12px', color: C.muted }}>
-                    {bgImageEl ? '↑ Bild ersetzen' : '↑ Bild hochladen'}
-                  </div>
-                  <input type="file" accept="image/*" onChange={handleBgUpload} style={{ display: 'none' }} />
+            {/* Headline */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 5 }}>Headline</label>
+              <textarea value={headline} onChange={e => setHeadline(e.target.value)} rows={2}
+                style={{ ...inp, resize: 'vertical', lineHeight: 1.4 }}
+                placeholder="Ihre Schlagzeile (max. 8 Wörter)" />
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+                {headline.trim() ? headline.trim().split(/\s+/).length : 0} / 8 Wörter
+              </div>
+            </div>
+
+            {/* Subline */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 5 }}>Unterzeile</label>
+              <textarea value={subline} onChange={e => setSubline(e.target.value)} rows={2}
+                style={{ ...inp, resize: 'vertical', lineHeight: 1.4 }}
+                placeholder="Kurze Ergänzung (optional)" />
+            </div>
+
+            {/* CTA */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 5 }}>Call-to-Action</label>
+              <input value={cta} onChange={e => setCta(e.target.value)} style={inp} placeholder="z.B. Jetzt informieren" />
+            </div>
+
+            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
+
+            {/* Font picker */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 8 }}>Schriftart</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {FONTS.map(f => (
+                  <button key={f.id} onClick={() => setFont(f.id as FontId)}
+                    style={{ padding: '8px', borderRadius: 8, border: `1.5px solid ${font === f.id ? C.primary : C.border}`, background: font === f.id ? C.pl : C.white, cursor: 'pointer', fontFamily: f.css, fontSize: 13, color: C.taupe }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font scale */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 6 }}>
+                Schriftgrösse{' '}
+                <span style={{ textTransform: 'none', fontWeight: 400 }}>{Math.round(fontScale * 100)} %</span>
+              </label>
+              <input type="range" min={0.7} max={1.5} step={0.05} value={fontScale}
+                onChange={e => setFontScale(Number(e.target.value))}
+                style={{ width: '100%', accentColor: C.primary }} />
+            </div>
+
+            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
+
+            {/* Logo */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted }}>Logo</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: C.taupe }}>
+                  <input type="checkbox" checked={showLogo} onChange={e => setShowLogo(e.target.checked)} style={{ accentColor: C.primary }} />
+                  Anzeigen
                 </label>
               </div>
-
-              {/* Background style */}
-              <div>
-                <span style={label}>Hintergrundstil</span>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {([['overlay', 'A Overlay'], ['pure', 'B Bild pur'], ['split', 'C Split']] as const).map(([v, l]) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setBgStyle(v)}
-                      style={{
-                        flex: 1, fontSize: '11px', fontWeight: 600, padding: '7px 4px',
-                        borderRadius: '7px', border: `1.5px solid ${bgStyle === v ? C.primary : C.border}`,
-                        background: bgStyle === v ? C.pl : C.white,
-                        color: bgStyle === v ? C.pd : C.taupe,
-                        cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif',
-                      }}
-                    >
-                      {l}
-                    </button>
-                  ))}
+              {showLogo && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => setLogoMode('text')}
+                    style={{ flex: 1, padding: '7px', borderRadius: 8, border: `1.5px solid ${logoMode === 'text' ? C.primary : C.border}`, background: logoMode === 'text' ? C.pl : C.white, cursor: 'pointer', fontSize: 12, color: C.taupe }}>
+                    Text
+                  </button>
+                  <label style={{ flex: 1, padding: '7px', borderRadius: 8, border: `1.5px solid ${logoMode === 'image' ? C.primary : C.border}`, background: logoMode === 'image' ? C.pl : C.white, cursor: 'pointer', fontSize: 12, color: C.taupe, textAlign: 'center', display: 'block' }}>
+                    {logoImage ? '✓ Bild' : 'Bild laden'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleLogoUpload(e.target.files[0]); }} />
+                  </label>
                 </div>
-              </div>
-
-              {/* Colors */}
-              <div>
-                <span style={label}>Farben</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {([
-                    ['Hauptfarbe', bgColor, setBgColor],
-                    ['Textfarbe', textColor, setTextColor],
-                    ['CTA-Farbe', accentColor, setAccentColor],
-                  ] as [string, string, (v: string) => void][]).map(([lbl, val, setter]) => (
-                    <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <input
-                        type="color"
-                        value={val}
-                        onChange={e => setter(e.target.value)}
-                        style={{ width: '30px', height: '30px', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: 0 }}
-                      />
-                      <span style={{ fontSize: '13px', color: C.taupe }}>{lbl}</span>
-                      {lbl === 'Hauptfarbe' && themeColor && (
-                        <span style={{ fontSize: '10px', color: C.teal, background: '#e8f5f2', borderRadius: '4px', padding: '2px 6px', marginLeft: '2px' }}>
-                          Von Website
-                        </span>
-                      )}
-                      <span style={{ fontSize: '11px', color: C.muted, marginLeft: 'auto', fontFamily: 'monospace' }}>{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── "Später weiterarbeiten" button ── */}
-              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '14px' }}>
-                {saveLinkStatus === 'sent' ? (
-                  <div style={{ background: '#E8F5F2', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: C.teal, fontWeight: 600 }}>
-                    ✓ Link wurde an {saveLinkEmail} gesendet
-                  </div>
-                ) : (
-                  <>
-                    {!briefing.email && (
-                      <input
-                        type="email"
-                        value={saveLinkEmail}
-                        onChange={e => setSaveLinkEmail(e.target.value)}
-                        placeholder="deine@email.ch"
-                        style={{ ...inputStyle, marginBottom: '8px' }}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleSendLink}
-                      disabled={saveLinkStatus === 'loading'}
-                      style={{
-                        width: '100%', boxSizing: 'border-box',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        background: C.taupe, color: '#fff', border: 'none',
-                        borderRadius: '100px', padding: '11px 16px',
-                        fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
-                        cursor: saveLinkStatus === 'loading' ? 'default' : 'pointer',
-                        opacity: saveLinkStatus === 'loading' ? 0.7 : 1,
-                        transition: 'all .18s',
-                      }}
-                    >
-                      {saveLinkStatus === 'loading' ? 'Wird gesendet…' : '💾 Link zum Weiterarbeiten senden'}
-                    </button>
-                    {saveLinkStatus === 'error' && (
-                      <p style={{ fontSize: '12px', color: C.primary, marginTop: '6px', textAlign: 'center' }}>
-                        Fehler beim Senden. Bitte versuche es erneut.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-
+              )}
             </div>
-          </aside>
 
-          {/* ── Canvas area ── */}
+            {/* Colors */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 10 }}>Farben</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {colorRows.map(({ label, val, set }) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input type="color" value={val} onChange={e => set(e.target.value)}
+                      style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${C.border}`, cursor: 'pointer', padding: 2, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: C.taupe }}>{label}</span>
+                    <span style={{ fontSize: 11, color: C.muted, marginLeft: 'auto', fontFamily: 'monospace' }}>{val.toUpperCase()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
+
+            {/* BG image */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 8 }}>Hintergrundbild</label>
+              {bgImage ? (
+                <div style={{ position: 'relative', marginBottom: 10 }}>
+                  <img src={bgImage} alt="" style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 8, border: `1px solid ${C.border}`, display: 'block' }} />
+                  <button onClick={() => setBgImage(null)}
+                    style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', color: '#fff', cursor: 'pointer', fontSize: 13, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <label style={{ display: 'block', border: `1.5px dashed ${C.border}`, borderRadius: 8, padding: '16px', textAlign: 'center', cursor: 'pointer', marginBottom: 10 }}>
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>🖼️</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>Bild hochladen</div>
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) handleBgUpload(e.target.files[0]); }} />
+                </label>
+              )}
+
+              {/* Focus grid */}
+              {bgImage && (
+                <div>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Bildausschnitt</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                    {focusGrid.map(({ fx, fy }) => (
+                      <button key={`${fx}-${fy}`} onClick={() => { setFocusX(fx); setFocusY(fy); }}
+                        style={{ aspectRatio: '1', borderRadius: 4, border: `1.5px solid ${focusX === fx && focusY === fy ? C.primary : C.border}`, background: focusX === fx && focusY === fy ? C.primary : C.white, cursor: 'pointer' }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Animation */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.muted, display: 'block', marginBottom: 8 }}>Animation</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                {ANIMS.map(a => (
+                  <button key={a.id} onClick={() => setAnimation(a.id as AnimId)}
+                    style={{ padding: '8px', borderRadius: 8, border: `1.5px solid ${animation === a.id ? C.primary : C.border}`, background: animation === a.id ? C.pl : C.white, cursor: 'pointer', fontSize: 12, color: C.taupe }}>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: `1px solid ${C.border}`, margin: 0 }} />
+
+            {/* Send resume link */}
+            <div style={{ background: C.bg, borderRadius: 10, padding: '12px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.taupe, marginBottom: 8 }}>Später weiterarbeiten</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input value={saveLinkEmail} onChange={e => setSaveLinkEmail(e.target.value)}
+                  placeholder="ihre@email.ch" style={{ ...inp, flex: 1, fontSize: 12, padding: '7px 9px' }} />
+                <button onClick={handleSendLink} disabled={saveLinkStatus === 'loading' || saveLinkStatus === 'sent'}
+                  style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: C.primary, color: C.white, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {saveLinkStatus === 'sent' ? '✓ Gesendet' : saveLinkStatus === 'loading' ? '…' : 'Link senden'}
+                </button>
+              </div>
+              {saveLinkStatus === 'error' && <div style={{ fontSize: 11, color: C.pd, marginTop: 5 }}>Fehler – bitte erneut versuchen.</div>}
+            </div>
+
+            {/* Submit */}
+            <button onClick={handleWeiter} disabled={submitting || !headline.trim()}
+              style={{ width: '100%', padding: 13, borderRadius: 10, background: !headline.trim() || submitting ? C.border : C.primary, color: C.white, border: 'none', fontWeight: 700, fontSize: 14, cursor: !headline.trim() || submitting ? 'not-allowed' : 'pointer', transition: 'background .15s' }}>
+              {submitting ? 'Wird gespeichert…' : 'Werbemittel speichern & weiter →'}
+            </button>
+          </div>
+
+          {/* ══ Preview area ══ */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
+
+            {/* Tab bar */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
               {(['dooh', 'display'] as const).map(tab => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    padding: '9px 20px', borderRadius: '100px',
-                    border: `1.5px solid ${activeTab === tab ? C.primary : C.border}`,
-                    fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
-                    background: activeTab === tab ? C.primary : C.white,
-                    color: activeTab === tab ? '#fff' : C.taupe,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {tab === 'dooh' ? 'DOOH' : 'Display'}
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  style={{ padding: '8px 18px', borderRadius: 20, border: `1.5px solid ${activeTab === tab ? C.primary : C.border}`, background: activeTab === tab ? C.pl : C.white, color: activeTab === tab ? C.primary : C.muted, fontWeight: activeTab === tab ? 700 : 400, fontSize: 13, cursor: 'pointer', transition: 'all .15s' }}>
+                  {tab === 'dooh' ? 'DOOH Plakatwand' : 'Display Anzeigen'}
                 </button>
               ))}
             </div>
 
-            {/* DOOH canvases */}
-            <div style={{ display: activeTab === 'dooh' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
-              {DOOH_FORMATS.map(fmt => {
-                const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
-                return (
-                  <div key={fmt.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
-                      <button
-                        type="button"
-                        onClick={() => download(fmt.id, fmt.label)}
-                        style={{ fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl, border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}
-                      >
-                        ↓ JPG
-                      </button>
-                    </div>
-                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}` }}>
-                      <canvas
-                        ref={el => { canvasRefs.current[fmt.id] = el; }}
-                        style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {/* DOOH tab */}
+            {activeTab === 'dooh' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
 
-            {/* Display canvases */}
-            <div style={{ display: activeTab === 'display' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
-              {DISPLAY_FORMATS.map(fmt => {
-                const previewH = Math.round((fmt.preview / fmt.w) * fmt.h);
-                return (
-                  <div key={fmt.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: C.taupe }}>{fmt.label}</span>
-                      <button
-                        type="button"
-                        onClick={() => download(fmt.id, fmt.label)}
-                        style={{ fontSize: '12px', fontWeight: 600, color: C.primary, background: C.pl, border: 'none', borderRadius: '100px', padding: '5px 14px', cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}
-                      >
-                        ↓ JPG
-                      </button>
-                    </div>
-                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${C.border}`, display: 'inline-block' }}>
-                      <canvas
-                        ref={el => { canvasRefs.current[fmt.id] = el; }}
-                        style={{ width: `${fmt.preview}px`, height: `${previewH}px`, display: 'block' }}
-                      />
-                    </div>
+                {/* Quer */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+                    Querformat · 1920 × 1080 px
                   </div>
-                );
-              })}
-            </div>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                    Elemente per Drag &amp; Drop verschieben
+                  </div>
+                  <DoohPreview w={1920} h={1080} screenW={600}
+                    positions={posQuer} onMove={(id, p) => setPosQuer(prev => ({ ...prev, [id]: p }))}
+                    cfg={adCfg} />
+                  <button onClick={() => setPosQuer({ ...DEF_QUER })}
+                    style={{ marginTop: 8, fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Layout zurücksetzen
+                  </button>
+                </div>
 
-            {/* CTA buttons */}
-            <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-              <button
-                type="button"
-                onClick={handleWeiter}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  background: C.primary, color: '#fff', border: 'none',
-                  borderRadius: '100px', padding: '15px 32px',
-                  fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
-                  cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-                  transition: 'all .18s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
-              >
-                Weiter zum Abschluss →
-              </button>
-              <button
-                type="button"
-                onClick={handleSpäterWeiter}
-                style={{
-                  background: 'none', border: `1.5px solid ${C.border}`, borderRadius: '100px',
-                  padding: '15px 24px', fontFamily: 'var(--font-outfit), sans-serif',
-                  fontSize: '15px', fontWeight: 500, color: C.muted, cursor: 'pointer',
-                  transition: 'all .18s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.muted; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}
-              >
-                Überspringen
-              </button>
-            </div>
+                {/* Hoch */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 6 }}>
+                    Hochformat · 1080 × 1920 px
+                  </div>
+                  <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                    <DoohPreview w={1080} h={1920} screenW={270}
+                      positions={posHoch} onMove={(id, p) => setPosHoch(prev => ({ ...prev, [id]: p }))}
+                      cfg={adCfg} />
+                    <button onClick={() => setPosHoch({ ...DEF_HOCH })}
+                      style={{ fontSize: 11, color: C.muted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', marginTop: 4 }}>
+                      Zurücksetzen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Display tab */}
+            {activeTab === 'display' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Billboard · 970 × 250 px
+                  </div>
+                  <DisplayPreview w={970} h={250} screenW={600} cfg={adCfg} />
+                </div>
+                <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Medium Rectangle · 300 × 250 px
+                    </div>
+                    <DisplayPreview w={300} h={250} screenW={280} cfg={adCfg} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Half Page · 300 × 600 px
+                    </div>
+                    <DisplayPreview w={300} h={600} screenW={220} cfg={adCfg} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
-    </section>
+
+      {/* No option selected */}
+      {!selectedOption && (
+        <p style={{ fontSize: 13, color: C.muted, textAlign: 'center', padding: '12px 0' }}>
+          Bitte wählen Sie eine Option oben aus.
+        </p>
+      )}
+    </div>
   );
 }

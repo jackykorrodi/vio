@@ -68,6 +68,14 @@ export interface BriefingData {
   adLogoMode?: 'text' | 'image';
   adBgImageData?: string;     // base64 data URL for persistence
   adLogoImageData?: string;   // base64 data URL for persistence
+  adFont?: string;            // font id: fraunces | outfit | georgia | helvetica
+  adFontScale?: number;       // 0.7–1.5, default 1.0
+  adLogoText?: string;        // org name for text logo
+  adFocusX?: number;          // 0-2: bg image focus column
+  adFocusY?: number;          // 0-2: bg image focus row
+  adAnimation?: string;       // none | fade | slide | pulse
+  adPositionsQuer?: Record<string, { x: number; y: number }>;
+  adPositionsHoch?: Record<string, { x: number; y: number }>;
   werbemittelService?: 'upload' | 'später' | 'erstellen'; // option chosen in Step 5
   werbemittelFiles?: string[];  // uploaded file names for option A
   // Session persistence
