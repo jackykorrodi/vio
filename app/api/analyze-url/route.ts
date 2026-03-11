@@ -144,6 +144,22 @@ function extractThemeColor(html: string): string {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  // ── 25-second hard timeout on the entire route ─────────────────────────────
+  const routeTimeout = new Promise<NextResponse>(resolve =>
+    setTimeout(() => {
+      console.error('ROUTE TIMEOUT after 25s');
+      resolve(NextResponse.json(domainFallback(''), { status: 200 }));
+    }, 25000)
+  );
+
+  return Promise.race([handleRequest(request), routeTimeout]);
+}
+
+async function handleRequest(request: NextRequest): Promise<NextResponse> {
+  // ── FATAL wrapper — nothing should escape silently ─────────────────────────
+  let rawUrl = '';
+  try {
+
   console.log('=== /api/analyze-url CALLED ===');
 
   // ── Input validation ───────────────────────────────────────────────────────
@@ -158,6 +174,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
   const { url, campaignType } = body as Record<string, unknown>;
+  rawUrl = typeof url === 'string' ? url : '';
 
   if (!url || typeof url !== 'string') {
     return NextResponse.json({ error: 'URL fehlt' }, { status: 400 });
@@ -180,9 +197,12 @@ export async function POST(request: NextRequest) {
     cleanUrl = 'https://' + cleanUrl;
   }
 
-  console.log('URL:', cleanUrl);
-  console.log('FIRECRAWL_API_KEY set:', !!process.env.FIRECRAWL_API_KEY);
-  console.log('GEMINI_API_KEY set:', !!process.env.GEMINI_API_KEY);
+  // ── Early diagnostic log (visible immediately in Vercel logs) ────────────
+  console.log('=== ANALYZE-URL CALLED, URL:', cleanUrl,
+    'FIRECRAWL:', !!process.env.FIRECRAWL_API_KEY,
+    'GEMINI:', !!process.env.GEMINI_API_KEY);
+  if (!process.env.FIRECRAWL_API_KEY) console.warn('⚠️  FIRECRAWL_API_KEY is NOT SET');
+  if (!process.env.GEMINI_API_KEY)    console.warn('⚠️  GEMINI_API_KEY is NOT SET');
 
   // ── Early exit if no API key ───────────────────────────────────────────────
   if (!process.env.FIRECRAWL_API_KEY) {
@@ -436,5 +456,11 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
     // Return domain fallback enriched with whatever Firecrawl gave us
     const fb = domainFallback(cleanUrl);
     return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor });
+  }
+
+  // ── End of FATAL wrapper ───────────────────────────────────────────────────
+  } catch (fatal) {
+    console.error('FATAL unhandled error in /api/analyze-url:', fatal);
+    return NextResponse.json(domainFallback(rawUrl), { status: 200 });
   }
 }

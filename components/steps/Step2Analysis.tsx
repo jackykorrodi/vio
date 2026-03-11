@@ -85,7 +85,7 @@ function Step2Analysis({ briefing, updateBriefing, nextStep, isActive }: Props) 
         clearTimeout(cancelTimer);
         setStepIndex(4);
         await new Promise(r => setTimeout(r, 600));
-        updateBriefing({ analysis: data.isManualFallback ? null : data });
+        updateBriefing({ analysis: data });
         nextStep();
       } catch (e: unknown) {
         clearInterval(interval);
