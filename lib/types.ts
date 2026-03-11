@@ -44,6 +44,7 @@ export interface AnalysisResult {
   sublines?: string[];
   ctaText?: string;
   suggestedImageUrl?: string;
+  fontFamily?: string | null;
 }
 
 export interface BriefingData {

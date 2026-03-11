@@ -46,6 +46,7 @@ function domainFallback(rawUrl: string) {
     sublines: [domain, 'Jetzt online informieren'],
     ctaText: 'Jetzt entdecken →',
     suggestedImageUrl: '',
+    fontFamily: null as string | null,
   };
 }
 
@@ -159,6 +160,15 @@ function extractOgImage(html: string): string {
   return '';
 }
 
+/** Extract first Google Fonts family name from HTML link tags. */
+function extractFontFamily(html: string): string | null {
+  // Matches: fonts.googleapis.com/css?family=Roboto:400 or css2?family=Open+Sans|Lato
+  const m = html.match(/fonts\.googleapis\.com\/css2?\?[^"'>]*family=([^&|"'\s>]+)/i);
+  if (!m?.[1]) return null;
+  const raw = m[1].split(/[:|]/)[0];              // take first family before weight/pipe
+  return decodeURIComponent(raw).replace(/\+/g, ' ').trim() || null;
+}
+
 /** Extract theme color from HTML: <meta name="theme-color">, then most-frequent CSS hex color. */
 function extractThemeColor(html: string): string {
   // 1. <meta name="theme-color" content="#rrggbb">
@@ -266,6 +276,7 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
   let favicon        = '';
   let themeColor     = '';
   let rawHtml        = '';
+  let fontFamily: string | null = null;
 
   try {
     console.log('=== FIRECRAWL START ===');
@@ -297,7 +308,7 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
     console.log('Markdown length:', scrapedContent.length, '/ HTML length:', rawHtml.length);
 
     pageTitle  = typed.metadata?.title      || '';
-    ogImage    = typed.metadata?.ogImage    || '';
+    ogImage    = typed.metadata?.ogImage    || (typed.metadata?.og as Record<string,string>)?.image || '';
     ogLogo     = typed.metadata?.ogLogo     || '';
     favicon    = typed.metadata?.favicon    || '';
     themeColor = typed.metadata?.themeColor || typed.metadata?.['theme-color'] || '';
@@ -371,11 +382,18 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
       if (themeColor) console.log('themeColor from HTML extraction:', themeColor);
     }
 
+    // Extract Google Fonts family from HTML
+    if (rawHtml) {
+      fontFamily = extractFontFamily(rawHtml);
+      if (fontFamily) console.log('fontFamily from HTML:', fontFamily);
+    }
+
     console.log('=== EXTRACTED ===');
     console.log('  ogImage:', ogImage || '(empty)');
     console.log('  ogLogo:', ogLogo   || '(empty)');
     console.log('  favicon:', favicon || '(empty)');
     console.log('  themeColor:', themeColor || '(empty)');
+    console.log('  fontFamily:', fontFamily || '(empty)');
     console.log('  pageTitle:', pageTitle   || '(empty)');
 
   } catch (e) {
@@ -388,15 +406,14 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
   if (scrapedContent.length < 100) {
     console.warn('Content too short (<100 chars) — returning domain fallback');
     const fb = domainFallback(cleanUrl);
-    // Enrich with whatever metadata Firecrawl did return
-    return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor });
+    return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor, fontFamily });
   }
 
   // ── Gemini analysis ────────────────────────────────────────────────────────
   if (!process.env.GEMINI_API_KEY) {
     console.warn('GEMINI_API_KEY missing — returning domain fallback with meta');
     const fb = domainFallback(cleanUrl);
-    return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor });
+    return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor, fontFamily });
   }
 
   const isB2B = campaignType === 'b2b';
@@ -533,7 +550,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
     const finalOgImage = ogImage || suggestedImageUrl;
     if (!ogImage && suggestedImageUrl) console.log('ogImage from Gemini suggestion:', suggestedImageUrl);
 
-    const meta = { needsManualInput: !org, isManualFallback: false, pageTitle, ogImage: finalOgImage, ogLogo, favicon, themeColor: themeColor || '#C1666B', headlines, sublines, ctaText, suggestedImageUrl };
+    const meta = { needsManualInput: !org, isManualFallback: false, pageTitle, ogImage: finalOgImage, ogLogo, favicon, themeColor: themeColor || '#C1666B', headlines, sublines, ctaText, suggestedImageUrl, fontFamily };
 
     const analysis = isB2B
       ? {
@@ -582,9 +599,8 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
 
   } catch (e) {
     console.error('Gemini error (full):', e);
-    // Return domain fallback enriched with whatever Firecrawl gave us
     const fb = domainFallback(cleanUrl);
-    return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor });
+    return NextResponse.json({ ...fb, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || fb.themeColor, fontFamily });
   }
 
   // ── End of FATAL wrapper ───────────────────────────────────────────────────
