@@ -11,9 +11,22 @@ interface Props {
   isActive?: boolean;
 }
 
+// ── Font constants ─────────────────────────────────────────────────────────────
+const FONT_SIMILAR: Record<string, string[]> = {
+  'Inter':            ['DM Sans', 'Plus Jakarta Sans'],
+  'Roboto':           ['Inter', 'Lato'],
+  'Poppins':          ['Nunito', 'DM Sans'],
+  'Montserrat':       ['Raleway', 'DM Sans'],
+  'Lato':             ['Open Sans', 'Nunito'],
+  'Outfit':           ['DM Sans', 'Nunito'],
+  'Playfair Display': ['Lora', 'DM Serif Display'],
+  'default':          ['Outfit', 'Inter'],
+};
+const SERIF_FONTS = ['Playfair Display','Lora','Merriweather','DM Serif Display','Fraunces'];
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 type ElPos = { top: number; left: number };
-type FormatPositions = Record<string, ElPos>;
-type AllPositions = Record<string, FormatPositions>;
+type AllPositions = Record<string, Record<string, ElPos>>;
 type AllSizes = Record<string, Record<string, number>>;
 
 interface Colors {
@@ -34,634 +47,495 @@ interface DragState {
   layerEl: HTMLElement;
 }
 
-// ── Default positions (FIX #7: non-overlapping for each format) ──────────────
+// ── Default positions ──────────────────────────────────────────────────────────
 const DEF_POS: AllPositions = {
-  // Quer 845×475: logo top-left, hl upper-left large, sub mid-left, cta bottom-left, domain+qr bottom-right
-  quer: {
-    logo:   { top: 4,  left: 3  },
-    hl:     { top: 22, left: 3  },
-    sub:    { top: 60, left: 3  },
-    cta:    { top: 82, left: 3  },
-    domain: { top: 85, left: 62 },
-    qr:     { top: 78, left: 88 },
-  },
-  // Hoch 259×461: logo top, hl upper-third, sub middle, cta lower, domain+qr bottom
-  hoch: {
-    logo:   { top: 3,  left: 6  },
-    hl:     { top: 18, left: 6  },
-    sub:    { top: 50, left: 6  },
-    cta:    { top: 72, left: 6  },
-    domain: { top: 87, left: 6  },
-    qr:     { top: 82, left: 74 },
-  },
-  // Wide 970×250: logo left, hl+sub center, cta right — all vertically centered
-  wide: {
-    logo: { top: 35, left: 2  },
-    hl:   { top: 22, left: 18 },
-    sub:  { top: 58, left: 18 },
-    cta:  { top: 30, left: 80 },
-  },
-  // Med 300×250: logo top, hl mid, sub upper-mid, cta bottom
-  med: {
-    logo: { top: 5,  left: 6 },
-    hl:   { top: 28, left: 6 },
-    sub:  { top: 56, left: 6 },
-    cta:  { top: 78, left: 6 },
-  },
-  // Tall 300×600: logo top, hl upper-third, sub middle, cta lower-third
-  tall: {
-    logo: { top: 4,  left: 6 },
-    hl:   { top: 18, left: 6 },
-    sub:  { top: 44, left: 6 },
-    cta:  { top: 72, left: 6 },
-  },
+  quer:  { logo:{top:6,left:4},  hl:{top:26,left:4},  sub:{top:66,left:4},  cta:{top:82,left:4},  domain:{top:90,left:72}, qr:{top:78,left:88} },
+  hoch:  { logo:{top:5,left:7},  hl:{top:32,left:7},  sub:{top:60,left:7},  cta:{top:80,left:7},  domain:{top:90,left:7},  qr:{top:81,left:72} },
+  wide:  { logo:{top:30,left:3}, hl:{top:30,left:18}, sub:{top:64,left:18}, cta:{top:30,left:78}, domain:{top:82,left:18}, qr:{top:20,left:90} },
+  med:   { logo:{top:7,left:7},  hl:{top:30,left:7},  sub:{top:62,left:7},  cta:{top:82,left:7},  domain:{top:90,left:7},  qr:{top:75,left:72} },
+  tall:  { logo:{top:5,left:7},  hl:{top:25,left:7},  sub:{top:56,left:7},  cta:{top:82,left:7},  domain:{top:90,left:7},  qr:{top:75,left:72} },
 };
 
-// ── Default font sizes ───────────────────────────────────────────────────────
-const DEF_SIZES: AllSizes = {
-  quer: { logo: 18, hl: 58, sub: 22, cta: 18, domain: 13, qr: 70 },
-  hoch: { logo: 12, hl: 26, sub: 11, cta: 11, domain: 9,  qr: 44 },
-  wide: { logo: 14, hl: 22, sub: 13, cta: 14 },
-  med:  { logo: 11, hl: 20, sub: 11, cta: 11 },
-  tall: { logo: 12, hl: 26, sub: 13, cta: 13 },
+const DEF_SIZE: AllSizes = {
+  quer:  { logo:15, hl:52, sub:20, cta:17, domain:12, qr:68 },
+  hoch:  { logo:11, hl:24, sub:10, cta:10, domain:8,  qr:40 },
+  wide:  { logo:13, hl:26, sub:13, cta:15, domain:11, qr:36 },
+  med:   { logo:10, hl:22, sub:11, cta:11, domain:9,  qr:32 },
+  tall:  { logo:11, hl:30, sub:13, cta:12, domain:9,  qr:36 },
 };
 
-// ── Resize deltas ────────────────────────────────────────────────────────────
-const RESIZE_DELTA: Record<string, Record<string, number>> = {
-  quer: { logo: 1, hl: 2, sub: 1, cta: 1, domain: 1, qr: 4 },
-  hoch: { logo: 1, hl: 1, sub: 1, cta: 1, domain: 1, qr: 3 },
-  wide: { logo: 1, hl: 1, sub: 1, cta: 1 },
-  med:  { logo: 1, hl: 1, sub: 1, cta: 1 },
-  tall: { logo: 1, hl: 1, sub: 1, cta: 1 },
-};
-
-const FOCUS_POS = [
-  ['0% 0%',   '50% 0%',   '100% 0%'  ],
-  ['0% 50%',  '50% 50%',  '100% 50%' ],
-  ['0% 100%', '50% 100%', '100% 100%'],
-];
-
-const ANIM_TIPS: Record<string, string> = {
-  cta:  '✓ CTA pulsiert sanft',
-  qr:   '✓ QR blendet ein/aus',
-  hl:   '✓ Headline gleitet ein',
-  none: '⏸ Statisch',
-};
-
-function hexRgba(hex: string, a: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${a})`;
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function proxyUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  return `/api/proxy-image?url=${encodeURIComponent(url)}`;
 }
 
-// ── Headline/Subline suggestion chips ────────────────────────────────────────
-function makeSuggestions(org: string, domain: string, headlines?: string[], sublines?: string[]) {
-  const hl = headlines && headlines.length >= 3
-    ? headlines.map((text, i) => ({ text, tag: String(i + 1) }))
-    : [
-        { text: org ? `${org} – für Sie`                   : 'Jetzt entdecken',  tag: '1' },
-        { text: org ? `Wer braucht schon mehr als ${org}?` : 'Einfach gut',       tag: '2' },
-        { text: org ? `${org} – nah bei Ihnen`             : 'Weil es zählt',     tag: '3' },
-      ];
-  const sub = sublines && sublines.length >= 2
-    ? sublines.map((text, i) => ({ text, tag: String(i + 1) }))
-    : [
-        { text: domain,                     tag: '1' },
-        { text: 'Jetzt online informieren', tag: '2' },
-      ];
-  return { hl, sub };
+function extractDomain(url: string): string {
+  try { return new URL(url.startsWith('http') ? url : 'https://' + url).hostname.replace('www.', ''); }
+  catch { return url; }
 }
 
-// ── Ad Preview Component ─────────────────────────────────────────────────────
+function checkImgUrl(url: string): Promise<boolean> {
+  return new Promise(resolve => {
+    if (!url) { resolve(false); return; }
+    const img = new Image();
+    img.onload  = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+    setTimeout(() => resolve(false), 4000);
+  });
+}
 
-interface PreviewProps {
+function checkImgQuality(url: string): Promise<'good'|'warn'|'bad'> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => {
+      if (img.naturalWidth >= 600 || img.naturalHeight >= 400) resolve('good');
+      else if (img.naturalWidth >= 200) resolve('warn');
+      else resolve('bad');
+    };
+    img.onerror = () => resolve('bad');
+    img.src = url;
+    setTimeout(() => resolve('warn'), 4000);
+  });
+}
+
+function checkLogoQuality(url: string): Promise<'good'|'warn'|'bad'> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => {
+      if (img.naturalWidth >= 128 && img.naturalHeight >= 64) resolve('good');
+      else if (img.naturalWidth >= 48) resolve('warn');
+      else resolve('bad');
+    };
+    img.onerror = () => resolve('bad');
+    img.src = url;
+    setTimeout(() => resolve('warn'), 4000);
+  });
+}
+
+// ── AdPreview ──────────────────────────────────────────────────────────────────
+interface AdPreviewProps {
   fmtId: string;
   width: number;
   height: number;
-  positions: AllPositions;
-  sizes: AllSizes;
+  bgImage: string;
+  bgStyle: 'overlay'|'pure'|'split';
+  bgBrightness: number;
+  bgPos: string;
   colors: Colors;
   headline: string;
   subline: string;
   cta: string;
-  domain: string;
-  org: string;
-  bgUrl: string;
-  logoUrl: string;
-  logoMode: 'text' | 'image';
-  bgStyle: 'overlay' | 'pure' | 'split';
-  anim: string;
-  bgPos: string;
   lpUrl: string;
-  selEl: string | null;
-  onElMouseDown: (e: React.MouseEvent, fmtId: string, elId: string) => void;
-  onLayerClick: (fmtId: string) => void;
-  onResize: (fmtId: string, elId: string, delta: number) => void;
+  logoMode: 'text'|'image';
+  logoUrl: string;
+  logoText: string;
+  adFont: string;
+  adBold: boolean;
+  animation: string;
+  positions: Record<string, ElPos>;
+  sizes: Record<string, number>;
+  onDragStart: (fmtId: string, elId: string, e: React.MouseEvent, layerEl: HTMLElement) => void;
+  onSelect: (fmtId: string, elId: string) => void;
+  selectedEl: string | null;
+  onSizeChange: (fmtId: string, elId: string, delta: number) => void;
 }
 
 function AdPreview({
-  fmtId, width, height, positions, sizes, colors,
-  headline, subline, cta, domain, org,
-  bgUrl, logoUrl, logoMode, bgStyle, anim, bgPos, lpUrl,
-  selEl, onElMouseDown, onLayerClick, onResize,
-}: PreviewProps) {
-  const pos   = positions[fmtId] || DEF_POS[fmtId] || {};
-  const sz    = sizes[fmtId]     || DEF_SIZES[fmtId] || {};
-  const hasQr = fmtId === 'quer' || fmtId === 'hoch';
-  const elD   = RESIZE_DELTA[fmtId] || {};
+  fmtId, width, height, bgImage, bgStyle, bgBrightness, bgPos,
+  colors, headline, subline, cta, lpUrl, logoMode, logoUrl, logoText,
+  adFont, adBold, animation, positions, sizes,
+  onDragStart, onSelect, selectedEl, onSizeChange,
+}: AdPreviewProps) {
+  const layerRef = useRef<HTMLDivElement>(null);
+  const isSerifFont = SERIF_FONTS.includes(adFont);
+  const hlFamily = isSerifFont ? adFont : 'Fraunces';
+  const bodyFamily = adFont || 'Outfit';
+  const domain = extractDomain(lpUrl);
 
-  const animClass  = anim !== 'none' ? `anim-${anim}` : '';
-  const styleClass = bgStyle === 'pure'  ? 'pure-mode'
-                   : bgStyle === 'split' ? 'split-mode'
-                   : '';
+  const animClass = animation === 'cta' ? 'anim-cta' : animation === 'hl' ? 'anim-hl' : animation === 'qr' ? 'anim-qr' : '';
+  const bgStyleMode = bgStyle === 'pure' ? 'pure-mode' : bgStyle === 'split' ? 'split-mode' : '';
 
-  function isSel(el: string) { return selEl === `${fmtId}:${el}`; }
+  const pos = positions;
+  const sz  = sizes;
 
-  function Toolbar({ elId, delta }: { elId: string; delta: number }) {
+  function isSel(id: string) { return selectedEl === `${fmtId}-${id}`; }
+  function elCls(id: string) { return `ac-el${isSel(id) ? ' sel' : ''}`; }
+
+  function elStyle(id: string, extra?: React.CSSProperties): React.CSSProperties {
+    return { position: 'absolute', top: `${pos[id]?.top ?? 10}%`, left: `${pos[id]?.left ?? 5}%`, cursor: 'grab', userSelect: 'none', borderRadius: 3, padding: '2px 3px', ...extra };
+  }
+
+  function handleDown(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    onSelect(fmtId, id);
+    if (layerRef.current) onDragStart(fmtId, id, e, layerRef.current);
+  }
+
+  function Toolbar({ id }: { id: string }) {
+    if (!isSel(id)) return null;
     return (
       <div className="ac-tb">
-        <button className="ac-tb-btn" onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, -delta); }}>
-          {elId === 'qr' ? '−' : 'A−'}
-        </button>
+        <button className="ac-tb-btn" onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, -1); }}>A−</button>
         <div className="ac-tb-sep" />
-        <button className="ac-tb-btn" onMouseDown={e => { e.stopPropagation(); onResize(fmtId, elId, delta); }}>
-          {elId === 'qr' ? '+' : 'A+'}
-        </button>
+        <button className="ac-tb-btn" onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, 1); }}>A+</button>
       </div>
     );
   }
 
+  const ctaPad = fmtId==='quer'?'10px 26px':fmtId==='hoch'?'5px 12px':fmtId==='wide'?'10px 22px':fmtId==='med'?'6px 14px':'8px 20px';
+
   return (
-    <div
-      className={`ad-wrap ac-ad ${animClass} ${styleClass}`.trim()}
-      style={{ width, height, flexShrink: 0 }}
-    >
+    <div style={{ width, height, position: 'relative', overflow: 'hidden', flexShrink: 0 }}
+         className={`ac-ad ${bgStyleMode} ${animClass}`}>
       {/* Background */}
-      <div
-        className="ac-bg"
-        style={{
-          backgroundColor:    colors.bg,
-          backgroundImage:    bgUrl ? `url('${bgUrl}')` : undefined,
-          backgroundPosition: bgPos,
-        }}
-      />
+      {bgImage
+        ? <div className="ac-bg" style={{ backgroundImage: `url(${bgImage})`, backgroundPosition: bgPos, filter: `brightness(${bgBrightness/100})` }} />
+        : <div className="ac-bg" style={{ background: colors.bg }} />
+      }
       {/* Overlay */}
-      <div className="ac-ov" style={{ background: hexRgba(colors.bg, 0.78) }} />
-      {/* Split color */}
-      <div className="ac-sc" style={{ background: colors.bg }} />
+      {bgStyle === 'overlay' && bgImage && (
+        <div className="ac-ov" style={{ background: `linear-gradient(135deg, ${colors.bg}ee 0%, ${colors.bg}99 60%, ${colors.bg}55 100%)` }} />
+      )}
+      {/* Pure */}
+      {bgStyle === 'pure' && (
+        <div style={{ position: 'absolute', inset: 0, background: colors.bg }} />
+      )}
+      {/* Split color block */}
+      {bgStyle === 'split' && (
+        <div className="ac-sc" style={{ background: colors.bg }} />
+      )}
 
       {/* Drag layer */}
-      <div
-        className="ac-dl"
-        onMouseDown={e => { if (e.target === e.currentTarget) onLayerClick(fmtId); }}
-      >
+      <div ref={layerRef} className="ac-dl" onClick={() => onSelect(fmtId, '')}>
+
         {/* Logo */}
-        <div
-          className={`ac-el${isSel('logo') ? ' sel' : ''}`}
-          style={{ top: `${pos.logo?.top ?? 4}%`, left: `${pos.logo?.left ?? 3}%` }}
-          onMouseDown={e => onElMouseDown(e, fmtId, 'logo')}
-        >
-          <Toolbar elId="logo" delta={elD.logo ?? 1} />
-          {logoMode === 'image' && logoUrl ? (
-            <img
-              className="ac-logo-img"
-              src={logoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl}
-              alt=""
-              crossOrigin="anonymous"
-              style={{ height: sz.logo ?? 18, background: 'rgba(255,255,255,0.85)', borderRadius: 3, padding: 2 }}
-            />
-          ) : (
-            <div className="ac-logo-txt" style={{ fontSize: sz.logo ?? 18, color: colors.logo }}>
-              {org || 'Organisation'}
-            </div>
-          )}
+        <div className={elCls('logo')} style={elStyle('logo')} onMouseDown={e => handleDown('logo', e)}>
+          <Toolbar id="logo" />
+          {logoMode === 'image' && logoUrl
+            ? <img src={proxyUrl(logoUrl)} alt="logo"
+                   style={{ height: sz.logo * 2, width: 'auto', maxWidth: 130, objectFit: 'contain', background: 'rgba(255,255,255,0.85)', borderRadius: 3, display: 'block' }}
+                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            : <span className="ac-logo-txt" style={{ fontSize: sz.logo, fontFamily: hlFamily, fontWeight: adBold ? 700 : 600, color: colors.logo }}>{logoText || 'Logo'}</span>
+          }
         </div>
 
         {/* Headline */}
-        <div
-          className={`ac-el${isSel('hl') ? ' sel' : ''}`}
-          style={{
-            top:      `${pos.hl?.top  ?? 22}%`,
-            left:     `${pos.hl?.left ?? 3}%`,
-            maxWidth: fmtId === 'quer' ? '58%' : fmtId === 'hoch' ? '82%' : '85%',
-          }}
-          onMouseDown={e => onElMouseDown(e, fmtId, 'hl')}
-        >
-          <Toolbar elId="hl" delta={elD.hl ?? 2} />
-          <div className="ac-hl" style={{ fontSize: sz.hl ?? 28, color: colors.hl }}>
-            {headline || 'Headline'}
+        <div className={elCls('hl')} style={elStyle('hl', { maxWidth: fmtId==='quer'?'60%':fmtId==='hoch'?'82%':fmtId==='wide'?'52%':'86%' })} onMouseDown={e => handleDown('hl', e)}>
+          <Toolbar id="hl" />
+          <div className="ac-hl" style={{ fontSize: sz.hl, fontFamily: hlFamily, fontWeight: adBold ? 700 : 300, color: colors.hl, lineHeight: 1.15 }}>
+            {headline || 'Ihre Werbebotschaft'}
           </div>
         </div>
 
         {/* Subline */}
-        <div
-          className={`ac-el${isSel('sub') ? ' sel' : ''}`}
-          style={{ top: `${pos.sub?.top ?? 60}%`, left: `${pos.sub?.left ?? 3}%` }}
-          onMouseDown={e => onElMouseDown(e, fmtId, 'sub')}
-        >
-          <Toolbar elId="sub" delta={elD.sub ?? 1} />
-          <div className="ac-sub" style={{ fontSize: sz.sub ?? 13, color: colors.sub }}>
-            {subline}
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div
-          className={`ac-el${isSel('cta') ? ' sel' : ''}`}
-          style={{ top: `${pos.cta?.top ?? 82}%`, left: `${pos.cta?.left ?? 3}%` }}
-          onMouseDown={e => onElMouseDown(e, fmtId, 'cta')}
-        >
-          <Toolbar elId="cta" delta={elD.cta ?? 1} />
-          <div
-            className="ac-cta"
-            style={{
-              fontSize:   sz.cta ?? 12,
-              padding:    fmtId === 'quer' ? '10px 24px'
-                        : fmtId === 'hoch' ? '6px 14px'
-                        : fmtId === 'wide' ? '8px 18px'
-                        : fmtId === 'tall' ? '8px 18px'
-                        : '5px 12px',
-              color:      colors.ctaTxt,
-              background: colors.ctaBg,
-            }}
-          >
-            {cta || 'Jetzt entdecken →'}
-          </div>
-        </div>
-
-        {/* Domain – DOOH only */}
-        {hasQr && (
-          <div
-            className={`ac-el${isSel('domain') ? ' sel' : ''}`}
-            style={{ top: `${pos.domain?.top ?? 85}%`, left: `${pos.domain?.left ?? 62}%` }}
-            onMouseDown={e => onElMouseDown(e, fmtId, 'domain')}
-          >
-            <Toolbar elId="domain" delta={elD.domain ?? 1} />
-            <div className="ac-domain" style={{ fontSize: sz.domain ?? 12, color: colors.domain }}>
-              {domain}
-            </div>
+        {subline && (
+          <div className={elCls('sub')} style={elStyle('sub')} onMouseDown={e => handleDown('sub', e)}>
+            <Toolbar id="sub" />
+            <div className="ac-sub" style={{ fontSize: sz.sub, fontFamily: bodyFamily, color: colors.sub }}>{subline}</div>
           </div>
         )}
 
-        {/* QR – DOOH only */}
-        {hasQr && (
-          <div
-            className={`ac-el${isSel('qr') ? ' sel' : ''}`}
-            style={{ top: `${pos.qr?.top ?? 78}%`, left: `${pos.qr?.left ?? 86}%` }}
-            onMouseDown={e => onElMouseDown(e, fmtId, 'qr')}
-          >
-            <Toolbar elId="qr" delta={elD.qr ?? 4} />
-            <div className="ac-qr" style={{ width: sz.qr ?? 60, height: sz.qr ?? 60 }}>
-              <QRCodeSVG
-                value={lpUrl || 'https://vio.ch'}
-                size={sz.qr ?? 60}
-                bgColor="#ffffff"
-                fgColor="#000000"
-              />
+        {/* CTA */}
+        <div className={elCls('cta')} style={elStyle('cta')} onMouseDown={e => handleDown('cta', e)}>
+          <Toolbar id="cta" />
+          <span className="ac-cta" style={{ fontSize: sz.cta, color: colors.ctaTxt, background: colors.ctaBg, padding: ctaPad, fontFamily: bodyFamily }}>
+            {cta || 'Mehr erfahren'}
+          </span>
+        </div>
+
+        {/* Domain */}
+        {domain && (
+          <div className={elCls('domain')} style={elStyle('domain')} onMouseDown={e => handleDown('domain', e)}>
+            <Toolbar id="domain" />
+            <span className="ac-domain" style={{ fontSize: sz.domain, fontFamily: bodyFamily, opacity: fmtId==='quer'?0.55:0.5 }}>{domain}</span>
+          </div>
+        )}
+
+        {/* QR */}
+        {lpUrl && (
+          <div className={elCls('qr')} style={elStyle('qr')} onMouseDown={e => handleDown('qr', e)}>
+            <Toolbar id="qr" />
+            <div className="ac-qr" style={{ width: sz.qr, height: sz.qr, padding: 3 }}>
+              <QRCodeSVG value={lpUrl.startsWith('http') ? lpUrl : 'https://' + lpUrl} size={sz.qr - 6} />
             </div>
           </div>
         )}
       </div>
-
-      {/* Quality checker badges */}
-      {(() => {
-        const warnings: { text: string; level: 'yellow' | 'red' }[] = [];
-        if (!bgUrl) warnings.push({ text: 'Kein Hintergrundbild', level: 'yellow' });
-        if (headline.length > 40) warnings.push({ text: 'Text zu lang', level: 'red' });
-        if (logoMode === 'image' && (sz.logo ?? 18) > height * 0.25) warnings.push({ text: 'Logo zu gross', level: 'yellow' });
-        if (warnings.length === 0) return null;
-        return (
-          <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 3, zIndex: 40, pointerEvents: 'none' }}>
-            {warnings.map((w, i) => (
-              <div key={i} style={{
-                background: w.level === 'yellow' ? 'rgba(232,168,56,0.88)' : 'rgba(224,82,82,0.88)',
-                color: 'white', fontSize: 9, fontWeight: 600,
-                padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap',
-              }}>
-                {w.text}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
     </div>
   );
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
+// ── Quality dot ────────────────────────────────────────────────────────────────
+function QualDot({ q }: { q: 'good'|'warn'|'bad'|null }) {
+  if (!q) return null;
+  const cls   = q === 'good' ? 'ac-qdot-g' : q === 'warn' ? 'ac-qdot-w' : 'ac-qdot-b';
+  const label = q === 'good' ? 'Gute Qualität' : q === 'warn' ? 'Mittlere Qualität' : 'Schlechte Qualität';
+  return <div className="ac-qual-row"><div className={`ac-qdot ${cls}`} /><span className="ac-qual-txt">{label}</span></div>;
+}
 
+// ── Focus grid ─────────────────────────────────────────────────────────────────
+function FocusGrid({ fmtId, bgImage, pos, onFocus }: {
+  fmtId: string;
+  bgImage: string;
+  pos: string;
+  onFocus: (fmtId: string, col: number, row: number) => void;
+}) {
+  const [px, py] = pos.split(' ');
+  const xs = ['25%','50%','75%'];
+  const ys = ['25%','50%','75%'];
+  const activeCol = xs.indexOf(px);
+  const activeRow = ys.indexOf(py);
+  return (
+    <div className="ac-focus-wrap">
+      {bgImage && <div className="ac-focus-bg" style={{ backgroundImage: `url(${proxyUrl(bgImage)})` }} />}
+      <div className="ac-focus-inner">
+        {[0,1,2].flatMap(r => [0,1,2].map(c => (
+          <div key={`${r}-${c}`}
+               className={`ac-fcell${r===activeRow && c===activeCol ? ' active' : ''}`}
+               onClick={() => onFocus(fmtId, c, r)} />
+        )))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
-  const ana = briefing.analysis;
+  const ana    = briefing.analysis;
+  const domain = extractDomain(briefing.url);
 
-  const initDomain = (() => {
-    try { return new URL(briefing.url).hostname.replace('www.', ''); } catch { return briefing.url || ''; }
-  })();
-  const initOrg       = ana?.organisation || '';
-  const initHeadlines = ana?.headlines;
-  const initSublines  = ana?.sublines;
-  const initSugs      = makeSuggestions(initOrg, initDomain, initHeadlines, initSublines);
+  // Suggestion arrays from Gemini analysis
+  const suggestedHeadlines: Array<{ text: string; tag: string }> =
+    (ana?.headlines ?? []).map((h, i) => ({ text: h, tag: String(i + 1) }));
+  const suggestedSublines: Array<{ text: string; tag: string }> =
+    (ana?.sublines ?? []).map((s, i) => ({ text: s, tag: String(i + 1) }));
 
-  // ── Text state ──────────────────────────────────────────────────────────────
-  const [org,      setOrg]      = useState(initOrg);
-  const [headline, setHeadline] = useState(briefing.adHeadline || initSugs.hl[0]?.text || '');
-  const [subline,  setSubline]  = useState(briefing.adSubline  || initSugs.sub[0]?.text || '');
-  const [cta,      setCta]      = useState(briefing.adCta || ana?.ctaText || 'Jetzt entdecken →');
-  const [lpUrl,    setLpUrl]    = useState(briefing.url        || '');
-  const [crawlUrl, setCrawlUrl] = useState(briefing.url        || '');
-
-  // ── Crawl UI ────────────────────────────────────────────────────────────────
-  const [crawlStatus, setCrawlStatus] = useState('');
-  const [crawlLoading, setCrawlLoading] = useState(false);
-  const [crawlAssets, setCrawlAssets] = useState<{ color: string; logoUrl: string; text: string } | null>(null);
-
-  // ── Suggestions ─────────────────────────────────────────────────────────────
-  const [hlSugs,       setHlSugs]       = useState(initSugs.hl);
-  const [subSugs,      setSubSugs]      = useState(initSugs.sub);
-  const [activeHlSug,  setActiveHlSug]  = useState<number | null>(initOrg ? 0 : null);
-  const [activeSubSug, setActiveSubSug] = useState<number | null>(initOrg ? 0 : null);
-
-  // ── Logo ────────────────────────────────────────────────────────────────────
-  const [logoMode,  setLogoMode]  = useState<'text' | 'image'>(briefing.adLogoMode || 'image');
-  const [logoUrl,   setLogoUrl]   = useState('');
-  const [logoThumb, setLogoThumb] = useState('');
-  const logoFileRef = useRef<HTMLInputElement>(null);
-
-  // ── Background ──────────────────────────────────────────────────────────────
-  const [bgUrl,    setBgUrl]    = useState('');
-  const [bgThumb,  setBgThumb]  = useState('');
-  const [qualInfo, setQualInfo] = useState<{ cls: string; text: string } | null>(null);
-  const bgFileRef = useRef<HTMLInputElement>(null);
-
-  // ── Style & animation ───────────────────────────────────────────────────────
-  const [bgStyle,     setBgStyle]     = useState<'overlay' | 'pure' | 'split'>(briefing.adBgStyle || 'overlay');
-  const [bgPosByFmt,  setBgPosByFmt]  = useState<Record<string, string>>({
-    quer: '50% 50%', hoch: '50% 50%', wide: '50% 50%', med: '50% 50%', tall: '50% 50%',
-  });
-  const [focusSel,    setFocusSel]    = useState<[number, number]>([1, 1]);
-  const [anim,        setAnim]        = useState(briefing.adAnimation || 'cta');
-  const [activeTab,   setActiveTab]   = useState<'dooh' | 'display'>('dooh');
-
-  // ── Colors ──────────────────────────────────────────────────────────────────
-  // Extract themeColor FIRST so useState uses it immediately — no delay.
+  // Extract initial theme color before useState (used as default for colors.bg)
   const themeColor = ana?.themeColor || '#C1666B';
-  const [colors, setColors] = useState<Colors>({
-    bg:     briefing.adBgColor || themeColor,
+
+  // ── State ────────────────────────────────────────────────────────────────
+  const [tab,        setTab]        = useState<'dooh'|'display'>('dooh');
+  const [headline,   setHeadline]   = useState(briefing.adHeadline   || ana?.headlines?.[0] || '');
+  const [subline,    setSubline]    = useState(briefing.adSubline     || ana?.sublines?.[0]  || '');
+  const [cta,        setCta]        = useState(briefing.adCta         || ana?.ctaText        || 'Mehr erfahren');
+  const [lpUrl,      setLpUrl]      = useState(briefing.url           || '');
+  const [logoMode,   setLogoMode]   = useState<'text'|'image'>(briefing.adLogoMode  || 'image');
+  const [logoUrl,    setLogoUrl]    = useState(briefing.adLogoImageData || '');
+  const [logoText,   setLogoText]   = useState(briefing.adLogoText    || ana?.organisation  || '');
+  const [logoQual,   setLogoQual]   = useState<'good'|'warn'|'bad'|null>(null);
+  const [bgImage,    setBgImage]    = useState(briefing.adBgImageData || '');
+  const [bgUrlInput, setBgUrlInput] = useState(ana?.ogImage || '');
+  const [bgStyle,    setBgStyle]    = useState<'overlay'|'pure'|'split'>(briefing.adBgStyle || 'overlay');
+  const [bgBright,   setBgBright]   = useState(100);
+  const [bgQual,     setBgQual]     = useState<'good'|'warn'|'bad'|null>(null);
+  const [bgPosByFmt, setBgPosByFmt] = useState<Record<string, string>>(
+    Object.fromEntries(['quer','hoch','wide','med','tall'].map(f => [f, '50% 50%']))
+  );
+  const [adFont,  setAdFont]  = useState(briefing.adFont || '');
+  const [adBold,  setAdBold]  = useState(false);
+  const [animation, setAnimation] = useState(briefing.adAnimation || 'none');
+  const [colors,  setColors]  = useState<Colors>({
+    bg:     briefing.adBgColor     || themeColor,
     hl:     briefing.adTextColor   || '#FFFFFF',
     sub:    '#FFFFFF',
     logo:   '#FFFFFF',
-    ctaTxt: briefing.adAccentColor || '#5C4F3D',
-    ctaBg:  '#FFFFFF',
+    ctaTxt: '#000000',
+    ctaBg:  briefing.adAccentColor || '#FFFFFF',
     domain: '#FFFFFF',
   });
+  const [positions, setPositions] = useState<AllPositions>(structuredClone(DEF_POS));
+  const [sizes,     setSizes]     = useState<AllSizes>(structuredClone(DEF_SIZE));
+  const [selectedEl, setSelectedEl] = useState<string|null>(null);
 
-  // ── Positions & Sizes ───────────────────────────────────────────────────────
-  const [positions, setPositions] = useState<AllPositions>(() => ({
-    quer: { ...DEF_POS.quer },
-    hoch: { ...DEF_POS.hoch },
-    wide: { ...DEF_POS.wide },
-    med:  { ...DEF_POS.med  },
-    tall: { ...DEF_POS.tall },
-  }));
-  const [sizes, setSizes] = useState<AllSizes>(() => ({
-    quer: { ...DEF_SIZES.quer },
-    hoch: { ...DEF_SIZES.hoch },
-    wide: { ...DEF_SIZES.wide },
-    med:  { ...DEF_SIZES.med  },
-    tall: { ...DEF_SIZES.tall },
-  }));
+  const dragRef    = useRef<DragState|null>(null);
+  const logoFileRef = useRef<HTMLInputElement>(null);
+  const bgFileRef   = useRef<HTMLInputElement>(null);
+  const logoProbed  = useRef(false);
+  const bgProbed    = useRef(false);
+  const colorApplied = useRef(false);
 
-  // ── Selection & Drag ────────────────────────────────────────────────────────
-  const [selEl, setSelEl] = useState<string | null>(null);
-  const dragRef   = useRef<DragState | null>(null);
-  const anaApplied = useRef(false); // guard: apply initial ana values only once
+  // ── Font options (detect from analysis) ──────────────────────────────────
+  const detectedFont = ana?.fontFamily || null;
+  const fontOptions: string[] = [];
+  if (detectedFont) {
+    fontOptions.push(detectedFont);
+    const similars = FONT_SIMILAR[detectedFont] ?? FONT_SIMILAR['default'];
+    fontOptions.push(...similars.slice(0, 2));
+  }
 
-  // Apply themeColor once on mount (handles case where component mounts before ana arrives).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // ── Logo probe on mount ──────────────────────────────────────────────────
   useEffect(() => {
-    const tc = briefing.analysis?.themeColor;
-    if (tc && !briefing.adBgColor) {
-      setColors(prev => ({ ...prev, bg: tc }));
+    if (logoProbed.current) return;
+    logoProbed.current = true;
+    if (briefing.adLogoImageData) {
+      setLogoMode('image');
+      checkLogoQuality(briefing.adLogoImageData).then(setLogoQual);
+      return;
     }
-  }, []); // intentionally empty — mount only
+    const baseUrl = (() => {
+      try { const u = new URL(briefing.url.startsWith('http') ? briefing.url : 'https://' + briefing.url); return u.origin; }
+      catch { return ''; }
+    })();
+    const candidates = [
+      baseUrl ? `${baseUrl}/apple-touch-icon.png` : '',
+      baseUrl ? `${baseUrl}/apple-touch-icon-precomposed.png` : '',
+      ana?.ogLogo || '',
+      ana?.favicon || '',
+    ].filter(Boolean);
+    (async () => {
+      for (const url of candidates) {
+        const ok = await checkImgUrl(proxyUrl(url));
+        if (ok) {
+          setLogoUrl(url);
+          setLogoMode('image');
+          const q = await checkLogoQuality(proxyUrl(url));
+          setLogoQual(q);
+          return;
+        }
+      }
+      setLogoMode('text');
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply analysis values on first valid ana — run once.
+  // ── BG image on mount ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!ana || anaApplied.current) return;
-    anaApplied.current = true;
+    if (bgProbed.current || briefing.adBgImageData) return;
+    bgProbed.current = true;
+    const ogImg = ana?.ogImage || '';
+    if (!ogImg) return;
+    checkImgUrl(proxyUrl(ogImg)).then(ok => {
+      if (ok) {
+        setBgImage(ogImg);
+        setBgUrlInput(ogImg);
+        checkImgQuality(proxyUrl(ogImg)).then(setBgQual);
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    console.log('[Step5] ANA DATA:', JSON.stringify(ana, null, 2));
-
-    // themeColor → colors.bg (only if user hasn't set a custom color)
-    if (ana.themeColor && !briefing.adBgColor) {
-      setColors(prev => ({ ...prev, bg: ana.themeColor! }));
-    }
-
-    // sublines + ctaText from analysis
-    if (ana.sublines && ana.sublines.length >= 2) {
-      const newSugs = makeSuggestions(ana.organisation || initOrg, initDomain, ana.headlines, ana.sublines);
-      setSubSugs(newSugs.sub);
-      if (!briefing.adSubline) setSubline(newSugs.sub[0]?.text || '');
-    }
-    if (ana.ctaText && !briefing.adCta) {
-      setCta(ana.ctaText);
-    }
-
-    // ogImage / suggestedImageUrl → bgUrl (proxy external URLs to avoid CORS)
-    const rawBg = briefing.adBgImageData || ana.ogImage || ana.suggestedImageUrl || '';
-    if (rawBg) {
-      const bgSrc = rawBg.startsWith('data:') ? rawBg
-                  : rawBg.startsWith('http')  ? `/api/proxy-image?url=${encodeURIComponent(rawBg)}`
-                  : rawBg;
-      setBgUrl(bgSrc);
-      setBgThumb(bgSrc);
-    }
-
-    // Logo priority: saved data > ogLogo (full quality) > favicon (small, last resort)
-    const rawLogo = briefing.adLogoImageData || ana.ogLogo || ana.favicon || '';
-    console.log('[Step5] logo source:', rawLogo ? (ana.ogLogo ? 'ogLogo' : ana.favicon ? 'favicon' : 'saved') : 'none', rawLogo);
-    if (rawLogo) {
-      setLogoUrl(rawLogo);
-      setLogoThumb(rawLogo);
-    }
-  }, [ana]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Global drag listeners ────────────────────────────────────────────────────
+  // ── Theme color on mount ─────────────────────────────────────────────────
   useEffect(() => {
-    function onMove(e: MouseEvent) {
-      const d = dragRef.current;
-      if (!d) return;
-      const rect = d.layerEl.getBoundingClientRect();
-      const dx = ((e.clientX - d.startMouse.x) / rect.width)  * 100;
-      const dy = ((e.clientY - d.startMouse.y) / rect.height) * 100;
-      setPositions(prev => ({
-        ...prev,
-        [d.fmtId]: {
-          ...prev[d.fmtId],
-          [d.elId]: {
-            left: Math.max(0, Math.min(90, d.startPos.left + dx)),
-            top:  Math.max(0, Math.min(90, d.startPos.top  + dy)),
-          },
-        },
-      }));
-    }
-    function onUp() { dragRef.current = null; }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup',   onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup',   onUp);
-    };
-  }, []);
+    if (colorApplied.current) return;
+    colorApplied.current = true;
+    if (briefing.adBgColor) return;
+    setColors(c => ({ ...c, bg: themeColor }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleElMouseDown = useCallback((e: React.MouseEvent, fmtId: string, elId: string) => {
+  // ── Drag logic ───────────────────────────────────────────────────────────
+  const handleDragStart = useCallback((fmtId: string, elId: string, e: React.MouseEvent, layerEl: HTMLElement) => {
     e.preventDefault();
-    e.stopPropagation();
-    const layerEl = (e.currentTarget as HTMLElement).closest('.ac-dl') as HTMLElement;
-    if (!layerEl) return;
-    const curPos = positions[fmtId]?.[elId] ?? DEF_POS[fmtId]?.[elId] ?? { top: 5, left: 5 };
     dragRef.current = {
       fmtId, elId,
-      startPos:   { ...curPos },
+      startPos:   { ...((positions[fmtId] ?? DEF_POS[fmtId])[elId] ?? { top: 10, left: 5 }) },
       startMouse: { x: e.clientX, y: e.clientY },
       layerEl,
     };
-    setSelEl(`${fmtId}:${elId}`);
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const { fmtId: f, elId: el, startPos, startMouse, layerEl: layer } = dragRef.current;
+      const r  = layer.getBoundingClientRect();
+      const dx = ((ev.clientX - startMouse.x) / r.width)  * 100;
+      const dy = ((ev.clientY - startMouse.y) / r.height) * 100;
+      setPositions(p => ({
+        ...p,
+        [f]: { ...p[f], [el]: { top: Math.max(0, Math.min(95, startPos.top + dy)), left: Math.max(0, Math.min(95, startPos.left + dx)) } },
+      }));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }, [positions]);
 
-  const handleLayerClick = useCallback((_fmtId: string) => { setSelEl(null); }, []);
-
-  const handleResize = useCallback((fmtId: string, elId: string, delta: number) => {
-    setSizes(prev => {
-      const fmt = { ...(prev[fmtId] || {}) };
-      if (elId === 'qr') {
-        fmt.qr = Math.max(20, (fmt.qr ?? 60) + delta * 3);
-      } else {
-        fmt[elId] = Math.max(6, Math.min(120, (fmt[elId] ?? 12) + delta));
-      }
-      return { ...prev, [fmtId]: fmt };
-    });
+  const handleSizeChange = useCallback((fmtId: string, elId: string, delta: number) => {
+    setSizes(s => ({
+      ...s,
+      [fmtId]: { ...s[fmtId], [elId]: Math.max(6, (s[fmtId][elId] ?? 12) + delta) },
+    }));
   }, []);
 
-  // ── Domain derived from lpUrl ────────────────────────────────────────────────
-  const domain = (() => {
-    try { return new URL(lpUrl).hostname.replace('www.', ''); }
-    catch { return lpUrl || ''; }
-  })();
+  const handleSelect = useCallback((fmtId: string, elId: string) => {
+    setSelectedEl(elId ? `${fmtId}-${elId}` : null);
+  }, []);
 
-  // ── FIX #2: Crawl with immediate fast-path ───────────────────────────────────
-  const handleCrawl = async () => {
-    const rawUrl = crawlUrl.trim();
-    if (!rawUrl) return;
+  // ── BG image handlers ─────────────────────────────────────────────────────
+  function handleBgFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const data = ev.target?.result as string;
+      setBgImage(data);
+      setBgUrlInput('');
+      checkImgQuality(data).then(setBgQual);
+    };
+    reader.readAsDataURL(file);
+  }
 
-    // Normalise URL
-    const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+  function handleBgUrl(url: string) {
+    setBgUrlInput(url);
+    if (!url) { setBgImage(''); setBgQual(null); return; }
+    checkImgUrl(proxyUrl(url)).then(ok => {
+      if (ok) { setBgImage(url); checkImgQuality(proxyUrl(url)).then(setBgQual); }
+      else setBgQual('bad');
+    });
+  }
 
-    // ── Fast-path: extract domain immediately, update state without waiting ──
-    let fastDomain = '';
-    try { fastDomain = new URL(url).hostname.replace('www.', ''); } catch { fastDomain = rawUrl; }
-    const fastOrg     = fastDomain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const fastLogoUrl = `https://www.google.com/s2/favicons?domain=${fastDomain}&sz=128`;
-    const fastSugs    = makeSuggestions(fastOrg, fastDomain, undefined);
-
-    setOrg(fastOrg);
-    setLpUrl(url);
-    setLogoUrl(fastLogoUrl);
-    setLogoThumb(fastLogoUrl);
-    setLogoMode('image');
-    setHlSugs(fastSugs.hl);
-    setSubSugs(fastSugs.sub);
-    setHeadline(fastSugs.hl[0]?.text || '');
-    setSubline(fastSugs.sub[0]?.text || '');
-    setActiveHlSug(0);
-    setActiveSubSug(0);
-    setCrawlAssets({ color: colors.bg, logoUrl: fastLogoUrl, text: `${fastDomain} · Logo geladen` });
-    setCrawlStatus(`${fastDomain} geladen`);
-
-    // ── Then try full API analysis in background for richer data ──
-    setCrawlLoading(true);
-    try {
-      const res = await fetch('/api/analyze-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, campaignType: briefing.campaignType }),
-      });
-      if (!res.ok) throw new Error();
-      const data   = await res.json();
-      const result = data.analysis || data;
-      const newOrg       = result.organisation || fastOrg;
-      const newLogoUrl   = result.ogLogo || result.favicon || fastLogoUrl;
-      const newColor     = result.themeColor || colors.bg;
-      const apiHeadlines = result.headlines as string[] | undefined;
-      const apiSublines  = result.sublines  as string[] | undefined;
-      const apiCtaText   = result.ctaText   as string   | undefined;
-      const newSugs      = makeSuggestions(newOrg, fastDomain, apiHeadlines, apiSublines);
-
-      setOrg(newOrg);
-      setColors(prev => ({ ...prev, bg: newColor }));
-      setLogoUrl(newLogoUrl);
-      setLogoThumb(newLogoUrl);
-      setHlSugs(newSugs.hl);
-      setSubSugs(newSugs.sub);
-      setHeadline(newSugs.hl[0]?.text || '');
-      setSubline(newSugs.sub[0]?.text || '');
-      if (apiCtaText) setCta(apiCtaText);
-      setActiveHlSug(0);
-      setActiveSubSug(0);
-      const rawBgUrl = result.ogImage || result.suggestedImageUrl || '';
-      if (rawBgUrl) {
-        const bgSrc = `/api/proxy-image?url=${encodeURIComponent(rawBgUrl)}`;
-        setBgUrl(bgSrc);
-        setBgThumb(bgSrc);
-      }
-      setCrawlAssets({ color: newColor, logoUrl: newLogoUrl, text: `${fastDomain} · vollständig geladen` });
-      setCrawlStatus(`✓ ${fastDomain} analysiert`);
-    } catch {
-      setCrawlStatus(`✓ ${fastDomain} – URL-Analyse übersprungen`);
-    } finally {
-      setCrawlLoading(false);
-    }
-  };
-
-  // ── Logo file ────────────────────────────────────────────────────────────────
-  const loadLogoFromFile = (file: File) => {
-    const r = new FileReader();
-    r.onload = e => {
-      const data = e.target?.result as string;
+  // ── Logo file handler ─────────────────────────────────────────────────────
+  function handleLogoFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const data = ev.target?.result as string;
       setLogoUrl(data);
-      setLogoThumb(data);
+      setLogoMode('image');
+      checkLogoQuality(data).then(setLogoQual);
     };
-    r.readAsDataURL(file);
-  };
+    reader.readAsDataURL(file);
+  }
 
-  // ── BG image ─────────────────────────────────────────────────────────────────
-  const loadBgFromUrl = (url: string) => {
-    if (!url) { setBgUrl(''); setBgThumb(''); return; }
-    const src = url.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(url)}` : url;
-    setBgUrl(src);
-    setBgThumb(src);
-  };
+  // ── Focus grid handler ────────────────────────────────────────────────────
+  function handleFocus(fmtId: string, col: number, row: number) {
+    const x = ['25%','50%','75%'][col];
+    const y = ['25%','25%','75%'][row] || '50%';
+    const positions3 = { 0: '25%', 1: '50%', 2: '75%' } as Record<number, string>;
+    setBgPosByFmt(p => ({ ...p, [fmtId]: `${positions3[col]} ${positions3[row]}` }));
+  }
 
-  const loadBgFromFile = (file: File) => {
-    const r = new FileReader();
-    r.onload = e => {
-      const data = e.target?.result as string;
-      const img  = new Image();
-      img.onload = () => {
-        const w = img.naturalWidth, h = img.naturalHeight;
-        if      (w >= 1920 && h >= 1080) setQualInfo({ cls: 'ac-qdot-g', text: `Top (${w}×${h})` });
-        else if (w >= 1200)              setQualInfo({ cls: 'ac-qdot-w', text: `Evtl. unscharf (${w}×${h})` });
-        else                              setQualInfo({ cls: 'ac-qdot-b', text: `Zu klein (${w}×${h})` });
-      };
-      img.src = data;
-      setBgUrl(data);
-      setBgThumb(data);
+  // ── Shared AdPreview props ────────────────────────────────────────────────
+  function mkProps(fmtId: string) {
+    return {
+      fmtId,
+      bgImage: bgImage ? proxyUrl(bgImage) : '',
+      bgStyle,
+      bgBrightness: bgBright,
+      bgPos: bgPosByFmt[fmtId] || '50% 50%',
+      colors,
+      headline,
+      subline,
+      cta,
+      lpUrl,
+      logoMode,
+      logoUrl,
+      logoText,
+      adFont,
+      adBold,
+      animation,
+      positions: positions[fmtId] ?? DEF_POS[fmtId],
+      sizes:     sizes[fmtId]     ?? DEF_SIZE[fmtId],
+      onDragStart: handleDragStart,
+      onSelect: handleSelect,
+      selectedEl,
+      onSizeChange: handleSizeChange,
     };
-    r.readAsDataURL(file);
-  };
+  }
 
-  // ── Submit ───────────────────────────────────────────────────────────────────
-  const handleSubmit = () => {
+  // ── Save & proceed ────────────────────────────────────────────────────────
+  function handleNext() {
     updateBriefing({
       adHeadline:      headline,
       adSubline:       subline,
@@ -669,478 +543,339 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       adBgStyle:       bgStyle,
       adBgColor:       colors.bg,
       adTextColor:     colors.hl,
-      adAccentColor:   colors.ctaTxt,
+      adAccentColor:   colors.ctaBg,
       adLogoMode:      logoMode,
-      adBgImageData:   bgUrl,
-      adLogoImageData: logoUrl,
-      adAnimation:     anim,
+      adLogoText:      logoText,
+      adLogoImageData: logoMode === 'image' ? logoUrl : undefined,
+      adBgImageData:   bgImage || undefined,
+      adFont:          adFont  || undefined,
+      adAnimation:     animation,
       adPositionsQuer: positions.quer as unknown as Record<string, { x: number; y: number }>,
+      adPositionsHoch: positions.hoch as unknown as Record<string, { x: number; y: number }>,
+      werbemittel:          'erstellen',
+      werbemittelErstellt:  true,
     });
     nextStep();
-  };
+  }
 
-  // ── Shared preview props (bgPos passed per format in JSX) ───────────────────
-  const sharedProps = {
-    positions, sizes, colors, headline, subline, cta, domain, org,
-    bgUrl, logoUrl, logoMode, bgStyle, anim, lpUrl,
-    selEl,
-    onElMouseDown: handleElMouseDown,
-    onLayerClick:  handleLayerClick,
-    onResize:      handleResize,
-  };
-  const mkProps = (fmtId: string) => ({ ...sharedProps, bgPos: bgPosByFmt[fmtId] || '50% 50%' });
-
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────────────────
+  // Render
+  // ────────────────────────────────────────────────────────────────────────────
   return (
-    // FIX #1: grid layout — sidebar left (320px), canvas right (1fr)
     <div className="ad-creator">
 
-      {/* ══════════════════════ SIDEBAR ══════════════════════ */}
+      {/* ═══════════ SIDEBAR ═══════════ */}
       <div className="ac-sidebar">
 
-        {/* Crawl card */}
-        <div className="ac-crawl-card" style={{ marginBottom: 4 }}>
-          <div className="ac-crawl-label">🔗 Von Website laden</div>
-          <div className="ac-crawl-row">
-            <input
-              type="url"
-              className="ac-crawl-inp"
-              placeholder="https://deine-website.ch"
-              value={crawlUrl}
-              onChange={e => setCrawlUrl(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCrawl()}
-            />
-            <button className="ac-crawl-btn" onClick={handleCrawl} disabled={crawlLoading}>
-              {crawlLoading ? '…' : 'Laden'}
-            </button>
+        {/* 1. Crawl-card – read only */}
+        <div className="ac-crawl-card" style={{ marginBottom: 14 }}>
+          <div className="ac-crawl-label">Website-Analyse</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#5C4F3D', fontWeight: 600 }}>{domain}</span>
+            <span style={{ fontSize: 10, color: '#3A9E7A', fontWeight: 600, background: '#F0FFF6', border: '1px solid #B8E8CC', borderRadius: 4, padding: '2px 7px', whiteSpace: 'nowrap' }}>
+              Analyse abgeschlossen ✓
+            </span>
           </div>
-          {crawlStatus && <div className="ac-crawl-status">{crawlStatus}</div>}
-          {crawlAssets && (
-            <div className="ac-crawl-assets">
-              <div className="ac-crawl-chip" style={{ background: crawlAssets.color }} />
-              {crawlAssets.logoUrl && <img className="ac-crawl-logo" src={crawlAssets.logoUrl} alt="" />}
-              <span className="ac-crawl-txt">{crawlAssets.text}</span>
-            </div>
+          {ana?.organisation && (
+            <div style={{ fontSize: 11, color: '#8a7a67', marginTop: 4 }}>{ana.organisation}</div>
           )}
         </div>
 
-        {/* ── Kampagne ── */}
+        {/* 2. Kampagne */}
         <div className="ac-stitle">Kampagne</div>
 
         <div className="ac-fg">
-          <label>Organisation / Marke</label>
-          <input type="text" className="ac-inp" value={org} onChange={e => setOrg(e.target.value)} />
+          <label>Organisation</label>
+          <input className="ac-inp" value={logoText} onChange={e => setLogoText(e.target.value)} placeholder="Ihr Unternehmen" />
         </div>
 
-        {/* Headline */}
         <div className="ac-fg">
           <label>Headline</label>
-          {/* FIX #3: clear hint label for chips */}
-          <div className="ac-sug-hint">Vorschläge – klicke zum Übernehmen</div>
-          <div className="ac-sug-wrap">
-            {hlSugs.map((s, i) => (
-              <div
-                key={i}
-                className={`ac-sug-chip${activeHlSug === i ? ' active' : ''}`}
-                onClick={() => { setHeadline(s.text); setActiveHlSug(i); }}
-              >
-                <span>{s.text}</span>
-                <span className="ac-sug-tag">{s.tag}</span>
-              </div>
-            ))}
-          </div>
-          <input
-            type="text"
-            className="ac-inp"
-            placeholder="Eigene Headline…"
-            value={headline}
-            onChange={e => { setHeadline(e.target.value); setActiveHlSug(null); }}
-          />
+          {suggestedHeadlines.length > 0 && (
+            <div className="ac-sug-wrap" style={{ marginBottom: 5 }}>
+              {suggestedHeadlines.map(s => (
+                <div key={s.text}
+                     className={`ac-sug-chip${headline === s.text ? ' active' : ''}`}
+                     onClick={() => setHeadline(s.text)}>
+                  <span className="ac-hl-txt">{s.text}</span>
+                  <span className="ac-sug-tag">#{s.tag}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <input className="ac-inp" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Ihre Werbebotschaft" />
         </div>
 
-        {/* Subline */}
         <div className="ac-fg">
-          <label>
-            Subline{' '}
-            <span style={{ fontWeight: 300, fontSize: 10 }}>(optional)</span>
-          </label>
-          <div className="ac-sug-hint">Vorschläge – klicke zum Übernehmen</div>
-          <div className="ac-sug-wrap">
-            {subSugs.map((s, i) => (
-              <div
-                key={i}
-                className={`ac-sug-chip${activeSubSug === i ? ' active' : ''}`}
-                onClick={() => { setSubline(s.text); setActiveSubSug(i); }}
-              >
-                <span>{s.text}</span>
-                <span className="ac-sug-tag">{s.tag}</span>
-              </div>
-            ))}
-          </div>
-          <input
-            type="text"
-            className="ac-inp"
-            placeholder="Eigene Subline…"
-            value={subline}
-            onChange={e => { setSubline(e.target.value); setActiveSubSug(null); }}
-          />
+          <label>Subline</label>
+          {suggestedSublines.length > 0 && (
+            <div className="ac-sug-wrap" style={{ marginBottom: 5 }}>
+              {suggestedSublines.map(s => (
+                <div key={s.text}
+                     className={`ac-sug-chip${subline === s.text ? ' active' : ''}`}
+                     onClick={() => setSubline(s.text)}>
+                  <span style={{ flex: 1, fontSize: 12 }}>{s.text}</span>
+                  <span className="ac-sug-tag">#{s.tag}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <input className="ac-inp" value={subline} onChange={e => setSubline(e.target.value)} placeholder="Kurze Ergänzung (optional)" />
         </div>
 
         <div className="ac-fg">
           <label>CTA-Button</label>
-          <input type="text" className="ac-inp" value={cta} onChange={e => setCta(e.target.value)} />
+          <input className="ac-inp" value={cta} onChange={e => setCta(e.target.value)} placeholder="Mehr erfahren" />
         </div>
 
-        <div className="ac-fg">
-          <label>Landingpage URL (QR Code)</label>
-          <input type="url" className="ac-inp" value={lpUrl} onChange={e => setLpUrl(e.target.value)} />
+        <div className="ac-fg" style={{ marginBottom: 14 }}>
+          <label>Ziel-URL</label>
+          <input className="ac-inp" value={lpUrl} onChange={e => setLpUrl(e.target.value)} placeholder="https://…" />
         </div>
 
-        {/* ── Logo ── */}
+        {/* 3. Logo */}
         <div className="ac-stitle">Logo</div>
-
         <div className="ac-logo-mode" style={{ marginBottom: 8 }}>
-          <button
-            className={`ac-logo-mode-btn${logoMode === 'text' ? ' active' : ''}`}
-            onClick={() => setLogoMode('text')}
-          >Text</button>
-          <button
-            className={`ac-logo-mode-btn${logoMode === 'image' ? ' active' : ''}`}
-            onClick={() => setLogoMode('image')}
-          >Bild-Logo</button>
+          <button className={`ac-logo-mode-btn${logoMode === 'image' ? ' active' : ''}`} onClick={() => setLogoMode('image')}>Bild-Logo</button>
+          <button className={`ac-logo-mode-btn${logoMode === 'text'  ? ' active' : ''}`} onClick={() => setLogoMode('text')}>Text-Logo</button>
         </div>
 
-        {logoMode === 'text' && (
-          <div className="ac-fg">
-            <label>Text</label>
-            <input type="text" className="ac-inp" value={org} onChange={e => setOrg(e.target.value)} />
+        {logoMode === 'image' ? (
+          <div style={{ marginBottom: 14 }}>
+            {logoUrl ? (
+              <div className="ac-upload loaded" style={{ marginBottom: 6 }} onClick={() => logoFileRef.current?.click()}>
+                <img src={proxyUrl(logoUrl)} alt="logo" style={{ height: 52, width: '100%', objectFit: 'contain', padding: 6 }} />
+                <div className="ac-upload-hover">Ändern</div>
+              </div>
+            ) : (
+              <div className="ac-upload" style={{ marginBottom: 6 }} onClick={() => logoFileRef.current?.click()}>
+                <span style={{ fontSize: 20 }}>🖼️</span>
+                <span style={{ fontSize: 11, color: '#8a7a67' }}>Logo hochladen</span>
+                <span style={{ fontSize: 10, color: '#a8a096' }}>PNG oder SVG empfohlen</span>
+              </div>
+            )}
+            <QualDot q={logoQual} />
+            <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                   onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); }} />
+          </div>
+        ) : (
+          <div className="ac-fg" style={{ marginBottom: 14 }}>
+            <input className="ac-inp" value={logoText} onChange={e => setLogoText(e.target.value)} placeholder="Firmenname" />
           </div>
         )}
 
-        {logoMode === 'image' && (() => {
-          const logoIsLowRes = !!(logoUrl && (logoUrl.includes('google.com/s2/favicons') || /favicon/i.test(logoUrl)));
-          return (
-            <div className="ac-fg">
-              <div style={{ fontSize: 11, color: '#8a7a67', marginBottom: 8, lineHeight: 1.5 }}>
-                Lade dein Logo hoch für beste Qualität.
-              </div>
-              {logoThumb && (
-                <img
-                  className="ac-img-thumb"
-                  src={logoThumb}
-                  alt=""
-                  style={{ filter: 'none', background: '#f0f0f0', objectFit: 'contain', marginBottom: logoIsLowRes ? 3 : 8 }}
-                />
-              )}
-              {logoThumb && logoIsLowRes && (
-                <div style={{ fontSize: 11, color: '#E8A838', marginBottom: 8, lineHeight: 1.4 }}>
-                  ⚠ Niedrige Auflösung – Logo hochladen für beste Qualität
-                </div>
-              )}
-              <label style={{
-                display: 'block', background: '#C1666B', color: 'white', textAlign: 'center',
-                borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 600,
-                marginBottom: 8, cursor: 'pointer',
-              }}>
-                📁 Logo hochladen
-                <input
-                  ref={logoFileRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={e => e.target.files?.[0] && loadLogoFromFile(e.target.files[0])}
-                />
-              </label>
-              <input
-                type="url"
-                className="ac-img-inp"
-                placeholder="oder Logo-URL…"
-                value={logoUrl.startsWith('data:') ? '' : logoUrl}
-                onChange={e => { setLogoUrl(e.target.value); setLogoThumb(e.target.value); }}
-                style={{ width: '100%' }}
-              />
-            </div>
-          );
-        })()}
-
-        {/* ── Hintergrundbild ── */}
+        {/* 4. Hintergrundbild */}
         <div className="ac-stitle">Hintergrundbild</div>
+        {bgImage && (
+          <img src={proxyUrl(bgImage)} alt="Hintergrund" className="ac-img-thumb" />
+        )}
+        <div className="ac-img-row" style={{ marginBottom: 5 }}>
+          <input className="ac-img-inp" value={bgUrlInput} onChange={e => handleBgUrl(e.target.value)} placeholder="Bild-URL einfügen…" />
+          <button className="ac-img-upload" onClick={() => bgFileRef.current?.click()} title="Datei hochladen">📷</button>
+        </div>
+        <QualDot q={bgQual} />
+        <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+               onChange={e => { const f = e.target.files?.[0]; if (f) handleBgFile(f); }} />
 
-        <div className="ac-fg">
-          <div style={{ fontSize: 11, color: '#8a7a67', marginBottom: 8, lineHeight: 1.5 }}>
-            Lade dein bestes Foto hoch – ideal ein Bild von deinem Produkt oder Lokal (min. 1200px breit).
-          </div>
-          {bgThumb && <img className="ac-img-thumb" src={bgThumb} alt="" style={{ marginBottom: 8 }} />}
-          <input
-            type="url"
-            className="ac-img-inp"
-            placeholder="Bild-URL…"
-            value={bgUrl.startsWith('/api/proxy') || bgUrl.startsWith('data:') ? '' : bgUrl}
-            onChange={e => loadBgFromUrl(e.target.value)}
-            style={{ width: '100%', marginBottom: 8 }}
-          />
-          <label style={{
-            display: 'block', background: '#C1666B', color: 'white', textAlign: 'center',
-            borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 600,
-            marginBottom: 8, cursor: 'pointer',
-          }}>
-            📷 Bild hochladen
-            <input
-              ref={bgFileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={e => e.target.files?.[0] && loadBgFromFile(e.target.files[0])}
-            />
-          </label>
-          {qualInfo && (
-            <div className="ac-qual-row" style={{ marginTop: 6 }}>
-              <div className={`ac-qdot ${qualInfo.cls}`} />
-              <div className="ac-qual-txt">{qualInfo.text}</div>
-            </div>
-          )}
+        <div className="ac-fg" style={{ marginTop: 8 }}>
+          <label>Helligkeit {bgBright}%</label>
+          <input type="range" min={20} max={160} value={bgBright} onChange={e => setBgBright(+e.target.value)} />
         </div>
 
-        <div className="ac-fg">
-          <label>Bildstil</label>
+        <div className="ac-fg" style={{ marginBottom: 14 }}>
+          <label>Stil</label>
           <div className="ac-style-row">
-            {(['overlay', 'pure', 'split'] as const).map(s => (
-              <button
-                key={s}
-                className={`ac-style-btn${bgStyle === s ? ' active' : ''}`}
-                onClick={() => setBgStyle(s)}
-              >
-                {s === 'overlay' ? 'Overlay' : s === 'pure' ? 'Bild pur' : 'Split'}
+            {(['overlay','pure','split'] as const).map(s => (
+              <button key={s} className={`ac-style-btn${bgStyle === s ? ' active' : ''}`} onClick={() => setBgStyle(s)}>
+                {s === 'overlay' ? 'Overlay' : s === 'pure' ? 'Vollton' : 'Split'}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="ac-fg">
-          <label>
-            Bildfokus{' '}
-            <span style={{ fontWeight: 300, fontSize: 10, textTransform: 'none' }}>
-              ({activeTab === 'dooh' ? 'DOOH' : 'Display'})
-            </span>
-          </label>
-          {(() => {
-            const activeFmts = activeTab === 'dooh' ? ['quer', 'hoch'] : ['wide', 'med', 'tall'];
-            const previewFmt = activeTab === 'dooh' ? 'quer' : 'wide';
-            const curPos     = bgPosByFmt[previewFmt] || '50% 50%';
-            return (
-              <>
-                <div className="ac-focus-wrap">
-                  <div
-                    className="ac-focus-bg"
-                    style={{ backgroundImage: bgUrl ? `url('${bgUrl}')` : undefined, backgroundPosition: curPos }}
-                  />
-                  <div className="ac-focus-inner">
-                    {[0, 1, 2].map(r =>
-                      [0, 1, 2].map(c => (
-                        <div
-                          key={`${r}-${c}`}
-                          className={`ac-fcell${focusSel[0] === r && focusSel[1] === c ? ' active' : ''}`}
-                          onClick={() => {
-                            setFocusSel([r, c]);
-                            const newPos = FOCUS_POS[r][c];
-                            setBgPosByFmt(prev => {
-                              const next = { ...prev };
-                              activeFmts.forEach(fmt => { next[fmt] = newPos; });
-                              return next;
-                            });
-                          }}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div style={{ fontSize: 10, color: '#a8a096', textAlign: 'center', marginTop: 3 }}>
-                  Klicke auf den wichtigsten Bildbereich
-                </div>
-              </>
-            );
-          })()}
-        </div>
+        {/* 5. Schrift – hidden if no font detected */}
+        {fontOptions.length > 0 && (
+          <>
+            <div className="ac-stitle">Schrift</div>
+            <div className="ac-font-grid" style={{ marginBottom: 6 }}>
+              {fontOptions.map(f => (
+                <button key={f} className={`ac-font-btn${adFont === f ? ' active' : ''}`} onClick={() => setAdFont(f)}>
+                  <span style={{ fontFamily: f, fontSize: 16, fontWeight: SERIF_FONTS.includes(f) ? 300 : 500 }}>Aa</span>
+                  <span style={{ fontSize: 9, color: '#8a7a67', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{f}</span>
+                </button>
+              ))}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5C4F3D', cursor: 'pointer', marginBottom: 14 }}>
+              <input type="checkbox" checked={adBold} onChange={e => setAdBold(e.target.checked)} />
+              Fett
+            </label>
+          </>
+        )}
 
-        {/* ── Farben ── */}
+        {/* 6. Farben */}
         <div className="ac-stitle">Farben</div>
-
-        <div className="ac-fg">
-          <label>Markenfarbe</label>
-          <div style={{ fontSize: 11, color: '#8a7a67', marginBottom: 6, lineHeight: 1.4 }}>
-            Wir haben eine Farbe vorgeschlagen – passt sie zu deiner Marke?
+        {ana?.themeColor && (
+          <div style={{ fontSize: 10, color: '#3A9E7A', background: '#F0FFF6', border: '1px solid #B8E8CC', borderRadius: 5, padding: '4px 8px', marginBottom: 8 }}>
+            ✓ Markenfarbe aus Website erkannt
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input
-              type="color"
-              value={colors.bg}
-              style={{ width: 36, height: 36, border: '1px solid #DDD5C8', borderRadius: 6, padding: 2, cursor: 'pointer', background: 'none' }}
-              onChange={e => setColors(prev => ({ ...prev, bg: e.target.value }))}
-            />
-            <span className="ac-hex-lbl" style={{ fontSize: 11 }}>{colors.bg}</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginBottom: 10 }}>
-          {(
-            [
-              ['hl',     'Headline'  ],
-              ['sub',    'Subline'   ],
-              ['logo',   'Logo-Text' ],
-              ['ctaTxt', 'CTA Text'  ],
-              ['ctaBg',  'CTA Bubble'],
-              ['domain', 'Domain'    ],
-            ] as [keyof Colors, string][]
-          ).map(([key, label]) => (
-            <div key={key}>
-              <div style={{ fontSize: 10, fontWeight: 500, color: '#8a7a67', marginBottom: 3 }}>{label}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <input
-                  type="color"
-                  value={colors[key]}
-                  style={{ width: 28, height: 28, border: '1px solid #DDD5C8', borderRadius: 5, padding: 2, cursor: 'pointer', background: 'none' }}
-                  onChange={e => setColors(prev => ({ ...prev, [key]: e.target.value }))}
-                />
-                <span style={{ fontSize: 9, color: '#a8a096' }}>{colors[key]}</span>
+        )}
+        <div className="ac-color-grid" style={{ marginBottom: 14 }}>
+          {([
+            ['bg',     'Hintergrund'],
+            ['hl',     'Headline'],
+            ['sub',    'Subline'],
+            ['logo',   'Logo-Text'],
+            ['ctaBg',  'CTA Bg'],
+            ['ctaTxt', 'CTA Text'],
+            ['domain', 'Domain'],
+          ] as [keyof Colors, string][]).map(([k, lbl]) => (
+            <div key={k} className="ac-ci">
+              <label>{lbl}</label>
+              <div className="ac-ci-row">
+                <div className="ac-swatch" style={{ background: colors[k] }}>
+                  <input type="color" value={colors[k]} onChange={e => setColors(c => ({ ...c, [k]: e.target.value }))} />
+                </div>
               </div>
+              <span className="ac-hex-lbl">{colors[k]}</span>
             </div>
           ))}
         </div>
 
-        {/* ── Animation ── */}
-        <div className="ac-stitle">
-          Bewegung{' '}
-          <span style={{ fontWeight: 300, textTransform: 'none', letterSpacing: 0, fontSize: 9 }}>
-            (alle Formate)
+        {/* 7. Bewegung */}
+        <div className="ac-stitle">Bewegung</div>
+        <div className="ac-anim-grid" style={{ marginBottom: 20 }}>
+          {([
+            ['none', 'Statisch', '—'],
+            ['cta',  'CTA',      '💥'],
+            ['hl',   'Headline', '✨'],
+            ['qr',   'QR-Code',  '📱'],
+          ] as const).map(([v, lbl, icon]) => (
+            <button key={v} className={`ac-anim-btn${animation === v ? ' active' : ''}`} onClick={() => setAnimation(v)}>
+              <span style={{ fontSize: 16 }}>{icon}</span>
+              <span>{lbl}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Submit */}
+        <div className="ac-submit-sec">
+          <button className="ac-btn-p" onClick={handleNext}>Weiter →</button>
+          <button className="ac-btn-s" onClick={() => { updateBriefing({ werbemittel: 'spaeter' }); nextStep(); }}>
+            Später einschicken
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════ CANVAS ═══════════ */}
+      <div className="ac-canvas">
+        {/* Tab bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="ac-tabs">
+            <button className={`ac-tab${tab === 'dooh'    ? ' active' : ''}`} onClick={() => setTab('dooh')}>DOOH</button>
+            <button className={`ac-tab${tab === 'display' ? ' active' : ''}`} onClick={() => setTab('display')}>Display</button>
+          </div>
+          <span style={{ fontSize: 11, color: '#8a7a67' }}>
+            {tab === 'dooh' ? 'Digitale Plakatwände' : 'Online-Banner'}
           </span>
         </div>
 
-        <div className="ac-anim-grid">
-          {[
-            { id: 'cta',  icon: '👆', label: 'CTA-Button' },
-            { id: 'qr',   icon: '📱', label: 'QR-Code'    },
-            { id: 'hl',   icon: '✏️', label: 'Headline'   },
-            { id: 'none', icon: '⏸',  label: 'Statisch'   },
-          ].map(({ id, icon, label }) => (
-            <button
-              key={id}
-              className={`ac-anim-btn${anim === id ? ' active' : ''}`}
-              onClick={() => setAnim(id)}
-            >
-              <span>{icon}</span>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="ac-anim-tip" style={{ marginTop: 6 }}>{ANIM_TIPS[anim]}</div>
-
-        {/* ── Submit ── */}
-        <div className="ac-submit-sec" style={{ marginTop: 'auto', paddingTop: 16 }}>
-          <button className="ac-btn-p" onClick={handleSubmit}>
-            ✓ Werbemittel einreichen
-          </button>
-          <button className="ac-btn-s">
-            💾 Link zum Weiterarbeiten senden
-          </button>
-        </div>
-
-      </div>
-      {/* ══════════════════════════════════════════════════════ */}
-
-      {/* ══════════════════════ CANVAS ══════════════════════ */}
-      <div className="ac-canvas">
-
-        {/* FIX #3: clean tab header only, no section labels below */}
-        <div className="ac-tabs">
-          {(['dooh', 'display'] as const).map(t => (
-            <button
-              key={t}
-              className={`ac-tab${activeTab === t ? ' active' : ''}`}
-              onClick={() => setActiveTab(t)}
-            >
-              {t === 'dooh' ? 'DOOH' : 'Display'}
-            </button>
-          ))}
-        </div>
-
-        {/* DOOH */}
-        {activeTab === 'dooh' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-            {/* Quer 845×475 */}
+        {/* ── DOOH tab ── */}
+        {tab === 'dooh' && (
+          <>
+            {/* Querformat 1920×1080 @ 845×475 */}
             <div className="ac-format-card">
               <div className="ac-format-header">
-                <div>
-                  <div className="ac-format-name">Querformat</div>
-                  <div className="ac-format-spec">1920 × 1080 px</div>
-                </div>
+                <span className="ac-format-name">Querformat</span>
+                <span className="ac-format-spec ac-pcard-dim">1920 × 1080 px</span>
               </div>
-              <AdPreview fmtId="quer" width={845} height={475} {...mkProps('quer')} />
-            </div>
-
-            {/* Hoch 259×461 */}
-            <div className="ac-format-card">
-              <div className="ac-format-header">
-                <div>
-                  <div className="ac-format-name">Hochformat</div>
-                  <div className="ac-format-spec">1080 × 1920 px</div>
-                </div>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', overflow: 'hidden', borderRadius: 6 }}>
+                <AdPreview {...mkProps('quer')} width={845} height={475} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0', minHeight: 469, overflow: 'visible' }}>
-                <AdPreview fmtId="hoch" width={259} height={461} {...mkProps('hoch')} />
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 4, fontWeight: 600 }}>Bildfokus</div>
+                <FocusGrid fmtId="quer" bgImage={bgImage} pos={bgPosByFmt['quer']} onFocus={handleFocus} />
               </div>
             </div>
 
-          </div>
+            {/* Hochformat 1080×1920 @ 259×461 */}
+            <div className="ac-format-card">
+              <div className="ac-format-header">
+                <span className="ac-format-name">Hochformat</span>
+                <span className="ac-format-spec ac-pcard-dim">1080 × 1920 px</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 0' }}>
+                <div style={{ position: 'relative', width: 259, height: 461, overflow: 'hidden', borderRadius: 6, flexShrink: 0 }}>
+                  <AdPreview {...mkProps('hoch')} width={259} height={461} />
+                </div>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 4, fontWeight: 600 }}>Bildfokus</div>
+                <FocusGrid fmtId="hoch" bgImage={bgImage} pos={bgPosByFmt['hoch']} onFocus={handleFocus} />
+              </div>
+            </div>
+          </>
         )}
 
-        {/* Display */}
-        {activeTab === 'display' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-            {/* Billboard 970×250 scaled via transform:scale(0.845) */}
+        {/* ── Display tab ── */}
+        {tab === 'display' && (
+          <>
+            {/* Billboard 970×250 scaled to 820×212 */}
             <div className="ac-format-card">
               <div className="ac-format-header">
-                <div>
-                  <div className="ac-format-name">Billboard</div>
-                  <div className="ac-format-spec">970 × 250 px</div>
+                <span className="ac-format-name">Billboard</span>
+                <span className="ac-format-spec ac-pcard-dim">970 × 250 px</span>
+              </div>
+              <div style={{ width: '100%', height: 211, overflow: 'hidden', borderRadius: 6, position: 'relative' }}>
+                <div style={{ transform: 'scale(0.845)', transformOrigin: 'top left', width: 970, height: 250, position: 'absolute' }}>
+                  <AdPreview {...mkProps('wide')} width={970} height={250} />
                 </div>
               </div>
-              <div style={{ overflow: 'hidden', borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.12)' }}>
-                <div style={{ transformOrigin: 'top left', transform: 'scale(0.845)', width: 970, height: 250, position: 'relative' }}>
-                  <AdPreview fmtId="wide" width={970} height={250} {...mkProps('wide')} />
-                </div>
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 4, fontWeight: 600 }}>Bildfokus</div>
+                <FocusGrid fmtId="wide" bgImage={bgImage} pos={bgPosByFmt['wide']} onFocus={handleFocus} />
               </div>
-              {/* Placeholder: 250 × 0.845 = 211px */}
-              <div style={{ height: 211, marginTop: -211, pointerEvents: 'none' }} />
             </div>
 
             {/* Med 300×250 + Tall 300×600 */}
             <div className="ac-format-card">
               <div className="ac-format-header">
-                <div>
-                  <div className="ac-format-name">Rectangle &amp; Half Page</div>
-                  <div className="ac-format-spec">300 × 250 / 300 × 600 px</div>
+                <span className="ac-format-name">Display-Formate</span>
+                <span className="ac-format-spec ac-pcard-dim">300 × 250 · 300 × 600</span>
+              </div>
+              <div style={{ display: 'flex', gap: 20, justifyContent: 'center', padding: '14px 0', alignItems: 'flex-start' }}>
+                {/* Med */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                  <div style={{ position: 'relative', width: 180, height: 150, overflow: 'hidden', borderRadius: 6 }}>
+                    <div style={{ transform: 'scale(0.6)', transformOrigin: 'top left', width: 300, height: 250, position: 'absolute' }}>
+                      <AdPreview {...mkProps('med')} width={300} height={250} />
+                    </div>
+                  </div>
+                  <span className="ac-dim-lbl">300 × 250</span>
+                </div>
+                {/* Tall */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                  <div style={{ position: 'relative', width: 90, height: 180, overflow: 'hidden', borderRadius: 6 }}>
+                    <div style={{ transform: 'scale(0.3)', transformOrigin: 'top left', width: 300, height: 600, position: 'absolute' }}>
+                      <AdPreview {...mkProps('tall')} width={300} height={600} />
+                    </div>
+                  </div>
+                  <span className="ac-dim-lbl">300 × 600</span>
                 </div>
               </div>
-              <div className="display-pair">
-                <div className="display-item">
-                  <AdPreview fmtId="med" width={300} height={250} {...mkProps('med')} />
-                  <div className="dim-lbl">300 × 250 px</div>
+              <div style={{ display: 'flex', gap: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 4, fontWeight: 600 }}>Fokus 300×250</div>
+                  <FocusGrid fmtId="med" bgImage={bgImage} pos={bgPosByFmt['med']} onFocus={handleFocus} />
                 </div>
-                <div className="display-item">
-                  <AdPreview fmtId="tall" width={300} height={600} {...mkProps('tall')} />
-                  <div className="dim-lbl">300 × 600 px</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 4, fontWeight: 600 }}>Fokus 300×600</div>
+                  <FocusGrid fmtId="tall" bgImage={bgImage} pos={bgPosByFmt['tall']} onFocus={handleFocus} />
                 </div>
               </div>
             </div>
-
-          </div>
+          </>
         )}
-
       </div>
-      {/* ═══════════════════════════════════════════════════ */}
-
     </div>
   );
 }

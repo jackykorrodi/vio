@@ -82,7 +82,7 @@ input[type='date']:focus {
 }
 
 /* ═══════════════════════ AD CREATOR V11 ═══════════════════════ */
-.ad-creator { font-family: 'Outfit', sans-serif; display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 52px); align-items: start; }
+.ad-creator { font-family: 'Outfit', sans-serif; display: grid; grid-template-columns: 310px 1fr; min-height: calc(100vh - 52px); align-items: start; }
 
 /* Ad shells */
 .ad-creator .ac-ad { position: relative; overflow: hidden; }
