@@ -434,14 +434,18 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   // ── Selection & Drag ────────────────────────────────────────────────────────
   const [selEl, setSelEl] = useState<string | null>(null);
-  const dragRef = useRef<DragState | null>(null);
+  const dragRef   = useRef<DragState | null>(null);
+  const anaApplied = useRef(false); // guard: apply initial ana values only once
 
-  // Load bg image, logo and theme color from analysis on mount (and whenever analysis becomes available)
+  // Apply analysis values (bg image, logo, theme color) on first valid ana — run once.
   useEffect(() => {
-    console.log('[Step5] ANA DATA:', JSON.stringify(ana, null, 2));
-    if (!ana) return;
+    // Re-run whenever ana changes, but only apply once (first valid value)
+    if (!ana || anaApplied.current) return;
+    anaApplied.current = true;
 
-    // themeColor → colors.bg (only if user hasn't set a custom color in this session)
+    console.log('[Step5] ANA DATA:', JSON.stringify(ana, null, 2));
+
+    // themeColor → colors.bg (only if user hasn't set a custom color yet)
     if (ana.themeColor && !briefing.adBgColor) {
       setColors(prev => ({ ...prev, bg: ana.themeColor! }));
     }

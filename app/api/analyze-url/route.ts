@@ -74,25 +74,70 @@ function extractLargeIcon(html: string, baseUrl: string): string {
   return '';
 }
 
-/** Extract og:image / twitter:image / first large absolute <img> from HTML. */
-function extractOgImage(html: string): string {
-  // og:image (any attribute order)
-  let m = html.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
-  if (!m) m = html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-  if (m?.[1]?.startsWith('http')) return m[1];
+// Images containing these words are UI noise — skip them
+const OG_IMAGE_BLOCKLIST = [
+  'cashless', 'popup', 'modal', 'cookie', 'notice', 'hinweis',
+  'banner-ad', 'notification', 'consent', 'gdpr', 'overlay',
+];
+function isBlockedImage(url: string): boolean {
+  const lower = url.toLowerCase();
+  return OG_IMAGE_BLOCKLIST.some(w => lower.includes(w));
+}
 
-  // twitter:image (any attribute order)
-  m = html.match(/<meta[^>]+name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i);
-  if (!m) m = html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
-  if (m?.[1]?.startsWith('http')) return m[1];
+/** Extract og:image / twitter:image / first large absolute <img> from HTML, skipping blocked URLs. */
+function extractOgImage(html: string): string {
+  // Collect all og:image candidates
+  const ogRe = /<meta[^>]+(?:property=["']og:image["'][^>]*content=["']([^"']+)["']|content=["']([^"']+)["'][^>]*property=["']og:image["'])/gi;
+  let m: RegExpExecArray | null;
+  while ((m = ogRe.exec(html)) !== null) {
+    const url = (m[1] || m[2] || '').trim();
+    if (url.startsWith('http') && !isBlockedImage(url)) return url;
+  }
+
+  // twitter:image
+  const twRe = /<meta[^>]+(?:name=["']twitter:image["'][^>]*content=["']([^"']+)["']|content=["']([^"']+)["'][^>]*name=["']twitter:image["'])/gi;
+  while ((m = twRe.exec(html)) !== null) {
+    const url = (m[1] || m[2] || '').trim();
+    if (url.startsWith('http') && !isBlockedImage(url)) return url;
+  }
 
   // First absolute-URL img that isn't an icon/avatar/pixel
   const imgRe = /<img[^>]+src=["'](https?:\/\/[^"']+\.(jpg|jpeg|png|webp)[^"']*)["']/gi;
   let imgM: RegExpExecArray | null;
   while ((imgM = imgRe.exec(html)) !== null) {
     const src = imgM[1];
-    if (!/icon|logo|avatar|pixel|tracking|1x1/i.test(src)) return src;
+    if (!/icon|logo|avatar|pixel|tracking|1x1/i.test(src) && !isBlockedImage(src)) return src;
   }
+  return '';
+}
+
+/** Extract theme color from HTML: <meta name="theme-color">, then most-frequent CSS hex color. */
+function extractThemeColor(html: string): string {
+  // 1. <meta name="theme-color" content="#rrggbb">
+  let m = html.match(/<meta[^>]+name=["']theme-color["'][^>]*content=["']\s*(#[0-9a-f]{3,6})\s*["']/i);
+  if (!m) m = html.match(/<meta[^>]+content=["']\s*(#[0-9a-f]{3,6})\s*["'][^>]*name=["']theme-color["']/i);
+  if (m?.[1]) return m[1];
+
+  // 2. Most frequent hex color in inline styles + <style> blocks
+  //    (only count colors that look like brand colors — skip near-white/near-black/gray)
+  const colorRe = /#([0-9a-f]{6}|[0-9a-f]{3})\b/gi;
+  const freq: Record<string, number> = {};
+  let c: RegExpExecArray | null;
+  while ((c = colorRe.exec(html)) !== null) {
+    const raw = c[1].length === 3
+      ? c[1].split('').map(x => x + x).join('')   // expand 3→6
+      : c[1];
+    const hex = raw.toLowerCase();
+    // Skip near-white (>e0e0e0), near-black (<202020), and pure grays (r≈g≈b)
+    const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+    const isLight = r > 0xe0 && g > 0xe0 && b > 0xe0;
+    const isDark  = r < 0x20 && g < 0x20 && b < 0x20;
+    const isGray  = Math.abs(r-g) < 15 && Math.abs(g-b) < 15 && Math.abs(r-b) < 15;
+    if (!isLight && !isDark && !isGray) freq[`#${hex}`] = (freq[`#${hex}`] || 0) + 1;
+  }
+  const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+  if (sorted.length > 0) return sorted[0][0];
+
   return '';
 }
 
@@ -189,6 +234,12 @@ export async function POST(request: NextRequest) {
     favicon    = typed.metadata?.favicon    || '';
     themeColor = typed.metadata?.themeColor || typed.metadata?.['theme-color'] || '';
 
+    // Apply blocklist to metadata ogImage — discard noisy UI images
+    if (ogImage && isBlockedImage(ogImage)) {
+      console.log('ogImage blocked (metadata):', ogImage);
+      ogImage = '';
+    }
+
     // Fallback: extract og:image / twitter:image from raw HTML if metadata is empty
     if (!ogImage && rawHtml) {
       ogImage = extractOgImage(rawHtml);
@@ -199,6 +250,12 @@ export async function POST(request: NextRequest) {
     if (!ogLogo && rawHtml) {
       ogLogo = extractLargeIcon(rawHtml, cleanUrl);
       if (ogLogo) console.log('ogLogo from HTML icon extraction:', ogLogo);
+    }
+
+    // Fallback: extract theme color from HTML if Firecrawl metadata didn't return one
+    if (!themeColor && rawHtml) {
+      themeColor = extractThemeColor(rawHtml);
+      if (themeColor) console.log('themeColor from HTML extraction:', themeColor);
     }
 
     console.log('=== EXTRACTED ===');
