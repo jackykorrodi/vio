@@ -403,8 +403,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [activeTab,   setActiveTab]   = useState<'dooh' | 'display'>('dooh');
 
   // ── Colors ──────────────────────────────────────────────────────────────────
+  // Extract themeColor FIRST so useState uses it immediately — no delay.
+  const themeColor = ana?.themeColor || '#C1666B';
   const [colors, setColors] = useState<Colors>({
-    bg:     briefing.adBgColor || ana?.themeColor || '#C1666B',
+    bg:     briefing.adBgColor || themeColor,
     hl:     briefing.adTextColor   || '#FFFFFF',
     sub:    '#FFFFFF',
     logo:   '#FFFFFF',
@@ -433,6 +435,15 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [selEl, setSelEl] = useState<string | null>(null);
   const dragRef   = useRef<DragState | null>(null);
   const anaApplied = useRef(false); // guard: apply initial ana values only once
+
+  // Apply themeColor once on mount (handles case where component mounts before ana arrives).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const tc = briefing.analysis?.themeColor;
+    if (tc && !briefing.adBgColor) {
+      setColors(prev => ({ ...prev, bg: tc }));
+    }
+  }, []); // intentionally empty — mount only
 
   // Apply analysis values on first valid ana — run once.
   useEffect(() => {
