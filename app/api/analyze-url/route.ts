@@ -51,6 +51,8 @@ function extractLargeIcon(html: string, baseUrl: string): string {
   const patterns = [
     /<link[^>]+rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i,
     /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon["']/i,
+    /<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]*href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]*rel=["'][^"']*apple-touch-icon[^"']*["']/i,
     /<link[^>]+sizes=["']192x192["'][^>]*href=["']([^"']+)["']/i,
     /<link[^>]+href=["']([^"']+)["'][^>]*sizes=["']192x192["']/i,
     /<link[^>]+sizes=["']180x180["'][^>]*href=["']([^"']+)["']/i,
@@ -68,10 +70,53 @@ function extractLargeIcon(html: string, baseUrl: string): string {
       if (href.startsWith('http')) return href;
       if (href.startsWith('//'))   return `https:${href}`;
       if (href.startsWith('/'))    return `${base}${href}`;
-      return href;
+      return `${base}/${href}`;
     }
   }
   return '';
+}
+
+/** Verify that a URL responds with a 2xx status (HEAD, 3s timeout). */
+async function verifyUrl(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(url, { method: 'HEAD', signal: controller.signal, redirect: 'follow' });
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Scan <img> tags in HTML for hero/content images, returning the best candidate. */
+function extractHeroImage(html: string, baseUrl: string): string {
+  let base = '';
+  let hostname = '';
+  try { const u = new URL(baseUrl); base = `${u.protocol}//${u.host}`; hostname = u.hostname; } catch { /* ignore */ }
+
+  const candidates: string[] = [];
+  const imgRe = /<img[^>]+src=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+
+  while ((m = imgRe.exec(html)) !== null) {
+    let src = m[1].trim();
+    if (src.startsWith('//')) src = `https:${src}`;
+    else if (src.startsWith('/')) src = `${base}${src}`;
+    else if (!src.startsWith('http')) continue;
+
+    if (!/\.(jpg|jpeg|png|webp)(\?|$)/i.test(src)) continue;
+    if (/icon|logo|avatar|pixel|tracking|1x1|sprite|placeholder|blank|transparent|badge|button|arrow|check/i.test(src)) continue;
+    if (isBlockedImage(src)) continue;
+
+    candidates.push(src);
+  }
+
+  console.log('=== HERO IMAGE CANDIDATES ===', candidates.slice(0, 8));
+
+  // Prefer same-domain images (likely actual content)
+  const sameDomain = candidates.filter(u => hostname && u.includes(hostname));
+  return sameDomain[0] || candidates[0] || '';
 }
 
 // Images containing these words are UI noise — skip them
@@ -270,6 +315,39 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
     if (!ogLogo && rawHtml) {
       ogLogo = extractLargeIcon(rawHtml, cleanUrl);
       if (ogLogo) console.log('ogLogo from HTML icon extraction:', ogLogo);
+    }
+
+    // Verify extracted logo URL (skip Google favicon — it's always valid)
+    if (ogLogo && ogLogo.startsWith('http') && !ogLogo.includes('google.com/s2/favicons')) {
+      const ok = await verifyUrl(ogLogo);
+      if (ok) {
+        console.log('ogLogo verified OK:', ogLogo);
+      } else {
+        console.log('ogLogo failed verification, discarding:', ogLogo);
+        ogLogo = '';
+      }
+    }
+
+    // Domain-level apple-touch-icon.png fallback if still no logo
+    if (!ogLogo) {
+      try {
+        const u = new URL(cleanUrl);
+        const atiFallback = `${u.protocol}//${u.host}/apple-touch-icon.png`;
+        console.log('Trying domain-level apple-touch-icon.png:', atiFallback);
+        const ok = await verifyUrl(atiFallback);
+        if (ok) {
+          ogLogo = atiFallback;
+          console.log('ogLogo from domain apple-touch-icon.png:', ogLogo);
+        } else {
+          console.log('domain apple-touch-icon.png not found (404)');
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Hero image scan if ogImage still empty after og:/twitter: extraction
+    if (!ogImage && rawHtml) {
+      ogImage = extractHeroImage(rawHtml, cleanUrl);
+      if (ogImage) console.log('ogImage from hero image scan:', ogImage);
     }
 
     // Fallback: extract theme color from HTML if Firecrawl metadata didn't return one
