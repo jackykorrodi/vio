@@ -40,6 +40,10 @@ export interface AnalysisResult {
   ogLogo: string;
   favicon: string;
   themeColor?: string;
+  headlines?: string[];
+  sublines?: string[];
+  ctaText?: string;
+  suggestedImageUrl?: string;
 }
 
 export interface BriefingData {

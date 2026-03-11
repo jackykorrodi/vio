@@ -115,26 +115,22 @@ function hexRgba(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-// ── Headline suggestion chips: Klassisch / Frech / Speziell ─────────────────
-function makeSuggestions(org: string, domain: string, headlines?: string[]) {
+// ── Headline/Subline suggestion chips ────────────────────────────────────────
+function makeSuggestions(org: string, domain: string, headlines?: string[], sublines?: string[]) {
   const hl = headlines && headlines.length >= 3
-    ? [
-        { text: headlines[0], tag: 'Klassisch' },
-        { text: headlines[1], tag: 'Frech'     },
-        { text: headlines[2], tag: 'Speziell'  },
-      ]
+    ? headlines.map((text, i) => ({ text, tag: String(i + 1) }))
     : [
-        { text: org ? `${org} – für Sie`                       : 'Jetzt entdecken',  tag: 'Klassisch' },
-        { text: org ? `Wer braucht schon mehr als ${org}?`     : 'Einfach gut',       tag: 'Frech'     },
-        { text: org ? `${org} – nah bei Ihnen`                 : 'Weil es zählt',     tag: 'Speziell'  },
+        { text: org ? `${org} – für Sie`                   : 'Jetzt entdecken',  tag: '1' },
+        { text: org ? `Wer braucht schon mehr als ${org}?` : 'Einfach gut',       tag: '2' },
+        { text: org ? `${org} – nah bei Ihnen`             : 'Weil es zählt',     tag: '3' },
       ];
-  return {
-    hl,
-    sub: [
-      { text: domain,                     tag: 'Domain'    },
-      { text: 'Jetzt online informieren', tag: 'Generisch' },
-    ],
-  };
+  const sub = sublines && sublines.length >= 2
+    ? sublines.map((text, i) => ({ text, tag: String(i + 1) }))
+    : [
+        { text: domain,                     tag: '1' },
+        { text: 'Jetzt online informieren', tag: '2' },
+      ];
+  return { hl, sub };
 }
 
 // ── Ad Preview Component ─────────────────────────────────────────────────────
@@ -227,14 +223,13 @@ function AdPreview({
           onMouseDown={e => onElMouseDown(e, fmtId, 'logo')}
         >
           <Toolbar elId="logo" delta={elD.logo ?? 1} />
-          {/* FIX #4: no filter on logo image */}
           {logoMode === 'image' && logoUrl ? (
             <img
               className="ac-logo-img"
               src={logoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl}
               alt=""
               crossOrigin="anonymous"
-              style={{ height: sz.logo ?? 18 }}
+              style={{ height: sz.logo ?? 18, background: 'rgba(255,255,255,0.85)', borderRadius: 3, padding: 2 }}
             />
           ) : (
             <div className="ac-logo-txt" style={{ fontSize: sz.logo ?? 18, color: colors.logo }}>
@@ -362,16 +357,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const initDomain = (() => {
     try { return new URL(briefing.url).hostname.replace('www.', ''); } catch { return briefing.url || ''; }
   })();
-  const initOrg  = ana?.organisation || '';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initHeadlines = (ana as any)?.headlines as string[] | undefined;
-  const initSugs = makeSuggestions(initOrg, initDomain, initHeadlines);
+  const initOrg       = ana?.organisation || '';
+  const initHeadlines = ana?.headlines;
+  const initSublines  = ana?.sublines;
+  const initSugs      = makeSuggestions(initOrg, initDomain, initHeadlines, initSublines);
 
   // ── Text state ──────────────────────────────────────────────────────────────
   const [org,      setOrg]      = useState(initOrg);
   const [headline, setHeadline] = useState(briefing.adHeadline || initSugs.hl[0]?.text || '');
   const [subline,  setSubline]  = useState(briefing.adSubline  || initSugs.sub[0]?.text || '');
-  const [cta,      setCta]      = useState(briefing.adCta      || 'Jetzt reservieren →');
+  const [cta,      setCta]      = useState(briefing.adCta || ana?.ctaText || 'Jetzt entdecken →');
   const [lpUrl,    setLpUrl]    = useState(briefing.url        || '');
   const [crawlUrl, setCrawlUrl] = useState(briefing.url        || '');
 
@@ -399,11 +394,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const bgFileRef = useRef<HTMLInputElement>(null);
 
   // ── Style & animation ───────────────────────────────────────────────────────
-  const [bgStyle,   setBgStyle]   = useState<'overlay' | 'pure' | 'split'>(briefing.adBgStyle || 'overlay');
-  const [bgPos,     setBgPos]     = useState('50% 50%');
-  const [focusSel,  setFocusSel]  = useState<[number, number]>([1, 1]);
-  const [anim,      setAnim]      = useState(briefing.adAnimation || 'cta');
-  const [activeTab, setActiveTab] = useState<'dooh' | 'display'>('dooh');
+  const [bgStyle,     setBgStyle]     = useState<'overlay' | 'pure' | 'split'>(briefing.adBgStyle || 'overlay');
+  const [bgPosByFmt,  setBgPosByFmt]  = useState<Record<string, string>>({
+    quer: '50% 50%', hoch: '50% 50%', wide: '50% 50%', med: '50% 50%', tall: '50% 50%',
+  });
+  const [focusSel,    setFocusSel]    = useState<[number, number]>([1, 1]);
+  const [anim,        setAnim]        = useState(briefing.adAnimation || 'cta');
+  const [activeTab,   setActiveTab]   = useState<'dooh' | 'display'>('dooh');
 
   // ── Colors ──────────────────────────────────────────────────────────────────
   const [colors, setColors] = useState<Colors>({
@@ -437,16 +434,30 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const dragRef   = useRef<DragState | null>(null);
   const anaApplied = useRef(false); // guard: apply initial ana values only once
 
-  // Apply analysis values (bg image, logo) on first valid ana — run once.
-  // themeColor is already applied instantly via useState default.
+  // Apply analysis values on first valid ana — run once.
   useEffect(() => {
     if (!ana || anaApplied.current) return;
     anaApplied.current = true;
 
     console.log('[Step5] ANA DATA:', JSON.stringify(ana, null, 2));
 
-    // ogImage → bgUrl (proxy external URLs to avoid CORS)
-    const rawBg = briefing.adBgImageData || ana.ogImage || '';
+    // themeColor → colors.bg (only if user hasn't set a custom color)
+    if (ana.themeColor && !briefing.adBgColor) {
+      setColors(prev => ({ ...prev, bg: ana.themeColor! }));
+    }
+
+    // sublines + ctaText from analysis
+    if (ana.sublines && ana.sublines.length >= 2) {
+      const newSugs = makeSuggestions(ana.organisation || initOrg, initDomain, ana.headlines, ana.sublines);
+      setSubSugs(newSugs.sub);
+      if (!briefing.adSubline) setSubline(newSugs.sub[0]?.text || '');
+    }
+    if (ana.ctaText && !briefing.adCta) {
+      setCta(ana.ctaText);
+    }
+
+    // ogImage / suggestedImageUrl → bgUrl (proxy external URLs to avoid CORS)
+    const rawBg = briefing.adBgImageData || ana.ogImage || ana.suggestedImageUrl || '';
     if (rawBg) {
       const bgSrc = rawBg.startsWith('data:') ? rawBg
                   : rawBg.startsWith('http')  ? `/api/proxy-image?url=${encodeURIComponent(rawBg)}`
@@ -567,12 +578,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       if (!res.ok) throw new Error();
       const data   = await res.json();
       const result = data.analysis || data;
-      const newOrg = result.organisation || fastOrg;
-      const newLogoUrl = result.ogLogo || result.favicon || fastLogoUrl;
-      const newColor   = result.themeColor || colors.bg;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const apiHeadlines = (result as any)?.headlines as string[] | undefined;
-      const newSugs    = makeSuggestions(newOrg, fastDomain, apiHeadlines);
+      const newOrg       = result.organisation || fastOrg;
+      const newLogoUrl   = result.ogLogo || result.favicon || fastLogoUrl;
+      const newColor     = result.themeColor || colors.bg;
+      const apiHeadlines = result.headlines as string[] | undefined;
+      const apiSublines  = result.sublines  as string[] | undefined;
+      const apiCtaText   = result.ctaText   as string   | undefined;
+      const newSugs      = makeSuggestions(newOrg, fastDomain, apiHeadlines, apiSublines);
 
       setOrg(newOrg);
       setColors(prev => ({ ...prev, bg: newColor }));
@@ -582,10 +594,12 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       setSubSugs(newSugs.sub);
       setHeadline(newSugs.hl[0]?.text || '');
       setSubline(newSugs.sub[0]?.text || '');
+      if (apiCtaText) setCta(apiCtaText);
       setActiveHlSug(0);
       setActiveSubSug(0);
-      if (result.ogImage) {
-        const bgSrc = `/api/proxy-image?url=${encodeURIComponent(result.ogImage)}`;
+      const rawBgUrl = result.ogImage || result.suggestedImageUrl || '';
+      if (rawBgUrl) {
+        const bgSrc = `/api/proxy-image?url=${encodeURIComponent(rawBgUrl)}`;
         setBgUrl(bgSrc);
         setBgThumb(bgSrc);
       }
@@ -654,15 +668,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     nextStep();
   };
 
-  // ── Shared preview props ─────────────────────────────────────────────────────
-  const previewProps = {
+  // ── Shared preview props (bgPos passed per format in JSX) ───────────────────
+  const sharedProps = {
     positions, sizes, colors, headline, subline, cta, domain, org,
-    bgUrl, logoUrl, logoMode, bgStyle, anim, bgPos, lpUrl,
+    bgUrl, logoUrl, logoMode, bgStyle, anim, lpUrl,
     selEl,
     onElMouseDown: handleElMouseDown,
     onLayerClick:  handleLayerClick,
     onResize:      handleResize,
   };
+  const mkProps = (fmtId: string) => ({ ...sharedProps, bgPos: bgPosByFmt[fmtId] || '50% 50%' });
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -891,30 +906,49 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
 
         <div className="ac-fg">
-          <label>Bildfokus</label>
-          <div className="ac-focus-wrap">
-            <div
-              className="ac-focus-bg"
-              style={{
-                backgroundImage:    bgUrl ? `url('${bgUrl}')` : undefined,
-                backgroundPosition: bgPos,
-              }}
-            />
-            <div className="ac-focus-inner">
-              {[0, 1, 2].map(r =>
-                [0, 1, 2].map(c => (
+          <label>
+            Bildfokus{' '}
+            <span style={{ fontWeight: 300, fontSize: 10, textTransform: 'none' }}>
+              ({activeTab === 'dooh' ? 'DOOH' : 'Display'})
+            </span>
+          </label>
+          {(() => {
+            const activeFmts = activeTab === 'dooh' ? ['quer', 'hoch'] : ['wide', 'med', 'tall'];
+            const previewFmt = activeTab === 'dooh' ? 'quer' : 'wide';
+            const curPos     = bgPosByFmt[previewFmt] || '50% 50%';
+            return (
+              <>
+                <div className="ac-focus-wrap">
                   <div
-                    key={`${r}-${c}`}
-                    className={`ac-fcell${focusSel[0] === r && focusSel[1] === c ? ' active' : ''}`}
-                    onClick={() => { setFocusSel([r, c]); setBgPos(FOCUS_POS[r][c]); }}
+                    className="ac-focus-bg"
+                    style={{ backgroundImage: bgUrl ? `url('${bgUrl}')` : undefined, backgroundPosition: curPos }}
                   />
-                ))
-              )}
-            </div>
-          </div>
-          <div style={{ fontSize: 10, color: '#a8a096', textAlign: 'center', marginTop: 3 }}>
-            Klicke auf den wichtigsten Bildbereich
-          </div>
+                  <div className="ac-focus-inner">
+                    {[0, 1, 2].map(r =>
+                      [0, 1, 2].map(c => (
+                        <div
+                          key={`${r}-${c}`}
+                          className={`ac-fcell${focusSel[0] === r && focusSel[1] === c ? ' active' : ''}`}
+                          onClick={() => {
+                            setFocusSel([r, c]);
+                            const newPos = FOCUS_POS[r][c];
+                            setBgPosByFmt(prev => {
+                              const next = { ...prev };
+                              activeFmts.forEach(fmt => { next[fmt] = newPos; });
+                              return next;
+                            });
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: '#a8a096', textAlign: 'center', marginTop: 3 }}>
+                  Klicke auf den wichtigsten Bildbereich
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* ── Farben ── */}
@@ -1030,7 +1064,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                   <div className="ac-format-spec">1920 × 1080 px</div>
                 </div>
               </div>
-              <AdPreview fmtId="quer" width={845} height={475} {...previewProps} />
+              <AdPreview fmtId="quer" width={845} height={475} {...mkProps('quer')} />
             </div>
 
             {/* Hoch 259×461 */}
@@ -1042,7 +1076,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0', minHeight: 469, overflow: 'visible' }}>
-                <AdPreview fmtId="hoch" width={259} height={461} {...previewProps} />
+                <AdPreview fmtId="hoch" width={259} height={461} {...mkProps('hoch')} />
               </div>
             </div>
 
@@ -1063,7 +1097,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               </div>
               <div style={{ overflow: 'hidden', borderRadius: 6, boxShadow: '0 4px 20px rgba(0,0,0,.12)' }}>
                 <div style={{ transformOrigin: 'top left', transform: 'scale(0.845)', width: 970, height: 250, position: 'relative' }}>
-                  <AdPreview fmtId="wide" width={970} height={250} {...previewProps} />
+                  <AdPreview fmtId="wide" width={970} height={250} {...mkProps('wide')} />
                 </div>
               </div>
               {/* Placeholder: 250 × 0.845 = 211px */}
@@ -1080,11 +1114,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               </div>
               <div className="display-pair">
                 <div className="display-item">
-                  <AdPreview fmtId="med" width={300} height={250} {...previewProps} />
+                  <AdPreview fmtId="med" width={300} height={250} {...mkProps('med')} />
                   <div className="dim-lbl">300 × 250 px</div>
                 </div>
                 <div className="display-item">
-                  <AdPreview fmtId="tall" width={300} height={600} {...previewProps} />
+                  <AdPreview fmtId="tall" width={300} height={600} {...mkProps('tall')} />
                   <div className="dim-lbl">300 × 600 px</div>
                 </div>
               </div>

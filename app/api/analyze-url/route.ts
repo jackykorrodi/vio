@@ -43,6 +43,9 @@ function domainFallback(rawUrl: string) {
       `Wer braucht schon mehr als ${org}?`,
       `${org} – nah bei Ihnen`,
     ],
+    sublines: [domain, 'Jetzt online informieren'],
+    ctaText: 'Jetzt entdecken →',
+    suggestedImageUrl: '',
   };
 }
 
@@ -328,19 +331,31 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Domain-level apple-touch-icon.png fallback if still no logo
+    // Domain-level logo probe: try common paths in priority order
     if (!ogLogo) {
       try {
         const u = new URL(cleanUrl);
-        const atiFallback = `${u.protocol}//${u.host}/apple-touch-icon.png`;
-        console.log('Trying domain-level apple-touch-icon.png:', atiFallback);
-        const ok = await verifyUrl(atiFallback);
-        if (ok) {
-          ogLogo = atiFallback;
-          console.log('ogLogo from domain apple-touch-icon.png:', ogLogo);
-        } else {
-          console.log('domain apple-touch-icon.png not found (404)');
+        const base = `${u.protocol}//${u.host}`;
+        const logoCandidates = [
+          `${base}/apple-touch-icon.png`,
+          `${base}/apple-touch-icon-precomposed.png`,
+          `${base}/logo.svg`,
+          `${base}/logo.png`,
+          `${base}/images/logo.png`,
+          `${base}/images/logo.svg`,
+          `${base}/img/logo.png`,
+          `${base}/assets/logo.png`,
+        ];
+        console.log('Probing logo candidates:', logoCandidates);
+        for (const candidate of logoCandidates) {
+          const ok = await verifyUrl(candidate);
+          if (ok) {
+            ogLogo = candidate;
+            console.log('ogLogo from domain probe:', ogLogo);
+            break;
+          }
         }
+        if (!ogLogo) console.log('No domain-level logo found in probe');
       } catch { /* ignore */ }
     }
 
@@ -386,13 +401,14 @@ async function handleRequest(request: NextRequest): Promise<NextResponse> {
 
   const isB2B = campaignType === 'b2b';
 
-  const b2cPrompt = `Du bist ein präziser Schweizer Mediaplanungs-Experte.
+  const b2cPrompt = `Du bist ein präziser Schweizer Mediaplanungs-Experte und Werbetexter.
 Analysiere diesen Website-Content für eine B2C Werbekampagne in der Schweiz.
 
 ABSOLUTE REGELN:
 - Nutze NUR Informationen die EXPLIZIT im Content stehen
 - Halluziniere NICHTS — lieber null oder [] als falsch
 - Bei Unsicherheit IMMER null oder leeres Array []
+- Kein ß — schreibe ss statt ß (Schweizer Rechtschreibung)
 
 FELDDEFINITIONEN:
 - organisation: Exakter Firmenname aus Logo, H1 oder Footer. Wenn unklar: null
@@ -408,6 +424,10 @@ FELDDEFINITIONEN:
 - bildung: Aus Sprachniveau, Produktkomplexität, Berufsgruppen. "tief"=einfach, "mittel"=durchschnittlich, "hoch"=akademisch. Sonst null
 - auto: Aus Standort, Parkplatz, Mobilität, Lieferdienst. "kein_auto", "ein_auto", "mehrere_autos". Sonst null
 - sprache: Welche Sprachen werden auf der Website verwendet? "de", "fr", "it". Mindestens []
+- headlines: Genau 3 Werbeheadlines basierend auf dem echten Inhalt dieser Website. Format: [0]=klassisch/seriös (max 5 Wörter), [1]=frech/witzig mit Wortspiel (max 6 Wörter), [2]=emotional/persönlich (max 6 Wörter). Kein ß. Auf Deutsch.
+- sublines: Genau 2 kurze Sublines aus dem echten Seiteninhalt (z.B. Adresse, Slogan, Öffnungszeiten, Tagline). Wenn nicht vorhanden, erfinden als kurze ergänzende Aussage.
+- ctaText: Ein passender CTA-Button-Text (z.B. "Tisch reservieren →" für Restaurant, "Jetzt anfragen →" für Dienstleister, "Zum Angebot →" für Shop). Passt zum Geschäftstyp.
+- suggestedImageUrl: Falls im Markdown eine absolute Bild-URL (jpg/jpeg/png/webp) vorkommt die wie ein echtes Foto aussieht (kein Icon, kein Logo), gib die erste solche URL zurück. Sonst null.
 
 CONTENT:
 ${scrapedContent.substring(0, 5000)}
@@ -426,16 +446,21 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
   "kinder": null,
   "bildung": null,
   "auto": null,
-  "sprache": ["de"]
+  "sprache": ["de"],
+  "headlines": ["Headline 1", "Headline 2", "Headline 3"],
+  "sublines": ["Subline 1", "Subline 2"],
+  "ctaText": "Jetzt entdecken →",
+  "suggestedImageUrl": null
 }`;
 
-  const b2bPrompt = `Du bist ein präziser Schweizer Mediaplanungs-Experte.
+  const b2bPrompt = `Du bist ein präziser Schweizer Mediaplanungs-Experte und Werbetexter.
 Analysiere diesen Website-Content für eine B2B Werbekampagne in der Schweiz.
 
 ABSOLUTE REGELN:
 - Nutze NUR Informationen die EXPLIZIT im Content stehen
 - Halluziniere NICHTS — lieber null oder [] als falsch
 - Bei Unsicherheit IMMER null oder leeres Array []
+- Kein ß — schreibe ss statt ß (Schweizer Rechtschreibung)
 
 FELDDEFINITIONEN:
 - organisation: Exakter Firmenname aus Logo, H1 oder Footer. Wenn unklar: null
@@ -445,6 +470,10 @@ FELDDEFINITIONEN:
 - region: Nur wenn Schweizer Kanton, Stadt oder Adresse EXPLIZIT erwähnt. Kürzel: ZH, BE, LU, UR, SZ, OW, NW, GL, ZG, FR, SO, BS, BL, SH, AR, AI, SG, GR, AG, TG, TI, VD, VS, NE, GE, JU. Sonst []
 - sprache: Welche Sprachen werden auf der Website verwendet? "de", "fr", "it". Mindestens ["de"]
 - unternehmensgroesse: Array mit Unternehmensgrössenklassen der ZIELKUNDEN (nicht des Werbenden selbst). Mögliche Werte: "micro" (1–9 MA), "klein" (10–49 MA), "mittel" (50–249 MA), "gross" (250+ MA). Mehrere möglich. Wenn unklar: []
+- headlines: Genau 3 B2B-Werbeheadlines basierend auf dem echten Inhalt. Format: [0]=klassisch/professionell (max 5 Wörter), [1]=nutzenorientiert mit Wortspiel (max 6 Wörter), [2]=vertrauensbildend/persönlich (max 6 Wörter). Kein ß.
+- sublines: Genau 2 kurze Sublines aus dem echten Seiteninhalt (z.B. Tagline, Kernaussage, Kontakt). Wenn nicht vorhanden, kurze ergänzende B2B-Aussage erfinden.
+- ctaText: Ein passender B2B-CTA-Button-Text (z.B. "Jetzt anfragen →", "Beratung anfordern →", "Angebot einholen →"). Passt zum Geschäftstyp.
+- suggestedImageUrl: Falls im Markdown eine absolute Bild-URL (jpg/jpeg/png/webp) vorkommt die wie ein echtes Foto aussieht (kein Icon, kein Logo), gib die erste solche URL zurück. Sonst null.
 
 CONTENT:
 ${scrapedContent.substring(0, 5000)}
@@ -457,7 +486,11 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
   "nogaCode": null,
   "region": [],
   "sprache": ["de"],
-  "unternehmensgroesse": []
+  "unternehmensgroesse": [],
+  "headlines": ["Headline 1", "Headline 2", "Headline 3"],
+  "sublines": ["Subline 1", "Subline 2"],
+  "ctaText": "Jetzt anfragen →",
+  "suggestedImageUrl": null
 }`;
 
   try {
@@ -479,13 +512,28 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
         .replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); } catch { return ''; }
     })();
 
-    const headlines = [
-      `${orgName} – für Sie`,
-      `Wer braucht schon mehr als ${orgName}?`,
-      `${orgName} – nah bei Ihnen`,
-    ];
+    // Use Gemini headlines if valid, else fallback
+    const headlines = Array.isArray(geminiData.headlines) && geminiData.headlines.length === 3
+      ? geminiData.headlines as string[]
+      : [`${orgName} – für Sie`, `Wer braucht schon mehr als ${orgName}?`, `${orgName} – nah bei Ihnen`];
 
-    const meta = { needsManualInput: !org, isManualFallback: false, pageTitle, ogImage, ogLogo, favicon, themeColor: themeColor || '#C1666B', headlines };
+    const domain = (() => { try { return new URL(cleanUrl).hostname.replace('www.', ''); } catch { return ''; } })();
+    const sublines: string[] = Array.isArray(geminiData.sublines) && geminiData.sublines.length >= 2
+      ? [geminiData.sublines[0] as string, geminiData.sublines[1] as string]
+      : [domain, 'Jetzt online informieren'];
+
+    const ctaText: string = typeof geminiData.ctaText === 'string' && geminiData.ctaText
+      ? geminiData.ctaText
+      : (isB2B ? 'Jetzt anfragen →' : 'Jetzt entdecken →');
+
+    // Use Gemini suggestedImageUrl if ogImage still empty
+    const suggestedImageUrl: string = typeof geminiData.suggestedImageUrl === 'string' && geminiData.suggestedImageUrl
+      ? geminiData.suggestedImageUrl
+      : '';
+    const finalOgImage = ogImage || suggestedImageUrl;
+    if (!ogImage && suggestedImageUrl) console.log('ogImage from Gemini suggestion:', suggestedImageUrl);
+
+    const meta = { needsManualInput: !org, isManualFallback: false, pageTitle, ogImage: finalOgImage, ogLogo, favicon, themeColor: themeColor || '#C1666B', headlines, sublines, ctaText, suggestedImageUrl };
 
     const analysis = isB2B
       ? {
@@ -525,6 +573,9 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
       favicon: analysis.favicon,
       themeColor: analysis.themeColor,
       headlines: analysis.headlines,
+      sublines: analysis.sublines,
+      ctaText: analysis.ctaText,
+      suggestedImageUrl: analysis.suggestedImageUrl,
     }, null, 2));
 
     return NextResponse.json(analysis);
