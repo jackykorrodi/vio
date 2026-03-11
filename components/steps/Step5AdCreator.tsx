@@ -231,9 +231,10 @@ function AdPreview({
           {logoMode === 'image' && logoUrl ? (
             <img
               className="ac-logo-img"
-              src={logoUrl}
+              src={logoUrl.startsWith('http') ? `/api/proxy-image?url=${encodeURIComponent(logoUrl)}` : logoUrl}
               alt=""
-              style={{ height: sz.logo ?? 18, filter: 'none' }}
+              crossOrigin="anonymous"
+              style={{ height: sz.logo ?? 18 }}
             />
           ) : (
             <div className="ac-logo-txt" style={{ fontSize: sz.logo ?? 18, color: colors.logo }}>
@@ -327,6 +328,28 @@ function AdPreview({
           </div>
         )}
       </div>
+
+      {/* Quality checker badges */}
+      {(() => {
+        const warnings: { text: string; level: 'yellow' | 'red' }[] = [];
+        if (!bgUrl) warnings.push({ text: 'Kein Hintergrundbild', level: 'yellow' });
+        if (headline.length > 40) warnings.push({ text: 'Text zu lang', level: 'red' });
+        if (logoMode === 'image' && (sz.logo ?? 18) > height * 0.25) warnings.push({ text: 'Logo zu gross', level: 'yellow' });
+        if (warnings.length === 0) return null;
+        return (
+          <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', flexDirection: 'column', gap: 3, zIndex: 40, pointerEvents: 'none' }}>
+            {warnings.map((w, i) => (
+              <div key={i} style={{
+                background: w.level === 'yellow' ? 'rgba(232,168,56,0.88)' : 'rgba(224,82,82,0.88)',
+                color: 'white', fontSize: 9, fontWeight: 600,
+                padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap',
+              }}>
+                {w.text}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -383,9 +406,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [activeTab, setActiveTab] = useState<'dooh' | 'display'>('dooh');
 
   // ── Colors ──────────────────────────────────────────────────────────────────
-  const themeColor = ana?.themeColor || '#C1666B';
   const [colors, setColors] = useState<Colors>({
-    bg:     briefing.adBgColor     || themeColor,
+    bg:     briefing.adBgColor || ana?.themeColor || '#C1666B',
     hl:     briefing.adTextColor   || '#FFFFFF',
     sub:    '#FFFFFF',
     logo:   '#FFFFFF',
@@ -416,6 +438,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   // Load bg image, logo and theme color from analysis on mount (and whenever analysis becomes available)
   useEffect(() => {
+    console.log('[Step5] ana:', { themeColor: ana?.themeColor, ogImage: ana?.ogImage, ogLogo: ana?.ogLogo, favicon: ana?.favicon });
     if (!ana) return;
 
     // themeColor → colors.bg (only if user hasn't set a custom color in this session)
