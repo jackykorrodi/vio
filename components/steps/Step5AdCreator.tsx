@@ -438,7 +438,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   // Load bg image, logo and theme color from analysis on mount (and whenever analysis becomes available)
   useEffect(() => {
-    console.log('[Step5] ana:', { themeColor: ana?.themeColor, ogImage: ana?.ogImage, ogLogo: ana?.ogLogo, favicon: ana?.favicon });
+    console.log('[Step5] ANA DATA:', JSON.stringify(ana, null, 2));
     if (!ana) return;
 
     // themeColor → colors.bg (only if user hasn't set a custom color in this session)
@@ -456,8 +456,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       setBgThumb(bgSrc);
     }
 
-    // ogLogo → logoUrl
+    // Logo priority: saved data > ogLogo (full quality) > favicon (small, last resort)
     const rawLogo = briefing.adLogoImageData || ana.ogLogo || ana.favicon || '';
+    console.log('[Step5] logo source:', rawLogo ? (ana.ogLogo ? 'ogLogo' : ana.favicon ? 'favicon' : 'saved') : 'none', rawLogo);
     if (rawLogo) {
       setLogoUrl(rawLogo);
       setLogoThumb(rawLogo);

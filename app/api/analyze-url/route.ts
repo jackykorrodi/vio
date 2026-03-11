@@ -2,6 +2,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+/** Extract the highest-quality icon URL from raw HTML link tags. */
+function extractLargeIcon(html: string, baseUrl: string): string {
+  // Ordered by preference: apple-touch-icon, then large explicit sizes
+  const patterns = [
+    // apple-touch-icon (any attribute order)
+    /<link[^>]+rel=["']apple-touch-icon["'][^>]*href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon["']/i,
+    // 192×192
+    /<link[^>]+sizes=["']192x192["'][^>]*href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]*sizes=["']192x192["']/i,
+    // 180×180
+    /<link[^>]+sizes=["']180x180["'][^>]*href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]*sizes=["']180x180["']/i,
+    // 128×128
+    /<link[^>]+sizes=["']128x128["'][^>]*href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]*sizes=["']128x128["']/i,
+  ];
+  let base = '';
+  try { const u = new URL(baseUrl); base = `${u.protocol}//${u.host}`; } catch { /* ignore */ }
+
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m?.[1]) {
+      const href = m[1].trim();
+      if (href.startsWith('http')) return href;
+      if (href.startsWith('//'))   return `https:${href}`;
+      if (href.startsWith('/'))    return `${base}${href}`;
+      return href;
+    }
+  }
+  return '';
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('=== API CALLED ===');
@@ -59,7 +92,7 @@ export async function POST(request: NextRequest) {
         setTimeout(() => reject(new Error('Firecrawl timeout')), 20000)
       );
       const crawlResult = await Promise.race([
-        firecrawl.scrape(cleanUrl, { formats: ['markdown'], waitFor: 2000 }),
+        firecrawl.scrape(cleanUrl, { formats: ['markdown', 'html'], waitFor: 2000 }),
         firecrawlTimeout,
       ]);
       type CrawlMeta = {
@@ -69,19 +102,36 @@ export async function POST(request: NextRequest) {
         favicon?: string;
         themeColor?: string;
         'theme-color'?: string;
+        [key: string]: unknown;
       };
-      type CrawlResult = { markdown?: string; metadata?: CrawlMeta };
+      type CrawlResult = { markdown?: string; html?: string; metadata?: CrawlMeta };
       const typed = crawlResult as CrawlResult;
       scrapedContent = typed.markdown || '';
+
+      // ── DIAGNOSE: log full raw metadata ──────────────────────────────────
+      console.log('=== FIRECRAWL METADATA (full) ===', JSON.stringify(typed.metadata, null, 2));
+      console.log('HTML length:', (typed.html || '').length);
+      // ─────────────────────────────────────────────────────────────────────
+
       pageTitle = typed.metadata?.title || '';
-      ogImage = typed.metadata?.ogImage || '';
-      ogLogo = typed.metadata?.ogLogo || '';
-      favicon = typed.metadata?.favicon || '';
+      ogImage   = typed.metadata?.ogImage || '';
+      ogLogo    = typed.metadata?.ogLogo  || '';
+      favicon   = typed.metadata?.favicon || '';
       themeColor = typed.metadata?.themeColor || typed.metadata?.['theme-color'] || '';
-      console.log('Title:', pageTitle);
-      console.log('ogImage:', ogImage);
-      console.log('themeColor:', themeColor);
-      console.log('Content length:', scrapedContent.length);
+
+      // ── Logo quality: if ogLogo is missing, extract large icon from HTML ──
+      if (!ogLogo && typed.html) {
+        ogLogo = extractLargeIcon(typed.html, cleanUrl);
+        if (ogLogo) console.log('=== LOGO from HTML icon extraction:', ogLogo);
+      }
+
+      console.log('=== EXTRACTED ===');
+      console.log('  pageTitle:', pageTitle);
+      console.log('  ogImage:', ogImage);
+      console.log('  ogLogo:', ogLogo);
+      console.log('  favicon:', favicon);
+      console.log('  themeColor:', themeColor);
+      console.log('  Content length:', scrapedContent.length);
     } catch (e) {
       console.error('Firecrawl error:', e);
       return NextResponse.json({ isManualFallback: true }, { status: 200 });
@@ -241,6 +291,16 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
             favicon,
             themeColor,
           };
+
+      // ── DIAGNOSE: log what is returned to the client ─────────────────────
+      console.log('=== FINAL RESPONSE ===', JSON.stringify({
+        organisation: analysis.organisation,
+        ogImage: analysis.ogImage,
+        ogLogo: analysis.ogLogo,
+        favicon: analysis.favicon,
+        themeColor: analysis.themeColor,
+      }, null, 2));
+      // ─────────────────────────────────────────────────────────────────────
 
       return NextResponse.json(analysis);
     } catch (e) {
