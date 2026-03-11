@@ -799,23 +799,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                 Lade dein Logo hoch für beste Qualität.
               </div>
               {logoThumb && (
-                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }}>
-                  <img
-                    className="ac-img-thumb"
-                    src={logoThumb}
-                    alt=""
-                    style={{ filter: 'none', background: '#f0f0f0', objectFit: 'contain' }}
-                  />
-                  {logoIsLowRes && (
-                    <div style={{
-                      position: 'absolute', top: 2, right: 2,
-                      background: 'rgba(232,168,56,0.92)', color: 'white',
-                      fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
-                      lineHeight: 1.3, maxWidth: 90, textAlign: 'center',
-                    }}>
-                      Niedrige Auflösung – bitte Logo hochladen
-                    </div>
-                  )}
+                <img
+                  className="ac-img-thumb"
+                  src={logoThumb}
+                  alt=""
+                  style={{ filter: 'none', background: '#f0f0f0', objectFit: 'contain', marginBottom: logoIsLowRes ? 3 : 8 }}
+                />
+              )}
+              {logoThumb && logoIsLowRes && (
+                <div style={{ fontSize: 11, color: '#E8A838', marginBottom: 8, lineHeight: 1.4 }}>
+                  ⚠ Niedrige Auflösung – Logo hochladen für beste Qualität
                 </div>
               )}
               <label style={{
@@ -852,12 +845,20 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             Lade dein bestes Foto hoch – ideal ein Bild von deinem Produkt oder Lokal (min. 1200px breit).
           </div>
           {bgThumb && <img className="ac-img-thumb" src={bgThumb} alt="" style={{ marginBottom: 8 }} />}
+          <input
+            type="url"
+            className="ac-img-inp"
+            placeholder="Bild-URL…"
+            value={bgUrl.startsWith('/api/proxy') || bgUrl.startsWith('data:') ? '' : bgUrl}
+            onChange={e => loadBgFromUrl(e.target.value)}
+            style={{ width: '100%', marginBottom: 8 }}
+          />
           <label style={{
             display: 'block', background: '#C1666B', color: 'white', textAlign: 'center',
             borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 600,
             marginBottom: 8, cursor: 'pointer',
           }}>
-            📁 Foto hochladen
+            📷 Bild hochladen
             <input
               ref={bgFileRef}
               type="file"
@@ -866,14 +867,6 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               onChange={e => e.target.files?.[0] && loadBgFromFile(e.target.files[0])}
             />
           </label>
-          <input
-            type="url"
-            className="ac-img-inp"
-            placeholder="oder Bild-URL…"
-            value={bgUrl.startsWith('/api/proxy') || bgUrl.startsWith('data:') ? '' : bgUrl}
-            onChange={e => loadBgFromUrl(e.target.value)}
-            style={{ width: '100%' }}
-          />
           {qualInfo && (
             <div className="ac-qual-row" style={{ marginTop: 6 }}>
               <div className={`ac-qdot ${qualInfo.cls}`} />
@@ -1048,7 +1041,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                   <div className="ac-format-spec">1080 × 1920 px</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0', minHeight: 469, overflow: 'visible' }}>
                 <AdPreview fmtId="hoch" width={259} height={461} {...previewProps} />
               </div>
             </div>
