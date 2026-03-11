@@ -437,18 +437,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const dragRef   = useRef<DragState | null>(null);
   const anaApplied = useRef(false); // guard: apply initial ana values only once
 
-  // Apply analysis values (bg image, logo, theme color) on first valid ana — run once.
+  // Apply analysis values (bg image, logo) on first valid ana — run once.
+  // themeColor is already applied instantly via useState default.
   useEffect(() => {
-    // Re-run whenever ana changes, but only apply once (first valid value)
     if (!ana || anaApplied.current) return;
     anaApplied.current = true;
 
     console.log('[Step5] ANA DATA:', JSON.stringify(ana, null, 2));
-
-    // themeColor → colors.bg (only if user hasn't set a custom color yet)
-    if (ana.themeColor && !briefing.adBgColor) {
-      setColors(prev => ({ ...prev, bg: ana.themeColor! }));
-    }
 
     // ogImage → bgUrl (proxy external URLs to avoid CORS)
     const rawBg = briefing.adBgImageData || ana.ogImage || '';
@@ -796,27 +791,39 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           </div>
         )}
 
-        {logoMode === 'image' && (
-          <div className="ac-fg">
-            {/* FIX #4: sidebar thumb shown at full color, no filter */}
-            {logoThumb && (
-              <img
-                className="ac-img-thumb"
-                src={logoThumb}
-                alt=""
-                style={{ filter: 'none', background: '#f0f0f0', objectFit: 'contain' }}
-              />
-            )}
-            <div className="ac-img-row">
-              <input
-                type="url"
-                className="ac-img-inp"
-                placeholder="https://… (auto befüllt)"
-                value={logoUrl}
-                onChange={e => { setLogoUrl(e.target.value); setLogoThumb(e.target.value); }}
-              />
-              <label className="ac-img-upload">
-                📁
+        {logoMode === 'image' && (() => {
+          const logoIsLowRes = !!(logoUrl && (logoUrl.includes('google.com/s2/favicons') || /favicon/i.test(logoUrl)));
+          return (
+            <div className="ac-fg">
+              <div style={{ fontSize: 11, color: '#8a7a67', marginBottom: 8, lineHeight: 1.5 }}>
+                Lade dein Logo hoch für beste Qualität.
+              </div>
+              {logoThumb && (
+                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }}>
+                  <img
+                    className="ac-img-thumb"
+                    src={logoThumb}
+                    alt=""
+                    style={{ filter: 'none', background: '#f0f0f0', objectFit: 'contain' }}
+                  />
+                  {logoIsLowRes && (
+                    <div style={{
+                      position: 'absolute', top: 2, right: 2,
+                      background: 'rgba(232,168,56,0.92)', color: 'white',
+                      fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
+                      lineHeight: 1.3, maxWidth: 90, textAlign: 'center',
+                    }}>
+                      Niedrige Auflösung – bitte Logo hochladen
+                    </div>
+                  )}
+                </div>
+              )}
+              <label style={{
+                display: 'block', background: '#C1666B', color: 'white', textAlign: 'center',
+                borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 600,
+                marginBottom: 8, cursor: 'pointer',
+              }}>
+                📁 Logo hochladen
                 <input
                   ref={logoFileRef}
                   type="file"
@@ -825,36 +832,50 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                   onChange={e => e.target.files?.[0] && loadLogoFromFile(e.target.files[0])}
                 />
               </label>
+              <input
+                type="url"
+                className="ac-img-inp"
+                placeholder="oder Logo-URL…"
+                value={logoUrl.startsWith('data:') ? '' : logoUrl}
+                onChange={e => { setLogoUrl(e.target.value); setLogoThumb(e.target.value); }}
+                style={{ width: '100%' }}
+              />
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Hintergrundbild ── */}
         <div className="ac-stitle">Hintergrundbild</div>
 
         <div className="ac-fg">
-          {bgThumb && <img className="ac-img-thumb" src={bgThumb} alt="" />}
-          <div className="ac-img-row">
-            <input
-              type="url"
-              className="ac-img-inp"
-              placeholder="https://… (auto befüllt)"
-              value={bgUrl.startsWith('/api/proxy') ? '' : bgUrl}
-              onChange={e => loadBgFromUrl(e.target.value)}
-            />
-            <label className="ac-img-upload">
-              📁
-              <input
-                ref={bgFileRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={e => e.target.files?.[0] && loadBgFromFile(e.target.files[0])}
-              />
-            </label>
+          <div style={{ fontSize: 11, color: '#8a7a67', marginBottom: 8, lineHeight: 1.5 }}>
+            Lade dein bestes Foto hoch – ideal ein Bild von deinem Produkt oder Lokal (min. 1200px breit).
           </div>
+          {bgThumb && <img className="ac-img-thumb" src={bgThumb} alt="" style={{ marginBottom: 8 }} />}
+          <label style={{
+            display: 'block', background: '#C1666B', color: 'white', textAlign: 'center',
+            borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 600,
+            marginBottom: 8, cursor: 'pointer',
+          }}>
+            📁 Foto hochladen
+            <input
+              ref={bgFileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={e => e.target.files?.[0] && loadBgFromFile(e.target.files[0])}
+            />
+          </label>
+          <input
+            type="url"
+            className="ac-img-inp"
+            placeholder="oder Bild-URL…"
+            value={bgUrl.startsWith('/api/proxy') || bgUrl.startsWith('data:') ? '' : bgUrl}
+            onChange={e => loadBgFromUrl(e.target.value)}
+            style={{ width: '100%' }}
+          />
           {qualInfo && (
-            <div className="ac-qual-row">
+            <div className="ac-qual-row" style={{ marginTop: 6 }}>
               <div className={`ac-qdot ${qualInfo.cls}`} />
               <div className="ac-qual-txt">{qualInfo.text}</div>
             </div>
@@ -904,11 +925,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
 
         {/* ── Farben ── */}
-        {/* FIX #6: 2-col color grid with BG on full width first */}
         <div className="ac-stitle">Farben</div>
 
         <div className="ac-fg">
-          <label>Hintergrundfarbe / Overlay</label>
+          <label>Markenfarbe</label>
+          <div style={{ fontSize: 11, color: '#8a7a67', marginBottom: 6, lineHeight: 1.4 }}>
+            Wir haben eine Farbe vorgeschlagen – passt sie zu deiner Marke?
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="color"
