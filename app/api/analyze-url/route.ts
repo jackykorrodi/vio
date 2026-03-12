@@ -523,18 +523,14 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
     const clean      = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const geminiData = JSON.parse(clean);
 
-    const org = geminiData.organisation as string | null;
-    const orgName = org || (() => {
-      try { return new URL(cleanUrl).hostname.replace('www.', '').split('.')[0]
-        .replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); } catch { return ''; }
-    })();
+    const domain = (() => { try { return new URL(cleanUrl).hostname.replace('www.', ''); } catch { return ''; } })();
+    const org = (geminiData.organisation as string | null)?.trim() || null;
+    const orgName = org || domain.split('.')[0].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || domain;
 
     // Use Gemini headlines if valid, else fallback
     const headlines = Array.isArray(geminiData.headlines) && geminiData.headlines.length === 3
       ? geminiData.headlines as string[]
       : [`${orgName} – für Sie`, `Wer braucht schon mehr als ${orgName}?`, `${orgName} – nah bei Ihnen`];
-
-    const domain = (() => { try { return new URL(cleanUrl).hostname.replace('www.', ''); } catch { return ''; } })();
     const sublines: string[] = Array.isArray(geminiData.sublines) && geminiData.sublines.length >= 2
       ? [geminiData.sublines[0] as string, geminiData.sublines[1] as string]
       : [domain, 'Jetzt online informieren'];
@@ -595,7 +591,6 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
       suggestedImageUrl: analysis.suggestedImageUrl,
     }, null, 2));
 
-    console.log('API returning headlines:', JSON.stringify(analysis?.headlines));
     return NextResponse.json(analysis);
 
   } catch (e) {

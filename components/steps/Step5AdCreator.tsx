@@ -357,7 +357,6 @@ function AdPreview({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
-  console.log('STEP5 MOUNT - analysis:', JSON.stringify(briefing?.analysis?.headlines));
   const ana        = briefing.analysis;
   const domain     = extractDomain(briefing.url);
   const themeColor = ana?.themeColor || '#C1666B';
@@ -419,12 +418,6 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const bgFileRef   = useRef<HTMLInputElement>(null);
   const initialized = useRef(false);
 
-  // ── Debug: log analysis data on mount ──────────────────────────────────────
-  useEffect(() => {
-    console.log('ANALYSIS DATA:', JSON.stringify(briefing.analysis, null, 2));
-    console.log('headlines:', briefing.analysis?.headlines);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   // ── Init chips when analysis arrives ───────────────────────────────────
   useEffect(() => {
     const ana = briefing.analysis;
@@ -433,6 +426,12 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     setActiveHlIdx(0);
     if (!briefing.adSubline && ana.sublines?.[0]) setSubline(ana.sublines[0]);
     if (!briefing.adCta && ana.ctaText) setCta(ana.ctaText);
+    if (!briefing.adBgColor && ana.themeColor) setColors(c => ({ ...c, bg: ana.themeColor! }));
+    if (!briefing.adBgImageData && ana.ogImage) {
+      setBgImage(ana.ogImage);
+      setBgUrlInput(ana.ogImage);
+      checkBgQuality(proxyUrl(ana.ogImage)).then(setBgQual);
+    }
   }, [briefing.analysis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Init from analysis on mount ────────────────────────────────────────────
@@ -728,7 +727,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
         <div style={sFg}>
           <label style={sLbl}>Headline</label>
-          <div style={{color:'red',fontSize:12}}>DEBUG: {JSON.stringify(briefing?.analysis?.headlines)}</div>
+
           {hlSugs.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {hlSugs.map((h, i) => (
