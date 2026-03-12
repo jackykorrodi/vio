@@ -258,7 +258,7 @@ function AdPreview({
           backgroundColor: colors.bg,
           backgroundImage: bgImage ? `url(${bgImage})` : undefined,
           backgroundSize: 'cover',
-          backgroundPosition: bgPos,
+          backgroundPosition: 'center',
           filter: `brightness(${bgBrightness / 100})`,
           transition: 'filter .2s',
         }} />
@@ -279,7 +279,7 @@ function AdPreview({
 
       {/* Drag layer: sibling of BG clip, no overflow restriction */}
       <div ref={layerRef} style={{ position: 'absolute', inset: 0, zIndex: 3 }}
-           onClick={() => onSelect(fmtId, '')}>
+           onMouseDown={e => { if (e.target === e.currentTarget) onSelect(fmtId, ''); }}>
 
         {/* Logo */}
         <div className={elCls('logo')}
@@ -421,6 +421,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   // ── Debug: log analysis data on mount ──────────────────────────────────────
   useEffect(() => {
     console.log('ANALYSIS DATA:', JSON.stringify(briefing.analysis, null, 2));
+    console.log('headlines:', briefing.analysis?.headlines);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Init from analysis on mount ────────────────────────────────────────────
