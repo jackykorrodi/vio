@@ -122,6 +122,16 @@ function checkImgUrl(url: string): Promise<boolean> {
   });
 }
 
+function loadGoogleFont(name: string): void {
+  if (typeof document === 'undefined') return;
+  const id = 'gf-' + name.replace(/\s/g, '-');
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id; link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}:wght@300;400;600;700&display=swap`;
+  document.head.appendChild(link);
+}
+
 function checkBgQuality(url: string): Promise<{ level: 'good'|'warn'|'bad'; w: number; h: number }> {
   return new Promise(resolve => {
     const img = new Image();
@@ -261,7 +271,7 @@ function AdPreview({
           <Toolbar id="logo" />
           {logoMode === 'image' && logoUrl
             ? <img src={proxyUrl(logoUrl)} alt="logo"
-                   style={{ height: sz.logo * 2, display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
+                   style={{ height: sz.logo * 2, width: 'auto', maxWidth: 130, display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             : <div className="v15-ad-logo-txt"
                    style={{ fontSize: sz.logo, fontFamily: stack, fontWeight: 500, letterSpacing: '0.5px', opacity: 0.9, color: colors.logo, whiteSpace: 'nowrap' }}>
@@ -336,6 +346,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   const hlSugs  = ana?.headlines ?? [];
   const subSugs = ana?.sublines  ?? [];
+  const ctaSugs = ana?.ctaText ? [ana.ctaText] : [];
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [tab,       setTab]      = useState<'dooh'|'display'>('dooh');
@@ -377,6 +388,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [positions, setPositions] = useState<AllPositions>(structuredClone(DEF_POS));
   const [sizes,     setSizes]     = useState<AllSizes>(structuredClone(DEF_SIZE));
   const [selectedEl, setSelectedEl] = useState<string|null>(null);
+  const [resumeEmail, setResumeEmail] = useState(briefing.email || '');
+  const [resumeSent, setResumeSent] = useState(false);
+  const [showResumeInput, setShowResumeInput] = useState(false);
 
   const dragRef     = useRef<DragState|null>(null);
   const logoFileRef = useRef<HTMLInputElement>(null);
@@ -390,13 +404,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
     // Font section
     const detected = ana?.fontFamily || null;
+    const primaryFont = detected || 'Outfit';
+    const similars = FONT_SIMILAR[primaryFont] ?? FONT_SIMILAR['default'];
+    const opts = [
+      { name: primaryFont,           sub: detected ? 'Website-Font' : 'Standard' },
+      { name: similars[0] ?? 'DM Sans', sub: 'Ähnlich' },
+      { name: similars[1] ?? 'Inter',   sub: 'Ähnlich' },
+    ];
+    setFontOptions(opts);
+    opts.forEach(f => loadGoogleFont(f.name));
     if (detected) {
-      const similars = FONT_SIMILAR[detected] ?? FONT_SIMILAR['default'];
-      setFontOptions([
-        { name: detected,           sub: 'Website-Font' },
-        { name: similars[0] ?? 'DM Sans', sub: 'Ähnlich' },
-        { name: similars[1] ?? 'Inter',   sub: 'Ähnlich' },
-      ]);
       setFontSubtitle('von der Website');
       setAdFont(detected);
     }
@@ -421,6 +438,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         baseUrl ? `${baseUrl}/apple-touch-icon-precomposed.png` : '',
         ana?.ogLogo   || '',
         ana?.favicon  || '',
+        domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : '',
       ].filter(Boolean);
       for (const url of candidates) {
         const ok = await checkImgUrl(proxyUrl(url));
@@ -434,20 +452,19 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       setLogoMode('text');
     })();
 
-    // BG image probe
+    // BG image – set directly from ogImage (matching HTML applyBgImage logic)
     if (!briefing.adBgImageData) {
       const ogImg = ana?.ogImage || '';
       if (ogImg) {
-        checkImgUrl(proxyUrl(ogImg)).then(ok => {
-          if (ok) {
-            setBgImage(ogImg);
-            setBgUrlInput(ogImg);
-            checkBgQuality(proxyUrl(ogImg)).then(setBgQual);
-          }
-        });
+        setBgImage(ogImg);
+        setBgUrlInput(ogImg);
+        checkBgQuality(proxyUrl(ogImg)).then(setBgQual);
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Inject Google Font whenever adFont changes
+  useEffect(() => { if (adFont) loadGoogleFont(adFont); }, [adFont]);
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const handleDragStart = useCallback((fmtId: string, elId: string, e: React.MouseEvent, layerEl: HTMLElement) => {
@@ -532,6 +549,20 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   // ── Focus ──────────────────────────────────────────────────────────────────
   function handleFocusCell(pos: string) {
     setBgPosByFmt(p => ({ ...p, [focusFmt]: pos }));
+  }
+
+  // ── Resume link ─────────────────────────────────────────────────────────────
+  async function handleSendResume() {
+    if (!resumeEmail || !resumeEmail.includes('@')) return;
+    try {
+      await fetch('/api/send-resume-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resumeEmail, sessionId: briefing.sessionId || '' }),
+      });
+      setResumeSent(true);
+      setShowResumeInput(false);
+    } catch { /* silent */ }
   }
 
   // ── mkProps ────────────────────────────────────────────────────────────────
@@ -690,6 +721,17 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
         <div style={sFg}>
           <label style={sLbl}>CTA-Button</label>
+          {ctaSugs.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
+              {ctaSugs.map(s => (
+                <div key={s}
+                     className={`v15-sug-chip${cta === s ? ' active' : ''}`}
+                     onClick={() => setCta(s)}>
+                  {s}
+                </div>
+              ))}
+            </div>
+          )}
           <input style={sInp} value={cta} onChange={e => setCta(e.target.value)} placeholder="Mehr erfahren" />
         </div>
 
@@ -921,6 +963,27 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                   style={{ width: '100%', background: '#C1666B', color: 'white', fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, padding: 11, borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'all .15s' }}>
             ✓ Werbemittel einreichen
           </button>
+          {resumeSent ? (
+            <div style={{ fontSize: 11, color: '#3A9E7A', textAlign: 'center', padding: '6px 0' }}>
+              ✓ Link gesendet an {resumeEmail}
+            </div>
+          ) : showResumeInput ? (
+            <div style={{ display: 'flex', gap: 5 }}>
+              <input style={{ ...sInp, flex: 1, padding: '7px 9px' }}
+                     type="email" value={resumeEmail} onChange={e => setResumeEmail(e.target.value)}
+                     placeholder="Ihre E-Mail"
+                     onKeyDown={e => { if (e.key === 'Enter') handleSendResume(); }} />
+              <button onClick={handleSendResume}
+                      style={{ background: '#5C4F3D', color: 'white', border: 'none', borderRadius: 7, padding: '0 10px', cursor: 'pointer', fontSize: 11, fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}>
+                Senden
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowResumeInput(true)}
+                    style={{ width: '100%', background: 'transparent', color: '#5C4F3D', border: '1.5px solid #ede8e1', borderRadius: 8, padding: 8, fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer' }}>
+              📎 Link zum Weiterarbeiten senden
+            </button>
+          )}
           <button onClick={() => { updateBriefing({ werbemittel: 'spaeter' }); nextStep(); }}
                   style={{ width: '100%', background: 'transparent', color: '#5C4F3D', border: '1.5px solid #ede8e1', borderRadius: 8, padding: 8, fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer' }}>
             Später einschicken
