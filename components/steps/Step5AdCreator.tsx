@@ -357,6 +357,7 @@ function AdPreview({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
+  console.log('STEP5 MOUNT - analysis:', JSON.stringify(briefing?.analysis?.headlines));
   const ana        = briefing.analysis;
   const domain     = extractDomain(briefing.url);
   const themeColor = ana?.themeColor || '#C1666B';
@@ -727,6 +728,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
         <div style={sFg}>
           <label style={sLbl}>Headline</label>
+          <div style={{color:'red',fontSize:12}}>DEBUG: {JSON.stringify(briefing?.analysis?.headlines)}</div>
           {hlSugs.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {hlSugs.map((h, i) => (
