@@ -7,6 +7,7 @@ import Step1Entry from '@/components/steps/Step1Entry';
 import Step2Analysis from '@/components/steps/Step2Analysis';
 import Step3Audience from '@/components/steps/Step3Audience';
 import Step4Budget from '@/components/steps/Step4Budget';
+import Step5Creative from '@/components/steps/Step5Creative';
 import Step5AdCreator from '@/components/steps/Step5AdCreator';
 import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
@@ -25,6 +26,8 @@ export default function CampaignFlow() {
   const resumeParam = searchParams.get('resume') || '';
 
   const [currentStep, setCurrentStep] = useState(1);
+  // Sub-phase for step 5: 'creative' shows option cards, 'adcreator' shows the Ad Creator preview
+  const [step5Phase, setStep5Phase] = useState<'creative' | 'adcreator'>('creative');
   const [briefing, setBriefing] = useState<BriefingData>({
     ...initialBriefing,
     url: urlParam,
@@ -38,20 +41,21 @@ export default function CampaignFlow() {
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
-  // Steps 2 and 3 both go back to step 1:
-  // - Step 2 (analysis loader) should abort and return to URL entry
-  // - Step 3 should let the user correct the URL if needed
-  // Steps 4–6 go to the immediately previous step.
+  // Steps 2 and 3 both go back to step 1.
+  // Step 5 adcreator phase goes back to the creative selection phase.
   const prevStep = () => {
+    if (currentStep === 5 && step5Phase === 'adcreator') {
+      setStep5Phase('creative');
+      return;
+    }
     setCurrentStep(prev => (prev === 2 || prev === 3) ? 1 : prev - 1);
   };
 
   // Reset full flow when user submits a new URL from step 1.
-  // Incrementing analysisRunKey forces a remount of Step2Analysis
-  // even if currentStep was already 2 (setState(2) would be a no-op).
   const onRestart = (url: string) => {
     setBriefing(prev => ({ ...initialBriefing, url, campaignType: prev.campaignType }));
     setAnalysisRunKey(k => k + 1);
+    setStep5Phase('creative');
     setCurrentStep(2);
   };
 
@@ -226,7 +230,17 @@ export default function CampaignFlow() {
         />
       )}
 
-      {currentStep === 5 && (
+      {currentStep === 5 && step5Phase === 'creative' && (
+        <Step5Creative
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          onUploadSelected={() => setStep5Phase('adcreator')}
+          isActive
+        />
+      )}
+
+      {currentStep === 5 && step5Phase === 'adcreator' && (
         <Step5AdCreator
           briefing={briefing}
           updateBriefing={updateBriefing}
