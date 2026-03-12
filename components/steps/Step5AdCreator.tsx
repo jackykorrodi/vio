@@ -148,6 +148,34 @@ function checkBgQuality(url: string): Promise<{ level: 'good'|'warn'|'bad'; w: n
   });
 }
 
+// ── ElToolbar – file-level so React never unmounts/remounts it on re-render ───
+interface ElToolbarProps {
+  id: string;
+  fmtId: string;
+  delta?: number;
+  onSizeChange: (fmtId: string, id: string, delta: number) => void;
+}
+function ElToolbar({ id, fmtId, delta = 1, onSizeChange }: ElToolbarProps) {
+  const isQr = id === 'qr';
+  return (
+    // No inline display style – visibility controlled purely by CSS:
+    // .v15-draggable.sel .v15-el-tb { display: flex }
+    <div className="v15-el-tb">
+      <button className="v15-tb-b"
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, -delta); }}>
+        {isQr ? '−' : 'A−'}
+      </button>
+      <div className="v15-tb-sep" />
+      <button className="v15-tb-b"
+              onMouseDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, delta); }}>
+        {isQr ? '+' : 'A+'}
+      </button>
+    </div>
+  );
+}
+
 // ── AdPreview ──────────────────────────────────────────────────────────────────
 interface AdPreviewProps {
   fmtId: string;
@@ -213,22 +241,6 @@ function AdPreview({
     if (layerRef.current) onDragStart(fmtId, id, e, layerRef.current);
   }
 
-  function Toolbar({ id, delta = 1 }: { id: string; delta?: number }) {
-    return (
-      <div className="v15-el-tb" style={{ display: isSel(id) ? 'flex' : 'none' }}>
-        <button className="v15-tb-b" onMouseDown={e => e.stopPropagation()}
-                onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, -delta); }}>
-          {delta > 1 ? '−' : 'A−'}
-        </button>
-        <div className="v15-tb-sep" />
-        <button className="v15-tb-b" onMouseDown={e => e.stopPropagation()}
-                onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, delta); }}>
-          {delta > 1 ? '+' : 'A+'}
-        </button>
-      </div>
-    );
-  }
-
   const ctaPad = fmtId==='quer' ? '10px 26px' : fmtId==='hoch' ? '5px 12px' : fmtId==='wide' ? '10px 22px' : fmtId==='med' ? '6px 14px' : '8px 20px';
 
   return (
@@ -273,7 +285,7 @@ function AdPreview({
         <div className={elCls('logo')}
              style={elStyle('logo', isWide ? { transform: 'translateY(-50%)' } : undefined)}
              onMouseDown={e => handleDown('logo', e)}>
-          <Toolbar id="logo" />
+          <ElToolbar id="logo" fmtId={fmtId} onSizeChange={onSizeChange} />
           {logoMode === 'image' && logoUrl
             ? <img src={proxyUrl(logoUrl)} alt="logo"
                    style={{ height: sz.logo * 2, width: 'auto', maxWidth: 130, display: 'block', objectFit: 'contain' }}
@@ -289,7 +301,7 @@ function AdPreview({
         <div className={elCls('hl')}
              style={elStyle('hl', { maxWidth: fmtId==='quer' ? '60%' : fmtId==='hoch' ? '82%' : fmtId==='wide' ? '52%' : '86%' })}
              onMouseDown={e => handleDown('hl', e)}>
-          <Toolbar id="hl" delta={2} />
+          <ElToolbar id="hl" fmtId={fmtId} delta={2} onSizeChange={onSizeChange} />
           <div className="v15-ad-hl"
                style={{ fontSize: sz.hl, fontFamily: stack, fontWeight: fw, lineHeight: 1.1, color: colors.hl }}>
             {headline || 'Ihre Werbebotschaft'}
@@ -299,7 +311,7 @@ function AdPreview({
         {/* Subline */}
         {subline && (
           <div className={elCls('sub')} style={elStyle('sub')} onMouseDown={e => handleDown('sub', e)}>
-            <Toolbar id="sub" />
+            <ElToolbar id="sub" fmtId={fmtId} onSizeChange={onSizeChange} />
             <div className="v15-ad-sub"
                  style={{ fontSize: sz.sub, fontFamily: stack, fontWeight: subFw, color: colors.sub, opacity: 0.85, whiteSpace: 'nowrap' }}>
               {subline}
@@ -311,7 +323,7 @@ function AdPreview({
         <div className={elCls('cta')}
              style={elStyle('cta', isWide ? { transform: 'translateY(-50%)' } : undefined)}
              onMouseDown={e => handleDown('cta', e)}>
-          <Toolbar id="cta" />
+          <ElToolbar id="cta" fmtId={fmtId} onSizeChange={onSizeChange} />
           <div className="v15-ad-cta"
                style={{ fontSize: sz.cta, color: colors.ctaTxt, background: colors.ctaBg, padding: ctaPad, borderRadius: 100, fontFamily: "'Outfit',sans-serif", fontWeight: 600, display: 'inline-block', whiteSpace: 'nowrap' }}>
             {cta || 'Mehr erfahren'}
@@ -321,7 +333,7 @@ function AdPreview({
         {/* Domain – DOOH only, not wide */}
         {domain && !isWide && (
           <div className={elCls('domain')} style={elStyle('domain')} onMouseDown={e => handleDown('domain', e)}>
-            <Toolbar id="domain" />
+            <ElToolbar id="domain" fmtId={fmtId} onSizeChange={onSizeChange} />
             <div style={{ fontSize: sz.domain, fontFamily: "'Outfit',sans-serif", color: colors.domain, opacity: fmtId==='quer' ? 0.55 : 0.5, whiteSpace: 'nowrap' }}>
               {domain}
             </div>
@@ -331,7 +343,7 @@ function AdPreview({
         {/* QR – DOOH only */}
         {lpUrl && (fmtId === 'quer' || fmtId === 'hoch') && (
           <div className={elCls('qr')} style={elStyle('qr')} onMouseDown={e => handleDown('qr', e)}>
-            <Toolbar id="qr" delta={4} />
+            <ElToolbar id="qr" fmtId={fmtId} delta={4} onSizeChange={onSizeChange} />
             <div className="v15-ad-qr"
                  style={{ width: sz.qr, height: sz.qr, background: 'white', borderRadius: 4, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <QRCodeSVG value={lpUrl.startsWith('http') ? lpUrl : 'https://' + lpUrl} size={sz.qr - 6} />
@@ -358,6 +370,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [headline,  setHeadline] = useState(briefing.adHeadline  || hlSugs[0]  || '');
   const [subline,   setSubline]  = useState(briefing.adSubline   || subSugs[0] || '');
   const [cta,       setCta]      = useState(briefing.adCta       || ana?.ctaText || 'Mehr erfahren');
+  // Active chip indices – mirrors HTML .sug-chip.active class approach (index -1 = none)
+  const [activeHlIdx,  setActiveHlIdx]  = useState<number>(hlSugs.length  > 0 ? 0 : -1);
+  const [activeSubIdx, setActiveSubIdx] = useState<number>(subSugs.length > 0 ? 0 : -1);
+  const [activeCtaIdx, setActiveCtaIdx] = useState<number>(ctaSugs.length > 0 ? 0 : -1);
   const [lpUrl,     setLpUrl]    = useState(briefing.url || '');
   const [org,       setOrg]      = useState(briefing.adLogoText  || ana?.organisation || '');
   const [logoMode,  setLogoMode] = useState<'text'|'image'>(briefing.adLogoMode || 'image');
@@ -413,9 +429,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     initialized.current = true;
 
     // Populate text fields from analysis if not already saved
-    if (!briefing.adHeadline && ana?.headlines?.[0]) setHeadline(ana.headlines[0]);
-    if (!briefing.adSubline  && ana?.sublines?.[0])  setSubline(ana.sublines[0]);
-    if (!briefing.adCta      && ana?.ctaText)         setCta(ana.ctaText);
+    if (!briefing.adHeadline && ana?.headlines?.[0]) { setHeadline(ana.headlines[0]); setActiveHlIdx(0); }
+    if (!briefing.adSubline  && ana?.sublines?.[0])  { setSubline(ana.sublines[0]);   setActiveSubIdx(0); }
+    if (!briefing.adCta      && ana?.ctaText)         { setCta(ana.ctaText);           setActiveCtaIdx(0); }
+    // Ensure chip indices reflect available chips
+    if (ana?.headlines && ana.headlines.length > 0)  setActiveHlIdx(prev => prev >= 0 ? prev : 0);
+    if (ana?.sublines  && ana.sublines.length  > 0)  setActiveSubIdx(prev => prev >= 0 ? prev : 0);
+    if (ana?.ctaText)                                setActiveCtaIdx(prev => prev >= 0 ? prev : 0);
 
     // Font section
     const detected = ana?.fontFamily || null;
@@ -717,48 +737,48 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           <label style={sLbl}>Headline</label>
           {hlSugs.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
-              {hlSugs.map(h => (
+              {hlSugs.map((h, i) => (
                 <div key={h}
-                     style={{ background: headline === h ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${headline === h ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: headline === h ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
-                     onClick={() => setHeadline(h)}>
+                     style={{ background: activeHlIdx === i ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${activeHlIdx === i ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeHlIdx === i ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
+                     onClick={() => { setHeadline(h); setActiveHlIdx(i); }}>
                   {h}
                 </div>
               ))}
             </div>
           )}
-          <input style={sInp} value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Eigene Headline…" />
+          <input style={sInp} value={headline} onChange={e => { setHeadline(e.target.value); setActiveHlIdx(-1); }} placeholder="Eigene Headline…" />
         </div>
 
         <div style={sFg}>
           <label style={sLbl}>Subline <span style={{ fontWeight: 300, fontSize: 10 }}>(optional)</span></label>
           {subSugs.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
-              {subSugs.map(s => (
+              {subSugs.map((s, i) => (
                 <div key={s}
-                     style={{ background: subline === s ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${subline === s ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: subline === s ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
-                     onClick={() => setSubline(s)}>
+                     style={{ background: activeSubIdx === i ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${activeSubIdx === i ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeSubIdx === i ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
+                     onClick={() => { setSubline(s); setActiveSubIdx(i); }}>
                   {s}
                 </div>
               ))}
             </div>
           )}
-          <input style={sInp} value={subline} onChange={e => setSubline(e.target.value)} placeholder="Eigene Subline…" />
+          <input style={sInp} value={subline} onChange={e => { setSubline(e.target.value); setActiveSubIdx(-1); }} placeholder="Eigene Subline…" />
         </div>
 
         <div style={sFg}>
           <label style={sLbl}>CTA-Button</label>
           {ctaSugs.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
-              {ctaSugs.map(s => (
+              {ctaSugs.map((s, i) => (
                 <div key={s}
-                     style={{ background: cta === s ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${cta === s ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: cta === s ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
-                     onClick={() => setCta(s)}>
+                     style={{ background: activeCtaIdx === i ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${activeCtaIdx === i ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeCtaIdx === i ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
+                     onClick={() => { setCta(s); setActiveCtaIdx(i); }}>
                   {s}
                 </div>
               ))}
             </div>
           )}
-          <input style={sInp} value={cta} onChange={e => setCta(e.target.value)} placeholder="Mehr erfahren" />
+          <input style={sInp} value={cta} onChange={e => { setCta(e.target.value); setActiveCtaIdx(-1); }} placeholder="Mehr erfahren" />
         </div>
 
         <div style={sFg}>
