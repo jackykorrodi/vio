@@ -243,6 +243,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
 
   const handleNext = () => {
     const updated: AnalysisResult = {
+      ...analysis,
       organisation: organisation.trim() || null,
       beschreibung: analysis?.beschreibung ?? null,
       region,
