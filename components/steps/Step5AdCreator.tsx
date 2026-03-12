@@ -271,7 +271,7 @@ function AdPreview({
           <Toolbar id="logo" />
           {logoMode === 'image' && logoUrl
             ? <img src={proxyUrl(logoUrl)} alt="logo"
-                   style={{ height: sz.logo * 2, width: 'auto', maxWidth: 130, display: 'block', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
+                   style={{ height: sz.logo * 2, width: 'auto', maxWidth: 130, display: 'block', objectFit: 'contain' }}
                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             : <div className="v15-ad-logo-txt"
                    style={{ fontSize: sz.logo, fontFamily: stack, fontWeight: 500, letterSpacing: '0.5px', opacity: 0.9, color: colors.logo, whiteSpace: 'nowrap' }}>
@@ -370,7 +370,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const [adFont,   setAdFont]   = useState(briefing.adFont || 'Outfit');
   const [adBold,   setAdBold]   = useState(false);
   const [animation, setAnimation] = useState(briefing.adAnimation || 'cta');
-  const [fontOptions, setFontOptions] = useState<Array<{ name: string; sub: string }>>([
+  const [fontOptions, setFontOptions] = useState<Array<{ name: string; label?: string; sub: string }>>([
     { name: 'Outfit', sub: 'Standard' },
     { name: 'Inter',  sub: 'Alternativ' },
     { name: 'DM Sans',sub: 'Alternativ' },
@@ -397,6 +397,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   const bgFileRef   = useRef<HTMLInputElement>(null);
   const initialized = useRef(false);
 
+  // ── Debug: log analysis data on mount ──────────────────────────────────────
+  useEffect(() => {
+    console.log('ANALYSIS DATA:', JSON.stringify(briefing.analysis, null, 2));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Init from analysis on mount ────────────────────────────────────────────
   useEffect(() => {
     if (initialized.current) return;
@@ -405,11 +410,15 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     // Font section
     const detected = ana?.fontFamily || null;
     const primaryFont = detected || 'Outfit';
-    const similars = FONT_SIMILAR[primaryFont] ?? FONT_SIMILAR['default'];
+    // Pick contrasting alternates: if primary is serif → use sans; if sans → use serif+display
+    const isSerif = SERIF_FONTS.has(primaryFont);
+    const contrastFonts: [string, string] = isSerif
+      ? ['Outfit', 'Inter']
+      : ['Playfair Display', 'Fraunces'];
     const opts = [
-      { name: primaryFont,           sub: detected ? 'Website-Font' : 'Standard' },
-      { name: similars[0] ?? 'DM Sans', sub: 'Ähnlich' },
-      { name: similars[1] ?? 'Inter',   sub: 'Ähnlich' },
+      { name: primaryFont, label: detected ? 'Originalschrift' : 'Outfit', sub: detected || 'Standard' },
+      { name: contrastFonts[0], sub: isSerif ? 'Sans-Serif' : 'Serif' },
+      { name: contrastFonts[1], sub: isSerif ? 'Modern' : 'Display' },
     ];
     setFontOptions(opts);
     opts.forEach(f => loadGoogleFont(f.name));
@@ -435,10 +444,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     (async () => {
       const candidates = [
         baseUrl ? `${baseUrl}/apple-touch-icon.png` : '',
-        baseUrl ? `${baseUrl}/apple-touch-icon-precomposed.png` : '',
-        ana?.ogLogo   || '',
         ana?.favicon  || '',
-        domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128` : '',
       ].filter(Boolean);
       for (const url of candidates) {
         const ok = await checkImgUrl(proxyUrl(url));
@@ -693,7 +699,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {hlSugs.map(h => (
                 <div key={h}
-                     className={`v15-sug-chip${headline === h ? ' active' : ''}`}
+                     style={{ background: headline === h ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${headline === h ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: headline === h ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
                      onClick={() => setHeadline(h)}>
                   {h}
                 </div>
@@ -709,7 +715,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {subSugs.map(s => (
                 <div key={s}
-                     className={`v15-sug-chip${subline === s ? ' active' : ''}`}
+                     style={{ background: subline === s ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${subline === s ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: subline === s ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
                      onClick={() => setSubline(s)}>
                   {s}
                 </div>
@@ -725,7 +731,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {ctaSugs.map(s => (
                 <div key={s}
-                     className={`v15-sug-chip${cta === s ? ' active' : ''}`}
+                     style={{ background: cta === s ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${cta === s ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: cta === s ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
                      onClick={() => setCta(s)}>
                   {s}
                 </div>
@@ -877,7 +883,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <button key={f.name}
                     style={{ padding: '6px 4px', border: `1.5px solid ${adFont === f.name ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, background: adFont === f.name ? '#f9eeef' : 'white', cursor: 'pointer', textAlign: 'center', lineHeight: 1.2, transition: 'all .15s', fontFamily: fontStack(f.name), fontSize: 12, color: adFont === f.name ? '#C1666B' : '#5C4F3D' }}
                     onClick={() => setAdFont(f.name)}>
-              {f.name}
+              {f.label || f.name}
               <br />
               <small style={{ fontSize: 9, fontWeight: 300, opacity: 0.7, fontFamily: "'Outfit',sans-serif" }}>{f.sub}</small>
             </button>
