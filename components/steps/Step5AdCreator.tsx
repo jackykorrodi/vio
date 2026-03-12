@@ -424,19 +424,20 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     console.log('headlines:', briefing.analysis?.headlines);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Init chips when analysis arrives ───────────────────────────────────
+  useEffect(() => {
+    const ana = briefing.analysis;
+    if (!ana) return;
+    if (!briefing.adHeadline && ana.headlines?.[0]) setHeadline(ana.headlines[0]);
+    setActiveHlIdx(0);
+    if (!briefing.adSubline && ana.sublines?.[0]) setSubline(ana.sublines[0]);
+    if (!briefing.adCta && ana.ctaText) setCta(ana.ctaText);
+  }, [briefing.analysis]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Init from analysis on mount ────────────────────────────────────────────
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-
-    // Populate text fields from analysis if not already saved
-    if (!briefing.adHeadline && ana?.headlines?.[0]) { setHeadline(ana.headlines[0]); setActiveHlIdx(0); }
-    if (!briefing.adSubline  && ana?.sublines?.[0])  { setSubline(ana.sublines[0]);   setActiveSubIdx(0); }
-    if (!briefing.adCta      && ana?.ctaText)         { setCta(ana.ctaText);           setActiveCtaIdx(0); }
-    // Ensure chip indices reflect available chips
-    if (ana?.headlines && ana.headlines.length > 0)  setActiveHlIdx(prev => prev >= 0 ? prev : 0);
-    if (ana?.sublines  && ana.sublines.length  > 0)  setActiveSubIdx(prev => prev >= 0 ? prev : 0);
-    if (ana?.ctaText)                                setActiveCtaIdx(prev => prev >= 0 ? prev : 0);
 
     // Font section
     const detected = ana?.fontFamily || null;
@@ -683,16 +684,6 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     return isCardActive(fmtId)
       ? { boxShadow: '0 0 0 2.5px #C1666B', borderColor: '#C1666B' }
       : {};
-  }
-
-  // ── Guard: wait for analysis ─────────────────────────────────────────────────
-  if (!ana) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, fontFamily: "'Outfit',sans-serif", color: '#8a7a67', flexDirection: 'column', gap: 8 }}>
-        <div style={{ fontSize: 18 }}>⏳</div>
-        <div style={{ fontSize: 13 }}>Analysedaten werden geladen…</div>
-      </div>
-    );
   }
 
   // ────────────────────────────────────────────────────────────────────────────
