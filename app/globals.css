@@ -314,7 +314,7 @@ input[type='date']:focus {
 /* Draggable elements */
 .v15-draggable { position: absolute; cursor: grab; user-select: none; padding: 2px 3px; border-radius: 3px; }
 .v15-draggable:hover { outline: 1.5px dashed rgba(255,255,255,.5); }
-.v15-draggable.sel   { outline: 2px solid rgba(255,255,255,.9); z-index: 10; }
+.v15-draggable.sel   { outline: 2px solid #C1666B; z-index: 10; }
 
 /* Element toolbar */
 .v15-el-tb { position: absolute; top: -26px; left: 0; background: rgba(0,0,0,.72); border-radius: 4px; display: none; align-items: center; gap: 1px; padding: 2px; white-space: nowrap; z-index: 30; }
@@ -333,6 +333,6 @@ input[type='date']:focus {
 @keyframes v15-ctaPulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(255,255,255,.5) } 50%{ box-shadow: 0 0 0 8px rgba(255,255,255,0) } }
 @keyframes v15-qrFade   { 0%,100%{ opacity: 1 } 50%{ opacity: .1 } }
 @keyframes v15-hlSlide  { 0%{ opacity:0; transform: translateX(-16px) } 20%{ opacity:1; transform: translateX(0) } 80%{ opacity:1; transform: translateX(0) } 100%{ opacity:0; transform: translateX(-16px) } }
-.v15-ad-wrap.anim-cta .v15-ad-cta { animation: v15-ctaPulse 2.5s ease-in-out infinite; }
-.v15-ad-wrap.anim-qr  .v15-ad-qr  { animation: v15-qrFade   2.5s ease-in-out infinite; }
-.v15-ad-wrap.anim-hl  .v15-ad-hl  { animation: v15-hlSlide  3s   ease-in-out infinite; }
+.anim-cta .v15-ad-cta { animation: v15-ctaPulse 2.5s ease-in-out infinite; }
+.anim-qr  .v15-ad-qr  { animation: v15-qrFade   2.5s ease-in-out infinite; }
+.anim-hl  .v15-ad-hl  { animation: v15-hlSlide  3s   ease-in-out infinite; }

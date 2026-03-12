@@ -214,9 +214,8 @@ function AdPreview({
   }
 
   function Toolbar({ id, delta = 1 }: { id: string; delta?: number }) {
-    if (!isSel(id)) return null;
     return (
-      <div className="v15-el-tb">
+      <div className="v15-el-tb" style={{ display: isSel(id) ? 'flex' : 'none' }}>
         <button className="v15-tb-b" onMouseDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); onSizeChange(fmtId, id, -delta); }}>
           {delta > 1 ? '−' : 'A−'}
@@ -233,34 +232,40 @@ function AdPreview({
   const ctaPad = fmtId==='quer' ? '10px 26px' : fmtId==='hoch' ? '5px 12px' : fmtId==='wide' ? '10px 22px' : fmtId==='med' ? '6px 14px' : '8px 20px';
 
   return (
-    <div style={{ width, height, position: 'relative', overflow: 'hidden', borderRadius: isWide ? 0 : 6, flexShrink: 0 }}
-         className={`v15-ad-wrap ${bgModeClass} ${animClass}`}>
+    // Outer has no overflow:hidden so toolbars at top:-26px aren't clipped
+    <div style={{ width, height, position: 'relative', borderRadius: isWide ? 0 : 6, flexShrink: 0 }}
+         className={animClass}>
 
-      {/* BG layer */}
-      <div className="v15-ad-bg" style={{
-        position: 'absolute', inset: 0,
-        backgroundColor: colors.bg,
-        backgroundImage: bgImage ? `url(${bgImage})` : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: bgPos,
-        filter: `brightness(${bgBrightness / 100})`,
-        transition: 'filter .2s',
-      }} />
+      {/* BG clip layer: overflow:hidden only here */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: isWide ? 0 : 6 }}
+           className={`v15-ad-wrap ${bgModeClass}`}>
 
-      {/* Overlay */}
-      <div className="v15-ad-ov" style={{
-        position: 'absolute', inset: 0,
-        background: hexRgba(colors.bg, 0.82),
-        transition: 'opacity .25s',
-      }} />
+        {/* BG layer */}
+        <div className="v15-ad-bg" style={{
+          position: 'absolute', inset: 0,
+          backgroundColor: colors.bg,
+          backgroundImage: bgImage ? `url(${bgImage})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: bgPos,
+          filter: `brightness(${bgBrightness / 100})`,
+          transition: 'filter .2s',
+        }} />
 
-      {/* Split color block */}
-      <div className="v15-ad-sc" style={{
-        position: 'absolute', top: 0, left: 0, height: '100%', width: '50%',
-        background: colors.bg, display: 'none',
-      }} />
+        {/* Overlay */}
+        <div className="v15-ad-ov" style={{
+          position: 'absolute', inset: 0,
+          background: hexRgba(colors.bg, 0.82),
+          transition: 'opacity .25s',
+        }} />
 
-      {/* Drag layer */}
+        {/* Split color block */}
+        <div className="v15-ad-sc" style={{
+          position: 'absolute', top: 0, left: 0, height: '100%', width: '50%',
+          background: colors.bg, display: 'none',
+        }} />
+      </div>
+
+      {/* Drag layer: sibling of BG clip, no overflow restriction */}
       <div ref={layerRef} style={{ position: 'absolute', inset: 0, zIndex: 3 }}
            onClick={() => onSelect(fmtId, '')}>
 
@@ -406,6 +411,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
+
+    // Populate text fields from analysis if not already saved
+    if (!briefing.adHeadline && ana?.headlines?.[0]) setHeadline(ana.headlines[0]);
+    if (!briefing.adSubline  && ana?.sublines?.[0])  setSubline(ana.sublines[0]);
+    if (!briefing.adCta      && ana?.ctaText)         setCta(ana.ctaText);
 
     // Font section
     const detected = ana?.fontFamily || null;
@@ -654,6 +664,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
       : {};
   }
 
+  // ── Guard: wait for analysis ─────────────────────────────────────────────────
+  if (!ana) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, fontFamily: "'Outfit',sans-serif", color: '#8a7a67', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 18 }}>⏳</div>
+        <div style={{ fontSize: 13 }}>Analysedaten werden geladen…</div>
+      </div>
+    );
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '310px 1fr', minHeight: 'calc(100vh - 52px)', fontFamily: "'Outfit',sans-serif" }}>
@@ -755,6 +775,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           <button style={styleBtn(logoMode === 'image')} onClick={() => setLogoMode('image')}>Bild-Logo</button>
         </div>
 
+        {/* Hidden file input – always in DOM so logoFileRef is always valid */}
+        <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+               onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); }} />
+
         {logoMode === 'text' ? (
           <div style={sFg}>
             <input style={sInp} value={org} onChange={e => setOrg(e.target.value)} placeholder="Restaurant Lemon" />
@@ -776,11 +800,10 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                      value={logoUrl.startsWith('data:') ? '' : logoUrl}
                      onChange={e => handleLogoUrl(e.target.value)}
                      placeholder="https://… (auto befüllt)" />
-              <label style={{ background: '#ede8e1', border: '1px solid #ede8e1', borderRadius: 7, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              <button style={{ background: '#ede8e1', border: '1px solid #ede8e1', borderRadius: 7, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                      onClick={() => logoFileRef.current?.click()}>
                 📁
-                <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-                       onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); }} />
-              </label>
+              </button>
             </div>
           </div>
         )}
