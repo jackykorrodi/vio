@@ -595,6 +595,7 @@ Antworte NUR mit diesem JSON (kein Text davor/danach, keine Backticks, kein Mark
       suggestedImageUrl: analysis.suggestedImageUrl,
     }, null, 2));
 
+    console.log('API returning headlines:', JSON.stringify(analysis?.headlines));
     return NextResponse.json(analysis);
 
   } catch (e) {

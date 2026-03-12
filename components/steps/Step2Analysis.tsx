@@ -85,6 +85,7 @@ function Step2Analysis({ briefing, updateBriefing, nextStep, isActive }: Props) 
         clearTimeout(cancelTimer);
         setStepIndex(4);
         await new Promise(r => setTimeout(r, 600));
+        console.log('Step2 saving:', JSON.stringify(data?.headlines), JSON.stringify(data?.themeColor));
         updateBriefing({ analysis: data });
         nextStep();
       } catch (e: unknown) {
