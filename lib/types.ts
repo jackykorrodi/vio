@@ -83,7 +83,7 @@ export interface BriefingData {
   adPositionsHoch?: Record<string, { x: number; y: number }>;
   werbemittelService?: 'upload' | 'später' | 'erstellen'; // option chosen in Step 5
   werbemittelFiles?: string[];  // uploaded file names for option A
-  adCreation?: 'upload' | 'extern' | 'later'; // werbemittel choice for routing
+  adCreation?: 'upload' | 'selbst' | 'later'; // werbemittel choice for routing
   adCreationFee?: number;       // 500 when erstellen lassen selected
   // Session persistence
   sessionId?: string;

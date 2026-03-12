@@ -26,8 +26,8 @@ const FORMATS = ['300×250', '970×250', '300×600', '1920×1080', '1080×1920']
 interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
-  nextStep: () => void;          // goes to Contact (for erstellen / spaeter)
-  onUploadSelected: () => void;  // goes to Ad Creator (for upload)
+  nextStep: () => void;           // goes to Contact (for upload / spaeter)
+  onUploadSelected: () => void;   // goes to Ad Creator (for erstellen)
   isActive: boolean;
 }
 
@@ -55,15 +55,15 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
 
   function handleWeiter() {
     if (!selected) return;
-    if (selected === 'upload') {
+    if (selected === 'erstellen') {
+      updateBriefing({ adCreation: 'selbst', adCreationFee: 500 });
+      onUploadSelected();  // → Ad Creator
+    } else if (selected === 'upload') {
       updateBriefing({ adCreation: 'upload' });
-      onUploadSelected();
-    } else if (selected === 'erstellen') {
-      updateBriefing({ adCreation: 'extern', adCreationFee: 500 });
-      nextStep();
+      nextStep();          // → Contact
     } else {
       updateBriefing({ adCreation: 'later' });
-      nextStep();
+      nextStep();          // → Contact
     }
   }
 
@@ -136,11 +136,11 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
 
   const erstellenBody = (
     <div style={{ background: C.bg, borderRadius: 10, padding: '13px 15px', fontSize: 13, lineHeight: 1.65 }}>
-      <div style={{ fontWeight: 600, marginBottom: 6, color: C.taupe }}>Was du bekommst:</div>
+      <div style={{ fontWeight: 600, marginBottom: 6, color: C.taupe }}>So funktioniert&apos;s:</div>
       {[
-        'Alle 5 Formate für DOOH und Display (300×250, 970×250, 300×600, 1920×1080, 1080×1920)',
-        'Basierend auf deiner Website – in deinem Stil',
-        'Lieferung innerhalb von 48 Stunden',
+        'Du gestaltest die Werbemittel selbst – wir führen dich durch alle 5 Formate',
+        'Live-Vorschau auf echten DOOH- und Display-Formaten',
+        'Basierend auf deiner Website und deinem Branding',
       ].map((pt, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, alignItems: 'flex-start' }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.primary, flexShrink: 0, marginTop: 5 }} />
@@ -170,8 +170,8 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
     {
       value: 'erstellen',
       ico: '✨',
-      title: 'Werbemittel erstellen lassen',
-      sub: 'Alle Formate, basierend auf Website, 48h Lieferung',
+      title: 'Werbemittel selbst erstellen',
+      sub: 'Mit dem VIO Ad Creator – Live-Vorschau aller Formate',
       badge: '+ CHF 500',
       badgeStyle: { background: C.pl, color: C.pd },
       body: erstellenBody,
@@ -187,10 +187,8 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
     },
   ];
 
-  const weiterLabel = selected === 'upload'
-    ? 'Weiter zum Ad-Vorschau →'
-    : selected === 'erstellen'
-    ? 'Weiter zum Abschluss →'
+  const weiterLabel = selected === 'erstellen'
+    ? 'Weiter zum Ad Creator →'
     : 'Weiter zum Abschluss →';
 
   return (
