@@ -60,6 +60,8 @@ export interface BriefingData {
   daysUntil?: number;
   recommendedBudget?: number;
   recommendedLaufzeit?: number;
+  selectedRegions?: Array<{ name: string; type: string; stimm: number; kanton?: string }>;
+  totalStimmber?: number;
   // Step 3
   analysis: AnalysisResult | null;
   // Step 4

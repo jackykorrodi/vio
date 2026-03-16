@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
+import { resolveToKanton } from '@/lib/regions';
 
 // Swiss official BFS canton numbers → display names
 const CANTON_ID_TO_NAME: Record<number, string> = {
@@ -15,32 +16,9 @@ const CANTON_ID_TO_NAME: Record<number, string> = {
   24: 'Neuenburg', 25: 'Genf', 26: 'Jura',
 };
 
-// Stadt → parent canton (for map zoom)
-const STADT_TO_KANTON: Record<string, string> = {
-  'Zürich (Stadt)': 'Zürich',
-  'Bern (Stadt)': 'Bern',
-  'Basel (Stadt)': 'Basel-Stadt',
-  'Lausanne': 'Waadt',
-  'Genf (Stadt)': 'Genf',
-  'Winterthur': 'Zürich',
-  'Luzern (Stadt)': 'Luzern',
-  'St. Gallen (Stadt)': 'St. Gallen',
-  'Lugano': 'Tessin',
-  'Biel/Bienne': 'Bern',
-  'Thun': 'Bern',
-  'Köniz': 'Bern',
-  'La Chaux-de-Fonds': 'Neuenburg',
-  'Schaffhausen (Stadt)': 'Schaffhausen',
-  'Freiburg (Stadt)': 'Freiburg',
-  'Chur': 'Graubünden',
-  'Uster': 'Zürich',
-  'Vernier': 'Genf',
-  'Sion': 'Wallis',
-  'Emmen': 'Luzern',
-};
-
 interface Props {
-  highlightRegion: string | null;
+  /** Region names to highlight — for politik campaigns. Pass [] for B2C/B2B (highlights all). */
+  highlightRegions: string[];
   campaignType: 'b2c' | 'b2b' | 'politik';
   reachFraction: number;
   width?: number;
@@ -48,7 +26,7 @@ interface Props {
 }
 
 export default function SwissMap({
-  highlightRegion,
+  highlightRegions,
   campaignType,
   reachFraction,
   width = 560,
@@ -56,19 +34,22 @@ export default function SwissMap({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // Stores the screen bounds of the highlighted region for stick figure scattering
+  // Stores the unioned screen bounds of all highlighted regions for stick figure scattering
   const figBoundsRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
 
-  // Highlight all cantons when not politik, or when region is "Gesamte Schweiz"
+  // Highlight all cantons when not politik, or when Gesamte Schweiz is selected, or no regions selected
   const highlightAll =
-    campaignType !== 'politik' || highlightRegion === 'Gesamte Schweiz';
+    campaignType !== 'politik' ||
+    highlightRegions.length === 0 ||
+    highlightRegions.includes('Gesamte Schweiz');
 
-  // Resolve Stadt → Kanton for map zoom
-  const cantonToHighlight = highlightRegion
-    ? (STADT_TO_KANTON[highlightRegion] ?? (
-        Object.values(CANTON_ID_TO_NAME).includes(highlightRegion) ? highlightRegion : null
-      ))
-    : null;
+  // Resolve all selected region names → distinct canton names for map highlighting
+  const cantonsToHighlight = Array.from(new Set(
+    highlightRegions.flatMap(name => {
+      const kanton = resolveToKanton(name);
+      return kanton ? [kanton] : [];
+    })
+  ));
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -89,23 +70,37 @@ export default function SwissMap({
       const countryFeature = topojson.feature(chData, chData.objects.country);
       const lakeFeature = topojson.feature(chData, chData.objects.lakes);
 
-      // Find the selected canton feature (for zoom)
-      const selectedFeature = !highlightAll && cantonToHighlight
-        ? (cantonFeatures as d3.ExtendedFeatureCollection).features.find(
-            (f) => CANTON_ID_TO_NAME[(f as d3.ExtendedFeature).id as number] === cantonToHighlight
+      // Find all highlighted canton features (for zoom + bounds)
+      const highlightedFeatures = !highlightAll
+        ? (cantonFeatures as d3.ExtendedFeatureCollection).features.filter(
+            (f) => cantonsToHighlight.includes(CANTON_ID_TO_NAME[(f as d3.ExtendedFeature).id as number])
           )
-        : null;
+        : [];
 
       const PAD = 30;
-      const projection = selectedFeature
-        ? d3.geoMercator().fitExtent([[PAD, PAD], [width - PAD, height - PAD]], selectedFeature as d3.ExtendedFeature)
-        : d3.geoMercator().fitSize([width, height], cantonFeatures);
+      let projection: d3.GeoProjection;
+      if (highlightedFeatures.length > 0) {
+        // Zoom to the union of all highlighted cantons
+        const featureCollection = { type: 'FeatureCollection' as const, features: highlightedFeatures };
+        projection = d3.geoMercator().fitExtent(
+          [[PAD, PAD], [width - PAD, height - PAD]],
+          featureCollection as d3.ExtendedFeatureCollection
+        );
+      } else {
+        projection = d3.geoMercator().fitSize([width, height], cantonFeatures);
+      }
       const pathGen = d3.geoPath().projection(projection);
 
-      // Store screen bounds of selected feature for stick figure scattering
-      if (selectedFeature) {
-        const [[bx0, by0], [bx1, by1]] = pathGen.bounds(selectedFeature as d3.ExtendedFeature);
-        figBoundsRef.current = { x0: bx0, y0: by0, x1: bx1, y1: by1 };
+      // Union bounding boxes of all highlighted features for stick figure scattering
+      if (highlightedFeatures.length > 0) {
+        let bounds: { x0: number; y0: number; x1: number; y1: number } | null = null;
+        for (const f of highlightedFeatures) {
+          const [[bx0, by0], [bx1, by1]] = pathGen.bounds(f as d3.ExtendedFeature);
+          bounds = bounds
+            ? { x0: Math.min(bounds.x0, bx0), y0: Math.min(bounds.y0, by0), x1: Math.max(bounds.x1, bx1), y1: Math.max(bounds.y1, by1) }
+            : { x0: bx0, y0: by0, x1: bx1, y1: by1 };
+        }
+        figBoundsRef.current = bounds;
       } else {
         figBoundsRef.current = null;
       }
@@ -130,24 +125,18 @@ export default function SwissMap({
         .append('path')
         .attr('d', pathGen)
         .attr('fill', (f) => {
-          const id = (f as d3.ExtendedFeature).id as number;
-          const name = CANTON_ID_TO_NAME[id];
-          if (highlightAll) return '#EDE8DF';
-          if (name === cantonToHighlight) return '#EDE8DF';
+          const name = CANTON_ID_TO_NAME[(f as d3.ExtendedFeature).id as number];
+          if (highlightAll || cantonsToHighlight.includes(name)) return '#EDE8DF';
           return '#EDE8E0';
         })
         .attr('stroke', (f) => {
-          const id = (f as d3.ExtendedFeature).id as number;
-          const name = CANTON_ID_TO_NAME[id];
-          if (highlightAll) return '#C1666B';
-          if (name === cantonToHighlight) return '#C1666B';
+          const name = CANTON_ID_TO_NAME[(f as d3.ExtendedFeature).id as number];
+          if (highlightAll || cantonsToHighlight.includes(name)) return '#C1666B';
           return '#fff';
         })
         .attr('stroke-width', (f) => {
-          const id = (f as d3.ExtendedFeature).id as number;
-          const name = CANTON_ID_TO_NAME[id];
-          if (highlightAll) return 2;
-          if (name === cantonToHighlight) return 2;
+          const name = CANTON_ID_TO_NAME[(f as d3.ExtendedFeature).id as number];
+          if (highlightAll || cantonsToHighlight.includes(name)) return 2;
           return 1;
         });
 
@@ -169,7 +158,7 @@ export default function SwissMap({
       console.error('SwissMap: failed to load TopoJSON', err);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlightRegion, campaignType, width, height]);
+  }, [JSON.stringify(highlightRegions), campaignType, width, height]);
 
   // Redraw canvas when reachFraction changes (or deps above)
   useEffect(() => {

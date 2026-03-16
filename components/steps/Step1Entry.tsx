@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { BriefingData } from '@/lib/types';
+import { Region, ALL_REGIONS } from '@/lib/regions';
 
 const C = {
   primary: '#C1666B',
@@ -38,64 +39,7 @@ const clabel: React.CSSProperties = {
   marginBottom: '10px',
 };
 
-// ── Region data ───────────────────────────────────────────────────────────────
-
-interface Region { name: string; type: 'schweiz' | 'kanton' | 'stadt'; stimm: number; }
-
-const SCHWEIZ: Region[] = [
-  { name: 'Gesamte Schweiz', type: 'schweiz', stimm: 5571000 },
-];
-const KANTONE: Region[] = [
-  { name: 'Zürich',          type: 'kanton', stimm: 1077300 },
-  { name: 'Bern',            type: 'kanton', stimm: 735000 },
-  { name: 'Luzern',          type: 'kanton', stimm: 299600 },
-  { name: 'Uri',             type: 'kanton', stimm: 25900 },
-  { name: 'Schwyz',          type: 'kanton', stimm: 116200 },
-  { name: 'Obwalden',        type: 'kanton', stimm: 27300 },
-  { name: 'Nidwalden',       type: 'kanton', stimm: 30800 },
-  { name: 'Glarus',          type: 'kanton', stimm: 28700 },
-  { name: 'Zug',             type: 'kanton', stimm: 91700 },
-  { name: 'Freiburg',        type: 'kanton', stimm: 235900 },
-  { name: 'Solothurn',       type: 'kanton', stimm: 198100 },
-  { name: 'Basel-Stadt',     type: 'kanton', stimm: 128100 },
-  { name: 'Basel-Landschaft',type: 'kanton', stimm: 199400 },
-  { name: 'Schaffhausen',    type: 'kanton', stimm: 57200 },
-  { name: 'Appenzell A.Rh.', type: 'kanton', stimm: 40800 },
-  { name: 'Appenzell I.Rh.', type: 'kanton', stimm: 11500 },
-  { name: 'St. Gallen',      type: 'kanton', stimm: 340900 },
-  { name: 'Graubünden',      type: 'kanton', stimm: 138900 },
-  { name: 'Aargau',          type: 'kanton', stimm: 453400 },
-  { name: 'Thurgau',         type: 'kanton', stimm: 185700 },
-  { name: 'Tessin',          type: 'kanton', stimm: 249600 },
-  { name: 'Waadt',           type: 'kanton', stimm: 516900 },
-  { name: 'Wallis',          type: 'kanton', stimm: 215200 },
-  { name: 'Neuenburg',       type: 'kanton', stimm: 119800 },
-  { name: 'Genf',            type: 'kanton', stimm: 330000 },
-  { name: 'Jura',            type: 'kanton', stimm: 52800 },
-];
-const STAEDTE: Region[] = [
-  { name: 'Zürich (Stadt)',    type: 'stadt', stimm: 310000 },
-  { name: 'Genf (Stadt)',      type: 'stadt', stimm: 152000 },
-  { name: 'Basel (Stadt)',     type: 'stadt', stimm: 128000 },
-  { name: 'Bern (Stadt)',      type: 'stadt', stimm: 112000 },
-  { name: 'Lausanne',          type: 'stadt', stimm: 94000 },
-  { name: 'Winterthur',        type: 'stadt', stimm: 85000 },
-  { name: 'Luzern (Stadt)',    type: 'stadt', stimm: 65000 },
-  { name: 'St. Gallen (Stadt)',type: 'stadt', stimm: 56000 },
-  { name: 'Lugano',            type: 'stadt', stimm: 48000 },
-  { name: 'Biel/Bienne',       type: 'stadt', stimm: 45000 },
-  { name: 'Thun',              type: 'stadt', stimm: 38000 },
-  { name: 'Köniz',             type: 'stadt', stimm: 31000 },
-  { name: 'La Chaux-de-Fonds', type: 'stadt', stimm: 30000 },
-  { name: 'Schaffhausen (Stadt)', type: 'stadt', stimm: 28000 },
-  { name: 'Fribourg (Stadt)',  type: 'stadt', stimm: 25000 },
-  { name: 'Chur',              type: 'stadt', stimm: 23000 },
-  { name: 'Vernier',           type: 'stadt', stimm: 22000 },
-  { name: 'Uster',             type: 'stadt', stimm: 21000 },
-  { name: 'Sion',              type: 'stadt', stimm: 20000 },
-  { name: 'Emmen',             type: 'stadt', stimm: 19000 },
-];
-const ALL_REGIONS: Region[] = [...SCHWEIZ, ...KANTONE, ...STAEDTE];
+// Region types are imported from @/lib/regions
 
 // ── Helper functions ──────────────────────────────────────────────────────────
 
@@ -151,9 +95,11 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const [showCancel, setShowCancel] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Politik state
-  const [region, setRegion] = useState<Region | null>(null);
-  const [regionQuery, setRegionQuery] = useState(briefing.politikRegion || '');
+  // Politik state — multi-region
+  const [selectedRegions, setSelectedRegions] = useState<Region[]>(
+    () => (briefing.selectedRegions as Region[] | undefined) ?? []
+  );
+  const [regionQuery, setRegionQuery] = useState('');
   const [regionOpen, setRegionOpen] = useState(false);
   const [votingDate, setVotingDate] = useState(briefing.votingDate || '');
   const [kampagnenTyp, setKampagnenTyp] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(briefing.politikType || null);
@@ -164,14 +110,31 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const progress = Math.min(((analysisStepIdx + 1) / ANALYSIS_STEPS.length) * 100, 100);
   const domain = url.replace(/^https?:\/\//, '').split('/')[0] || 'deine-website.ch';
 
-  const filteredRegions = regionQuery.trim()
-    ? ALL_REGIONS.filter(r => r.name.toLowerCase().includes(regionQuery.toLowerCase()))
-    : ALL_REGIONS;
+  // Multi-region search results: Kantone first, then Städte, max 8, exclude already selected
+  const searchResults = (() => {
+    const q = regionQuery.trim().toLowerCase();
+    const taken = new Set(selectedRegions.map(r => r.name));
+    const pool = ALL_REGIONS.filter(r => !taken.has(r.name) && (!q || r.name.toLowerCase().includes(q)));
+    const schweiz = pool.filter(r => r.type === 'schweiz');
+    const kantone = pool.filter(r => r.type === 'kanton');
+    const staedte = pool.filter(r => r.type === 'stadt');
+    return [...schweiz, ...kantone, ...staedte].slice(0, 8);
+  })();
 
-  // Politik potenzial calc
-  const politikReady = !!(region && votingDate && kampagnenTyp);
+  // Politik potenzial calc (totals across all selected regions)
+  const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
+  const politikReady = !!(selectedRegions.length >= 1 && votingDate && kampagnenTyp);
   const daysUntilVoting = votingDate ? calcDaysUntil(votingDate) : 0;
-  const potenzial = region ? calcPotenzial(region.stimm, daysUntilVoting) : null;
+  const potenzial = selectedRegions.length > 0 ? calcPotenzial(totalStimm, daysUntilVoting) : null;
+
+  const addRegion = (r: Region) => {
+    setSelectedRegions(prev => prev.some(x => x.name === r.name) ? prev : [...prev, r]);
+    setRegionQuery('');
+    setRegionOpen(false);
+  };
+  const removeRegion = (name: string) => {
+    setSelectedRegions(prev => prev.filter(r => r.name !== name));
+  };
 
   const handleAnalyze = () => {
     let cleanUrl = url.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -224,13 +187,21 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   };
 
   const handlePolitikWeiter = () => {
-    if (!region || !votingDate || !kampagnenTyp) return;
+    if (selectedRegions.length === 0 || !votingDate || !kampagnenTyp) return;
     const days = calcDaysUntil(votingDate);
-    const { budget, laufzeit } = calcPotenzial(region.stimm, days);
+    const { budget, laufzeit } = calcPotenzial(totalStimm, days);
+    const regionLabel = selectedRegions.length === 1
+      ? selectedRegions[0].name
+      : `${selectedRegions.length} Regionen`;
+    const regionType = selectedRegions.length === 1
+      ? (selectedRegions[0].type as 'kanton' | 'stadt' | 'schweiz')
+      : 'kanton';
     updateBriefing({
-      politikRegion: region.name,
-      politikRegionType: region.type === 'schweiz' ? 'schweiz' : region.type === 'kanton' ? 'kanton' : 'stadt',
-      stimmberechtigte: region.stimm,
+      selectedRegions,
+      totalStimmber: totalStimm,
+      politikRegion: regionLabel,
+      politikRegionType: regionType,
+      stimmberechtigte: totalStimm,
       votingDate,
       daysUntil: days,
       politikType: kampagnenTyp,
@@ -303,7 +274,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
         {/* Accordion body — smooth open/close */}
         <div
           style={{
-            maxHeight: accordionOpen ? '600px' : '0px',
+            maxHeight: accordionOpen ? '1200px' : '0px',
             overflow: 'hidden',
             transition: 'max-height 300ms ease',
           }}
@@ -458,14 +429,16 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
             <div style={{ paddingTop: '4px' }}>
               <div style={card}>
 
-                {/* Region dropdown */}
+                {/* Multi-region picker */}
                 <div style={{ marginBottom: '20px', position: 'relative' }}>
                   <div style={clabel}>Region / Wahlkreis</div>
+
+                  {/* Search input */}
                   <input
                     type="text"
                     value={regionQuery}
-                    placeholder="Kanton, Stadt oder Schweiz suchen..."
-                    onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); setRegion(null); }}
+                    placeholder="Gemeinde oder Kanton suchen..."
+                    onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); }}
                     onFocus={() => setRegionOpen(true)}
                     onBlur={() => setTimeout(() => setRegionOpen(false), 200)}
                     style={{
@@ -481,7 +454,9 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       outline: 'none',
                     }}
                   />
-                  {regionOpen && (
+
+                  {/* Dropdown */}
+                  {regionOpen && searchResults.length > 0 && (
                     <div style={{
                       position: 'absolute',
                       top: 'calc(100% + 4px)',
@@ -490,42 +465,92 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       border: `1px solid ${C.border}`,
                       borderRadius: '10px',
                       boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                      maxHeight: '240px',
+                      maxHeight: '280px',
                       overflowY: 'auto',
                       zIndex: 100,
                     }}>
-                      {(['schweiz', 'kanton', 'stadt'] as const).map(groupType => {
-                        const groupLabel = groupType === 'schweiz' ? 'Schweiz' : groupType === 'kanton' ? 'Kantone' : 'Städte';
-                        const items = filteredRegions.filter(r => r.type === groupType);
-                        if (items.length === 0) return null;
-                        return (
-                          <div key={groupType}>
-                            <div style={{
-                              padding: '8px 14px 4px',
-                              fontSize: '10px', fontWeight: 700, letterSpacing: '.1em',
-                              color: C.muted, textTransform: 'uppercase',
-                            }}>
-                              {groupLabel}
-                            </div>
-                            {items.map(r => (
-                              <div
-                                key={r.name}
-                                onMouseDown={() => { setRegion(r); setRegionQuery(r.name); setRegionOpen(false); }}
-                                style={{
-                                  padding: '10px 14px',
-                                  fontSize: '14px', color: C.taupe,
-                                  cursor: 'pointer',
-                                  transition: 'background .15s',
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                {r.name}
-                              </div>
-                            ))}
+                      {/* Kantone group */}
+                      {searchResults.filter(r => r.type === 'kanton' || r.type === 'schweiz').length > 0 && (
+                        <div>
+                          <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>
+                            Kantone
                           </div>
-                        );
-                      })}
+                          {searchResults.filter(r => r.type === 'kanton' || r.type === 'schweiz').map(r => (
+                            <div
+                              key={r.name}
+                              onMouseDown={() => addRegion(r)}
+                              style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background .15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <span style={{ flex: 1, fontSize: '14px', color: C.taupe }}>{r.name}</span>
+                              <span style={{ fontSize: '11px', color: C.muted, background: C.border, borderRadius: '100px', padding: '2px 8px', whiteSpace: 'nowrap' as const }}>
+                                {r.type === 'schweiz' ? 'CH' : 'Kanton'}
+                              </span>
+                              <span style={{ fontSize: '12px', color: C.muted, whiteSpace: 'nowrap' as const }}>
+                                {r.stimm.toLocaleString('de-CH')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Städte/Gemeinden group */}
+                      {searchResults.filter(r => r.type === 'stadt').length > 0 && (
+                        <div>
+                          <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>
+                            Gemeinden
+                          </div>
+                          {searchResults.filter(r => r.type === 'stadt').map(r => (
+                            <div
+                              key={r.name}
+                              onMouseDown={() => addRegion(r)}
+                              style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background .15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <span style={{ flex: 1, fontSize: '14px', color: C.taupe }}>{r.name}</span>
+                              {r.kanton && (
+                                <span style={{ fontSize: '11px', color: '#7C3AED', background: '#EDE9FE', borderRadius: '100px', padding: '2px 8px', whiteSpace: 'nowrap' as const }}>
+                                  {r.kanton}
+                                </span>
+                              )}
+                              <span style={{ fontSize: '12px', color: C.muted, whiteSpace: 'nowrap' as const }}>
+                                {r.stimm.toLocaleString('de-CH')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Selected region tags */}
+                  {selectedRegions.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                      {selectedRegions.map(r => (
+                        <span
+                          key={r.name}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                            background: C.pl, border: `1px solid rgba(193,102,107,.25)`,
+                            color: C.pd, borderRadius: '100px',
+                            padding: '4px 10px 4px 12px', fontSize: '13px', fontWeight: 600,
+                          }}
+                        >
+                          {r.name}
+                          <button
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); removeRegion(r.name); }}
+                            style={{
+                              background: 'none', border: 'none', color: C.pd,
+                              cursor: 'pointer', padding: '0 2px', fontSize: '14px', lineHeight: 1,
+                              display: 'flex', alignItems: 'center',
+                            }}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -611,7 +636,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       gap: '10px', marginBottom: '12px',
                     }}>
                       {[
-                        { label: 'Stimmberechtigte', value: region!.stimm.toLocaleString('de-CH') },
+                        { label: selectedRegions.length > 1 ? 'Stimmber. total' : 'Stimmberechtigte', value: totalStimm.toLocaleString('de-CH') },
                         { label: 'Erreichbare Personen', value: potenzial.erreichbar.toLocaleString('de-CH') },
                         { label: 'Empf. Budget', value: formatCHF(potenzial.budget) },
                         { label: 'Empf. Laufzeit', value: `${potenzial.laufzeit}W` },

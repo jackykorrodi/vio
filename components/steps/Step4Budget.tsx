@@ -109,12 +109,23 @@ interface Props {
 export default function Step4Budget({ briefing, updateBriefing, nextStep }: Props) {
   const isPolitik = briefing.campaignType === 'politik';
 
+  // For B2C/B2B use analysis region; for Politik use first selected region name (or label)
   const regionName = isPolitik
-    ? (briefing.politikRegion ?? 'Gesamte Schweiz')
+    ? (briefing.selectedRegions?.length === 1
+        ? briefing.selectedRegions[0].name
+        : (briefing.politikRegion ?? 'Gesamte Schweiz'))
     : (briefing.analysis?.region?.[0] ?? 'Gesamte Schweiz');
 
   const popData = CANTON_POP[regionName] ?? CANTON_POP['Gesamte Schweiz'];
-  const popSize = isPolitik ? (briefing.stimmberechtigte ?? popData.stimm) : popData.bev;
+  // For Politik: use totalStimmber (sum across all selected regions)
+  const popSize = isPolitik
+    ? (briefing.totalStimmber ?? briefing.stimmberechtigte ?? popData.stimm)
+    : popData.bev;
+
+  // Map highlight regions: pass all selected region names for Politik, empty for B2C/B2B
+  const mapHighlightRegions = isPolitik && briefing.selectedRegions
+    ? briefing.selectedRegions.map(r => r.name)
+    : [];
 
   // Filter tiers by daysUntil (politik only: never offer laufzeit > daysUntil)
   const daysUntil = isPolitik ? (briefing.daysUntil ?? 999) : 999;
@@ -153,7 +164,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const reachFraction = Math.min(1, currentReach / popSize);
 
   const handleTierSelect = (tierIdx: number) => {
-    setTierSelected(tierIdx);
+    setTierSelected(tierIdx as 0 | 1 | 2);
     setBudget(tierBudgets[tierIdx]);
   };
 
@@ -247,13 +258,35 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
             {ctBadgeLabel}
           </span>
 
-          {regionName && (
+          {isPolitik && briefing.selectedRegions && briefing.selectedRegions.length > 1 ? (
+            <>
+              <span style={{ color: C.taupe }}>
+                📍 <strong>{briefing.selectedRegions.length} Regionen</strong>
+                &nbsp;·&nbsp;
+                {popSize.toLocaleString('de-CH')}&nbsp;Stimmberechtigte total
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {briefing.selectedRegions.map(r => (
+                  <span
+                    key={r.name}
+                    style={{
+                      fontSize: 11, background: C.pl, color: C.pd,
+                      border: '1px solid rgba(193,102,107,.2)',
+                      borderRadius: 100, padding: '2px 8px', fontWeight: 600,
+                    }}
+                  >
+                    {r.name}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : regionName ? (
             <span style={{ color: C.taupe }}>
               📍 <strong>{regionName}</strong>
               &nbsp;·&nbsp;
               {popSize.toLocaleString('de-CH')}&nbsp;{isPolitik ? 'Stimmberechtigte' : 'Personen'}
             </span>
-          )}
+          ) : null}
 
           {isPolitik && briefing.daysUntil != null && (
             <span style={{ color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '3px 10px' }}>
@@ -426,7 +459,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <SwissMap
-              highlightRegion={regionName}
+              highlightRegions={mapHighlightRegions}
               campaignType={briefing.campaignType}
               reachFraction={reachFraction}
               width={560}
