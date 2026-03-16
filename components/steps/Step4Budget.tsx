@@ -1,66 +1,95 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { BriefingData } from '@/lib/types';
-import { calculateReach, calculateB2BReach, formatNumber, formatCHF } from '@/lib/calculations';
-import { MIN_BUDGET, MAX_BUDGET } from '@/lib/constants';
 
+// Dynamic import avoids SSR issues with D3/canvas
+const SwissMap = dynamic(() => import('./SwissMap'), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        height: 340,
+        background: '#FAF7F2',
+        borderRadius: 8,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#8A8490',
+        fontSize: 13,
+      }}
+    >
+      Karte wird geladen…
+    </div>
+  ),
+});
+
+// ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
-  white: '#FFFFFF',
-  green: '#3A9E7A',
+  primary: '#C1666B', pd: '#A84E53', pl: '#F9ECEC',
+  taupe: '#5C4F3D', muted: '#8A8490', border: '#EDE8E0',
+  bg: '#FAF7F2', white: '#FFFFFF', green: '#3A9E7A',
 } as const;
 
-const page: React.CSSProperties = {
-  maxWidth: '720px',
-  margin: '0 auto',
-  padding: '40px 20px 80px',
+// ─── Canton population data ───────────────────────────────────────────────────
+const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
+  'Zürich': { bev: 1539000, stimm: 1077300 },
+  'Bern': { bev: 1050000, stimm: 735000 },
+  'Luzern': { bev: 428000, stimm: 299600 },
+  'Uri': { bev: 37000, stimm: 25900 },
+  'Schwyz': { bev: 166000, stimm: 116200 },
+  'Obwalden': { bev: 39000, stimm: 27300 },
+  'Nidwalden': { bev: 44000, stimm: 30800 },
+  'Glarus': { bev: 41000, stimm: 28700 },
+  'Zug': { bev: 131000, stimm: 91700 },
+  'Freiburg': { bev: 337000, stimm: 235900 },
+  'Solothurn': { bev: 283000, stimm: 198100 },
+  'Basel-Stadt': { bev: 181000, stimm: 128100 },
+  'Basel-Landschaft': { bev: 290000, stimm: 199400 },
+  'Schaffhausen': { bev: 84000, stimm: 57200 },
+  'Appenzell A.Rh.': { bev: 58000, stimm: 40800 },
+  'Appenzell I.Rh.': { bev: 16000, stimm: 11500 },
+  'St. Gallen': { bev: 514000, stimm: 340900 },
+  'Graubünden': { bev: 201000, stimm: 138900 },
+  'Aargau': { bev: 693000, stimm: 453400 },
+  'Thurgau': { bev: 279000, stimm: 185700 },
+  'Tessin': { bev: 356000, stimm: 249600 },
+  'Waadt': { bev: 815000, stimm: 516900 },
+  'Wallis': { bev: 345000, stimm: 215200 },
+  'Neuenburg': { bev: 175000, stimm: 119800 },
+  'Genf': { bev: 509000, stimm: 330000 },
+  'Jura': { bev: 73000, stimm: 52800 },
+  'Gesamte Schweiz': { bev: 8816000, stimm: 5571000 },
 };
 
-const card: React.CSSProperties = {
-  background: C.white,
-  borderRadius: '14px',
-  border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-  padding: '20px 22px',
-  marginBottom: '14px',
-};
+// ─── Tier definitions ─────────────────────────────────────────────────────────
+const TIERS = [
+  { id: 0, name: 'Sichtbar',   weeks: 1, freq: 3, cpm: 28, popFrac: 0.14 },
+  { id: 1, name: 'Empfohlen',  weeks: 2, freq: 5, cpm: 32, popFrac: 0.25 },
+  { id: 2, name: 'Präsenz',    weeks: 4, freq: 7, cpm: 38, popFrac: 0.35 },
+] as const;
 
-const clabel: React.CSSProperties = {
-  fontSize: '11px',
-  fontWeight: 700,
-  letterSpacing: '.1em',
-  color: C.muted,
-  textTransform: 'uppercase',
-  marginBottom: '10px',
-};
+// ─── Budget helpers ────────────────────────────────────────────────────────────
+function calcTierBudget(pop: number, tier: typeof TIERS[number]): number {
+  const targetReach = pop * tier.popFrac;
+  const raw = (targetReach * tier.freq / 1000) * tier.cpm;
+  return Math.max(2500, Math.round(raw / 500) * 500);
+}
 
-const LAUFZEITEN = [
-  { value: 1, label: '1W' },
-  { value: 2, label: '2W' },
-  { value: 4, label: '4W' },
-  { value: 8, label: '8W' },
-];
+function calcReachFromBudget(budget: number, freq: number, cpm: number): number {
+  return Math.round((budget / cpm) * 1000 / freq);
+}
 
+// ─── Date helper ──────────────────────────────────────────────────────────────
 const MONTHS_DE = [
   'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ];
 
-function formatDateDE(d: Date): string {
-  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function addDays(dateStr: string, days: number): Date {
-  const d = new Date(dateStr + 'T12:00:00');
-  d.setDate(d.getDate() + days);
-  return d;
+function formatDateDE(d: Date | string): string {
+  const date = typeof d === 'string' ? new Date(d + 'T12:00:00') : d;
+  return `${date.getDate()}. ${MONTHS_DE[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function todayStr(): string {
@@ -68,6 +97,7 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
@@ -75,257 +105,433 @@ interface Props {
   isActive: boolean;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function Step4Budget({ briefing, updateBriefing, nextStep }: Props) {
-  const [budget, setBudget] = useState(briefing.budget || briefing.recommendedBudget || 15000);
-  const [laufzeit, setLaufzeit] = useState(briefing.laufzeit || briefing.recommendedLaufzeit || 4);
-  const [startDate, setStartDate] = useState(briefing.votingDate ? (() => {
-    // For politik: start ~(daysUntil - laufzeit*7) days before voting date
-    const days = briefing.daysUntil ?? 28;
-    const weeks = briefing.recommendedLaufzeit ?? 4;
-    const d = new Date(briefing.votingDate + 'T12:00:00');
-    d.setDate(d.getDate() - weeks * 7);
-    const today = new Date();
-    const start = d < today ? today : d;
-    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-  })() : todayStr());
-
   const isPolitik = briefing.campaignType === 'politik';
-  const isB2B = briefing.campaignType === 'b2b';
 
-  // Logarithmic slider
-  const logMin = Math.log(MIN_BUDGET);
-  const logMax = Math.log(MAX_BUDGET);
-  const sliderValue = ((Math.log(budget) - logMin) / (logMax - logMin)) * 100;
+  const regionName = isPolitik
+    ? (briefing.politikRegion ?? 'Gesamte Schweiz')
+    : (briefing.analysis?.region?.[0] ?? 'Gesamte Schweiz');
 
-  const handleSlider = (val: number) => {
-    const logVal = logMin + (val / 100) * (logMax - logMin);
-    setBudget(Math.round(Math.exp(logVal) / 100) * 100);
+  const popData = CANTON_POP[regionName] ?? CANTON_POP['Gesamte Schweiz'];
+  const popSize = isPolitik ? (briefing.stimmberechtigte ?? popData.stimm) : popData.bev;
+
+  // Tier budgets
+  const tierBudgets = TIERS.map(t => calcTierBudget(popSize, t));
+
+  // Initial values
+  const initBudget = briefing.recommendedBudget ?? tierBudgets[1];
+  const initTier = tierBudgets.reduce((best, tb, i) =>
+    Math.abs(tb - initBudget) < Math.abs(tierBudgets[best] - initBudget) ? i : best, 1);
+
+  const [budget, setBudget] = useState(initBudget);
+  const [tierSelected, setTierSelected] = useState(initTier);
+  const [startDate, setStartDate] = useState<string>(() => {
+    if (briefing.votingDate && briefing.recommendedLaufzeit) {
+      const d = new Date(briefing.votingDate + 'T12:00:00');
+      d.setDate(d.getDate() - briefing.recommendedLaufzeit * 7);
+      const today = new Date();
+      const start = d < today ? today : d;
+      return start.toISOString().split('T')[0];
+    }
+    return todayStr();
+  });
+
+  const activeTier = TIERS[tierSelected];
+  const currentFreq = activeTier.freq;
+  const currentLaufzeit = activeTier.weeks;
+  const currentReach = calcReachFromBudget(budget, currentFreq, activeTier.cpm);
+  const reachFraction = Math.min(1, currentReach / popSize);
+
+  const handleTierSelect = (tierIdx: number) => {
+    setTierSelected(tierIdx);
+    setBudget(tierBudgets[tierIdx]);
   };
 
-  const reach = calculateReach(budget, laufzeit);
-  const b2bReach = isB2B ? calculateB2BReach(briefing.analysis) : null;
-
-  const endDate = addDays(startDate, laufzeit * 7);
-  const dateLabel = `${formatDateDE(new Date(startDate + 'T12:00:00'))} – ${formatDateDE(endDate)} (${laufzeit} ${laufzeit === 1 ? 'Woche' : 'Wochen'})`;
-
-  const doohBudget = Math.round(budget * 0.7);
-  const displayBudget = Math.round(budget * 0.3);
+  const handleSliderChange = (val: number) => {
+    setBudget(val);
+    const closest = tierBudgets.reduce((best, tb, i) =>
+      Math.abs(tb - val) < Math.abs(tierBudgets[best] - val) ? i : best, 0);
+    setTierSelected(closest);
+  };
 
   const handleNext = () => {
-    if (isB2B) {
-      updateBriefing({
-        budget, laufzeit, startDate,
-        reach: b2bReach?.mitarbeiter ?? 0,
-        b2bReach: b2bReach ?? null,
-      });
-    } else {
-      updateBriefing({ budget, laufzeit, startDate, reach: reach.uniquePeople, b2bReach: null });
-    }
+    updateBriefing({
+      budget,
+      laufzeit: currentLaufzeit,
+      startDate,
+      reach: currentReach,
+      freq: currentFreq,
+      tierSelected,
+      b2bReach: null,
+    });
     nextStep();
   };
 
+  const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
+  const fmtN = (n: number) => Math.round(n).toLocaleString('de-CH');
+
+  const personLabel = isPolitik ? 'Stimmberechtigte' : 'Personen';
+  const popLabel = isPolitik ? 'Stimmberechtigte' : 'Bevölkerung';
+
+  // Campaign type pill
+  const ctBadgeLabel =
+    briefing.campaignType === 'b2c' ? 'B2C' :
+    briefing.campaignType === 'b2b' ? 'B2B' :
+    'Politische Kampagne';
+  const ctBadgeColor =
+    briefing.campaignType === 'politik' ? '#7C3AED' : C.primary;
+
+  const sliderMin = 2500;
+  const sliderMax = 50000;
+
   return (
     <section style={{ backgroundColor: C.bg }}>
-      <div style={page}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px 80px' }}>
 
-        {/* Eyebrow */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ width: '18px', height: '2px', background: C.primary, borderRadius: '2px' }} />
-          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
+        {/* ── Eyebrow ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <div style={{ width: 18, height: 2, background: C.primary, borderRadius: 2 }} />
+          <span style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '.12em',
+            color: C.primary, textTransform: 'uppercase',
+          }}>
             Schritt 3
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
-          Wie viel soll deine Kampagne leisten?
+        {/* ── Heading ── */}
+        <h1 style={{
+          fontFamily: 'var(--font-fraunces), Georgia, serif',
+          fontSize: 30, fontWeight: 400, letterSpacing: '-.02em',
+          lineHeight: 1.25, marginBottom: 20, color: C.taupe,
+        }}>
+          Wie weit soll deine Kampagne strahlen?
         </h1>
-        <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
-          Budget und Laufzeit bestimmen deine Reichweite. Live-Berechnung während du schiebst.
-        </p>
 
-        {/* Budget card */}
-        <div style={card}>
-          <div style={clabel}>Budget</div>
-          <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '38px', letterSpacing: '-.03em', marginBottom: '2px', color: C.taupe }}>
-            {formatCHF(budget)}
+        {/* ── Context bar ── */}
+        <div style={{
+          background: C.white,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          padding: '12px 18px',
+          marginBottom: 14,
+          display: 'flex',
+          flexWrap: 'wrap' as const,
+          alignItems: 'center',
+          gap: 10,
+          fontSize: 13,
+          color: C.taupe,
+        }}>
+          {/* Campaign type badge */}
+          <span style={{
+            background: ctBadgeColor,
+            color: '#fff',
+            borderRadius: 100,
+            padding: '3px 11px',
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '.04em',
+          }}>
+            {ctBadgeLabel}
+          </span>
+
+          {regionName && (
+            <span style={{ color: C.taupe }}>
+              📍 <strong>{regionName}</strong>
+              &nbsp;·&nbsp;
+              {popSize.toLocaleString('de-CH')}&nbsp;{isPolitik ? 'Stimmberechtigte' : 'Personen'}
+            </span>
+          )}
+
+          {isPolitik && briefing.daysUntil != null && (
+            <span style={{ color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '3px 10px' }}>
+              🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen
+            </span>
+          )}
+        </div>
+
+        {/* ── Three tier cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+          {TIERS.map((t, i) => {
+            const isActive = tierSelected === i;
+            const tierReach = calcReachFromBudget(tierBudgets[i], t.freq, t.cpm);
+            return (
+              <div
+                key={t.id}
+                onClick={() => handleTierSelect(i)}
+                style={{
+                  border: isActive ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
+                  background: isActive ? C.pl : C.white,
+                  borderRadius: 14,
+                  padding: '16px 14px',
+                  cursor: 'pointer',
+                  transition: 'all .15s',
+                  position: 'relative',
+                  userSelect: 'none',
+                }}
+              >
+                {/* "Empfohlen" badge on middle card */}
+                {i === 1 && (
+                  <div style={{
+                    position: 'absolute', top: -10, left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: C.pl,
+                    border: `1px solid ${C.pd}`,
+                    color: C.pd,
+                    borderRadius: 100,
+                    padding: '2px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '.06em',
+                    whiteSpace: 'nowrap' as const,
+                  }}>
+                    Empfohlen
+                  </div>
+                )}
+
+                {/* Tier name */}
+                <div style={{
+                  fontFamily: 'var(--font-fraunces), Georgia, serif',
+                  fontSize: 18, fontWeight: 400, color: C.taupe,
+                  marginBottom: 4,
+                }}>
+                  {t.name}
+                </div>
+
+                {/* Budget */}
+                <div style={{
+                  fontFamily: 'var(--font-fraunces), Georgia, serif',
+                  fontSize: 26, color: C.primary,
+                  letterSpacing: '-.02em', lineHeight: 1,
+                  marginBottom: 4,
+                }}>
+                  {fmtCHF(tierBudgets[i])}
+                </div>
+
+                {/* Weeks · Freq */}
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
+                  · {t.weeks}W · {t.freq}× Frequenz
+                </div>
+
+                {/* Reach subline */}
+                <div style={{
+                  fontSize: 11, color: isActive ? C.pd : C.muted,
+                  lineHeight: 1.4,
+                }}>
+                  ~{fmtN(tierReach)} {personLabel} sehen dich {t.freq}×
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Headline stat ── */}
+        <div style={{
+          background: C.pl,
+          borderRadius: 12,
+          padding: '16px 22px',
+          marginBottom: 14,
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontSize: 22, color: C.taupe, fontWeight: 400, lineHeight: 1.3,
+          }}>
+            ~{fmtN(currentReach)} {personLabel} sehen deine Kampagne {currentFreq}×&nbsp;
+            — über {currentLaufzeit} {currentLaufzeit === 1 ? 'Woche' : 'Wochen'}
           </div>
-          <div style={{ fontSize: '13px', color: C.muted, marginBottom: '12px' }}>
-            70% DOOH · 30% Display
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+            Das entspricht {Math.round(reachFraction * 100)}% der {personLabel} in {regionName}
           </div>
+        </div>
+
+        {/* ── Budget slider ── */}
+        <div style={{
+          background: C.white,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          padding: '20px 22px',
+          marginBottom: 14,
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '.1em',
+            color: C.muted, textTransform: 'uppercase', marginBottom: 10,
+          }}>
+            Budget feinjustieren
+          </div>
+
+          <div style={{
+            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontSize: 32, color: C.taupe, letterSpacing: '-.03em',
+            marginBottom: 10,
+          }}>
+            {fmtCHF(budget)}
+          </div>
+
           <input
             type="range"
-            min={0}
-            max={100}
-            value={sliderValue}
-            onChange={e => handleSlider(Number(e.target.value))}
+            min={sliderMin}
+            max={sliderMax}
+            step={500}
+            value={budget}
+            onChange={e => handleSliderChange(Number(e.target.value))}
             style={{ width: '100%', accentColor: C.primary, cursor: 'pointer' }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: C.muted, fontWeight: 500, marginTop: '5px' }}>
-            <span>{formatCHF(MIN_BUDGET)}</span>
-            <span>{formatCHF(MAX_BUDGET)}</span>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            fontSize: 11, color: C.muted, fontWeight: 500, marginTop: 5,
+          }}>
+            <span>{fmtCHF(sliderMin)}</span>
+            <span>{fmtCHF(sliderMax)}</span>
           </div>
         </div>
 
-        {/* Date + Laufzeit card */}
-        <div style={card}>
-          <div style={clabel}>Laufzeit</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '4px' }}>
-            <div>
-              <div style={{ fontSize: '12px', color: C.muted, marginBottom: '6px' }}>Startdatum</div>
-              <input
-                type="date"
-                value={startDate}
-                min={todayStr()}
-                onChange={e => setStartDate(e.target.value)}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  border: `1.5px solid ${C.border}`,
-                  fontSize: '14px',
-                  color: C.taupe,
-                  fontFamily: 'var(--font-outfit), sans-serif',
-                  backgroundColor: C.bg,
-                  outline: 'none',
-                  cursor: 'pointer',
-                  width: '100%',
-                }}
-              />
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: C.muted, marginBottom: '6px' }}>Anzahl Wochen</div>
-              <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                {LAUFZEITEN.map(l => (
-                  <button
-                    key={l.value}
-                    type="button"
-                    onClick={() => setLaufzeit(l.value)}
-                    style={{
-                      padding: '8px 15px',
-                      borderRadius: '100px',
-                      border: `1.5px solid ${laufzeit === l.value ? C.primary : C.border}`,
-                      backgroundColor: laufzeit === l.value ? C.primary : C.white,
-                      color: laufzeit === l.value ? '#fff' : C.muted,
-                      fontSize: '13px',
-                      fontWeight: laufzeit === l.value ? 600 : 500,
-                      cursor: 'pointer',
-                      fontFamily: 'var(--font-outfit), sans-serif',
-                      transition: 'all .15s',
-                    }}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* ── Map ── */}
+        <div style={{
+          background: C.white,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
+          overflow: 'hidden',
+          marginBottom: 14,
+          padding: '16px 22px 20px',
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '.1em',
+            color: C.muted, textTransform: 'uppercase', marginBottom: 12,
+          }}>
+            Reichweite visualisieren
           </div>
-          {/* Date result */}
-          <div style={{ background: C.pl, borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: C.pd, fontWeight: 500, marginTop: '10px' }}>
-            📅 {dateLabel}
-          </div>
-          {/* Politik: voting date info */}
-          {isPolitik && briefing.votingDate && (
-            <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#7A5500', marginTop: '8px', display: 'flex', gap: '8px' }}>
-              <span>🗳️</span>
-              <span>Abstimmung / Wahl: <strong>{formatDateDE(new Date(briefing.votingDate + 'T12:00:00'))}</strong> – noch {briefing.daysUntil} Tage</span>
-            </div>
-          )}
-        </div>
 
-        {/* ZG-Breite card */}
-        <div style={card}>
-          <div style={clabel}>Zielgruppen-Breite</div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            defaultValue={35}
-            style={{ width: '100%', accentColor: C.primary, cursor: 'pointer', marginBottom: '5px' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: C.muted, fontWeight: 500 }}>
-            <span>← Breit · mehr Reichweite</span>
-            <span>Präzise · treffsicherer →</span>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <SwissMap
+              highlightRegion={regionName}
+              campaignType={briefing.campaignType}
+              reachFraction={reachFraction}
+              width={560}
+              height={340}
+            />
+          </div>
+
+          {/* Legend */}
+          <div style={{
+            display: 'flex', gap: 20, marginTop: 12,
+            fontSize: 12, color: C.muted, alignItems: 'center',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.primary }} />
+              <span>Erreichbar</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#D4CEC4' }} />
+              <span>Potenzial</span>
+            </div>
           </div>
         </div>
 
-        {/* Reach box */}
-        <div style={{ background: 'linear-gradient(135deg,#EBF7F2,#D4F0E6)', border: '1px solid #A8DFC8', borderRadius: '14px', padding: '20px 22px', marginBottom: '14px' }}>
-          {isB2B && b2bReach ? (
-            <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ fontSize: '28px' }}>🏢</div>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '36px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
-                    ~{formatNumber(b2bReach.unternehmen)}
-                  </div>
-                  <div style={{ fontSize: '13px', color: C.green, marginTop: '3px', fontWeight: 500 }}>
-                    Unternehmen erreichbar
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ fontSize: '28px' }}>👥</div>
-                <div>
-                  <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '36px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
-                    ~{formatNumber(b2bReach.mitarbeiter)}
-                  </div>
-                  <div style={{ fontSize: '13px', color: C.green, marginTop: '3px', fontWeight: 500 }}>
-                    Mitarbeiter erreichbar
-                  </div>
-                </div>
-              </div>
+        {/* ── Stats row ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+
+          {/* Card 1: Population */}
+          <div style={{
+            background: C.bg,
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            padding: '16px 18px',
+          }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>
+              {popLabel}
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-              <div style={{ fontSize: '34px' }}>👥</div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '42px', color: C.green, letterSpacing: '-.03em', lineHeight: 1 }}>
-                  ~{formatNumber(reach.uniquePeople)}
-                </div>
-                <div style={{ fontSize: '13px', color: C.green, marginTop: '4px', fontWeight: 500 }}>
-                  erreichbare Personen · Ø 3× Kontakt/Woche
-                </div>
-              </div>
+            <div style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 22, color: C.taupe, letterSpacing: '-.02em',
+            }}>
+              {fmtN(popSize)}
             </div>
-          )}
+          </div>
+
+          {/* Card 2: Laufzeit + Startdatum */}
+          <div style={{
+            background: C.bg,
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            padding: '16px 18px',
+          }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>
+              Laufzeit · Kampagnenstart
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 18, color: C.taupe, marginBottom: 8, lineHeight: 1.3,
+            }}>
+              {currentLaufzeit} {currentLaufzeit === 1 ? 'Woche' : 'Wochen'} · {formatDateDE(startDate)}
+            </div>
+            <input
+              type="date"
+              value={startDate}
+              min={todayStr()}
+              onChange={e => setStartDate(e.target.value)}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: `1.5px solid ${C.border}`,
+                fontSize: 12,
+                color: C.taupe,
+                fontFamily: 'var(--font-outfit), sans-serif',
+                backgroundColor: C.white,
+                outline: 'none',
+                cursor: 'pointer',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Card 3: Frequency */}
+          <div style={{
+            background: C.bg,
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
+            padding: '16px 18px',
+          }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>
+              Ø Kontaktfrequenz
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 22, color: C.taupe, letterSpacing: '-.02em',
+            }}>
+              {currentFreq}× pro Person / Woche
+            </div>
+          </div>
         </div>
 
-        {/* ibox */}
-        <div style={{ background: C.taupe, borderRadius: '14px', padding: '20px 22px', marginBottom: '14px' }}>
-          <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '19px', color: '#fff', fontWeight: 400, marginBottom: '8px' }}>
-            So arbeitet dein Budget
-          </h3>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.6)', lineHeight: 1.65, marginBottom: '10px' }}>
-            70% geht in DOOH-Screens (Aussenwerbung, digitale Screens), 30% in Display-Werbung online.
-          </p>
-          {[
-            `DOOH: ${formatCHF(doohBudget)} · ca. ${formatNumber(reach.doohImpressions)} Impressionen`,
-            `Display: ${formatCHF(displayBudget)} · ca. ${formatNumber(reach.displayImpressions)} Impressionen`,
-            'Ø Kontaktfrequenz: 3× pro Person und Woche',
-          ].map((pt, i) => (
-            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'flex-start' }}>
-              <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: C.primary, flexShrink: 0, marginTop: '5px' }} />
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,.65)' }}>{pt}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA */}
+        {/* ── CTA ── */}
         <button
           type="button"
           onClick={handleNext}
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            display: 'inline-flex', alignItems: 'center', gap: 8,
             background: C.primary, color: '#fff', border: 'none',
-            borderRadius: '100px', padding: '15px 32px',
-            fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
-            cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-            transition: 'all .18s', marginTop: '8px',
+            borderRadius: 100, padding: '15px 32px',
+            fontFamily: 'var(--font-outfit), sans-serif',
+            fontSize: 16, fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+            transition: 'all .18s',
+            marginTop: 8,
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = C.pd;
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = C.primary;
+            e.currentTarget.style.transform = 'none';
+          }}
         >
           Weiter zu den Werbemitteln →
         </button>
+
       </div>
     </section>
   );

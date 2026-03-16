@@ -67,6 +67,8 @@ export interface BriefingData {
   laufzeit: number;
   startDate: string;
   reach: number;
+  freq?: number;
+  tierSelected?: number;
   b2bReach: { unternehmen: number; mitarbeiter: number } | null;
   // Step 5
   werbemittel: 'upload' | 'erstellen' | 'spaeter' | null;
