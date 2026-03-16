@@ -8,18 +8,7 @@ import { BriefingData } from '@/lib/types';
 const SwissMap = dynamic(() => import('./SwissMap'), {
   ssr: false,
   loading: () => (
-    <div
-      style={{
-        height: 340,
-        background: '#FAF7F2',
-        borderRadius: 8,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#8A8490',
-        fontSize: 13,
-      }}
-    >
+    <div style={{ height: 340, background: '#FAF7F2', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A8490', fontSize: 13 }}>
       Karte wird geladen…
     </div>
   ),
@@ -29,10 +18,10 @@ const SwissMap = dynamic(() => import('./SwissMap'), {
 const C = {
   primary: '#C1666B', pd: '#A84E53', pl: '#F9ECEC',
   taupe: '#5C4F3D', muted: '#8A8490', border: '#EDE8E0',
-  bg: '#FAF7F2', white: '#FFFFFF', green: '#3A9E7A',
+  bg: '#FAF7F2', white: '#FFFFFF',
 } as const;
 
-// ─── Canton population data ───────────────────────────────────────────────────
+// ─── Canton population fallback (for B2C/B2B) ────────────────────────────────
 const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
   'Zürich': { bev: 1539000, stimm: 1077300 },
   'Bern': { bev: 1050000, stimm: 735000 },
@@ -63,29 +52,26 @@ const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
   'Gesamte Schweiz': { bev: 8816000, stimm: 5571000 },
 };
 
-// ─── Tier definitions ─────────────────────────────────────────────────────────
+// ─── Fixed tier presets ───────────────────────────────────────────────────────
 const TIERS = [
-  { id: 0, name: 'Sichtbar',   weeks: 1, freq: 3, cpm: 28, popFrac: 0.14 },
-  { id: 1, name: 'Empfohlen',  weeks: 2, freq: 5, cpm: 32, popFrac: 0.25 },
-  { id: 2, name: 'Präsenz',    weeks: 4, freq: 7, cpm: 38, popFrac: 0.35 },
+  { id: 0, name: 'Sichtbar',  weeks: 1, freq: 3, budget: 2500 },
+  { id: 1, name: 'Empfohlen', weeks: 2, freq: 5, budget: 5000 },
+  { id: 2, name: 'Präsenz',   weeks: 4, freq: 7, budget: 12000 },
 ] as const;
 
-// ─── Budget helpers ────────────────────────────────────────────────────────────
-function calcTierBudget(pop: number, tier: typeof TIERS[number]): number {
-  const targetReach = pop * tier.popFrac;
-  const raw = (targetReach * tier.freq / 1000) * tier.cpm;
-  return Math.max(2500, Math.round(raw / 500) * 500);
+// ─── Reach calculation (CPM formula) ─────────────────────────────────────────
+function calcReach(budget: number, freq: number): { lo: number; hi: number; mid: number } {
+  const doohImp    = (budget * 0.70 / 50) * 1000;
+  const displayImp = (budget * 0.30 / 15) * 1000;
+  const reach      = (doohImp + displayImp) / freq;
+  const lo  = Math.round(reach * 0.85 / 100) * 100;
+  const hi  = Math.round(reach * 1.15 / 100) * 100;
+  const mid = Math.round(reach / 100) * 100;
+  return { lo, hi, mid };
 }
 
-function calcReachFromBudget(budget: number, freq: number, cpm: number): number {
-  return Math.round((budget / cpm) * 1000 / freq);
-}
-
-// ─── Date helper ──────────────────────────────────────────────────────────────
-const MONTHS_DE = [
-  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
-];
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
 function formatDateDE(d: Date | string): string {
   const date = typeof d === 'string' ? new Date(d + 'T12:00:00') : d;
@@ -109,43 +95,31 @@ interface Props {
 export default function Step4Budget({ briefing, updateBriefing, nextStep }: Props) {
   const isPolitik = briefing.campaignType === 'politik';
 
-  // For B2C/B2B use analysis region; for Politik use first selected region name (or label)
+  // Region name for display and fallback lookup
   const regionName = isPolitik
-    ? (briefing.selectedRegions?.length === 1
-        ? briefing.selectedRegions[0].name
-        : (briefing.politikRegion ?? 'Gesamte Schweiz'))
+    ? (briefing.selectedRegions?.[0]?.name ?? briefing.politikRegion ?? 'Gesamte Schweiz')
     : (briefing.analysis?.region?.[0] ?? 'Gesamte Schweiz');
 
   const popData = CANTON_POP[regionName] ?? CANTON_POP['Gesamte Schweiz'];
-  // For Politik: use totalStimmber (sum across all selected regions)
   const popSize = isPolitik
     ? (briefing.totalStimmber ?? briefing.stimmberechtigte ?? popData.stimm)
     : popData.bev;
 
-  // Map highlight regions: pass all selected region names for Politik, empty for B2C/B2B
+  // Map: pass selected region names for Politik zoom/highlight
   const mapHighlightRegions = isPolitik && briefing.selectedRegions
     ? briefing.selectedRegions.map(r => r.name)
     : [];
 
-  // Filter tiers by daysUntil (politik only: never offer laufzeit > daysUntil)
+  // Tier filtering by daysUntil (politik only)
   const daysUntil = isPolitik ? (briefing.daysUntil ?? 999) : 999;
-  const maxAllowedWeeks = !isPolitik ? 4 : (daysUntil < 7 ? 1 : daysUntil < 28 ? 2 : 4);
+  const maxAllowedWeeks = !isPolitik ? 4 : (daysUntil < 14 ? 1 : daysUntil < 28 ? 2 : 4);
   const visibleTiers = TIERS.filter(t => t.weeks <= maxAllowedWeeks);
 
-  // Tier budgets (for all 3, so slider snapping always has full range to compare)
-  const tierBudgets = TIERS.map(t => calcTierBudget(popSize, t));
+  // Default to Empfohlen if visible, else highest visible
+  const defaultTier = visibleTiers[Math.min(1, visibleTiers.length - 1)];
 
-  // Initial values — default to Empfohlen if visible, else highest visible
-  const defaultVisibleTier = visibleTiers[Math.min(1, visibleTiers.length - 1)];
-  const initBudget = briefing.recommendedBudget ?? tierBudgets[defaultVisibleTier.id];
-  // Find closest visible tier to initBudget
-  const initTier = visibleTiers.reduce((best, t) =>
-    Math.abs(tierBudgets[t.id] - initBudget) < Math.abs(tierBudgets[best.id] - initBudget) ? t : best,
-    visibleTiers[0]
-  ).id;
-
-  const [budget, setBudget] = useState(initBudget);
-  const [tierSelected, setTierSelected] = useState(initTier);
+  const [budget, setBudget] = useState<number>(defaultTier.budget);
+  const [tierSelected, setTierSelected] = useState<0 | 1 | 2>(defaultTier.id);
   const [startDate, setStartDate] = useState<string>(() => {
     if (briefing.votingDate && briefing.recommendedLaufzeit) {
       const d = new Date(briefing.votingDate + 'T12:00:00');
@@ -157,24 +131,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     return todayStr();
   });
 
-  const activeTier = TIERS[tierSelected];
+  const activeTier  = TIERS[tierSelected];
   const currentFreq = activeTier.freq;
   const currentLaufzeit = activeTier.weeks;
-  const currentReach = calcReachFromBudget(budget, currentFreq, activeTier.cpm);
-  const reachFraction = Math.min(1, currentReach / popSize);
 
-  const handleTierSelect = (tierIdx: number) => {
-    setTierSelected(tierIdx as 0 | 1 | 2);
-    setBudget(tierBudgets[tierIdx]);
+  // Reach korridor from current budget + selected tier's freq
+  const { lo, hi, mid } = calcReach(budget, currentFreq);
+  const reachFraction = Math.min(1, mid / Math.max(1, popSize));
+
+  const handleTierSelect = (id: 0 | 1 | 2) => {
+    setTierSelected(id);
+    setBudget(TIERS[id].budget);
   };
 
+  // Slider only changes budget — keeps selected tier's laufzeit/freq
   const handleSliderChange = (val: number) => {
     setBudget(val);
-    const closest = visibleTiers.reduce((best, t) =>
-      Math.abs(tierBudgets[t.id] - val) < Math.abs(tierBudgets[best.id] - val) ? t : best,
-      visibleTiers[0]
-    ).id;
-    setTierSelected(closest);
   };
 
   const handleNext = () => {
@@ -182,7 +154,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
       budget,
       laufzeit: currentLaufzeit,
       startDate,
-      reach: currentReach,
+      reach: mid,
       freq: currentFreq,
       tierSelected,
       b2bReach: null,
@@ -191,21 +163,16 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   };
 
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
-  const fmtN = (n: number) => Math.round(n).toLocaleString('de-CH');
+  const fmtN   = (n: number) => Math.round(n).toLocaleString('de-CH');
+  const fmtRange = (a: number, b: number) => `${fmtN(a)}–${fmtN(b)}`;
 
   const personLabel = isPolitik ? 'Stimmberechtigte' : 'Personen';
-  const popLabel = isPolitik ? 'Stimmberechtigte' : 'Bevölkerung';
+  const popLabel    = isPolitik ? 'Stimmberechtigte' : 'Bevölkerung';
 
-  // Campaign type pill
-  const ctBadgeLabel =
-    briefing.campaignType === 'b2c' ? 'B2C' :
-    briefing.campaignType === 'b2b' ? 'B2B' :
-    'Politische Kampagne';
-  const ctBadgeColor =
-    briefing.campaignType === 'politik' ? '#7C3AED' : C.primary;
+  const ctBadgeLabel = briefing.campaignType === 'b2c' ? 'B2C' : briefing.campaignType === 'b2b' ? 'B2B' : 'Politische Kampagne';
+  const ctBadgeColor = briefing.campaignType === 'politik' ? '#7C3AED' : C.primary;
 
-  const sliderMin = 2500;
-  const sliderMax = 50000;
+  const laufzeitLabel = `${currentLaufzeit} ${currentLaufzeit === 1 ? 'Woche' : 'Wochen'}`;
 
   return (
     <section style={{ backgroundColor: C.bg }}>
@@ -214,80 +181,28 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         {/* ── Eyebrow ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={{ width: 18, height: 2, background: C.primary, borderRadius: 2 }} />
-          <span style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '.12em',
-            color: C.primary, textTransform: 'uppercase',
-          }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
             Schritt 3
           </span>
         </div>
 
         {/* ── Heading ── */}
-        <h1 style={{
-          fontFamily: 'var(--font-fraunces), Georgia, serif',
-          fontSize: 30, fontWeight: 400, letterSpacing: '-.02em',
-          lineHeight: 1.25, marginBottom: 20, color: C.taupe,
-        }}>
+        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 30, fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: 20, color: C.taupe }}>
           Wie weit soll deine Kampagne strahlen?
         </h1>
 
         {/* ── Context bar ── */}
-        <div style={{
-          background: C.white,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          padding: '12px 18px',
-          marginBottom: 14,
-          display: 'flex',
-          flexWrap: 'wrap' as const,
-          alignItems: 'center',
-          gap: 10,
-          fontSize: 13,
-          color: C.taupe,
-        }}>
-          {/* Campaign type badge */}
-          <span style={{
-            background: ctBadgeColor,
-            color: '#fff',
-            borderRadius: 100,
-            padding: '3px 11px',
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: '.04em',
-          }}>
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 18px', marginBottom: 14, display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 10, fontSize: 13, color: C.taupe }}>
+          <span style={{ background: ctBadgeColor, color: '#fff', borderRadius: 100, padding: '3px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.04em' }}>
             {ctBadgeLabel}
           </span>
-
-          {isPolitik && briefing.selectedRegions && briefing.selectedRegions.length > 1 ? (
-            <>
-              <span style={{ color: C.taupe }}>
-                📍 <strong>{briefing.selectedRegions.length} Regionen</strong>
-                &nbsp;·&nbsp;
-                {popSize.toLocaleString('de-CH')}&nbsp;Stimmberechtigte total
-              </span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {briefing.selectedRegions.map(r => (
-                  <span
-                    key={r.name}
-                    style={{
-                      fontSize: 11, background: C.pl, color: C.pd,
-                      border: '1px solid rgba(193,102,107,.2)',
-                      borderRadius: 100, padding: '2px 8px', fontWeight: 600,
-                    }}
-                  >
-                    {r.name}
-                  </span>
-                ))}
-              </div>
-            </>
-          ) : regionName ? (
+          {regionName && (
             <span style={{ color: C.taupe }}>
               📍 <strong>{regionName}</strong>
               &nbsp;·&nbsp;
               {popSize.toLocaleString('de-CH')}&nbsp;{isPolitik ? 'Stimmberechtigte' : 'Personen'}
             </span>
-          ) : null}
-
+          )}
           {isPolitik && briefing.daysUntil != null && (
             <span style={{ color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '3px 10px' }}>
               🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen
@@ -299,7 +214,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleTiers.length}, 1fr)`, gap: 12, marginBottom: 14 }}>
           {visibleTiers.map((t) => {
             const isActive = tierSelected === t.id;
-            const tierReach = calcReachFromBudget(tierBudgets[t.id], t.freq, t.cpm);
+            const { lo: tLo, hi: tHi } = calcReach(t.budget, t.freq);
             return (
               <div
                 key={t.id}
@@ -307,63 +222,28 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                 style={{
                   border: isActive ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
                   background: isActive ? C.pl : C.white,
-                  borderRadius: 14,
-                  padding: '16px 14px',
-                  cursor: 'pointer',
-                  transition: 'all .15s',
-                  position: 'relative',
-                  userSelect: 'none',
+                  borderRadius: 14, padding: '16px 14px',
+                  cursor: 'pointer', transition: 'all .15s',
+                  position: 'relative', userSelect: 'none',
                 }}
               >
-                {/* "Empfohlen" badge on Empfohlen card */}
+                {/* "Empfohlen" badge on tier id=1 when visible */}
                 {t.id === 1 && (
-                  <div style={{
-                    position: 'absolute', top: -10, left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: C.pl,
-                    border: `1px solid ${C.pd}`,
-                    color: C.pd,
-                    borderRadius: 100,
-                    padding: '2px 10px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '.06em',
-                    whiteSpace: 'nowrap' as const,
-                  }}>
+                  <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: C.pl, border: `1px solid ${C.pd}`, color: C.pd, borderRadius: 100, padding: '2px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', whiteSpace: 'nowrap' as const }}>
                     Empfohlen
                   </div>
                 )}
-
-                {/* Tier name */}
-                <div style={{
-                  fontFamily: 'var(--font-fraunces), Georgia, serif',
-                  fontSize: 18, fontWeight: 400, color: C.taupe,
-                  marginBottom: 4,
-                }}>
+                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 400, color: C.taupe, marginBottom: 4 }}>
                   {t.name}
                 </div>
-
-                {/* Budget */}
-                <div style={{
-                  fontFamily: 'var(--font-fraunces), Georgia, serif',
-                  fontSize: 26, color: C.primary,
-                  letterSpacing: '-.02em', lineHeight: 1,
-                  marginBottom: 4,
-                }}>
-                  {fmtCHF(tierBudgets[t.id])}
+                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.primary, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
+                  {fmtCHF(t.budget)}
                 </div>
-
-                {/* Weeks · Freq */}
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
-                  · {t.weeks}W · {t.freq}× Frequenz
+                  {t.weeks}W · {t.freq}× Frequenz
                 </div>
-
-                {/* Reach subline */}
-                <div style={{
-                  fontSize: 11, color: isActive ? C.pd : C.muted,
-                  lineHeight: 1.4,
-                }}>
-                  ~{fmtN(tierReach)} {personLabel} sehen dich {t.freq}×
+                <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
+                  ~{fmtRange(tLo, tHi)} {personLabel}
                 </div>
               </div>
             );
@@ -371,92 +251,50 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         </div>
 
         {/* ── Short-notice note ── */}
-        {isPolitik && daysUntil < 7 && (
-          <div style={{
-            fontSize: 12, color: '#7A5500',
-            background: '#FFF8EE', border: '1px solid #FDDFA4',
-            borderRadius: 8, padding: '8px 12px', marginBottom: 14,
-          }}>
+        {isPolitik && daysUntil < 14 && (
+          <div style={{ fontSize: 12, color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '8px 12px', marginBottom: 14 }}>
             ⚠️ Zu kurzfristig für längere Kampagnen — nur 1-Woche-Buchung verfügbar.
           </div>
         )}
 
-        {/* ── Headline stat ── */}
-        <div style={{
-          background: C.pl,
-          borderRadius: 12,
-          padding: '16px 22px',
-          marginBottom: 14,
-        }}>
-          <div style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontSize: 22, color: C.taupe, fontWeight: 400, lineHeight: 1.3,
-          }}>
-            ~{fmtN(currentReach)} {personLabel} sehen deine Kampagne {currentFreq}×&nbsp;
-            — über {currentLaufzeit} {currentLaufzeit === 1 ? 'Woche' : 'Wochen'}
+        {/* ── Headline stat (korridor) ── */}
+        <div style={{ background: C.pl, borderRadius: 12, padding: '16px 22px', marginBottom: 14 }}>
+          <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: C.taupe, fontWeight: 400, lineHeight: 1.3 }}>
+            {fmtRange(lo, hi)}&nbsp;{personLabel} sehen deine Kampagne&nbsp;{currentFreq}×&nbsp;— über {laufzeitLabel}
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
-            Das entspricht {Math.round(reachFraction * 100)}% der {personLabel} in {regionName}
+            Das entspricht ca. {Math.round(mid / Math.max(1, popSize) * 100)}% der {personLabel} in {regionName}
           </div>
         </div>
 
         {/* ── Budget slider ── */}
-        <div style={{
-          background: C.white,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          padding: '20px 22px',
-          marginBottom: 14,
-        }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '.1em',
-            color: C.muted, textTransform: 'uppercase', marginBottom: 10,
-          }}>
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '20px 22px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>
             Budget feinjustieren
           </div>
-
-          <div style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontSize: 32, color: C.taupe, letterSpacing: '-.03em',
-            marginBottom: 10,
-          }}>
+          <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 32, color: C.taupe, letterSpacing: '-.03em', marginBottom: 10 }}>
             {fmtCHF(budget)}
           </div>
-
           <input
             type="range"
-            min={sliderMin}
-            max={sliderMax}
+            min={2500}
+            max={50000}
             step={500}
             value={budget}
             onChange={e => handleSliderChange(Number(e.target.value))}
             style={{ width: '100%', accentColor: C.primary, cursor: 'pointer' }}
           />
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            fontSize: 11, color: C.muted, fontWeight: 500, marginTop: 5,
-          }}>
-            <span>{fmtCHF(sliderMin)}</span>
-            <span>{fmtCHF(sliderMax)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, fontWeight: 500, marginTop: 5 }}>
+            <span>CHF 2'500</span>
+            <span>CHF 50'000</span>
           </div>
         </div>
 
         {/* ── Map ── */}
-        <div style={{
-          background: C.white,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          overflow: 'hidden',
-          marginBottom: 14,
-          padding: '16px 22px 20px',
-        }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '.1em',
-            color: C.muted, textTransform: 'uppercase', marginBottom: 12,
-          }}>
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14, padding: '16px 22px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 12 }}>
             Reichweite visualisieren
           </div>
-
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <SwissMap
               highlightRegions={mapHighlightRegions}
@@ -466,12 +304,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
               height={340}
             />
           </div>
-
-          {/* Legend */}
-          <div style={{
-            display: 'flex', gap: 20, marginTop: 12,
-            fontSize: 12, color: C.muted, alignItems: 'center',
-          }}>
+          <div style={{ display: 'flex', gap: 20, marginTop: 12, fontSize: 12, color: C.muted, alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.primary }} />
               <span>Erreichbar</span>
@@ -485,76 +318,30 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
         {/* ── Stats row ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-
-          {/* Card 1: Population */}
-          <div style={{
-            background: C.bg,
-            border: `1px solid ${C.border}`,
-            borderRadius: 12,
-            padding: '16px 18px',
-          }}>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>
-              {popLabel}
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-fraunces), Georgia, serif',
-              fontSize: 22, color: C.taupe, letterSpacing: '-.02em',
-            }}>
+          <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>{popLabel}</div>
+            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: C.taupe, letterSpacing: '-.02em' }}>
               {fmtN(popSize)}
             </div>
           </div>
 
-          {/* Card 2: Laufzeit + Startdatum */}
-          <div style={{
-            background: C.bg,
-            border: `1px solid ${C.border}`,
-            borderRadius: 12,
-            padding: '16px 18px',
-          }}>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>
-              Laufzeit · Kampagnenstart
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-fraunces), Georgia, serif',
-              fontSize: 18, color: C.taupe, marginBottom: 8, lineHeight: 1.3,
-            }}>
-              {currentLaufzeit} {currentLaufzeit === 1 ? 'Woche' : 'Wochen'} · {formatDateDE(startDate)}
+          <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>Laufzeit · Kampagnenstart</div>
+            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, color: C.taupe, marginBottom: 8, lineHeight: 1.3 }}>
+              {laufzeitLabel} · {formatDateDE(startDate)}
             </div>
             <input
               type="date"
               value={startDate}
               min={todayStr()}
               onChange={e => setStartDate(e.target.value)}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 8,
-                border: `1.5px solid ${C.border}`,
-                fontSize: 12,
-                color: C.taupe,
-                fontFamily: 'var(--font-outfit), sans-serif',
-                backgroundColor: C.white,
-                outline: 'none',
-                cursor: 'pointer',
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
+              style={{ padding: '6px 10px', borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 12, color: C.taupe, fontFamily: 'var(--font-outfit), sans-serif', backgroundColor: C.white, outline: 'none', cursor: 'pointer', width: '100%', boxSizing: 'border-box' }}
             />
           </div>
 
-          {/* Card 3: Frequency */}
-          <div style={{
-            background: C.bg,
-            border: `1px solid ${C.border}`,
-            borderRadius: 12,
-            padding: '16px 18px',
-          }}>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>
-              Ø Kontaktfrequenz
-            </div>
-            <div style={{
-              fontFamily: 'var(--font-fraunces), Georgia, serif',
-              fontSize: 22, color: C.taupe, letterSpacing: '-.02em',
-            }}>
+          <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>Ø Kontaktfrequenz</div>
+            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: C.taupe, letterSpacing: '-.02em' }}>
               {currentFreq}× pro Person / Woche
             </div>
           </div>
@@ -564,25 +351,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         <button
           type="button"
           onClick={handleNext}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: C.primary, color: '#fff', border: 'none',
-            borderRadius: 100, padding: '15px 32px',
-            fontFamily: 'var(--font-outfit), sans-serif',
-            fontSize: 16, fontWeight: 600,
-            cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-            transition: 'all .18s',
-            marginTop: 8,
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = C.pd;
-            e.currentTarget.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = C.primary;
-            e.currentTarget.style.transform = 'none';
-          }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.primary, color: '#fff', border: 'none', borderRadius: 100, padding: '15px 32px', fontFamily: 'var(--font-outfit), sans-serif', fontSize: 16, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)', transition: 'all .18s', marginTop: 8 }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
         >
           Weiter zu den Werbemitteln →
         </button>

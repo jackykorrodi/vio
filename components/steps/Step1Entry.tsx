@@ -95,11 +95,15 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const [showCancel, setShowCancel] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Politik state — multi-region
-  const [selectedRegions, setSelectedRegions] = useState<Region[]>(
-    () => (briefing.selectedRegions as Region[] | undefined) ?? []
+  // Politik state — single region
+  const [region, setRegion] = useState<Region | null>(
+    () => {
+      const saved = briefing.selectedRegions?.[0];
+      if (saved) return saved as Region;
+      return null;
+    }
   );
-  const [regionQuery, setRegionQuery] = useState('');
+  const [regionQuery, setRegionQuery] = useState(briefing.politikRegion && briefing.politikRegion.indexOf(' Regionen') === -1 ? briefing.politikRegion : '');
   const [regionOpen, setRegionOpen] = useState(false);
   const [votingDate, setVotingDate] = useState(briefing.votingDate || '');
   const [kampagnenTyp, setKampagnenTyp] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(briefing.politikType || null);
@@ -110,31 +114,20 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const progress = Math.min(((analysisStepIdx + 1) / ANALYSIS_STEPS.length) * 100, 100);
   const domain = url.replace(/^https?:\/\//, '').split('/')[0] || 'deine-website.ch';
 
-  // Multi-region search results: Kantone first, then Städte, max 8, exclude already selected
+  // Search results: Kantone first, then Gemeinden alphabetically, max 8
   const searchResults = (() => {
     const q = regionQuery.trim().toLowerCase();
-    const taken = new Set(selectedRegions.map(r => r.name));
-    const pool = ALL_REGIONS.filter(r => !taken.has(r.name) && (!q || r.name.toLowerCase().includes(q)));
+    const pool = ALL_REGIONS.filter(r => !q || r.name.toLowerCase().includes(q));
     const schweiz = pool.filter(r => r.type === 'schweiz');
     const kantone = pool.filter(r => r.type === 'kanton');
-    const staedte = pool.filter(r => r.type === 'stadt');
+    const staedte = [...pool.filter(r => r.type === 'stadt')].sort((a, b) => a.name.localeCompare(b.name, 'de'));
     return [...schweiz, ...kantone, ...staedte].slice(0, 8);
   })();
 
-  // Politik potenzial calc (totals across all selected regions)
-  const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
-  const politikReady = !!(selectedRegions.length >= 1 && votingDate && kampagnenTyp);
+  // Politik potenzial calc
+  const politikReady = !!(region && votingDate && kampagnenTyp);
   const daysUntilVoting = votingDate ? calcDaysUntil(votingDate) : 0;
-  const potenzial = selectedRegions.length > 0 ? calcPotenzial(totalStimm, daysUntilVoting) : null;
-
-  const addRegion = (r: Region) => {
-    setSelectedRegions(prev => prev.some(x => x.name === r.name) ? prev : [...prev, r]);
-    setRegionQuery('');
-    setRegionOpen(false);
-  };
-  const removeRegion = (name: string) => {
-    setSelectedRegions(prev => prev.filter(r => r.name !== name));
-  };
+  const potenzial = region ? calcPotenzial(region.stimm, daysUntilVoting) : null;
 
   const handleAnalyze = () => {
     let cleanUrl = url.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -187,21 +180,15 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   };
 
   const handlePolitikWeiter = () => {
-    if (selectedRegions.length === 0 || !votingDate || !kampagnenTyp) return;
+    if (!region || !votingDate || !kampagnenTyp) return;
     const days = calcDaysUntil(votingDate);
-    const { budget, laufzeit } = calcPotenzial(totalStimm, days);
-    const regionLabel = selectedRegions.length === 1
-      ? selectedRegions[0].name
-      : `${selectedRegions.length} Regionen`;
-    const regionType = selectedRegions.length === 1
-      ? (selectedRegions[0].type as 'kanton' | 'stadt' | 'schweiz')
-      : 'kanton';
+    const { budget, laufzeit } = calcPotenzial(region.stimm, days);
     updateBriefing({
-      selectedRegions,
-      totalStimmber: totalStimm,
-      politikRegion: regionLabel,
-      politikRegionType: regionType,
-      stimmberechtigte: totalStimm,
+      selectedRegions: [region],
+      totalStimmber: region.stimm,
+      politikRegion: region.name,
+      politikRegionType: region.type as 'kanton' | 'stadt' | 'schweiz',
+      stimmberechtigte: region.stimm,
       votingDate,
       daysUntil: days,
       politikType: kampagnenTyp,
@@ -429,16 +416,14 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
             <div style={{ paddingTop: '4px' }}>
               <div style={card}>
 
-                {/* Multi-region picker */}
+                {/* Region picker — single select, searchable */}
                 <div style={{ marginBottom: '20px', position: 'relative' }}>
                   <div style={clabel}>Region / Wahlkreis</div>
-
-                  {/* Search input */}
                   <input
                     type="text"
                     value={regionQuery}
                     placeholder="Gemeinde oder Kanton suchen..."
-                    onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); }}
+                    onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); setRegion(null); }}
                     onFocus={() => setRegionOpen(true)}
                     onBlur={() => setTimeout(() => setRegionOpen(false), 200)}
                     style={{
@@ -446,7 +431,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       boxSizing: 'border-box',
                       padding: '12px 16px',
                       borderRadius: '8px',
-                      border: `1.5px solid ${C.border}`,
+                      border: `1.5px solid ${region ? C.primary : C.border}`,
                       fontSize: '15px',
                       fontFamily: 'var(--font-outfit), sans-serif',
                       color: C.taupe,
@@ -455,19 +440,12 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                     }}
                   />
 
-                  {/* Dropdown */}
                   {regionOpen && searchResults.length > 0 && (
                     <div style={{
-                      position: 'absolute',
-                      top: 'calc(100% + 4px)',
-                      left: 0, right: 0,
-                      background: C.white,
-                      border: `1px solid ${C.border}`,
-                      borderRadius: '10px',
-                      boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                      maxHeight: '280px',
-                      overflowY: 'auto',
-                      zIndex: 100,
+                      position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                      background: C.white, border: `1px solid ${C.border}`,
+                      borderRadius: '10px', boxShadow: '0 8px 24px rgba(44,44,62,.12)',
+                      maxHeight: '300px', overflowY: 'auto', zIndex: 100,
                     }}>
                       {/* Kantone group */}
                       {searchResults.filter(r => r.type === 'kanton' || r.type === 'schweiz').length > 0 && (
@@ -478,7 +456,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           {searchResults.filter(r => r.type === 'kanton' || r.type === 'schweiz').map(r => (
                             <div
                               key={r.name}
-                              onMouseDown={() => addRegion(r)}
+                              onMouseDown={() => { setRegion(r); setRegionQuery(r.name); setRegionOpen(false); }}
                               style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background .15s' }}
                               onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
                               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -494,7 +472,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           ))}
                         </div>
                       )}
-                      {/* Städte/Gemeinden group */}
+                      {/* Gemeinden group */}
                       {searchResults.filter(r => r.type === 'stadt').length > 0 && (
                         <div>
                           <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>
@@ -503,7 +481,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           {searchResults.filter(r => r.type === 'stadt').map(r => (
                             <div
                               key={r.name}
-                              onMouseDown={() => addRegion(r)}
+                              onMouseDown={() => { setRegion(r); setRegionQuery(r.name); setRegionOpen(false); }}
                               style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background .15s' }}
                               onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
                               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -521,36 +499,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           ))}
                         </div>
                       )}
-                    </div>
-                  )}
-
-                  {/* Selected region tags */}
-                  {selectedRegions.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                      {selectedRegions.map(r => (
-                        <span
-                          key={r.name}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                            background: C.pl, border: `1px solid rgba(193,102,107,.25)`,
-                            color: C.pd, borderRadius: '100px',
-                            padding: '4px 10px 4px 12px', fontSize: '13px', fontWeight: 600,
-                          }}
-                        >
-                          {r.name}
-                          <button
-                            type="button"
-                            onMouseDown={(e) => { e.preventDefault(); removeRegion(r.name); }}
-                            style={{
-                              background: 'none', border: 'none', color: C.pd,
-                              cursor: 'pointer', padding: '0 2px', fontSize: '14px', lineHeight: 1,
-                              display: 'flex', alignItems: 'center',
-                            }}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -636,7 +584,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       gap: '10px', marginBottom: '12px',
                     }}>
                       {[
-                        { label: selectedRegions.length > 1 ? 'Stimmber. total' : 'Stimmberechtigte', value: totalStimm.toLocaleString('de-CH') },
+                        { label: 'Stimmberechtigte', value: region!.stimm.toLocaleString('de-CH') },
                         { label: 'Erreichbare Personen', value: potenzial.erreichbar.toLocaleString('de-CH') },
                         { label: 'Empf. Budget', value: formatCHF(potenzial.budget) },
                         { label: 'Empf. Laufzeit', value: `${potenzial.laufzeit}W` },
