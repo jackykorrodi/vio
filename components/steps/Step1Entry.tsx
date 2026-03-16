@@ -419,28 +419,30 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                 {/* Region picker — single select, searchable */}
                 <div style={{ marginBottom: '20px', position: 'relative' }}>
                   <div style={clabel}>Region / Wahlkreis</div>
-                  <input
-                    type="text"
-                    value={regionQuery}
-                    placeholder="Gemeinde oder Kanton suchen..."
-                    onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); setRegion(null); }}
-                    onFocus={() => setRegionOpen(true)}
-                    onBlur={() => setTimeout(() => setRegionOpen(false), 200)}
-                    style={{
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: `1.5px solid ${region ? C.primary : C.border}`,
-                      fontSize: '15px',
-                      fontFamily: 'var(--font-outfit), sans-serif',
-                      color: C.taupe,
-                      backgroundColor: C.white,
-                      outline: 'none',
-                    }}
-                  />
+                  {!region && (
+                    <input
+                      type="text"
+                      value={regionQuery}
+                      placeholder="Gemeinde oder Kanton suchen..."
+                      onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); setRegion(null); }}
+                      onFocus={() => setRegionOpen(true)}
+                      onBlur={() => setTimeout(() => setRegionOpen(false), 200)}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        border: `1.5px solid ${C.border}`,
+                        fontSize: '15px',
+                        fontFamily: 'var(--font-outfit), sans-serif',
+                        color: C.taupe,
+                        backgroundColor: C.white,
+                        outline: 'none',
+                      }}
+                    />
+                  )}
 
-                  {regionOpen && searchResults.length > 0 && (
+                  {regionOpen && !region && searchResults.length > 0 && (
                     <div style={{
                       position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
                       background: C.white, border: `1px solid ${C.border}`,
@@ -499,6 +501,37 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Selected region tag */}
+                  {region && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        background: C.pl, border: `1px solid ${C.primary}`,
+                        color: C.pd, borderRadius: '100px',
+                        padding: '5px 8px 5px 14px', fontSize: '13px', fontWeight: 600,
+                      }}>
+                        {region.name}
+                        {region.type === 'stadt' && region.kanton && (
+                          <span style={{ fontSize: '11px', color: '#7C3AED', background: '#EDE9FE', borderRadius: '100px', padding: '1px 7px' }}>
+                            {region.kanton}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setRegion(null); setRegionQuery(''); }}
+                          style={{
+                            background: 'none', border: 'none', color: C.muted,
+                            cursor: 'pointer', fontSize: '16px', padding: '0 4px',
+                            lineHeight: 1, display: 'flex', alignItems: 'center',
+                          }}
+                          aria-label="Region entfernen"
+                        >
+                          ×
+                        </button>
+                      </span>
                     </div>
                   )}
                 </div>
