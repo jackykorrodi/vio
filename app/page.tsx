@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const C = {
@@ -120,6 +120,110 @@ function UrlInput({
       >
         {buttonLabel}
       </button>
+    </div>
+  );
+}
+
+// ── Analysis Demo (looping animation) ────────────────────────────────────────
+
+const DEMO_STEPS = [
+  { icon: '🔍', label: 'Website gelesen', sub: 'vio.ch' },
+  { icon: '🧠', label: 'Thema & Kontext erkannt', sub: 'KI analysiert Inhalte...' },
+  { icon: '🎯', label: 'Zielgruppe bestimmt', sub: 'KI gleicht mit Schweizer Daten ab...' },
+  { icon: '📊', label: 'Potenzial berechnet', sub: 'BFS-Bevölkerungsdaten werden geladen' },
+];
+
+function AnalysisDemo() {
+  const [stepIdx, setStepIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const advance = useCallback(() => {
+    setStepIdx(prev => {
+      if (prev >= DEMO_STEPS.length) return 0; // after "all done" pause, loop back
+      return prev + 1;
+    });
+  }, []);
+
+  useEffect(() => {
+    timerRef.current = setInterval(advance, 1200);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [advance]);
+
+  const allDone = stepIdx >= DEMO_STEPS.length;
+  const progress = allDone ? 100 : Math.min(((stepIdx + 1) / DEMO_STEPS.length) * 100, 100);
+
+  return (
+    <div style={{
+      background: C.white,
+      borderRadius: '16px',
+      border: `1px solid ${C.border}`,
+      boxShadow: '0 4px 24px rgba(44,44,62,.10)',
+      padding: '28px',
+    }}>
+      <style>{`
+        @keyframes vio-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.12); opacity: 0.8; }
+        }
+      `}</style>
+
+      {/* Progress bar */}
+      <div style={{
+        width: '100%', height: '4px', background: C.border,
+        borderRadius: '2px', marginBottom: '24px', overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${progress}%`,
+          background: `linear-gradient(90deg, ${C.primary}, ${C.pd})`,
+          borderRadius: '2px',
+          transition: 'width .4s ease',
+        }} />
+      </div>
+
+      {/* Steps list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {DEMO_STEPS.map((step, idx) => {
+          const isDone = allDone || stepIdx > idx;
+          const isActive = !allDone && stepIdx === idx;
+          const opacity = isDone || isActive ? 1 : 0.28;
+
+          return (
+            <div
+              key={idx}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                opacity,
+                transition: 'opacity .3s',
+              }}
+            >
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: isDone ? '#EBF7F2' : isActive ? C.pl : C.border,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  flexShrink: 0,
+                  animation: isActive ? 'vio-pulse 1.2s ease-in-out infinite' : 'none',
+                  transition: 'background .3s',
+                }}
+              >
+                {isDone ? '✓' : step.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600, color: C.taupe }}>{step.label}</div>
+                <div style={{ fontSize: '13px', color: C.muted, marginTop: '2px' }}>{step.sub}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -491,6 +595,34 @@ export default function HomePage() {
               ))}
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      {/* ── ANALYSIS DEMO ───────────────────────────────────────────────── */}
+      <section id="analyse" style={{ padding: '100px clamp(20px, 5vw, 56px)', backgroundColor: C.white }}>
+        <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+          <Reveal style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <div style={{
+              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
+              color: C.primary, textTransform: 'uppercase', marginBottom: '14px',
+            }}>
+              KI-Analyse
+            </div>
+            <h2 style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontSize: 'clamp(28px, 4vw, 46px)',
+              fontWeight: 400, letterSpacing: '-.02em', color: C.taupe,
+            }}>
+              So funktioniert die Analyse
+            </h2>
+            <p style={{
+              fontSize: '16px', color: C.muted, marginTop: '14px',
+              maxWidth: '500px', margin: '14px auto 0', lineHeight: 1.6,
+            }}>
+              In weniger als 15 Sekunden ermittelt unsere KI deine Zielgruppe – vollautomatisch, ohne Fragebogen.
+            </p>
+          </Reveal>
+          <AnalysisDemo />
         </div>
       </section>
 

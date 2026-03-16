@@ -199,7 +199,7 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={{ width: 18, height: 2, background: C.primary, borderRadius: 2 }} />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
-            Schritt 5
+            Schritt 4
           </span>
         </div>
 

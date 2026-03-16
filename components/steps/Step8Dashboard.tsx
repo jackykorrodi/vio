@@ -191,7 +191,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <div style={{ width: '18px', height: '2px', background: C.primary, borderRadius: '2px' }} />
           <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
-            Schritt 8
+            Schritt 7
           </span>
         </div>
 
