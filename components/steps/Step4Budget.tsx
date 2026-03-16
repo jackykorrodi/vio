@@ -52,22 +52,33 @@ const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
   'Gesamte Schweiz': { bev: 8816000, stimm: 5571000 },
 };
 
-// ─── Fixed tier presets ───────────────────────────────────────────────────────
-const TIERS = [
-  { id: 0, name: 'Sichtbar',  weeks: 1, freq: 3, budget: 2500 },
-  { id: 1, name: 'Empfohlen', weeks: 2, freq: 5, budget: 5000 },
-  { id: 2, name: 'Präsenz',   weeks: 4, freq: 7, budget: 12000 },
-] as const;
+// ─── Tier definitions (dynamic budget) ───────────────────────────────────────
+const BLENDED_CPM = 40; // (0.70×50) + (0.30×15) weighted average
 
-// ─── Reach calculation (CPM formula) ─────────────────────────────────────────
-function calcReach(budget: number, freq: number): { lo: number; hi: number; mid: number } {
+const TIER_DEFS = [
+  { id: 0 as const, label: 'Sichtbar',  rate: 0.14, freq: 3, lzWeeks: 1, lzLabel: '1 Woche'  },
+  { id: 1 as const, label: 'Empfohlen', rate: 0.25, freq: 5, lzWeeks: 2, lzLabel: '2 Wochen' },
+  { id: 2 as const, label: 'Präsenz',   rate: 0.35, freq: 7, lzWeeks: 4, lzLabel: '4 Wochen' },
+];
+
+function calcTierBudget(stimmber: number, rate: number, freq: number): number {
+  const targetReach = stimmber * rate;
+  const impressions = targetReach * freq;
+  const raw = (impressions / 1000) * BLENDED_CPM;
+  return Math.max(2500, Math.round(raw / 500) * 500);
+}
+
+// ─── Reach calculation (CPM formula, capped at stimmber) ─────────────────────
+function calcReach(budget: number, freq: number, stimmber: number): { lo: number; hi: number; mid: number; pct: number } {
   const doohImp    = (budget * 0.70 / 50) * 1000;
   const displayImp = (budget * 0.30 / 15) * 1000;
-  const reach      = (doohImp + displayImp) / freq;
+  const rawReach   = (doohImp + displayImp) / freq;
+  const reach      = Math.min(rawReach, stimmber);
   const lo  = Math.round(reach * 0.85 / 1000) * 1000;
-  const hi  = Math.round(reach * 1.15 / 1000) * 1000;
+  const hi  = Math.min(Math.round(reach * 1.15 / 1000) * 1000, stimmber);
   const mid = Math.round(reach / 1000) * 1000;
-  return { lo, hi, mid };
+  const pct = Math.min(Math.round(reach / Math.max(1, stimmber) * 100), 100);
+  return { lo, hi, mid, pct };
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -113,12 +124,19 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   // Tier filtering by daysUntil (politik only)
   const daysUntil = isPolitik ? (briefing.daysUntil ?? 999) : 999;
   const maxAllowedWeeks = !isPolitik ? 4 : (daysUntil < 14 ? 1 : daysUntil < 28 ? 2 : 4);
-  const visibleTiers = TIERS.filter(t => t.weeks <= maxAllowedWeeks);
+  const visibleTiers = TIER_DEFS.filter(t => t.lzWeeks <= maxAllowedWeeks);
 
-  // Default to Empfohlen if visible, else highest visible
+  // Compute dynamic budgets for each tier based on popSize
+  const tierBudgets: Record<0 | 1 | 2, number> = {
+    0: calcTierBudget(popSize, TIER_DEFS[0].rate, TIER_DEFS[0].freq),
+    1: calcTierBudget(popSize, TIER_DEFS[1].rate, TIER_DEFS[1].freq),
+    2: calcTierBudget(popSize, TIER_DEFS[2].rate, TIER_DEFS[2].freq),
+  };
+
+  // Default to Empfohlen (id=1) if visible, else highest visible
   const defaultTier = visibleTiers[Math.min(1, visibleTiers.length - 1)];
 
-  const [budget, setBudget] = useState<number>(defaultTier.budget);
+  const [budget, setBudget] = useState<number>(() => tierBudgets[defaultTier.id]);
   const [tierSelected, setTierSelected] = useState<0 | 1 | 2>(defaultTier.id);
   const [startDate, setStartDate] = useState<string>(() => {
     if (briefing.votingDate && briefing.recommendedLaufzeit) {
@@ -131,17 +149,21 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     return todayStr();
   });
 
-  const activeTier  = TIERS[tierSelected];
-  const currentFreq = activeTier.freq;
-  const currentLaufzeit = activeTier.weeks;
+  const activeTier     = TIER_DEFS[tierSelected];
+  const currentFreq    = activeTier.freq;
+  const currentLzWeeks = activeTier.lzWeeks;
+  const currentLzLabel = activeTier.lzLabel;
 
-  // Reach korridor from current budget + selected tier's freq
-  const { lo, hi, mid } = calcReach(budget, currentFreq);
+  // Slider max: praesenz budget × 2, at least 20000
+  const sliderMax = Math.max(tierBudgets[2] * 2, 20000);
+
+  // Reach korridor from current budget + selected tier's freq, capped at popSize
+  const { lo, hi, mid, pct } = calcReach(budget, currentFreq, popSize);
   const reachFraction = Math.min(1, mid / Math.max(1, popSize));
 
   const handleTierSelect = (id: 0 | 1 | 2) => {
     setTierSelected(id);
-    setBudget(TIERS[id].budget);
+    setBudget(tierBudgets[id]);
   };
 
   // Slider only changes budget — keeps selected tier's laufzeit/freq
@@ -152,7 +174,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const handleNext = () => {
     updateBriefing({
       budget,
-      laufzeit: currentLaufzeit,
+      laufzeit: currentLzWeeks,
       startDate,
       reach: mid,
       freq: currentFreq,
@@ -171,8 +193,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const ctBadgeLabel = briefing.campaignType === 'b2c' ? 'B2C' : briefing.campaignType === 'b2b' ? 'B2B' : 'Politische Kampagne';
   const ctBadgeColor = briefing.campaignType === 'politik' ? '#7C3AED' : C.primary;
-
-  const laufzeitLabel = `${currentLaufzeit} ${currentLaufzeit === 1 ? 'Woche' : 'Wochen'}`;
 
   return (
     <section style={{ backgroundColor: C.bg }}>
@@ -214,7 +234,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleTiers.length}, 1fr)`, gap: 12, marginBottom: 14 }}>
           {visibleTiers.map((t) => {
             const isActive = tierSelected === t.id;
-            const { lo: tLo, hi: tHi } = calcReach(t.budget, t.freq);
+            const tBudget = tierBudgets[t.id];
+            const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freq, popSize);
             return (
               <div
                 key={t.id}
@@ -227,23 +248,23 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                   position: 'relative', userSelect: 'none',
                 }}
               >
-                {/* "Empfohlen" badge on tier id=1 when visible */}
+                {/* "Empfohlen" badge on tier id=1 */}
                 {t.id === 1 && (
                   <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: C.pl, border: `1px solid ${C.pd}`, color: C.pd, borderRadius: 100, padding: '2px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', whiteSpace: 'nowrap' as const }}>
                     Empfohlen
                   </div>
                 )}
                 <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 400, color: C.taupe, marginBottom: 4 }}>
-                  {t.name}
+                  {t.label}
                 </div>
                 <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.primary, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
-                  {fmtCHF(t.budget)}
+                  {fmtCHF(tBudget)}
                 </div>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
-                  {t.weeks}W · {t.freq}× Frequenz
+                  {t.lzLabel} · {t.freq}× Frequenz
                 </div>
                 <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
-                  ~{fmtRange(tLo, tHi)} {personLabel}
+                  ~{fmtRange(tLo, tHi)} {personLabel} ({tPct}%)
                 </div>
               </div>
             );
@@ -260,10 +281,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         {/* ── Headline stat (korridor) ── */}
         <div style={{ background: C.pl, borderRadius: 12, padding: '16px 22px', marginBottom: 14 }}>
           <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: C.taupe, fontWeight: 400, lineHeight: 1.3 }}>
-            {fmtRange(lo, hi)}&nbsp;{personLabel} sehen deine Kampagne&nbsp;{currentFreq}×&nbsp;— über {laufzeitLabel}
+            {fmtRange(lo, hi)}&nbsp;{personLabel} sehen deine Kampagne&nbsp;{currentFreq}×&nbsp;— über {currentLzLabel}
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
-            Das entspricht ca. {Math.round(mid / Math.max(1, popSize) * 100)}% der {personLabel} in {regionName}
+            Das entspricht ca. {pct}% der {personLabel} in {regionName}
           </div>
         </div>
 
@@ -278,7 +299,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           <input
             type="range"
             min={2500}
-            max={50000}
+            max={sliderMax}
             step={500}
             value={budget}
             onChange={e => handleSliderChange(Number(e.target.value))}
@@ -286,7 +307,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, fontWeight: 500, marginTop: 5 }}>
             <span>CHF 2'500</span>
-            <span>CHF 50'000</span>
+            <span>{fmtCHF(sliderMax)}</span>
           </div>
         </div>
 
@@ -328,7 +349,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
             <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>Laufzeit · Kampagnenstart</div>
             <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, color: C.taupe, marginBottom: 8, lineHeight: 1.3 }}>
-              {laufzeitLabel} · {formatDateDE(startDate)}
+              {currentLzLabel} · {formatDateDE(startDate)}
             </div>
             <input
               type="date"
