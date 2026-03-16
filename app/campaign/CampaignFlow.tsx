@@ -27,6 +27,7 @@ export default function CampaignFlow() {
   const searchParams = useSearchParams();
   const urlParam = searchParams.get('url') || '';
   const resumeParam = searchParams.get('resume') || '';
+  const typeParam = searchParams.get('type') || '';
 
   const [currentStep, setCurrentStep] = useState(1);
   // Sub-phase for step 5: 'creative' shows option cards, 'adcreator' shows the Ad Creator preview
@@ -34,6 +35,7 @@ export default function CampaignFlow() {
   const [briefing, setBriefing] = useState<BriefingData>({
     ...initialBriefing,
     url: urlParam,
+    campaignType: (typeParam as 'b2c' | 'b2b' | 'politik') || 'b2c',
   });
   const [resumeLoaded, setResumeLoaded] = useState(false);
 
@@ -76,9 +78,10 @@ export default function CampaignFlow() {
   useEffect(() => {
     if (!resumeParam) return;
     try {
-      const decoded = JSON.parse(atob(resumeParam)) as Partial<BriefingData>;
-      setBriefing(prev => ({ ...prev, ...decoded }));
-      setCurrentStep(5);
+      const decoded = JSON.parse(atob(resumeParam)) as Partial<BriefingData> & { _targetStep?: number };
+      const { _targetStep, ...briefingData } = decoded;
+      setBriefing(prev => ({ ...prev, ...briefingData }));
+      setCurrentStep(_targetStep ?? 5);
       setResumeLoaded(true);
     } catch { /* ignore malformed resume param */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

@@ -124,6 +124,78 @@ function UrlInput({
   );
 }
 
+// ── Hero selector: region data + helpers ─────────────────────────────────────
+
+interface HRegion { name: string; rtype: 'schweiz' | 'kanton' | 'stadt'; stimm: number; }
+
+const H_REGIONS: HRegion[] = [
+  { name: 'Gesamte Schweiz',      rtype: 'schweiz', stimm: 5571000 },
+  { name: 'Zürich',               rtype: 'kanton',  stimm: 1077300 },
+  { name: 'Bern',                 rtype: 'kanton',  stimm: 735000 },
+  { name: 'Luzern',               rtype: 'kanton',  stimm: 299600 },
+  { name: 'Uri',                  rtype: 'kanton',  stimm: 25900 },
+  { name: 'Schwyz',               rtype: 'kanton',  stimm: 116200 },
+  { name: 'Obwalden',             rtype: 'kanton',  stimm: 27300 },
+  { name: 'Nidwalden',            rtype: 'kanton',  stimm: 30800 },
+  { name: 'Glarus',               rtype: 'kanton',  stimm: 28700 },
+  { name: 'Zug',                  rtype: 'kanton',  stimm: 91700 },
+  { name: 'Freiburg',             rtype: 'kanton',  stimm: 235900 },
+  { name: 'Solothurn',            rtype: 'kanton',  stimm: 198100 },
+  { name: 'Basel-Stadt',          rtype: 'kanton',  stimm: 128100 },
+  { name: 'Basel-Landschaft',     rtype: 'kanton',  stimm: 199400 },
+  { name: 'Schaffhausen',         rtype: 'kanton',  stimm: 57200 },
+  { name: 'Appenzell A.Rh.',      rtype: 'kanton',  stimm: 40800 },
+  { name: 'Appenzell I.Rh.',      rtype: 'kanton',  stimm: 11500 },
+  { name: 'St. Gallen',           rtype: 'kanton',  stimm: 340900 },
+  { name: 'Graubünden',           rtype: 'kanton',  stimm: 138900 },
+  { name: 'Aargau',               rtype: 'kanton',  stimm: 453400 },
+  { name: 'Thurgau',              rtype: 'kanton',  stimm: 185700 },
+  { name: 'Tessin',               rtype: 'kanton',  stimm: 249600 },
+  { name: 'Waadt',                rtype: 'kanton',  stimm: 516900 },
+  { name: 'Wallis',               rtype: 'kanton',  stimm: 215200 },
+  { name: 'Neuenburg',            rtype: 'kanton',  stimm: 119800 },
+  { name: 'Genf',                 rtype: 'kanton',  stimm: 330000 },
+  { name: 'Jura',                 rtype: 'kanton',  stimm: 52800 },
+  { name: 'Zürich (Stadt)',       rtype: 'stadt',   stimm: 310000 },
+  { name: 'Genf (Stadt)',         rtype: 'stadt',   stimm: 152000 },
+  { name: 'Basel (Stadt)',        rtype: 'stadt',   stimm: 128000 },
+  { name: 'Bern (Stadt)',         rtype: 'stadt',   stimm: 112000 },
+  { name: 'Lausanne',             rtype: 'stadt',   stimm: 94000 },
+  { name: 'Winterthur',           rtype: 'stadt',   stimm: 85000 },
+  { name: 'Luzern (Stadt)',       rtype: 'stadt',   stimm: 65000 },
+  { name: 'St. Gallen (Stadt)',   rtype: 'stadt',   stimm: 56000 },
+  { name: 'Lugano',               rtype: 'stadt',   stimm: 48000 },
+  { name: 'Biel/Bienne',          rtype: 'stadt',   stimm: 45000 },
+  { name: 'Thun',                 rtype: 'stadt',   stimm: 38000 },
+  { name: 'Köniz',                rtype: 'stadt',   stimm: 31000 },
+  { name: 'La Chaux-de-Fonds',    rtype: 'stadt',   stimm: 30000 },
+  { name: 'Schaffhausen (Stadt)', rtype: 'stadt',   stimm: 28000 },
+  { name: 'Fribourg (Stadt)',     rtype: 'stadt',   stimm: 25000 },
+  { name: 'Chur',                 rtype: 'stadt',   stimm: 23000 },
+  { name: 'Vernier',              rtype: 'stadt',   stimm: 22000 },
+  { name: 'Uster',                rtype: 'stadt',   stimm: 21000 },
+  { name: 'Sion',                 rtype: 'stadt',   stimm: 20000 },
+  { name: 'Emmen',                rtype: 'stadt',   stimm: 19000 },
+];
+
+function hDaysUntil(dateStr: string): number {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + 'T00:00:00');
+  return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
+}
+
+function hPotenzial(stimm: number, days: number) {
+  const erreichbar = Math.round(stimm * 0.35);
+  const budget = Math.min(50000, Math.max(2500, Math.round((erreichbar * 3 * 32) / 1000 / 500) * 500));
+  const laufzeit = days > 28 ? 4 : days >= 14 ? 2 : 1;
+  return { budget, laufzeit };
+}
+
+function hTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -134,6 +206,43 @@ export default function HomePage() {
     const t = setTimeout(() => setHeroVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
+
+  // Hero campaign selector state
+  const [heroType, setHeroType] = useState<'b2c' | 'b2b' | 'politik' | null>(null);
+  const [heroUrl, setHeroUrl] = useState('');
+  const [heroRegionName, setHeroRegionName] = useState('');
+  const [heroRegionStimm, setHeroRegionStimm] = useState(0);
+  const [heroRegionType, setHeroRegionType] = useState<'schweiz' | 'kanton' | 'stadt'>('kanton');
+  const [heroVotingDate, setHeroVotingDate] = useState('');
+  const [heroKampagnenTyp, setHeroKampagnenTyp] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(null);
+
+  const heroDaysUntil = heroVotingDate ? hDaysUntil(heroVotingDate) : 0;
+  const politikReady = heroType === 'politik' && !!heroRegionName && !!heroVotingDate && !!heroKampagnenTyp;
+
+  const handleHeroStart = () => {
+    if (heroType === 'politik') {
+      if (!politikReady) return;
+      const { budget, laufzeit } = hPotenzial(heroRegionStimm, heroDaysUntil);
+      const data = {
+        campaignType: 'politik',
+        politikRegion: heroRegionName,
+        politikRegionType: heroRegionType,
+        stimmberechtigte: heroRegionStimm,
+        votingDate: heroVotingDate,
+        daysUntil: heroDaysUntil,
+        politikType: heroKampagnenTyp,
+        recommendedBudget: budget,
+        recommendedLaufzeit: laufzeit,
+        _targetStep: 4,
+      };
+      router.push('/campaign?resume=' + btoa(JSON.stringify(data)));
+    } else if (heroType) {
+      const cleanUrl = heroUrl.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
+      const params = new URLSearchParams({ type: heroType });
+      if (cleanUrl) params.set('url', cleanUrl);
+      router.push('/campaign?' + params.toString());
+    }
+  };
 
   const handleStart = (url: string) => {
     let clean = url.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -253,36 +362,274 @@ export default function HomePage() {
               fontSize: 'clamp(16px, 2.5vw, 20px)',
               color: C.muted,
               lineHeight: 1.65,
-              maxWidth: '560px',
-              margin: '0 auto 40px',
+              maxWidth: '540px',
+              margin: '0 auto 32px',
               opacity: heroVisible ? 1 : 0,
               transition: 'opacity .7s ease .25s',
             }}
           >
-            Gib deine Website-Adresse ein. Wir finden deine Zielgruppe,
-            planen deine Kampagne und bringen deine Botschaft dorthin,
-            wo deine Menschen sind — einfach, fair, persönlich.
+            In weniger als 2 Minuten zur fertigen Kampagne —
+            einfach, fair, persönlich.
           </p>
 
+          {/* Campaign type selector + accordion */}
           <div
             style={{
-              display: 'flex', justifyContent: 'center', marginBottom: '24px',
+              maxWidth: '640px', margin: '0 auto',
               opacity: heroVisible ? 1 : 0,
               transition: 'opacity .7s ease .35s',
             }}
           >
-            <UrlInput
-              placeholder="deine-website.ch"
-              buttonLabel="Los geht's →"
-              onSubmit={handleStart}
-            />
+            {/* Type cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '0' }}>
+              {([
+                { value: 'b2c' as const, ico: '👥', name: 'Privatkunden (B2C)', desc: 'Menschen & Haushalte' },
+                { value: 'b2b' as const, ico: '🏢', name: 'Geschäftskunden (B2B)', desc: 'Firmen & Fachleute' },
+                { value: 'politik' as const, ico: '🗳️', name: 'Politische Kampagne', desc: 'Abstimmungen & Wahlen' },
+              ] as const).map(opt => (
+                <div
+                  key={opt.value}
+                  onClick={() => setHeroType(opt.value)}
+                  style={{
+                    background: heroType === opt.value ? C.pl : C.white,
+                    border: `2px solid ${heroType === opt.value ? C.primary : C.border}`,
+                    borderRadius: '12px',
+                    padding: '16px 14px',
+                    cursor: 'pointer',
+                    transition: 'all .2s',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={e => { if (heroType !== opt.value) (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; }}
+                  onMouseLeave={e => { if (heroType !== opt.value) (e.currentTarget as HTMLDivElement).style.borderColor = C.border; }}
+                >
+                  <div style={{ fontSize: '22px', marginBottom: '7px' }}>{opt.ico}</div>
+                  <div style={{ fontWeight: 700, fontSize: '13px', color: C.taupe, lineHeight: 1.3 }}>{opt.name}</div>
+                  <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{opt.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Accordion */}
+            <div style={{
+              maxHeight: heroType ? '1000px' : '0px',
+              overflow: 'hidden',
+              transition: 'max-height 300ms ease',
+            }}>
+              <div style={{
+                background: C.white,
+                border: `1px solid ${C.border}`,
+                borderRadius: '12px',
+                padding: '20px',
+                marginTop: '10px',
+                textAlign: 'left',
+              }}>
+
+                {/* B2C / B2B: URL input */}
+                {heroType !== 'politik' && heroType !== null && (
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>
+                      Deine Website-URL
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input
+                        type="url"
+                        value={heroUrl}
+                        placeholder="https://deine-website.ch"
+                        onChange={e => setHeroUrl(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleHeroStart()}
+                        style={{
+                          flex: 1, minWidth: 0,
+                          padding: '12px 16px',
+                          borderRadius: '100px',
+                          border: `1.5px solid ${C.border}`,
+                          fontSize: '15px',
+                          fontFamily: 'var(--font-outfit), sans-serif',
+                          color: C.taupe,
+                          backgroundColor: C.bg,
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleHeroStart}
+                        style={{
+                          padding: '12px 24px',
+                          borderRadius: '100px',
+                          backgroundColor: C.primary,
+                          color: '#fff',
+                          border: 'none',
+                          fontFamily: 'var(--font-outfit), sans-serif',
+                          fontSize: '15px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          boxShadow: '0 4px 16px rgba(193,102,107,.35)',
+                          transition: 'transform .18s, background-color .18s',
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
+                      >
+                        Los geht&apos;s →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Politik: region + date + kampagnentyp */}
+                {heroType === 'politik' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                    {/* Region select */}
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Region / Wahlkreis
+                      </div>
+                      <select
+                        value={heroRegionName}
+                        onChange={e => {
+                          const r = H_REGIONS.find(x => x.name === e.target.value);
+                          if (r) { setHeroRegionName(r.name); setHeroRegionStimm(r.stimm); setHeroRegionType(r.rtype); }
+                          else { setHeroRegionName(''); setHeroRegionStimm(0); }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          border: `1.5px solid ${C.border}`,
+                          fontSize: '15px',
+                          fontFamily: 'var(--font-outfit), sans-serif',
+                          color: heroRegionName ? C.taupe : C.muted,
+                          backgroundColor: C.bg,
+                          outline: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">Region / Wahlkreis wählen...</option>
+                        <optgroup label="Schweiz">
+                          {H_REGIONS.filter(r => r.rtype === 'schweiz').map(r => (
+                            <option key={r.name} value={r.name}>{r.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Kantone">
+                          {H_REGIONS.filter(r => r.rtype === 'kanton').map(r => (
+                            <option key={r.name} value={r.name}>{r.name}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Städte">
+                          {H_REGIONS.filter(r => r.rtype === 'stadt').map(r => (
+                            <option key={r.name} value={r.name}>{r.name}</option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    {/* Date picker */}
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Abstimmungs- oder Wahltag
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <input
+                          type="date"
+                          min={hTodayStr()}
+                          value={heroVotingDate}
+                          onChange={e => setHeroVotingDate(e.target.value)}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${C.border}`,
+                            fontSize: '15px',
+                            fontFamily: 'var(--font-outfit), sans-serif',
+                            color: C.taupe,
+                            backgroundColor: C.bg,
+                            outline: 'none',
+                            cursor: 'pointer',
+                          }}
+                        />
+                        {heroVotingDate && (
+                          <span style={{
+                            padding: '6px 14px', borderRadius: '100px',
+                            backgroundColor: C.pl, color: C.pd,
+                            fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap',
+                          }}>
+                            Noch {heroDaysUntil} Tage
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Kampagnentyp 2×2 */}
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
+                        Kampagnentyp
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        {([
+                          { value: 'ja' as const, ico: '✅', name: 'JA-Kampagne' },
+                          { value: 'nein' as const, ico: '❌', name: 'NEIN-Kampagne' },
+                          { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
+                          { value: 'event' as const, ico: '📣', name: 'Event & Mobilisierung' },
+                        ] as const).map(opt => (
+                          <div
+                            key={opt.value}
+                            onClick={() => setHeroKampagnenTyp(opt.value)}
+                            style={{
+                              padding: '11px 14px',
+                              borderRadius: '8px',
+                              border: `2px solid ${heroKampagnenTyp === opt.value ? C.primary : C.border}`,
+                              background: heroKampagnenTyp === opt.value ? C.pl : C.bg,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              transition: 'all .15s',
+                            }}
+                          >
+                            <span style={{ fontSize: '16px' }}>{opt.ico}</span>
+                            <span style={{ fontWeight: 600, fontSize: '13px', color: C.taupe }}>{opt.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Los geht's button — only when all 3 fields filled */}
+                    {politikReady && (
+                      <button
+                        type="button"
+                        onClick={handleHeroStart}
+                        style={{
+                          width: '100%',
+                          padding: '14px 24px',
+                          borderRadius: '100px',
+                          backgroundColor: C.primary,
+                          color: '#fff',
+                          border: 'none',
+                          fontFamily: 'var(--font-outfit), sans-serif',
+                          fontSize: '16px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 16px rgba(193,102,107,.35)',
+                          transition: 'transform .18s, background-color .18s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
+                      >
+                        Los geht&apos;s →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </div>
           </div>
 
           {/* Trust badges */}
           <div
             style={{
               display: 'flex', justifyContent: 'center', gap: '24px',
-              flexWrap: 'wrap', marginTop: '12px',
+              flexWrap: 'wrap', marginTop: '24px',
               opacity: heroVisible ? 1 : 0,
               transition: 'opacity .7s ease .45s',
             }}
