@@ -64,9 +64,9 @@ function calcReach(budget: number, freq: number): { lo: number; hi: number; mid:
   const doohImp    = (budget * 0.70 / 50) * 1000;
   const displayImp = (budget * 0.30 / 15) * 1000;
   const reach      = (doohImp + displayImp) / freq;
-  const lo  = Math.round(reach * 0.85 / 100) * 100;
-  const hi  = Math.round(reach * 1.15 / 100) * 100;
-  const mid = Math.round(reach / 100) * 100;
+  const lo  = Math.round(reach * 0.85 / 1000) * 1000;
+  const hi  = Math.round(reach * 1.15 / 1000) * 1000;
+  const mid = Math.round(reach / 1000) * 1000;
   return { lo, hi, mid };
 }
 
