@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step1Entry from '@/components/steps/Step1Entry';
+import Step2Politik from '@/components/steps/Step2Politik';
 import Step3Audience from '@/components/steps/Step3Audience';
 import Step4Budget from '@/components/steps/Step4Budget';
 import Step5Creative from '@/components/steps/Step5Creative';
@@ -19,9 +20,8 @@ const C = {
   bg: '#FAF7F2',
 } as const;
 
-// Internal step numbers used in the flow: 1, 3, 4, 5, 6, 7, 8
-// Display steps 1–7 map to internal steps 1, 3, 4, 5, 6, 7, 8
-const INTERNAL_STEPS = [1, 3, 4, 5, 6, 7, 8];
+// Internal step numbers: 1=entry, 2=politik, 3=audience, 4=budget, 5=creative, 6=contact, 7=confirm, 8=dashboard
+const INTERNAL_STEPS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export default function CampaignFlow() {
   const searchParams = useSearchParams();
@@ -45,23 +45,14 @@ export default function CampaignFlow() {
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
-  // Step 3 goes back to step 1.
-  // Step 4 in politik goes back to step 1.
-  // Step 5 adcreator phase goes back to the creative selection phase.
-  // Otherwise: prev - 1
   const prevStep = () => {
     if (currentStep === 5 && step5Phase === 'adcreator') {
       setStep5Phase('creative');
       return;
     }
-    if (currentStep === 3) {
-      setCurrentStep(1);
-      return;
-    }
-    if (currentStep === 4 && briefing.campaignType === 'politik') {
-      setCurrentStep(1);
-      return;
-    }
+    if (currentStep === 3) { setCurrentStep(1); return; }
+    if (currentStep === 2) { setCurrentStep(1); return; }
+    if (currentStep === 4 && briefing.campaignType === 'politik') { setCurrentStep(2); return; }
     setCurrentStep(prev => prev - 1);
   };
 
@@ -72,7 +63,7 @@ export default function CampaignFlow() {
   };
 
   const onAnalysisDone = () => setCurrentStep(3);
-  const onPolitikDone = () => setCurrentStep(4);
+  const onPolitikDone = () => setCurrentStep(2);
 
   // Restore session from ?resume= param (base64 encoded partial BriefingData)
   useEffect(() => {
@@ -164,13 +155,13 @@ export default function CampaignFlow() {
             );
           })}
           <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '8px' }}>
-            Schritt {INTERNAL_STEPS.indexOf(currentStep) + 1}/7
+            Schritt {Math.max(1, INTERNAL_STEPS.indexOf(currentStep) + 1)}/{INTERNAL_STEPS.length}
           </span>
         </div>
       </nav>
 
-      {/* ── Back button (steps 3–6, not on the confirmation screen) ── */}
-      {currentStep >= 3 && currentStep <= 6 && (
+      {/* ── Back button (steps 2–6) ── */}
+      {currentStep >= 2 && currentStep <= 6 && (
         <div style={{ maxWidth: '720px', margin: '0 auto', padding: '16px 20px 0' }}>
           <button
             onClick={prevStep}
@@ -215,6 +206,15 @@ export default function CampaignFlow() {
           onAnalysisDone={onAnalysisDone}
           onPolitikDone={onPolitikDone}
           onRestartBriefing={onRestartBriefing}
+          isActive
+        />
+      )}
+
+      {currentStep === 2 && (
+        <Step2Politik
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          onComplete={() => setCurrentStep(4)}
           isActive
         />
       )}

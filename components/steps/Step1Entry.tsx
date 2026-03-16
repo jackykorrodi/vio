@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 import { BriefingData } from '@/lib/types';
-import { Region, ALL_REGIONS } from '@/lib/regions';
 
 const C = {
   primary: '#C1666B',
@@ -39,34 +38,6 @@ const clabel: React.CSSProperties = {
   marginBottom: '10px',
 };
 
-// Region types are imported from @/lib/regions
-
-// ── Helper functions ──────────────────────────────────────────────────────────
-
-function calcDaysUntil(dateStr: string): number {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + 'T00:00:00');
-  return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
-}
-
-function calcPotenzial(stimm: number, days: number) {
-  const erreichbar = Math.round(stimm * 0.35);
-  const rawBudget = (erreichbar * 3 * 32) / 1000;
-  const rounded = Math.round(rawBudget / 500) * 500;
-  const budget = Math.min(50000, Math.max(2500, rounded));
-  const laufzeit = days > 28 ? 4 : days >= 14 ? 2 : 1;
-  return { erreichbar, budget, laufzeit };
-}
-
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function formatCHF(n: number): string {
-  return `CHF ${n.toLocaleString('de-CH')}`;
-}
-
 // ── Analysis steps ────────────────────────────────────────────────────────────
 
 const ANALYSIS_STEPS = [
@@ -95,39 +66,12 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const [showCancel, setShowCancel] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Politik state — single region
-  const [region, setRegion] = useState<Region | null>(
-    () => {
-      const saved = briefing.selectedRegions?.[0];
-      if (saved) return saved as Region;
-      return null;
-    }
-  );
-  const [regionQuery, setRegionQuery] = useState(briefing.politikRegion && briefing.politikRegion.indexOf(' Regionen') === -1 ? briefing.politikRegion : '');
-  const [regionOpen, setRegionOpen] = useState(false);
-  const [votingDate, setVotingDate] = useState(briefing.votingDate || '');
-  const [kampagnenTyp, setKampagnenTyp] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(briefing.politikType || null);
 
   const campaignType = briefing.campaignType;
   const accordionOpen = !!campaignType;
 
   const progress = Math.min(((analysisStepIdx + 1) / ANALYSIS_STEPS.length) * 100, 100);
   const domain = url.replace(/^https?:\/\//, '').split('/')[0] || 'deine-website.ch';
-
-  // Search results: Kantone first, then Gemeinden alphabetically, max 8
-  const searchResults = (() => {
-    const q = regionQuery.trim().toLowerCase();
-    const pool = ALL_REGIONS.filter(r => !q || r.name.toLowerCase().includes(q));
-    const schweiz = pool.filter(r => r.type === 'schweiz');
-    const kantone = pool.filter(r => r.type === 'kanton');
-    const staedte = [...pool.filter(r => r.type === 'stadt')].sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return [...schweiz, ...kantone, ...staedte].slice(0, 8);
-  })();
-
-  // Politik potenzial calc
-  const politikReady = !!(region && votingDate && kampagnenTyp);
-  const daysUntilVoting = votingDate ? calcDaysUntil(votingDate) : 0;
-  const potenzial = region ? calcPotenzial(region.stimm, daysUntilVoting) : null;
 
   const handleAnalyze = () => {
     let cleanUrl = url.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -179,24 +123,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
     onAnalysisDone();
   };
 
-  const handlePolitikWeiter = () => {
-    if (!region || !votingDate || !kampagnenTyp) return;
-    const days = calcDaysUntil(votingDate);
-    const { budget, laufzeit } = calcPotenzial(region.stimm, days);
-    updateBriefing({
-      selectedRegions: [region],
-      totalStimmber: region.stimm,
-      politikRegion: region.name,
-      politikRegionType: region.type as 'kanton' | 'stadt' | 'schweiz',
-      stimmberechtigte: region.stimm,
-      votingDate,
-      daysUntil: days,
-      politikType: kampagnenTyp,
-      recommendedBudget: budget,
-      recommendedLaufzeit: laufzeit,
-    });
-    onPolitikDone();
-  };
 
   return (
     <section style={{ backgroundColor: C.bg }}>
@@ -411,270 +337,39 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
             </div>
           )}
 
-          {/* Politik content */}
+          {/* Politik content — region/date details handled in Step 2 */}
           {campaignType === 'politik' && (
             <div style={{ paddingTop: '4px' }}>
               <div style={card}>
-
-                {/* Region picker — single select, searchable */}
-                <div style={{ marginBottom: '20px', position: 'relative' }}>
-                  <div style={clabel}>Region / Wahlkreis</div>
-                  {!region && (
-                    <input
-                      type="text"
-                      value={regionQuery}
-                      placeholder="Gemeinde oder Kanton suchen..."
-                      onChange={e => { setRegionQuery(e.target.value); setRegionOpen(true); setRegion(null); }}
-                      onFocus={() => setRegionOpen(true)}
-                      onBlur={() => setTimeout(() => setRegionOpen(false), 200)}
-                      style={{
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${C.border}`,
-                        fontSize: '15px',
-                        fontFamily: 'var(--font-outfit), sans-serif',
-                        color: C.taupe,
-                        backgroundColor: C.white,
-                        outline: 'none',
-                      }}
-                    />
-                  )}
-
-                  {regionOpen && !region && searchResults.length > 0 && (
-                    <div style={{
-                      position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-                      background: C.white, border: `1px solid ${C.border}`,
-                      borderRadius: '10px', boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                      maxHeight: '300px', overflowY: 'auto', zIndex: 100,
-                    }}>
-                      {/* Kantone group */}
-                      {searchResults.filter(r => r.type === 'kanton' || r.type === 'schweiz').length > 0 && (
-                        <div>
-                          <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>
-                            Kantone
-                          </div>
-                          {searchResults.filter(r => r.type === 'kanton' || r.type === 'schweiz').map(r => (
-                            <div
-                              key={r.name}
-                              onMouseDown={() => { setRegion(r); setRegionQuery(r.name); setRegionOpen(false); }}
-                              style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background .15s' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                            >
-                              <span style={{ flex: 1, fontSize: '14px', color: C.taupe }}>{r.name}</span>
-                              <span style={{ fontSize: '11px', color: C.muted, background: C.border, borderRadius: '100px', padding: '2px 8px', whiteSpace: 'nowrap' as const }}>
-                                {r.type === 'schweiz' ? 'CH' : 'Kanton'}
-                              </span>
-                              <span style={{ fontSize: '12px', color: C.muted, whiteSpace: 'nowrap' as const }}>
-                                {r.stimm.toLocaleString('de-CH')}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/* Gemeinden group */}
-                      {searchResults.filter(r => r.type === 'stadt').length > 0 && (
-                        <div>
-                          <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>
-                            Gemeinden
-                          </div>
-                          {searchResults.filter(r => r.type === 'stadt').map(r => (
-                            <div
-                              key={r.name}
-                              onMouseDown={() => { setRegion(r); setRegionQuery(r.name); setRegionOpen(false); }}
-                              style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background .15s' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = C.bg; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                            >
-                              <span style={{ flex: 1, fontSize: '14px', color: C.taupe }}>{r.name}</span>
-                              {r.kanton && (
-                                <span style={{ fontSize: '11px', color: '#7C3AED', background: '#EDE9FE', borderRadius: '100px', padding: '2px 8px', whiteSpace: 'nowrap' as const }}>
-                                  {r.kanton}
-                                </span>
-                              )}
-                              <span style={{ fontSize: '12px', color: C.muted, whiteSpace: 'nowrap' as const }}>
-                                {r.stimm.toLocaleString('de-CH')}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Selected region tag */}
-                  {region && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        background: C.pl, border: `1px solid ${C.primary}`,
-                        color: C.pd, borderRadius: '100px',
-                        padding: '5px 8px 5px 14px', fontSize: '13px', fontWeight: 600,
-                      }}>
-                        {region.name}
-                        {region.type === 'stadt' && region.kanton && (
-                          <span style={{ fontSize: '11px', color: '#7C3AED', background: '#EDE9FE', borderRadius: '100px', padding: '1px 7px' }}>
-                            {region.kanton}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => { setRegion(null); setRegionQuery(''); }}
-                          style={{
-                            background: 'none', border: 'none', color: C.muted,
-                            cursor: 'pointer', fontSize: '16px', padding: '0 4px',
-                            lineHeight: 1, display: 'flex', alignItems: 'center',
-                          }}
-                          aria-label="Region entfernen"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Date picker */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={clabel}>Abstimmungs- oder Wahltag</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input
-                      type="date"
-                      min={todayStr()}
-                      value={votingDate}
-                      onChange={e => setVotingDate(e.target.value)}
-                      style={{
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${C.border}`,
-                        fontSize: '15px',
-                        fontFamily: 'var(--font-outfit), sans-serif',
-                        color: C.taupe,
-                        backgroundColor: C.white,
-                        outline: 'none',
-                        cursor: 'pointer',
-                      }}
-                    />
-                    {votingDate && (
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '6px 14px',
-                        borderRadius: '100px',
-                        backgroundColor: '#F9EDEA',
-                        color: '#B3502A',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                      }}>
-                        Noch {calcDaysUntil(votingDate)} Tage
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Kampagnentyp */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={clabel}>Kampagnentyp</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    {[
-                      { value: 'ja' as const, ico: '✅', name: 'JA-Kampagne' },
-                      { value: 'nein' as const, ico: '❌', name: 'NEIN-Kampagne' },
-                      { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
-                      { value: 'event' as const, ico: '📣', name: 'Event & Mobilisierung' },
-                    ].map(opt => {
-                      const active = kampagnenTyp === opt.value;
-                      return (
-                        <div
-                          key={opt.value}
-                          onClick={() => setKampagnenTyp(opt.value)}
-                          style={{
-                            padding: '14px 16px',
-                            borderRadius: '10px',
-                            border: `2px solid ${active ? C.primary : C.border}`,
-                            background: active ? C.pl : C.bg,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            transition: 'all .2s',
-                          }}
-                        >
-                          <span style={{ fontSize: '18px' }}>{opt.ico}</span>
-                          <span style={{ fontWeight: 600, fontSize: '14px', color: C.taupe }}>{opt.name}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Potenzialberechnung */}
-                {politikReady && potenzial && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: '1fr 1fr',
-                      gap: '10px', marginBottom: '12px',
-                    }}>
-                      {[
-                        { label: 'Stimmberechtigte', value: region!.stimm.toLocaleString('de-CH') },
-                        { label: 'Erreichbare Personen', value: potenzial.erreichbar.toLocaleString('de-CH') },
-                        { label: 'Empf. Budget', value: formatCHF(potenzial.budget) },
-                        { label: 'Empf. Laufzeit', value: `${potenzial.laufzeit}W` },
-                      ].map(stat => (
-                        <div
-                          key={stat.label}
-                          style={{
-                            background: C.pl,
-                            borderRadius: '10px',
-                            padding: '14px 16px',
-                            border: `1px solid rgba(193,102,107,.15)`,
-                          }}
-                        >
-                          <div style={{ fontSize: '11px', color: C.muted, fontWeight: 600, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                            {stat.label}
-                          </div>
-                          <div style={{ fontSize: '18px', fontWeight: 700, color: C.taupe }}>
-                            {stat.value}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p style={{ fontSize: '12px', color: C.muted, lineHeight: 1.5 }}>
-                      Diese Werte werden als Voreinstellung für Budget und Laufzeit übernommen.
-                    </p>
-                  </div>
-                )}
-
-                {/* Weiter button */}
-                {politikReady && (
-                  <button
-                    type="button"
-                    onClick={handlePolitikWeiter}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      background: C.primary,
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '100px',
-                      padding: '15px 32px',
-                      fontFamily: 'var(--font-outfit), sans-serif',
-                      fontSize: '16px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 16px rgba(193,102,107,.3)',
-                      transition: 'all .18s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    Weiter →
-                  </button>
-                )}
+                <p style={{ fontSize: '14px', color: C.muted, marginBottom: '20px', lineHeight: 1.6 }}>
+                  Im nächsten Schritt wählst du deine Zielregion(en), das Abstimmungsdatum und den Kampagnentyp.
+                </p>
+                <button
+                  type="button"
+                  onClick={onPolitikDone}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    background: C.primary,
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '100px',
+                    padding: '15px 32px',
+                    fontFamily: 'var(--font-outfit), sans-serif',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+                    transition: 'all .18s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+                >
+                  Weiter zu Schritt 2 →
+                </button>
               </div>
             </div>
           )}

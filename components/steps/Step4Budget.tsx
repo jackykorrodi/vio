@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { BriefingData } from '@/lib/types';
 
@@ -138,6 +138,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const [budget, setBudget] = useState<number>(() => tierBudgets[defaultTier.id]);
   const [tierSelected, setTierSelected] = useState<0 | 1 | 2>(defaultTier.id);
+
+  // Reinit tier budget when popSize changes (e.g. user changes region in step 2 and comes back)
+  useEffect(() => {
+    const newDefault = visibleTiers[Math.min(1, visibleTiers.length - 1)];
+    setTierSelected(newDefault.id);
+    setBudget(calcTierBudget(popSize, TIER_DEFS[newDefault.id].rate, TIER_DEFS[newDefault.id].freq));
+  }, [popSize]); // eslint-disable-line react-hooks/exhaustive-deps
   const [startDate, setStartDate] = useState<string>(() => {
     if (briefing.votingDate && briefing.recommendedLaufzeit) {
       const d = new Date(briefing.votingDate + 'T12:00:00');
@@ -166,9 +173,17 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     setBudget(tierBudgets[id]);
   };
 
-  // Slider only changes budget — keeps selected tier's laufzeit/freq
+  // Slider changes budget and auto-highlights closest tier
   const handleSliderChange = (val: number) => {
     setBudget(val);
+    // Auto-highlight the tier whose budget is closest to the slider value
+    let closest: 0 | 1 | 2 = visibleTiers[0].id;
+    let minDist = Infinity;
+    for (const t of visibleTiers) {
+      const dist = Math.abs(tierBudgets[t.id] - val);
+      if (dist < minDist) { minDist = dist; closest = t.id; }
+    }
+    setTierSelected(closest);
   };
 
   const handleNext = () => {
@@ -202,7 +217,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={{ width: 18, height: 2, background: C.primary, borderRadius: 2 }} />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
-            Schritt 3
+            Schritt 4
           </span>
         </div>
 
@@ -216,13 +231,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           <span style={{ background: ctBadgeColor, color: '#fff', borderRadius: 100, padding: '3px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.04em' }}>
             {ctBadgeLabel}
           </span>
-          {regionName && (
+          {isPolitik && briefing.selectedRegions && briefing.selectedRegions.length > 0 ? (
+            <span style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, alignItems: 'center' }}>
+              {briefing.selectedRegions.map(r => (
+                <span key={r.name} style={{ background: '#EDE9FE', color: '#7C3AED', borderRadius: 100, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
+                  📍 {r.name}
+                </span>
+              ))}
+              <span style={{ color: C.muted }}>·&nbsp;{popSize.toLocaleString('de-CH')}&nbsp;Stimmberechtigte total</span>
+            </span>
+          ) : regionName ? (
             <span style={{ color: C.taupe }}>
               📍 <strong>{regionName}</strong>
               &nbsp;·&nbsp;
               {popSize.toLocaleString('de-CH')}&nbsp;{isPolitik ? 'Stimmberechtigte' : 'Personen'}
             </span>
-          )}
+          ) : null}
           {isPolitik && briefing.daysUntil != null && (
             <span style={{ color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '3px 10px' }}>
               🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen
