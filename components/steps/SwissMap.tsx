@@ -15,6 +15,30 @@ const CANTON_ID_TO_NAME: Record<number, string> = {
   24: 'Neuenburg', 25: 'Genf', 26: 'Jura',
 };
 
+// Stadt → parent canton (for map zoom)
+const STADT_TO_KANTON: Record<string, string> = {
+  'Zürich (Stadt)': 'Zürich',
+  'Bern (Stadt)': 'Bern',
+  'Basel (Stadt)': 'Basel-Stadt',
+  'Lausanne': 'Waadt',
+  'Genf (Stadt)': 'Genf',
+  'Winterthur': 'Zürich',
+  'Luzern (Stadt)': 'Luzern',
+  'St. Gallen (Stadt)': 'St. Gallen',
+  'Lugano': 'Tessin',
+  'Biel/Bienne': 'Bern',
+  'Thun': 'Bern',
+  'Köniz': 'Bern',
+  'La Chaux-de-Fonds': 'Neuenburg',
+  'Schaffhausen (Stadt)': 'Schaffhausen',
+  'Freiburg (Stadt)': 'Freiburg',
+  'Chur': 'Graubünden',
+  'Uster': 'Zürich',
+  'Vernier': 'Genf',
+  'Sion': 'Wallis',
+  'Emmen': 'Luzern',
+};
+
 interface Props {
   highlightRegion: string | null;
   campaignType: 'b2c' | 'b2b' | 'politik';
@@ -32,16 +56,26 @@ export default function SwissMap({
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Stores the screen bounds of the highlighted region for stick figure scattering
+  const figBoundsRef = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
 
   // Highlight all cantons when not politik, or when region is "Gesamte Schweiz"
   const highlightAll =
     campaignType !== 'politik' || highlightRegion === 'Gesamte Schweiz';
+
+  // Resolve Stadt → Kanton for map zoom
+  const cantonToHighlight = highlightRegion
+    ? (STADT_TO_KANTON[highlightRegion] ?? (
+        Object.values(CANTON_ID_TO_NAME).includes(highlightRegion) ? highlightRegion : null
+      ))
+    : null;
 
   useEffect(() => {
     if (!svgRef.current) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
+    figBoundsRef.current = null;
 
     // Dynamic import of TopoJSON data
     import('swiss-maps/2020/ch-combined.json').then((mod) => {
@@ -55,8 +89,26 @@ export default function SwissMap({
       const countryFeature = topojson.feature(chData, chData.objects.country);
       const lakeFeature = topojson.feature(chData, chData.objects.lakes);
 
-      const projection = d3.geoMercator().fitSize([width, height], cantonFeatures);
+      // Find the selected canton feature (for zoom)
+      const selectedFeature = !highlightAll && cantonToHighlight
+        ? (cantonFeatures as d3.ExtendedFeatureCollection).features.find(
+            (f) => CANTON_ID_TO_NAME[(f as d3.ExtendedFeature).id as number] === cantonToHighlight
+          )
+        : null;
+
+      const PAD = 30;
+      const projection = selectedFeature
+        ? d3.geoMercator().fitExtent([[PAD, PAD], [width - PAD, height - PAD]], selectedFeature as d3.ExtendedFeature)
+        : d3.geoMercator().fitSize([width, height], cantonFeatures);
       const pathGen = d3.geoPath().projection(projection);
+
+      // Store screen bounds of selected feature for stick figure scattering
+      if (selectedFeature) {
+        const [[bx0, by0], [bx1, by1]] = pathGen.bounds(selectedFeature as d3.ExtendedFeature);
+        figBoundsRef.current = { x0: bx0, y0: by0, x1: bx1, y1: by1 };
+      } else {
+        figBoundsRef.current = null;
+      }
 
       // Draw country background (subtle shadow fill)
       svg
@@ -81,21 +133,21 @@ export default function SwissMap({
           const id = (f as d3.ExtendedFeature).id as number;
           const name = CANTON_ID_TO_NAME[id];
           if (highlightAll) return '#EDE8DF';
-          if (name === highlightRegion) return '#EDE8DF';
+          if (name === cantonToHighlight) return '#EDE8DF';
           return '#EDE8E0';
         })
         .attr('stroke', (f) => {
           const id = (f as d3.ExtendedFeature).id as number;
           const name = CANTON_ID_TO_NAME[id];
           if (highlightAll) return '#C1666B';
-          if (name === highlightRegion) return '#C1666B';
+          if (name === cantonToHighlight) return '#C1666B';
           return '#fff';
         })
         .attr('stroke-width', (f) => {
           const id = (f as d3.ExtendedFeature).id as number;
           const name = CANTON_ID_TO_NAME[id];
           if (highlightAll) return 2;
-          if (name === highlightRegion) return 2;
+          if (name === cantonToHighlight) return 2;
           return 1;
         });
 
@@ -139,7 +191,6 @@ export default function SwissMap({
     const litCount = Math.round(TOTAL * Math.min(1, Math.max(0, reachFraction)));
 
     // Use a seeded-ish layout: scatter deterministically so figures don't jump on re-render
-    // We'll use a simple LCG pseudo-random for stable positions
     function lcg(seed: number) {
       let s = seed;
       return () => {
@@ -149,14 +200,19 @@ export default function SwissMap({
     }
     const rand = lcg(42);
 
-    // Margin to keep figures inside visible area
-    const MARGIN_X = 20;
-    const MARGIN_Y = 20;
-    const FIG_H = 10; // total figure height in px
+    // Scatter within highlighted region bounds, or full map if no specific region
+    const bounds = figBoundsRef.current;
+    const FIG_H = 10;
+    const MARGIN = 10;
+
+    const scatterX0 = bounds ? bounds.x0 + MARGIN : MARGIN;
+    const scatterY0 = bounds ? bounds.y0 + MARGIN : MARGIN;
+    const scatterW  = bounds ? Math.max(1, bounds.x1 - bounds.x0 - MARGIN * 2) : width - MARGIN * 2;
+    const scatterH  = bounds ? Math.max(1, bounds.y1 - bounds.y0 - MARGIN * 2) : height - MARGIN * 2;
 
     for (let i = 0; i < TOTAL; i++) {
-      const x = MARGIN_X + rand() * (width - MARGIN_X * 2);
-      const y = MARGIN_Y + rand() * (height - MARGIN_Y * 2);
+      const x = scatterX0 + rand() * scatterW;
+      const y = scatterY0 + rand() * scatterH;
       const lit = i < litCount;
       drawFigure(ctx, x, y, FIG_H, lit);
     }

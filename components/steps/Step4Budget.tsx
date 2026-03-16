@@ -116,13 +116,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const popData = CANTON_POP[regionName] ?? CANTON_POP['Gesamte Schweiz'];
   const popSize = isPolitik ? (briefing.stimmberechtigte ?? popData.stimm) : popData.bev;
 
-  // Tier budgets
+  // Filter tiers by daysUntil (politik only: never offer laufzeit > daysUntil)
+  const daysUntil = isPolitik ? (briefing.daysUntil ?? 999) : 999;
+  const maxAllowedWeeks = !isPolitik ? 4 : (daysUntil < 7 ? 1 : daysUntil < 28 ? 2 : 4);
+  const visibleTiers = TIERS.filter(t => t.weeks <= maxAllowedWeeks);
+
+  // Tier budgets (for all 3, so slider snapping always has full range to compare)
   const tierBudgets = TIERS.map(t => calcTierBudget(popSize, t));
 
-  // Initial values
-  const initBudget = briefing.recommendedBudget ?? tierBudgets[1];
-  const initTier = tierBudgets.reduce((best, tb, i) =>
-    Math.abs(tb - initBudget) < Math.abs(tierBudgets[best] - initBudget) ? i : best, 1);
+  // Initial values — default to Empfohlen if visible, else highest visible
+  const defaultVisibleTier = visibleTiers[Math.min(1, visibleTiers.length - 1)];
+  const initBudget = briefing.recommendedBudget ?? tierBudgets[defaultVisibleTier.id];
+  // Find closest visible tier to initBudget
+  const initTier = visibleTiers.reduce((best, t) =>
+    Math.abs(tierBudgets[t.id] - initBudget) < Math.abs(tierBudgets[best.id] - initBudget) ? t : best,
+    visibleTiers[0]
+  ).id;
 
   const [budget, setBudget] = useState(initBudget);
   const [tierSelected, setTierSelected] = useState(initTier);
@@ -150,8 +159,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const handleSliderChange = (val: number) => {
     setBudget(val);
-    const closest = tierBudgets.reduce((best, tb, i) =>
-      Math.abs(tb - val) < Math.abs(tierBudgets[best] - val) ? i : best, 0);
+    const closest = visibleTiers.reduce((best, t) =>
+      Math.abs(tierBudgets[t.id] - val) < Math.abs(tierBudgets[best.id] - val) ? t : best,
+      visibleTiers[0]
+    ).id;
     setTierSelected(closest);
   };
 
@@ -252,14 +263,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         </div>
 
         {/* ── Three tier cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-          {TIERS.map((t, i) => {
-            const isActive = tierSelected === i;
-            const tierReach = calcReachFromBudget(tierBudgets[i], t.freq, t.cpm);
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleTiers.length}, 1fr)`, gap: 12, marginBottom: 14 }}>
+          {visibleTiers.map((t) => {
+            const isActive = tierSelected === t.id;
+            const tierReach = calcReachFromBudget(tierBudgets[t.id], t.freq, t.cpm);
             return (
               <div
                 key={t.id}
-                onClick={() => handleTierSelect(i)}
+                onClick={() => handleTierSelect(t.id)}
                 style={{
                   border: isActive ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
                   background: isActive ? C.pl : C.white,
@@ -271,8 +282,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                   userSelect: 'none',
                 }}
               >
-                {/* "Empfohlen" badge on middle card */}
-                {i === 1 && (
+                {/* "Empfohlen" badge on Empfohlen card */}
+                {t.id === 1 && (
                   <div style={{
                     position: 'absolute', top: -10, left: '50%',
                     transform: 'translateX(-50%)',
@@ -306,7 +317,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                   letterSpacing: '-.02em', lineHeight: 1,
                   marginBottom: 4,
                 }}>
-                  {fmtCHF(tierBudgets[i])}
+                  {fmtCHF(tierBudgets[t.id])}
                 </div>
 
                 {/* Weeks · Freq */}
@@ -325,6 +336,17 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
             );
           })}
         </div>
+
+        {/* ── Short-notice note ── */}
+        {isPolitik && daysUntil < 7 && (
+          <div style={{
+            fontSize: 12, color: '#7A5500',
+            background: '#FFF8EE', border: '1px solid #FDDFA4',
+            borderRadius: 8, padding: '8px 12px', marginBottom: 14,
+          }}>
+            ⚠️ Zu kurzfristig für längere Kampagnen — nur 1-Woche-Buchung verfügbar.
+          </div>
+        )}
 
         {/* ── Headline stat ── */}
         <div style={{
