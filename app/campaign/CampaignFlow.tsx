@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step1Entry from '@/components/steps/Step1Entry';
 import Step2Analysis from '@/components/steps/Step2Analysis';
+import Step2Politik from '@/components/steps/Step2Politik';
 import Step3Audience from '@/components/steps/Step3Audience';
 import Step4Budget from '@/components/steps/Step4Budget';
 import Step5Creative from '@/components/steps/Step5Creative';
@@ -42,10 +43,15 @@ export default function CampaignFlow() {
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
   // Steps 2 and 3 both go back to step 1.
+  // Step 4 in politik goes back to step 2 (skipping step 3).
   // Step 5 adcreator phase goes back to the creative selection phase.
   const prevStep = () => {
     if (currentStep === 5 && step5Phase === 'adcreator') {
       setStep5Phase('creative');
+      return;
+    }
+    if (currentStep === 4 && briefing.campaignType === 'politik') {
+      setCurrentStep(2);
       return;
     }
     setCurrentStep(prev => (prev === 2 || prev === 3) ? 1 : prev - 1);
@@ -202,7 +208,16 @@ export default function CampaignFlow() {
         />
       )}
 
-      {currentStep === 2 && (
+      {currentStep === 2 && briefing.campaignType === 'politik' && (
+        <Step2Politik
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          onComplete={() => setCurrentStep(4)}
+          isActive
+        />
+      )}
+
+      {currentStep === 2 && briefing.campaignType !== 'politik' && (
         <Step2Analysis
           key={analysisRunKey}
           briefing={briefing}

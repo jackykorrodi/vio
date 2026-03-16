@@ -51,6 +51,10 @@ export default function Step1Entry({ briefing, updateBriefing, nextStep, onResta
   const [url, setUrl] = useState(briefing.url || '');
 
   const handleSubmit = () => {
+    if (briefing.campaignType === 'politik') {
+      nextStep();
+      return;
+    }
     let cleanUrl = url.trim();
     // Strip protocol and www, then re-prepend https://
     cleanUrl = cleanUrl.replace(/^https?:\/\//, '');
@@ -63,6 +67,8 @@ export default function Step1Entry({ briefing, updateBriefing, nextStep, onResta
       nextStep();
     }
   };
+
+  const isPolitik = briefing.campaignType === 'politik';
 
   return (
     <section style={{ backgroundColor: C.bg }}>
@@ -87,34 +93,37 @@ export default function Step1Entry({ briefing, updateBriefing, nextStep, onResta
             color: C.taupe,
           }}
         >
-          Zeig uns deine Website.
+          {isPolitik ? 'Deine Kampagne.' : 'Zeig uns deine Website.'}
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
-          Wir finden deine Zielgruppe. Versprochen.
+          {isPolitik ? 'Wir berechnen dein optimales Kampagnenbudget.' : 'Wir finden deine Zielgruppe. Versprochen.'}
         </p>
 
-        {/* URL Input Card */}
-        <div style={card}>
-          <div style={clabel}>Deine Website-URL</div>
-          <input
-            type="url"
-            value={url}
-            placeholder="deine-website.ch"
-            onChange={e => setUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          />
-          <div style={{ fontSize: '12px', color: C.muted, marginTop: '5px' }}>
-            Keine URL? Du kannst die Zielgruppe auch manuell eingeben.
+        {/* URL Input Card — hidden for politik */}
+        {!isPolitik && (
+          <div style={card}>
+            <div style={clabel}>Deine Website-URL</div>
+            <input
+              type="url"
+              value={url}
+              placeholder="deine-website.ch"
+              onChange={e => setUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            />
+            <div style={{ fontSize: '12px', color: C.muted, marginTop: '5px' }}>
+              Keine URL? Du kannst die Zielgruppe auch manuell eingeben.
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Type Card */}
         <div style={card}>
           <div style={clabel}>Für wen wirbst du?</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             {[
               { value: 'b2c' as const, ico: '👥', name: 'Endkunden (B2C)', desc: 'Menschen, Haushalte, Bevölkerung' },
               { value: 'b2b' as const, ico: '🏢', name: 'Unternehmen (B2B)', desc: 'Firmen, Entscheider, Fachleute' },
+              { value: 'politik' as const, ico: '🗳️', name: 'Politische Kampagne', desc: 'Abstimmungen, Wahlen, Mobilisierung' },
             ].map(opt => {
               const active = briefing.campaignType === opt.value;
               return (

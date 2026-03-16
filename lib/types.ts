@@ -50,7 +50,16 @@ export interface AnalysisResult {
 export interface BriefingData {
   // Step 1
   url: string;
-  campaignType: 'b2c' | 'b2b';
+  campaignType: 'b2c' | 'b2b' | 'politik';
+  // Step 2 – Politik path
+  politikType?: 'ja' | 'nein' | 'kandidat' | 'event';
+  politikRegion?: string;
+  politikRegionType?: 'kanton' | 'stadt' | 'gemeinde' | 'schweiz';
+  stimmberechtigte?: number;
+  votingDate?: string;
+  daysUntil?: number;
+  recommendedBudget?: number;
+  recommendedLaufzeit?: number;
   // Step 3
   analysis: AnalysisResult | null;
   // Step 4

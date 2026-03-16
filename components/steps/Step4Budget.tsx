@@ -76,10 +76,20 @@ interface Props {
 }
 
 export default function Step4Budget({ briefing, updateBriefing, nextStep }: Props) {
-  const [budget, setBudget] = useState(briefing.budget || 15000);
-  const [laufzeit, setLaufzeit] = useState(briefing.laufzeit || 4);
-  const [startDate, setStartDate] = useState(todayStr());
+  const [budget, setBudget] = useState(briefing.budget || briefing.recommendedBudget || 15000);
+  const [laufzeit, setLaufzeit] = useState(briefing.laufzeit || briefing.recommendedLaufzeit || 4);
+  const [startDate, setStartDate] = useState(briefing.votingDate ? (() => {
+    // For politik: start ~(daysUntil - laufzeit*7) days before voting date
+    const days = briefing.daysUntil ?? 28;
+    const weeks = briefing.recommendedLaufzeit ?? 4;
+    const d = new Date(briefing.votingDate + 'T12:00:00');
+    d.setDate(d.getDate() - weeks * 7);
+    const today = new Date();
+    const start = d < today ? today : d;
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  })() : todayStr());
 
+  const isPolitik = briefing.campaignType === 'politik';
   const isB2B = briefing.campaignType === 'b2b';
 
   // Logarithmic slider
@@ -212,6 +222,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           <div style={{ background: C.pl, borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: C.pd, fontWeight: 500, marginTop: '10px' }}>
             📅 {dateLabel}
           </div>
+          {/* Politik: voting date info */}
+          {isPolitik && briefing.votingDate && (
+            <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#7A5500', marginTop: '8px', display: 'flex', gap: '8px' }}>
+              <span>🗳️</span>
+              <span>Abstimmung / Wahl: <strong>{formatDateDE(new Date(briefing.votingDate + 'T12:00:00'))}</strong> – noch {briefing.daysUntil} Tage</span>
+            </div>
+          )}
         </div>
 
         {/* ZG-Breite card */}
