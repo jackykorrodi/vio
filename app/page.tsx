@@ -476,104 +476,18 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* Politik: region + date + kampagnentyp */}
+                {/* Politik: redirect to /campaign */}
                 {heroType === 'politik' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                    {/* Date picker */}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
-                        Abstimmungs- oder Wahltag
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <input
-                          type="date"
-                          min={hTodayStr()}
-                          value={heroVotingDate}
-                          onChange={e => setHeroVotingDate(e.target.value)}
-                          style={{
-                            padding: '12px 16px',
-                            borderRadius: '8px',
-                            border: `1.5px solid ${C.border}`,
-                            fontSize: '15px',
-                            fontFamily: 'var(--font-outfit), sans-serif',
-                            color: C.taupe,
-                            backgroundColor: C.bg,
-                            outline: 'none',
-                            cursor: 'pointer',
-                          }}
-                        />
-                        {heroVotingDate && (
-                          <span style={{
-                            padding: '6px 14px', borderRadius: '100px',
-                            backgroundColor: C.pl, color: C.pd,
-                            fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap',
-                          }}>
-                            Noch {heroDaysUntil} Tage
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Kampagnentyp 2×2 */}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
-                        Kampagnentyp
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        {([
-                          { value: 'ja' as const, ico: '✅', name: 'JA-Kampagne' },
-                          { value: 'nein' as const, ico: '❌', name: 'NEIN-Kampagne' },
-                          { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
-                          { value: 'event' as const, ico: '📣', name: 'Event & Mobilisierung' },
-                        ] as const).map(opt => (
-                          <div
-                            key={opt.value}
-                            onClick={() => setHeroKampagnenTyp(opt.value)}
-                            style={{
-                              padding: '11px 14px',
-                              borderRadius: '8px',
-                              border: `2px solid ${heroKampagnenTyp === opt.value ? C.primary : C.border}`,
-                              background: heroKampagnenTyp === opt.value ? C.pl : C.bg,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              transition: 'all .15s',
-                            }}
-                          >
-                            <span style={{ fontSize: '16px' }}>{opt.ico}</span>
-                            <span style={{ fontWeight: 600, fontSize: '13px', color: C.taupe }}>{opt.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Los geht's button — only when all 3 fields filled */}
-                    {politikReady && (
-                      <button
-                        type="button"
-                        onClick={handleHeroStart}
-                        style={{
-                          width: '100%',
-                          padding: '14px 24px',
-                          borderRadius: '100px',
-                          backgroundColor: C.primary,
-                          color: '#fff',
-                          border: 'none',
-                          fontFamily: 'var(--font-outfit), sans-serif',
-                          fontSize: '16px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          boxShadow: '0 4px 16px rgba(193,102,107,.35)',
-                          transition: 'transform .18s, background-color .18s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
-                      >
-                        Los geht&apos;s →
-                      </button>
-                    )}
+                  <div style={{ padding: '20px 0' }}>
+                    <p style={{ fontSize: '14px', color: C.muted, marginBottom: '16px', lineHeight: 1.6 }}>
+                      Starte deine politische Kampagne — wähle Region, Datum und Kampagnentyp im nächsten Schritt.
+                    </p>
+                    <button
+                      onClick={() => window.location.href = '/campaign?type=politik'}
+                      style={{ background: '#C1666B', color: '#fff', border: 'none', borderRadius: '100px', padding: '15px 32px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', width: '100%' }}
+                    >
+                      Politische Kampagne starten →
+                    </button>
                   </div>
                 )}
 
