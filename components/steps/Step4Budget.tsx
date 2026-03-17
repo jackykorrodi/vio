@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { BriefingData } from '@/lib/types';
+import { Region, ALL_REGIONS } from '@/lib/regions';
 
 // Dynamic import avoids SSR issues with D3/canvas
 const SwissMap = dynamic(() => import('./SwissMap'), {
@@ -121,10 +122,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     ? briefing.selectedRegions.map(r => r.name)
     : [];
 
-  // Tier availability by daysUntil (politik only) — all 3 tiers always shown
-  const daysUntil = isPolitik ? (briefing.daysUntil ?? 999) : 999;
-  const isTierAvailable = (lzWeeks: number) => !isPolitik || lzWeeks * 7 <= daysUntil;
-  const visibleTiers = TIER_DEFS.filter(t => isTierAvailable(t.lzWeeks)); // for default+slider logic
+  const visibleTiers = TIER_DEFS; // all tiers always available
 
   // Compute dynamic budgets for each tier based on popSize
   const tierBudgets: Record<0 | 1 | 2, number> = {
@@ -138,6 +136,11 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const [budget, setBudget] = useState<number>(() => tierBudgets[defaultTier.id]);
   const [tierSelected, setTierSelected] = useState<0 | 1 | 2>(defaultTier.id);
+  const [laufzeitOverride, setLaufzeitOverride] = useState<1 | 2 | 4 | null>(null);
+  const [regionPickerOpen, setRegionPickerOpen] = useState(false);
+  const [regionQuery, setRegionQuery] = useState('');
+  const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
+  const [editRegions, setEditRegions] = useState<Region[]>(() => (briefing.selectedRegions ?? []) as Region[]);
 
   // Reinit tier budget when popSize changes (e.g. user changes region in step 2 and comes back)
   useEffect(() => {
@@ -158,8 +161,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const activeTier     = TIER_DEFS[tierSelected];
   const currentFreq    = activeTier.freq;
-  const currentLzWeeks = activeTier.lzWeeks;
-  const currentLzLabel = activeTier.lzLabel;
+  const currentLzWeeks = laufzeitOverride ?? activeTier.lzWeeks;
+  const currentLzLabel = laufzeitOverride
+    ? `${laufzeitOverride} ${laufzeitOverride === 1 ? 'Woche' : 'Wochen'}`
+    : activeTier.lzLabel;
 
   // Slider max: praesenz budget × 2, capped at 50000
   const sliderMax = Math.min(50000, Math.max(tierBudgets[2] * 2, 20000));
@@ -167,6 +172,64 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   // Reach korridor from current budget + selected tier's freq, capped at popSize
   const { lo, hi, mid, pct } = calcReach(budget, currentFreq, popSize);
   const reachFraction = Math.min(1, mid / Math.max(1, popSize));
+
+  // Region picker search
+  const regionSearchResults = useMemo(() => {
+    const q = regionQuery.trim().toLowerCase();
+    const pool = ALL_REGIONS
+      .filter(r => !q || r.name.toLowerCase().includes(q))
+      .filter(r => isPolitik || r.type === 'kanton') // B2C/B2B: kantone only
+      .filter(r => !editRegions.some(s => s.name === r.name));
+    const schweiz = pool.filter(r => r.type === 'schweiz');
+    const kantone = pool.filter(r => r.type === 'kanton');
+    const staedte = pool.filter(r => r.type === 'stadt').sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    return [...schweiz, ...kantone, ...staedte].slice(0, 8);
+  }, [regionQuery, editRegions, isPolitik]);
+
+  const editTotalStimm = editRegions.reduce((sum, r) => sum + r.stimm, 0);
+
+  const addEditRegion = (r: Region) => {
+    if (!isPolitik) {
+      // B2C/B2B: single select — update analysis.region
+      updateBriefing({ analysis: briefing.analysis ? { ...briefing.analysis, region: [r.name] } : null });
+      setRegionPickerOpen(false);
+      setRegionQuery('');
+      return;
+    }
+    if (editRegions.length >= 10) return;
+    setEditRegions(prev => [...prev, r]);
+    setRegionQuery('');
+    setRegionDropdownOpen(false);
+  };
+
+  const removeEditRegion = (name: string) => {
+    setEditRegions(prev => prev.filter(r => r.name !== name));
+  };
+
+  const confirmRegionEdit = () => {
+    if (!isPolitik || editRegions.length === 0) return;
+    const days = briefing.daysUntil ?? 999;
+    const tiers = [
+      { rate: 0.14, freq: 3, weeks: 1 },
+      { rate: 0.25, freq: 5, weeks: 2 },
+      { rate: 0.35, freq: 7, weeks: 4 },
+    ].filter(t => t.weeks === 1 || t.weeks * 7 <= days);
+    const recommended = tiers[Math.min(1, tiers.length - 1)];
+    const newTotal = editTotalStimm;
+    const raw = (Math.round(newTotal * recommended.rate) * recommended.freq / 1000) * 40;
+    const newBudget = Math.max(2500, Math.min(50000, Math.round(raw / 500) * 500));
+    updateBriefing({
+      selectedRegions: editRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
+      totalStimmber: newTotal,
+      stimmberechtigte: newTotal,
+      politikRegion: editRegions[0]?.name ?? '',
+      politikRegionType: (editRegions[0]?.type ?? 'kanton') as 'kanton' | 'stadt' | 'schweiz',
+      recommendedBudget: newBudget,
+    });
+    setBudget(newBudget);
+    setRegionPickerOpen(false);
+    setRegionQuery('');
+  };
 
   const handleTierSelect = (id: 0 | 1 | 2) => {
     setTierSelected(id);
@@ -189,7 +252,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const handleNext = () => {
     updateBriefing({
       budget,
-      laufzeit: currentLzWeeks,
+      laufzeit: currentLzWeeks as number,
       startDate,
       reach: mid,
       freq: currentFreq,
@@ -227,7 +290,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
         </h1>
 
         {/* ── Context bar ── */}
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 18px', marginBottom: 14, display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 10, fontSize: 13, color: C.taupe }}>
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 18px', marginBottom: 6, display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 10, fontSize: 13, color: C.taupe }}>
           <span style={{ background: ctBadgeColor, color: '#fff', borderRadius: 100, padding: '3px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.04em' }}>
             {ctBadgeLabel}
           </span>
@@ -252,28 +315,108 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
               🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => { setRegionPickerOpen(o => !o); setEditRegions((briefing.selectedRegions ?? []) as Region[]); setRegionQuery(''); }}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, textDecoration: 'underline', fontFamily: 'var(--font-outfit), sans-serif' }}
+          >
+            Region ändern
+          </button>
         </div>
 
-        {/* ── Three tier cards — always all 3, unavailable ones greyed ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        {/* ── Inline region picker ── */}
+        {regionPickerOpen && (
+          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 10 }}>
+              {isPolitik ? 'Regionen bearbeiten' : 'Region ändern'}
+            </div>
+
+            {isPolitik && editRegions.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 8 }}>
+                {editRegions.map(r => (
+                  <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#F9ECEC', border: '1px solid #C1666B', color: '#A84E53', borderRadius: 100, padding: '4px 8px 4px 12px', fontSize: 13, fontWeight: 600 }}>
+                    {r.name}
+                    <button type="button" onClick={() => removeEditRegion(r.name)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 15, padding: '0 3px', lineHeight: 1 }}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {isPolitik && editRegions.length > 0 && (
+              <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
+                Total: <strong style={{ color: C.taupe }}>{editTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+              </div>
+            )}
+
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={regionQuery}
+                placeholder={isPolitik ? 'Kanton oder Gemeinde suchen...' : 'Kanton suchen...'}
+                onChange={e => { setRegionQuery(e.target.value); setRegionDropdownOpen(true); }}
+                onFocus={() => setRegionDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setRegionDropdownOpen(false), 200)}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 14, fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
+              />
+              {regionDropdownOpen && regionSearchResults.length > 0 && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: 300, overflowY: 'auto', zIndex: 200 }}>
+                  {regionSearchResults.filter(r => r.type === 'schweiz').map(r => (
+                    <div key={r.name} onMouseDown={() => addEditRegion(r)} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 14, color: C.taupe, display: 'flex', justifyContent: 'space-between' }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                      <span>{r.name}</span><span style={{ fontSize: 11, color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                    </div>
+                  ))}
+                  {regionSearchResults.filter(r => r.type === 'kanton').length > 0 && (
+                    <div>
+                      <div style={{ padding: '6px 14px 2px', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
+                      {regionSearchResults.filter(r => r.type === 'kanton').map(r => (
+                        <div key={r.name} onMouseDown={() => addEditRegion(r)} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 14, color: C.taupe, display: 'flex', justifyContent: 'space-between' }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                          <span>{r.name}</span><span style={{ fontSize: 11, color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {regionSearchResults.filter(r => r.type === 'stadt').length > 0 && (
+                    <div>
+                      <div style={{ padding: '6px 14px 2px', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
+                      {regionSearchResults.filter(r => r.type === 'stadt').map(r => (
+                        <div key={r.name} onMouseDown={() => addEditRegion(r)} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 14, color: C.taupe, display: 'flex', justifyContent: 'space-between' }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                          <span>{r.name}</span><span style={{ fontSize: 11, color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {isPolitik && editRegions.length > 0 && (
+              <button type="button" onClick={confirmRegionEdit} style={{ marginTop: 12, padding: '9px 20px', borderRadius: 100, background: C.primary, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}>
+                Übernehmen
+              </button>
+            )}
+            <button type="button" onClick={() => setRegionPickerOpen(false)} style={{ marginTop: 12, marginLeft: isPolitik && editRegions.length > 0 ? 8 : 0, padding: '9px 20px', borderRadius: 100, background: 'none', color: C.muted, border: `1px solid ${C.border}`, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}>
+              Abbrechen
+            </button>
+          </div>
+        )}
+
+        {/* ── Three tier cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
           {TIER_DEFS.map((t) => {
-            const available = isTierAvailable(t.lzWeeks);
-            const isActive  = tierSelected === t.id && available;
-            const tBudget   = tierBudgets[t.id];
+            const isActive = tierSelected === t.id;
+            const tBudget  = tierBudgets[t.id];
             const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freq, popSize);
             return (
               <div
                 key={t.id}
-                onClick={() => available && handleTierSelect(t.id)}
+                onClick={() => handleTierSelect(t.id)}
                 style={{
                   border: isActive ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
                   background: isActive ? C.pl : C.white,
                   borderRadius: 14, padding: '16px 14px',
-                  cursor: available ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   transition: 'all .15s',
                   position: 'relative', userSelect: 'none',
-                  opacity: available ? 1 : 0.4,
-                  pointerEvents: available ? 'auto' : 'none',
                 }}
               >
                 {t.id === 1 && (
@@ -284,22 +427,34 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                 <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 400, color: C.taupe, marginBottom: 4 }}>
                   {t.label}
                 </div>
-                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: available ? C.primary : C.muted, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
+                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.primary, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
                   {fmtCHF(tBudget)}
                 </div>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
                   {t.lzLabel} · {t.freq}× Frequenz
                 </div>
-                {available ? (
-                  <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
-                    ~{fmtRange(tLo, tHi)} {personLabel} ({tPct}%)
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
-                    Nicht verfügbar — zu kurzfristig
-                  </div>
-                )}
+                <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
+                  ~{fmtRange(tLo, tHi)} {personLabel} ({tPct}%)
+                </div>
               </div>
+            );
+          })}
+        </div>
+
+        {/* ── Laufzeit override buttons ── */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Laufzeit:</span>
+          {([{ weeks: 1 as const, label: '1 Woche' }, { weeks: 2 as const, label: '2 Wochen' }, { weeks: 4 as const, label: '4 Wochen' }]).map(opt => {
+            const isActive = currentLzWeeks === opt.weeks;
+            return (
+              <button
+                key={opt.weeks}
+                type="button"
+                onClick={() => setLaufzeitOverride(laufzeitOverride === opt.weeks ? null : opt.weeks)}
+                style={{ padding: '6px 16px', borderRadius: 100, border: `1.5px solid ${isActive ? C.primary : C.border}`, background: isActive ? C.pl : C.white, color: isActive ? C.pd : C.taupe, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', fontFamily: 'var(--font-outfit), sans-serif' }}
+              >
+                {opt.label}
+              </button>
             );
           })}
         </div>

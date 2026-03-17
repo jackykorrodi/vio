@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step1Entry from '@/components/steps/Step1Entry';
-import Step2Politik from '@/components/steps/Step2Politik';
+
 import Step3Audience from '@/components/steps/Step3Audience';
 import Step4Budget from '@/components/steps/Step4Budget';
 import Step5Creative from '@/components/steps/Step5Creative';
@@ -52,7 +52,7 @@ export default function CampaignFlow() {
     }
     if (currentStep === 3) { setCurrentStep(1); return; }
     if (currentStep === 2) { setCurrentStep(1); return; }
-    if (currentStep === 4 && briefing.campaignType === 'politik') { setCurrentStep(2); return; }
+    if (currentStep === 4 && briefing.campaignType === 'politik') { setCurrentStep(1); return; }
     setCurrentStep(prev => prev - 1);
   };
 
@@ -63,7 +63,22 @@ export default function CampaignFlow() {
   };
 
   const onAnalysisDone = () => setCurrentStep(3);
-  const onPolitikDone = () => setCurrentStep(2);
+  const onPolitikDone = () => setCurrentStep(4);
+
+  // Restore politik prefill from homepage sessionStorage
+  useEffect(() => {
+    if (typeParam !== 'politik') return;
+    try {
+      const stored = sessionStorage.getItem('vio_politik_prefill');
+      if (!stored) return;
+      sessionStorage.removeItem('vio_politik_prefill');
+      const data = JSON.parse(stored) as Partial<BriefingData>;
+      setBriefing(prev => ({ ...prev, ...data }));
+      if (data.selectedRegions?.length && data.votingDate && data.politikType) {
+        setCurrentStep(4);
+      }
+    } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Restore session from ?resume= param (base64 encoded partial BriefingData)
   useEffect(() => {
@@ -206,15 +221,6 @@ export default function CampaignFlow() {
           onAnalysisDone={onAnalysisDone}
           onPolitikDone={onPolitikDone}
           onRestartBriefing={onRestartBriefing}
-          isActive
-        />
-      )}
-
-      {currentStep === 2 && (
-        <Step2Politik
-          briefing={briefing}
-          updateBriefing={updateBriefing}
-          onComplete={() => setCurrentStep(4)}
           isActive
         />
       )}

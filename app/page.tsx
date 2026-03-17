@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { Region, ALL_REGIONS } from '@/lib/regions';
 
 const C = {
   primary: '#C1666B',
@@ -139,6 +140,80 @@ export default function HomePage() {
   // Hero campaign selector state
   const [heroType, setHeroType] = useState<'b2c' | 'b2b' | 'politik' | null>(null);
   const [heroUrl, setHeroUrl] = useState('');
+
+  // Hero politik state
+  const [heroRegions, setHeroRegions] = useState<Region[]>([]);
+  const [heroQuery, setHeroQuery] = useState('');
+  const [heroDropdownOpen, setHeroDropdownOpen] = useState(false);
+  const [heroVotingDate, setHeroVotingDate] = useState('');
+  const [heroPolitikType, setHeroPolitikType] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(null);
+
+  const heroSearchResults = useMemo(() => {
+    const q = heroQuery.trim().toLowerCase();
+    const pool = ALL_REGIONS
+      .filter(r => !q || r.name.toLowerCase().includes(q))
+      .filter(r => !heroRegions.some(s => s.name === r.name));
+    const schweiz = pool.filter(r => r.type === 'schweiz');
+    const kantone = pool.filter(r => r.type === 'kanton');
+    const staedte = pool.filter(r => r.type === 'stadt').sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    return [...schweiz, ...kantone, ...staedte].slice(0, 8);
+  }, [heroQuery, heroRegions]);
+
+  const heroTotalStimm = heroRegions.reduce((sum, r) => sum + r.stimm, 0);
+  const heroAllFilled = heroRegions.length >= 1 && !!heroVotingDate && !!heroPolitikType;
+
+  const heroDaysUntil = (dateStr: string) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr + 'T00:00:00');
+    return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
+  };
+
+  const heroTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const addHeroRegion = (r: Region) => {
+    if (heroRegions.length >= 10) return;
+    setHeroRegions(prev => [...prev, r]);
+    setHeroQuery('');
+    setHeroDropdownOpen(false);
+  };
+
+  const handleHeroPolitikSubmit = () => {
+    if (!heroAllFilled) return;
+    const days = heroDaysUntil(heroVotingDate);
+    const tiers = [
+      { rate: 0.14, freq: 3, weeks: 1 },
+      { rate: 0.25, freq: 5, weeks: 2 },
+      { rate: 0.35, freq: 7, weeks: 4 },
+    ].filter(t => t.weeks === 1 || t.weeks * 7 <= days);
+    const recommended = tiers[Math.min(1, tiers.length - 1)];
+    const total = heroTotalStimm;
+    const raw = (Math.round(total * recommended.rate) * recommended.freq / 1000) * 40;
+    const budget = Math.max(2500, Math.round(raw / 500) * 500);
+    const laufzeit = recommended.weeks;
+    const startD = new Date(heroVotingDate + 'T12:00:00');
+    startD.setDate(startD.getDate() - laufzeit * 7);
+    const today = new Date();
+    const actualStart = startD < today ? today : startD;
+    const prefill = {
+      campaignType: 'politik',
+      politikType: heroPolitikType,
+      votingDate: heroVotingDate,
+      daysUntil: days,
+      selectedRegions: heroRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
+      totalStimmber: total,
+      stimmberechtigte: total,
+      politikRegion: heroRegions[0]?.name ?? '',
+      politikRegionType: heroRegions[0]?.type ?? 'kanton',
+      recommendedBudget: budget,
+      recommendedLaufzeit: laufzeit,
+      startDate: actualStart.toISOString().split('T')[0],
+    };
+    sessionStorage.setItem('vio_politik_prefill', JSON.stringify(prefill));
+    router.push('/campaign?type=politik');
+  };
 
   const handleHeroStart = () => {
     if (!heroType || heroType === 'politik') return;
@@ -380,18 +455,128 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* Politik: redirect to /campaign */}
+                {/* Politik: inline form */}
                 {heroType === 'politik' && (
-                  <div style={{ padding: '20px 0' }}>
-                    <p style={{ fontSize: '14px', color: C.muted, marginBottom: '16px', lineHeight: 1.6 }}>
-                      Starte deine politische Kampagne — wähle Region, Datum und Kampagnentyp im nächsten Schritt.
-                    </p>
-                    <button
-                      onClick={() => window.location.href = '/campaign?type=politik'}
-                      style={{ background: '#C1666B', color: '#fff', border: 'none', borderRadius: '100px', padding: '15px 32px', fontSize: '16px', fontWeight: 600, cursor: 'pointer', width: '100%' }}
-                    >
-                      Politische Kampagne starten →
-                    </button>
+                  <div>
+                    {/* Region picker */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Region / Wahlkreis</div>
+                      {heroRegions.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', marginBottom: '6px' }}>
+                          {heroRegions.map(r => (
+                            <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: C.pl, border: `1px solid ${C.primary}`, color: C.pd, borderRadius: '100px', padding: '4px 8px 4px 12px', fontSize: '12px', fontWeight: 600 }}>
+                              {r.name}
+                              <button type="button" onClick={() => setHeroRegions(prev => prev.filter(x => x.name !== r.name))} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '14px', padding: '0 3px', lineHeight: 1 }}>×</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {heroRegions.length > 0 && (
+                        <div style={{ fontSize: '12px', color: C.muted, marginBottom: '6px' }}>
+                          Total: <strong style={{ color: C.taupe }}>{heroTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+                        </div>
+                      )}
+                      {heroRegions.length < 10 && (
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type="text"
+                            value={heroQuery}
+                            placeholder="Kanton oder Gemeinde suchen..."
+                            onChange={e => { setHeroQuery(e.target.value); setHeroDropdownOpen(true); }}
+                            onFocus={() => setHeroDropdownOpen(true)}
+                            onBlur={() => setTimeout(() => setHeroDropdownOpen(false), 200)}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
+                          />
+                          {heroDropdownOpen && heroSearchResults.length > 0 && (
+                            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: '400px', overflowY: 'auto', zIndex: 200 }}>
+                              {heroSearchResults.filter(r => r.type === 'schweiz').length > 0 && (
+                                <div>
+                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
+                                  {heroSearchResults.filter(r => r.type === 'schweiz').map(r => (
+                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                      <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {heroSearchResults.filter(r => r.type === 'kanton').length > 0 && (
+                                <div>
+                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
+                                  {heroSearchResults.filter(r => r.type === 'kanton').map(r => (
+                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                      <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {heroSearchResults.filter(r => r.type === 'stadt').length > 0 && (
+                                <div>
+                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
+                                  {heroSearchResults.filter(r => r.type === 'stadt').map(r => (
+                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                      <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Voting date */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Abstimmungs- oder Wahltag</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input
+                          type="date"
+                          min={heroTodayStr()}
+                          value={heroVotingDate}
+                          onChange={e => setHeroVotingDate(e.target.value)}
+                          style={{ padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
+                        />
+                        {heroVotingDate && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '100px', backgroundColor: '#F9EDEA', color: '#B3502A', fontSize: '12px', fontWeight: 600 }}>
+                            Noch {heroDaysUntil(heroVotingDate)} Tage
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Kampagnentyp */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Kampagnentyp</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        {([
+                          { value: 'ja' as const, ico: '✅', name: 'JA-Kampagne' },
+                          { value: 'nein' as const, ico: '❌', name: 'NEIN-Kampagne' },
+                          { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
+                          { value: 'event' as const, ico: '📣', name: 'Event & Mobilisierung' },
+                        ]).map(opt => {
+                          const active = heroPolitikType === opt.value;
+                          return (
+                            <div key={opt.value} onClick={() => setHeroPolitikType(opt.value)} style={{ padding: '10px 12px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all .2s' }}>
+                              <span style={{ fontSize: '16px' }}>{opt.ico}</span>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: C.taupe }}>{opt.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Submit */}
+                    {heroAllFilled && (
+                      <button
+                        type="button"
+                        onClick={handleHeroPolitikSubmit}
+                        style={{ width: '100%', padding: '14px 24px', borderRadius: '100px', background: C.primary, color: '#fff', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif', boxShadow: '0 4px 16px rgba(193,102,107,.35)', transition: 'all .18s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+                      >
+                        Kampagne starten →
+                      </button>
+                    )}
                   </div>
                 )}
 
