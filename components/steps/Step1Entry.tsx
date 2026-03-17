@@ -346,7 +346,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                 </p>
                 <button
                   type="button"
-                  onClick={onPolitikDone}
+                  onClick={() => { console.log('Politik button clicked, onPolitikDone:', typeof onPolitikDone); onPolitikDone(); }}
                   style={{
                     width: '100%',
                     display: 'flex',
