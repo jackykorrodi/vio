@@ -493,7 +493,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                   )}
 
                   {selectedRegions.length < 10 && (
-                    <div style={{ position: 'relative', marginBottom: '8px' }}>
+                    <div style={{ marginBottom: '8px' }}>
                       <input
                         type="text"
                         value={query}
@@ -510,16 +510,14 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       />
                       {dropdownOpen && (
                         <div style={{
-                          position: 'absolute',
-                          top: 'calc(100% + 4px)',
-                          left: 0, right: 0,
                           background: C.white,
                           border: `1px solid ${C.border}`,
                           borderRadius: '10px',
-                          boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                          maxHeight: '360px',
-                          overflowY: 'auto',
-                          zIndex: 999,
+                          boxShadow: '0 4px 12px rgba(44,44,62,.08)',
+                          maxHeight: '320px',
+                          overflowY: 'scroll',
+                          marginTop: '4px',
+                          width: '100%',
                         }}>
                           {searchResults.schweiz.length > 0 && (
                             <div>
