@@ -477,7 +477,7 @@ export default function HomePage() {
                         </div>
                       )}
                       {heroRegions.length < 10 && (
-                        <div style={{ position: 'relative' }}>
+                        <div>
                           <input
                             type="text"
                             value={heroQuery}
@@ -487,40 +487,38 @@ export default function HomePage() {
                             onBlur={() => setTimeout(() => setHeroDropdownOpen(false), 200)}
                             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
                           />
-                          {heroDropdownOpen && heroSearchResults.length > 0 && (
-                            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: '400px', overflowY: 'auto', zIndex: 200 }}>
-                              {heroSearchResults.filter(r => r.type === 'schweiz').length > 0 && (
-                                <div>
-                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
-                                  {heroSearchResults.filter(r => r.type === 'schweiz').map(r => (
-                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                                      <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              {heroSearchResults.filter(r => r.type === 'kanton').length > 0 && (
-                                <div>
-                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
-                                  {heroSearchResults.filter(r => r.type === 'kanton').map(r => (
-                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                                      <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              {heroSearchResults.filter(r => r.type === 'stadt').length > 0 && (
-                                <div>
-                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
-                                  {heroSearchResults.filter(r => r.type === 'stadt').map(r => (
-                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                                      <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 4px 12px rgba(44,44,62,.08)', maxHeight: '320px', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', marginTop: '4px', width: '100%', display: heroDropdownOpen ? 'block' : 'none' }}>
+                            {heroSearchResults.filter(r => r.type === 'schweiz').length > 0 && (
+                              <div>
+                                <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
+                                {heroSearchResults.filter(r => r.type === 'schweiz').map(r => (
+                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                    <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {heroSearchResults.filter(r => r.type === 'kanton').length > 0 && (
+                              <div>
+                                <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
+                                {heroSearchResults.filter(r => r.type === 'kanton').map(r => (
+                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                    <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {heroSearchResults.filter(r => r.type === 'stadt').length > 0 && (
+                              <div>
+                                <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
+                                {heroSearchResults.filter(r => r.type === 'stadt').map(r => (
+                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                    <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
