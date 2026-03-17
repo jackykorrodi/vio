@@ -115,7 +115,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number; maxHeight?: number } | null>(null);
   const [votingDate, setVotingDate] = useState(briefing.votingDate ?? '');
   const [politikType, setPolitikType] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(
     briefing.politikType ?? null
@@ -148,7 +148,12 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const updateDropdownPos = () => {
     if (!inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
-    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const maxH = Math.max(200, Math.min(380, spaceBelow > 200 ? spaceBelow : spaceAbove));
+    const top = spaceBelow > 200 ? rect.bottom + 4 : rect.top - maxH - 4;
+    setDropdownPos({ top, left: rect.left, width: rect.width, maxHeight: maxH });
   };
 
   const openDropdown = () => {
@@ -644,7 +649,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
           border: `1px solid ${C.border}`,
           borderRadius: '10px',
           boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-          maxHeight: '380px',
+          maxHeight: `${dropdownPos.maxHeight ?? 380}px`,
           overflowY: 'scroll',
           zIndex: 99999,
         }}>
