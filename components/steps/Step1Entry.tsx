@@ -133,10 +133,9 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
       .filter(r => !q || r.name.toLowerCase().includes(q))
       .filter(r => !selectedRegions.some(s => s.name === r.name));
     const schweiz = pool.filter(r => r.type === 'schweiz');
-    const kantone = pool.filter(r => r.type === 'kanton').slice(0, 8);
+    const kantone = pool.filter(r => r.type === 'kanton');
     const staedte = pool.filter(r => r.type === 'stadt')
-      .sort((a, b) => a.name.localeCompare(b.name, 'de'))
-      .slice(0, 8);
+      .sort((a, b) => b.stimm - a.stimm);
     return { schweiz, kantone, staedte };
   }, [query, selectedRegions]);
 
@@ -554,7 +553,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           border: `1px solid ${C.border}`,
                           borderRadius: '10px',
                           boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                          maxHeight: '320px',
+                          maxHeight: '380px',
                           overflowY: 'scroll',
                           zIndex: 9999,
                         }}>
