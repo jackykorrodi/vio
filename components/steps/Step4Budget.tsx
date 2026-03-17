@@ -53,32 +53,55 @@ const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
   'Gesamte Schweiz': { bev: 8816000, stimm: 5571000 },
 };
 
-// ─── Tier definitions (dynamic budget) ───────────────────────────────────────
-const BLENDED_CPM = 40; // (0.70×50) + (0.30×15) weighted average
-
-const TIER_DEFS = [
-  { id: 0 as const, label: 'Sichtbar',  rate: 0.14, freq: 3, lzWeeks: 1, lzLabel: '1 Woche'  },
-  { id: 1 as const, label: 'Empfohlen', rate: 0.25, freq: 5, lzWeeks: 2, lzLabel: '2 Wochen' },
-  { id: 2 as const, label: 'Präsenz',   rate: 0.35, freq: 7, lzWeeks: 4, lzLabel: '4 Wochen' },
-];
-
-function calcTierBudget(stimmber: number, rate: number, freq: number): number {
-  const targetReach = stimmber * rate;
-  const impressions = targetReach * freq;
-  const raw = (impressions / 1000) * BLENDED_CPM;
-  return Math.max(2500, Math.round(raw / 500) * 500);
+// ─── Reach rate & budget cap by region size ───────────────────────────────────
+function getReachRate(stimmber: number): number {
+  if (stimmber < 50000)  return 0.55;
+  if (stimmber < 200000) return 0.45;
+  if (stimmber < 600000) return 0.35;
+  return 0.25;
 }
 
-// ─── Reach calculation (CPM formula, capped at stimmber) ─────────────────────
-function calcReach(budget: number, freq: number, stimmber: number): { lo: number; hi: number; mid: number; pct: number } {
-  const doohImp    = (budget * 0.70 / 50) * 1000;
+function getBudgetCap(stimmber: number): number {
+  if (stimmber < 50000)  return 25000;
+  if (stimmber < 200000) return 75000;
+  if (stimmber < 600000) return 150000;
+  return 300000;
+}
+
+// ─── Tier definitions ────────────────────────────────────────────────────────
+const BLENDED_CPM = 40;
+
+const TIERS = [
+  { id: 0 as const, label: 'Sichtbar',  freqPerWeek: 3, weeks: 1, lzLabel: '1 Woche'  },
+  { id: 1 as const, label: 'Empfohlen', freqPerWeek: 5, weeks: 2, lzLabel: '2 Wochen' },
+  { id: 2 as const, label: 'Präsenz',   freqPerWeek: 7, weeks: 4, lzLabel: '4 Wochen' },
+];
+
+const TIER_RATES = [0.14, 0.35, 0.60];
+
+function calcTierBudget(stimmber: number, tierIdx: number): number {
+  const rate = getReachRate(stimmber);
+  const cap  = getBudgetCap(stimmber);
+  const t    = TIERS[tierIdx];
+  const targetReach = stimmber * rate * TIER_RATES[tierIdx];
+  const impressions = targetReach * t.freqPerWeek * t.weeks;
+  const raw = (impressions / 1000) * BLENDED_CPM;
+  return Math.min(cap, Math.max(2500, Math.round(raw / 500) * 500));
+}
+
+// ─── Reach calculation ────────────────────────────────────────────────────────
+function calcReach(budget: number, freqPerWeek: number, weeks: number, stimmber: number) {
+  const doohImp    = (budget * 0.70 / 50)  * 1000;
   const displayImp = (budget * 0.30 / 15) * 1000;
-  const rawReach   = (doohImp + displayImp) / freq;
-  const reach      = Math.min(rawReach, stimmber);
-  const lo  = Math.round(reach * 0.85 / 1000) * 1000;
-  const hi  = Math.min(Math.round(reach * 1.15 / 1000) * 1000, stimmber);
+  const totalImp   = doohImp + displayImp;
+  const totalFreq  = freqPerWeek * weeks;
+  const rawReach   = totalImp / totalFreq;
+  const maxReach   = stimmber * getReachRate(stimmber);
+  const reach      = Math.min(rawReach, maxReach);
+  const lo  = Math.round(reach * 0.88 / 1000) * 1000;
+  const hi  = Math.round(reach * 1.12 / 1000) * 1000;
   const mid = Math.round(reach / 1000) * 1000;
-  const pct = Math.min(Math.round(reach / Math.max(1, stimmber) * 100), 100);
+  const pct = Math.round(reach / stimmber * 100);
   return { lo, hi, mid, pct };
 }
 
@@ -115,13 +138,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     ? briefing.selectedRegions.map(r => r.name)
     : [];
 
-  const visibleTiers = TIER_DEFS; // all tiers always available
+  const visibleTiers = TIERS;
 
   // Compute dynamic budgets for each tier based on popSize
   const tierBudgets: Record<0 | 1 | 2, number> = {
-    0: calcTierBudget(popSize, TIER_DEFS[0].rate, TIER_DEFS[0].freq),
-    1: calcTierBudget(popSize, TIER_DEFS[1].rate, TIER_DEFS[1].freq),
-    2: calcTierBudget(popSize, TIER_DEFS[2].rate, TIER_DEFS[2].freq),
+    0: calcTierBudget(popSize, 0),
+    1: calcTierBudget(popSize, 1),
+    2: calcTierBudget(popSize, 2),
   };
 
   // Default to Empfohlen (id=1) if visible, else highest visible
@@ -139,7 +162,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   useEffect(() => {
     const newDefault = visibleTiers[Math.min(1, visibleTiers.length - 1)];
     setTierSelected(newDefault.id);
-    setBudget(calcTierBudget(popSize, TIER_DEFS[newDefault.id].rate, TIER_DEFS[newDefault.id].freq));
+    setBudget(calcTierBudget(popSize, newDefault.id));
   }, [popSize]); // eslint-disable-line react-hooks/exhaustive-deps
   const [startDate, setStartDate] = useState<string>(() => {
     if (briefing.votingDate && briefing.recommendedLaufzeit) {
@@ -152,25 +175,19 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     return todayStr();
   });
 
-  const activeTier     = TIER_DEFS[tierSelected];
-  const currentFreq    = activeTier.freq;
-  const currentLzWeeks = laufzeitOverride ?? activeTier.lzWeeks;
+  const activeTier     = TIERS[tierSelected];
+  const currentFreq    = activeTier.freqPerWeek;
+  const currentLzWeeks = laufzeitOverride ?? activeTier.weeks;
   const currentLzLabel = laufzeitOverride
     ? `${laufzeitOverride} ${laufzeitOverride === 1 ? 'Woche' : 'Wochen'}`
     : activeTier.lzLabel;
 
-  // Slider max = Präsenz budget (no cap)
-  const sliderMax = tierBudgets[2];
+  const sliderMax = getBudgetCap(popSize);
 
-  // Reach corridor from current budget + selected tier's freq
-  const { lo, hi, mid, pct } = calcReach(budget, currentFreq, popSize);
-  // reachFraction uses raw reach (pre-rounding) so map is accurate at high budgets
-  const _doohImp = (budget * 0.70 / 50) * 1000;
-  const _dispImp = (budget * 0.30 / 15) * 1000;
-  const reachFraction = Math.min(1, (_doohImp + _dispImp) / currentFreq / Math.max(1, popSize));
+  const { lo, hi, mid, pct } = calcReach(budget, currentFreq, currentLzWeeks, popSize);
+  const reachFraction = Math.min(getReachRate(popSize), mid / Math.max(1, popSize));
 
-  // FIX 5 diagnostic — log popSize and tier budgets to verify distinct values
-  console.log('popSize:', popSize, 'tierBudgets:', tierBudgets);
+  const needsBeratung = calcTierBudget(popSize, 0) < 5000;
 
   // Region picker search
   const regionSearchResults = useMemo(() => {
@@ -208,15 +225,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const confirmRegionEdit = () => {
     if (!isPolitik || editRegions.length === 0) return;
     const days = briefing.daysUntil ?? 999;
-    const tiers = [
-      { rate: 0.14, freq: 3, weeks: 1 },
-      { rate: 0.25, freq: 5, weeks: 2 },
-      { rate: 0.35, freq: 7, weeks: 4 },
-    ].filter(t => t.weeks === 1 || t.weeks * 7 <= days);
-    const recommended = tiers[Math.min(1, tiers.length - 1)];
+    const availableIdxs = TIERS
+      .map((t, i) => ({ i, t }))
+      .filter(({ t }) => t.weeks === 1 || t.weeks * 7 <= days)
+      .map(({ i }) => i);
+    const recIdx = availableIdxs[Math.min(1, availableIdxs.length - 1)] ?? 0;
     const newTotal = editTotalStimm;
-    const raw = (Math.round(newTotal * recommended.rate) * recommended.freq / 1000) * 40;
-    const newBudget = Math.max(2500, Math.round(raw / 500) * 500);
+    const newBudget = calcTierBudget(newTotal, recIdx);
     updateBriefing({
       selectedRegions: editRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
       totalStimmber: newTotal,
@@ -398,12 +413,26 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           </div>
         )}
 
-        {/* ── Three tier cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
-          {TIER_DEFS.map((t) => {
+        {/* ── Three tier cards (or Beratung box for Sichtbar) ── */}
+        {needsBeratung && (
+          <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 12, padding: '16px 20px', marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, color: '#7A5500', marginBottom: 6 }}>
+              Persönliche Beratung empfohlen
+            </div>
+            <div style={{ fontSize: 13, color: '#7A5500', lineHeight: 1.6, marginBottom: 12 }}>
+              Für {regionName} mit {fmtN(popSize)} Stimmberechtigten gestalten wir die optimale
+              Kampagne gemeinsam mit dir — so stellst du sicher, dass jeder Franken wirkt.
+            </div>
+            <a href="https://calendly.com/vio" target="_blank" style={{ background: '#C1666B', color: '#fff', borderRadius: 100, padding: '10px 20px', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
+              Kostenlos beraten lassen →
+            </a>
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: needsBeratung ? '1fr 1fr' : '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
+          {TIERS.filter(t => needsBeratung ? t.id !== 0 : true).map((t) => {
             const isActive = tierSelected === t.id;
             const tBudget  = tierBudgets[t.id];
-            const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freq, popSize);
+            const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freqPerWeek, t.weeks, popSize);
             return (
               <div
                 key={t.id}
@@ -429,7 +458,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                   {fmtCHF(tBudget)}
                 </div>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
-                  {t.lzLabel} · {t.freq}× Frequenz
+                  {t.lzLabel} · {t.freqPerWeek}× Frequenz
                 </div>
                 <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
                   ~{fmtRange(tLo, tHi)} {personLabel} ({tPct}%)
@@ -437,6 +466,17 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
               </div>
             );
           })}
+        </div>
+
+        {/* ── Advisory text ── */}
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, padding: '14px 0', borderTop: `1px solid ${C.border}`, marginTop: 8 }}>
+          💡 {(() => {
+            const rate = Math.round(getReachRate(popSize) * 100);
+            if (popSize < 50000) return `${regionName} ist eine überschaubare Gemeinde — mit gezieltem Einsatz erreichst du bis zu ${rate}% der Stimmberechtigten. Wir empfehlen einen starken Kurzauftritt kurz vor dem Abstimmungstermin.`;
+            if (popSize < 200000) return `In ${regionName} erreichst du realistisch ${rate}% der Stimmberechtigten. Die Kombination aus Screens an Bahnhöfen und Online-Bannern sorgt für maximale Sichtbarkeit im entscheidenden Moment.`;
+            if (popSize < 600000) return `${regionName} ist ein grosses Einzugsgebiet — daher kalkulieren wir mit ${rate}% Reichweite. Ein mehrwöchiger Auftritt auf DOOH-Screens und digitalen Kanälen sorgt für die nötige Frequenz.`;
+            return `Mit ${regionName} deckst du eine der grössten Regionen der Schweiz ab. Wir empfehlen eine gestaffelte Kampagne: zuerst Awareness über DOOH, dann Mobilisierung über Display in den letzten 2 Wochen.`;
+          })()}
         </div>
 
         {/* ── Laufzeit override buttons ── */}
@@ -464,6 +504,32 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
             Das entspricht ca. {pct}% der {personLabel} in {regionName}
+          </div>
+        </div>
+
+        {/* ── DOOH + Display breakdown ── */}
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 20px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: 12 }}>
+            So wirkt dein Budget
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>📺 DOOH — Digitale Screens</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                Bahnhöfe, Einkaufszentren, belebte Orte<br/>
+                <strong style={{ color: C.taupe }}>{fmtN(Math.round((Math.round(budget * 0.70) / 50) * 1000))} Impressionen</strong>
+              </div>
+            </div>
+            <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>🖥 Display — Online Banner</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+                Schweizer Websites & Apps<br/>
+                <strong style={{ color: C.taupe }}>{fmtN(Math.round(((budget - Math.round(budget * 0.70)) / 15) * 1000))} Impressionen</strong>
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+            70% DOOH · 30% Display · Ø {activeTier.freqPerWeek}× pro Person / Woche über {activeTier.lzLabel}
           </div>
         </div>
 
