@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 
@@ -114,8 +113,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   );
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number; maxHeight?: number } | null>(null);
   const [votingDate, setVotingDate] = useState(briefing.votingDate ?? '');
   const [politikType, setPolitikType] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(
     briefing.politikType ?? null
@@ -140,46 +137,13 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
     return { schweiz, kantone, staedte };
   }, [query, selectedRegions]);
 
-  const hasResults = searchResults.schweiz.length + searchResults.kantone.length + searchResults.staedte.length > 0;
-
   const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
   const allPolitikFilled = selectedRegions.length >= 1 && !!votingDate && !!politikType;
-
-  const updateDropdownPos = () => {
-    if (!inputRef.current) return;
-    const rect = inputRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - rect.bottom - 8;
-    const spaceAbove = rect.top - 8;
-    const maxH = Math.max(200, Math.min(380, spaceBelow > 200 ? spaceBelow : spaceAbove));
-    const top = spaceBelow > 200 ? rect.bottom + 4 : rect.top - maxH - 4;
-    setDropdownPos({ top, left: rect.left, width: rect.width, maxHeight: maxH });
-  };
-
-  const openDropdown = () => {
-    updateDropdownPos();
-    setDropdownOpen(true);
-  };
-
-  // Close dropdown on resize
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    const close = () => setDropdownOpen(false);
-    window.addEventListener('resize', close);
-    return () => {
-      window.removeEventListener('resize', close);
-    };
-  }, [dropdownOpen]);
 
   const addRegion = (r: Region) => {
     if (selectedRegions.length >= 10) return;
     setSelectedRegions(prev => [...prev, r]);
     setQuery('');
-    // Keep dropdown open and re-focus input
-    setTimeout(() => {
-      inputRef.current?.focus();
-      updateDropdownPos();
-    }, 0);
   };
 
   const removeRegion = (name: string) => {
@@ -277,7 +241,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   };
 
   return (
-    <section style={{ backgroundColor: C.bg }}>
+    <section style={{ backgroundColor: C.bg, overflow: 'visible' }}>
       <div style={page}>
 
         {/* Eyebrow */}
@@ -340,7 +304,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
         <div
           style={{
             maxHeight: accordionOpen ? '1800px' : '0px',
-            overflow: 'hidden',
+            overflow: 'visible',
             transition: 'max-height 300ms ease',
           }}
         >
@@ -531,14 +495,13 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                   )}
 
                   {selectedRegions.length < 10 && (
-                    <div>
+                    <div style={{ position: 'relative', marginBottom: '8px' }}>
                       <input
-                        ref={inputRef}
                         type="text"
                         value={query}
                         placeholder="Kanton oder Gemeinde suchen..."
-                        onChange={e => { setQuery(e.target.value); openDropdown(); }}
-                        onFocus={() => openDropdown()}
+                        onChange={e => { setQuery(e.target.value); setDropdownOpen(true); }}
+                        onFocus={() => setDropdownOpen(true)}
                         onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
                         style={{
                           width: '100%', boxSizing: 'border-box', padding: '12px 16px',
@@ -547,6 +510,39 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           color: C.taupe, backgroundColor: C.white, outline: 'none',
                         }}
                       />
+                      {dropdownOpen && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 4px)',
+                          left: 0, right: 0,
+                          background: C.white,
+                          border: `1px solid ${C.border}`,
+                          borderRadius: '10px',
+                          boxShadow: '0 8px 24px rgba(44,44,62,.12)',
+                          maxHeight: '360px',
+                          overflowY: 'auto',
+                          zIndex: 999,
+                        }}>
+                          {searchResults.schweiz.length > 0 && (
+                            <div>
+                              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const }}>Schweiz</div>
+                              {searchResults.schweiz.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                            </div>
+                          )}
+                          {searchResults.kantone.length > 0 && (
+                            <div>
+                              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const }}>Kantone</div>
+                              {searchResults.kantone.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                            </div>
+                          )}
+                          {searchResults.staedte.length > 0 && (
+                            <div>
+                              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const }}>Städte & Gemeinden</div>
+                              {searchResults.staedte.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                   {selectedRegions.length >= 10 && (
@@ -639,41 +635,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
         }
       `}</style>
 
-      {dropdownOpen && hasResults && dropdownPos && typeof document !== 'undefined' && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: dropdownPos.top,
-          left: dropdownPos.left,
-          width: dropdownPos.width,
-          background: C.white,
-          border: `1px solid ${C.border}`,
-          borderRadius: '10px',
-          boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-          maxHeight: `${dropdownPos.maxHeight ?? 380}px`,
-          overflowY: 'scroll',
-          zIndex: 99999,
-        }}>
-          {searchResults.schweiz.length > 0 && (
-            <div>
-              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
-              {searchResults.schweiz.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
-            </div>
-          )}
-          {searchResults.kantone.length > 0 && (
-            <div>
-              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
-              {searchResults.kantone.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
-            </div>
-          )}
-          {searchResults.staedte.length > 0 && (
-            <div>
-              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
-              {searchResults.staedte.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
     </section>
   );
 }
