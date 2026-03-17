@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 
@@ -113,6 +113,8 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   );
   const [query, setQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const [votingDate, setVotingDate] = useState(briefing.votingDate ?? '');
   const [politikType, setPolitikType] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(
     briefing.politikType ?? null
@@ -124,27 +126,57 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
   const progress = Math.min(((analysisStepIdx + 1) / ANALYSIS_STEPS.length) * 100, 100);
   const domain = url.replace(/^https?:\/\//, '').split('/')[0] || 'deine-website.ch';
 
-  // Politik computed values
+  // Politics computed values — grouped so all three sections always visible
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
     const pool = ALL_REGIONS
       .filter(r => !q || r.name.toLowerCase().includes(q))
       .filter(r => !selectedRegions.some(s => s.name === r.name));
     const schweiz = pool.filter(r => r.type === 'schweiz');
-    const kantone = pool.filter(r => r.type === 'kanton');
+    const kantone = pool.filter(r => r.type === 'kanton').slice(0, 8);
     const staedte = pool.filter(r => r.type === 'stadt')
-      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return [...schweiz, ...kantone, ...staedte].slice(0, 8);
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+      .slice(0, 8);
+    return { schweiz, kantone, staedte };
   }, [query, selectedRegions]);
+
+  const hasResults = searchResults.schweiz.length + searchResults.kantone.length + searchResults.staedte.length > 0;
 
   const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
   const allPolitikFilled = selectedRegions.length >= 1 && !!votingDate && !!politikType;
+
+  const updateDropdownPos = () => {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  };
+
+  const openDropdown = () => {
+    updateDropdownPos();
+    setDropdownOpen(true);
+  };
+
+  // Close dropdown on scroll or resize
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const close = () => setDropdownOpen(false);
+    window.addEventListener('scroll', close, { passive: true });
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close);
+      window.removeEventListener('resize', close);
+    };
+  }, [dropdownOpen]);
 
   const addRegion = (r: Region) => {
     if (selectedRegions.length >= 10) return;
     setSelectedRegions(prev => [...prev, r]);
     setQuery('');
-    setDropdownOpen(false);
+    // Keep dropdown open and re-focus input
+    setTimeout(() => {
+      inputRef.current?.focus();
+      updateDropdownPos();
+    }, 0);
   };
 
   const removeRegion = (name: string) => {
@@ -496,13 +528,14 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                   )}
 
                   {selectedRegions.length < 10 && (
-                    <div style={{ position: 'relative' }}>
+                    <div>
                       <input
+                        ref={inputRef}
                         type="text"
                         value={query}
                         placeholder="Kanton oder Gemeinde suchen..."
-                        onChange={e => { setQuery(e.target.value); setDropdownOpen(true); }}
-                        onFocus={() => setDropdownOpen(true)}
+                        onChange={e => { setQuery(e.target.value); openDropdown(); }}
+                        onFocus={() => openDropdown()}
                         onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
                         style={{
                           width: '100%', boxSizing: 'border-box', padding: '12px 16px',
@@ -511,29 +544,36 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           color: C.taupe, backgroundColor: C.white, outline: 'none',
                         }}
                       />
-                      {dropdownOpen && searchResults.length > 0 && (
+                      {dropdownOpen && hasResults && dropdownPos && (
                         <div style={{
-                          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-                          background: C.white, border: `1px solid ${C.border}`,
-                          borderRadius: '10px', boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                          maxHeight: '400px', overflowY: 'auto', zIndex: 100,
+                          position: 'fixed',
+                          top: dropdownPos.top,
+                          left: dropdownPos.left,
+                          width: dropdownPos.width,
+                          background: C.white,
+                          border: `1px solid ${C.border}`,
+                          borderRadius: '10px',
+                          boxShadow: '0 8px 24px rgba(44,44,62,.12)',
+                          maxHeight: '320px',
+                          overflowY: 'scroll',
+                          zIndex: 9999,
                         }}>
-                          {searchResults.filter(r => r.type === 'schweiz').length > 0 && (
+                          {searchResults.schweiz.length > 0 && (
                             <div>
                               <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
-                              {searchResults.filter(r => r.type === 'schweiz').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                              {searchResults.schweiz.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                             </div>
                           )}
-                          {searchResults.filter(r => r.type === 'kanton').length > 0 && (
+                          {searchResults.kantone.length > 0 && (
                             <div>
                               <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
-                              {searchResults.filter(r => r.type === 'kanton').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                              {searchResults.kantone.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                             </div>
                           )}
-                          {searchResults.filter(r => r.type === 'stadt').length > 0 && (
+                          {searchResults.staedte.length > 0 && (
                             <div>
                               <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
-                              {searchResults.filter(r => r.type === 'stadt').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                              {searchResults.staedte.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                             </div>
                           )}
                         </div>
