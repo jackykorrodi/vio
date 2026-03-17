@@ -199,7 +199,7 @@ export default function CampaignFlow() {
 
       {/* ── Steps — simple conditional render, no framer-motion ── */}
 
-      {currentStep === 1 && (
+      {currentStep === 1 && (() => { console.log('Rendering Step1Entry, onPolitikDone:', typeof onPolitikDone); return (
         <Step1Entry
           briefing={briefing}
           updateBriefing={updateBriefing}
@@ -208,7 +208,7 @@ export default function CampaignFlow() {
           onRestartBriefing={onRestartBriefing}
           isActive
         />
-      )}
+      ); })()}
 
       {currentStep === 2 && (
         <Step2Politik
