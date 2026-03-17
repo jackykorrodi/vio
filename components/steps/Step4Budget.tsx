@@ -66,7 +66,7 @@ function calcTierBudget(stimmber: number, rate: number, freq: number): number {
   const targetReach = stimmber * rate;
   const impressions = targetReach * freq;
   const raw = (impressions / 1000) * BLENDED_CPM;
-  return Math.max(2500, Math.min(50000, Math.round(raw / 500) * 500));
+  return Math.max(2500, Math.round(raw / 500) * 500);
 }
 
 // ─── Reach calculation (CPM formula, capped at stimmber) ─────────────────────
@@ -82,14 +82,7 @@ function calcReach(budget: number, freq: number, stimmber: number): { lo: number
   return { lo, hi, mid, pct };
 }
 
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-
-function formatDateDE(d: Date | string): string {
-  const date = typeof d === 'string' ? new Date(d + 'T12:00:00') : d;
-  return `${date.getDate()}. ${MONTHS_DE[date.getMonth()]} ${date.getFullYear()}`;
-}
-
+// ─── Date helper (for startDate init only) ────────────────────────────────────
 function todayStr(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -166,12 +159,18 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     ? `${laufzeitOverride} ${laufzeitOverride === 1 ? 'Woche' : 'Wochen'}`
     : activeTier.lzLabel;
 
-  // Slider max: praesenz budget × 2, capped at 50000
-  const sliderMax = Math.min(50000, Math.max(tierBudgets[2] * 2, 20000));
+  // Slider max = Präsenz budget (no cap)
+  const sliderMax = tierBudgets[2];
 
-  // Reach korridor from current budget + selected tier's freq, capped at popSize
+  // Reach corridor from current budget + selected tier's freq
   const { lo, hi, mid, pct } = calcReach(budget, currentFreq, popSize);
-  const reachFraction = Math.min(1, mid / Math.max(1, popSize));
+  // reachFraction uses raw reach (pre-rounding) so map is accurate at high budgets
+  const _doohImp = (budget * 0.70 / 50) * 1000;
+  const _dispImp = (budget * 0.30 / 15) * 1000;
+  const reachFraction = Math.min(1, (_doohImp + _dispImp) / currentFreq / Math.max(1, popSize));
+
+  // FIX 5 diagnostic — log popSize and tier budgets to verify distinct values
+  console.log('popSize:', popSize, 'tierBudgets:', tierBudgets);
 
   // Region picker search
   const regionSearchResults = useMemo(() => {
@@ -217,7 +216,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     const recommended = tiers[Math.min(1, tiers.length - 1)];
     const newTotal = editTotalStimm;
     const raw = (Math.round(newTotal * recommended.rate) * recommended.freq / 1000) * 40;
-    const newBudget = Math.max(2500, Math.min(50000, Math.round(raw / 500) * 500));
+    const newBudget = Math.max(2500, Math.round(raw / 500) * 500);
     updateBriefing({
       selectedRegions: editRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
       totalStimmber: newTotal,
@@ -267,7 +266,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const fmtRange = (a: number, b: number) => `${fmtN(a)}–${fmtN(b)}`;
 
   const personLabel = isPolitik ? 'Stimmberechtigte' : 'Personen';
-  const popLabel    = isPolitik ? 'Stimmberechtigte' : 'Bevölkerung';
 
   const ctBadgeLabel = briefing.campaignType === 'b2c' ? 'B2C' : briefing.campaignType === 'b2b' ? 'B2B' : 'Politische Kampagne';
   const ctBadgeColor = briefing.campaignType === 'politik' ? '#7C3AED' : C.primary;
@@ -514,37 +512,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#D4CEC4' }} />
               <span>Potenzial</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Stats row ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-          <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>{popLabel}</div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: C.taupe, letterSpacing: '-.02em' }}>
-              {fmtN(popSize)}
-            </div>
-          </div>
-
-          <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>Laufzeit · Kampagnenstart</div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, color: C.taupe, marginBottom: 8, lineHeight: 1.3 }}>
-              {currentLzLabel} · {formatDateDE(startDate)}
-            </div>
-            <input
-              type="date"
-              value={startDate}
-              min={todayStr()}
-              onChange={e => setStartDate(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 12, color: C.taupe, fontFamily: 'var(--font-outfit), sans-serif', backgroundColor: C.white, outline: 'none', cursor: 'pointer', width: '100%', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
-            <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.07em' }}>Ø Kontaktfrequenz</div>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: C.taupe, letterSpacing: '-.02em' }}>
-              {currentFreq}× pro Person / Woche
             </div>
           </div>
         </div>
