@@ -300,16 +300,13 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
           </div>
         </div>
 
-        {/* Accordion body — smooth open/close */}
-        <div
-          style={{
-            maxHeight: accordionOpen ? '1800px' : '0px',
-            overflow: 'visible',
+        {/* B2C / B2B content — animated, overflow:hidden safe here */}
+        {(campaignType === 'b2c' || campaignType === 'b2b') && (
+          <div style={{
+            maxHeight: accordionOpen ? '800px' : '0px',
+            overflow: 'hidden',
             transition: 'max-height 300ms ease',
-          }}
-        >
-          {/* B2C / B2B content */}
-          {campaignType !== 'politik' && (
+          }}>
             <div style={{ paddingTop: '4px' }}>
               {phase === 'idle' && (
                 <div style={card}>
@@ -451,11 +448,12 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Politik content — full form */}
-          {campaignType === 'politik' && (
-            <div style={{ paddingTop: '4px' }}>
+        {/* Politik content — no overflow:hidden wrapper, dropdown scrolls freely */}
+        {campaignType === 'politik' && (
+          <div style={{ paddingTop: '4px' }}>
               <div style={card}>
 
                 {/* ── Region picker ──────────────────────────────────────── */}
@@ -615,7 +613,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
               </div>
             </div>
           )}
-        </div>
 
         {/* Trust row */}
         <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', marginTop: '18px', paddingTop: '16px', borderTop: `1px solid ${C.border}` }}>
