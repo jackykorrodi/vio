@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 
@@ -155,14 +156,12 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
     setDropdownOpen(true);
   };
 
-  // Close dropdown on scroll or resize
+  // Close dropdown on resize
   useEffect(() => {
     if (!dropdownOpen) return;
     const close = () => setDropdownOpen(false);
-    window.addEventListener('scroll', close, { passive: true });
     window.addEventListener('resize', close);
     return () => {
-      window.removeEventListener('scroll', close);
       window.removeEventListener('resize', close);
     };
   }, [dropdownOpen]);
@@ -543,40 +542,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           color: C.taupe, backgroundColor: C.white, outline: 'none',
                         }}
                       />
-                      {dropdownOpen && hasResults && dropdownPos && (
-                        <div style={{
-                          position: 'fixed',
-                          top: dropdownPos.top,
-                          left: dropdownPos.left,
-                          width: dropdownPos.width,
-                          background: C.white,
-                          border: `1px solid ${C.border}`,
-                          borderRadius: '10px',
-                          boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                          maxHeight: '380px',
-                          overflowY: 'scroll',
-                          zIndex: 9999,
-                        }}>
-                          {searchResults.schweiz.length > 0 && (
-                            <div>
-                              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
-                              {searchResults.schweiz.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
-                            </div>
-                          )}
-                          {searchResults.kantone.length > 0 && (
-                            <div>
-                              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
-                              {searchResults.kantone.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
-                            </div>
-                          )}
-                          {searchResults.staedte.length > 0 && (
-                            <div>
-                              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
-                              {searchResults.staedte.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                   {selectedRegions.length >= 10 && (
@@ -668,6 +633,42 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
           50% { transform: scale(1.12); opacity: 0.8; }
         }
       `}</style>
+
+      {dropdownOpen && hasResults && dropdownPos && typeof document !== 'undefined' && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: dropdownPos.top,
+          left: dropdownPos.left,
+          width: dropdownPos.width,
+          background: C.white,
+          border: `1px solid ${C.border}`,
+          borderRadius: '10px',
+          boxShadow: '0 8px 24px rgba(44,44,62,.12)',
+          maxHeight: '380px',
+          overflowY: 'scroll',
+          zIndex: 99999,
+        }}>
+          {searchResults.schweiz.length > 0 && (
+            <div>
+              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
+              {searchResults.schweiz.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+            </div>
+          )}
+          {searchResults.kantone.length > 0 && (
+            <div>
+              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
+              {searchResults.kantone.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+            </div>
+          )}
+          {searchResults.staedte.length > 0 && (
+            <div>
+              <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
+              {searchResults.staedte.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
     </section>
   );
 }
