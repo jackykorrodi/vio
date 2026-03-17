@@ -480,50 +480,6 @@ export default function HomePage() {
                 {heroType === 'politik' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                    {/* Region select */}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
-                        Region / Wahlkreis
-                      </div>
-                      <select
-                        value={heroRegionName}
-                        onChange={e => {
-                          const r = H_REGIONS.find(x => x.name === e.target.value);
-                          if (r) { setHeroRegionName(r.name); setHeroRegionStimm(r.stimm); setHeroRegionType(r.rtype); }
-                          else { setHeroRegionName(''); setHeroRegionStimm(0); }
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          borderRadius: '8px',
-                          border: `1.5px solid ${C.border}`,
-                          fontSize: '15px',
-                          fontFamily: 'var(--font-outfit), sans-serif',
-                          color: heroRegionName ? C.taupe : C.muted,
-                          backgroundColor: C.bg,
-                          outline: 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <option value="">Region / Wahlkreis wählen...</option>
-                        <optgroup label="Schweiz">
-                          {H_REGIONS.filter(r => r.rtype === 'schweiz').map(r => (
-                            <option key={r.name} value={r.name}>{r.name}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Kantone">
-                          {H_REGIONS.filter(r => r.rtype === 'kanton').map(r => (
-                            <option key={r.name} value={r.name}>{r.name}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Städte">
-                          {H_REGIONS.filter(r => r.rtype === 'stadt').map(r => (
-                            <option key={r.name} value={r.name}>{r.name}</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
-
                     {/* Date picker */}
                     <div>
                       <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>
