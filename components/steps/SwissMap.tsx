@@ -86,6 +86,11 @@ export default function SwissMap({
           )
         : [];
 
+      // Features to use for geoContains: canton selection or full country outline
+      const containFeatures = highlightedFeatures.length > 0
+        ? highlightedFeatures
+        : (countryFeature as d3.ExtendedFeatureCollection).features;
+
       // Projection: zoom into highlighted cantons when specific region selected
       const PAD = 30;
       let projection: d3.GeoProjection;
@@ -100,21 +105,20 @@ export default function SwissMap({
       }
       const pathGen = d3.geoPath().projection(projection);
 
-      // Union screen bounds of all highlighted features (scatter bounding box)
+      // Union screen bounds of containFeatures (scatter bounding box)
       let bounds: { x0: number; y0: number; x1: number; y1: number } | null = null;
-      for (const f of highlightedFeatures) {
+      for (const f of containFeatures) {
         const [[bx0, by0], [bx1, by1]] = pathGen.bounds(f as d3.ExtendedFeature);
         bounds = bounds
           ? { x0: Math.min(bounds.x0, bx0), y0: Math.min(bounds.y0, by0), x1: Math.max(bounds.x1, bx1), y1: Math.max(bounds.y1, by1) }
           : { x0: bx0, y0: by0, x1: bx1, y1: by1 };
       }
 
-      // geoContains check: is screen point (x,y) inside any highlighted canton?
+      // geoContains check: is screen point (x,y) inside the target region(s)?
       function insideRegion(x: number, y: number): boolean {
-        if (highlightedFeatures.length === 0) return true; // highlightAll → scatter everywhere
         const lonLat = projection.invert?.([x, y]);
         if (!lonLat) return false;
-        return highlightedFeatures.some(f => d3.geoContains(f as d3.ExtendedFeature, lonLat as [number, number]));
+        return containFeatures.some(f => d3.geoContains(f as d3.ExtendedFeature, lonLat as [number, number]));
       }
 
       // Pre-compute TOTAL positions via rejection sampling from a large candidate pool

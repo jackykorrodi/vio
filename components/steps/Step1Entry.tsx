@@ -59,7 +59,6 @@ interface Props {
 }
 
 export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, onPolitikDone, onRestartBriefing }: Props) {
-  console.log('Step1Entry props:', { onPolitikDone: typeof onPolitikDone, onAnalysisDone: typeof onAnalysisDone });
   const [url, setUrl] = useState(briefing.url?.replace(/^https:\/\//, '').replace(/^www\./, '') || '');
   const [phase, setPhase] = useState<'idle' | 'analyzing'>('idle');
   const [analysisStepIdx, setAnalysisStepIdx] = useState(0);
@@ -347,7 +346,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                 </p>
                 <button
                   type="button"
-                  onClick={() => { console.log('Politik button clicked, onPolitikDone:', typeof onPolitikDone); onPolitikDone(); }}
+                  onClick={onPolitikDone}
                   style={{
                     width: '100%',
                     display: 'flex',

@@ -124,77 +124,6 @@ function UrlInput({
   );
 }
 
-// ── Hero selector: region data + helpers ─────────────────────────────────────
-
-interface HRegion { name: string; rtype: 'schweiz' | 'kanton' | 'stadt'; stimm: number; }
-
-const H_REGIONS: HRegion[] = [
-  { name: 'Gesamte Schweiz',      rtype: 'schweiz', stimm: 5571000 },
-  { name: 'Zürich',               rtype: 'kanton',  stimm: 1077300 },
-  { name: 'Bern',                 rtype: 'kanton',  stimm: 735000 },
-  { name: 'Luzern',               rtype: 'kanton',  stimm: 299600 },
-  { name: 'Uri',                  rtype: 'kanton',  stimm: 25900 },
-  { name: 'Schwyz',               rtype: 'kanton',  stimm: 116200 },
-  { name: 'Obwalden',             rtype: 'kanton',  stimm: 27300 },
-  { name: 'Nidwalden',            rtype: 'kanton',  stimm: 30800 },
-  { name: 'Glarus',               rtype: 'kanton',  stimm: 28700 },
-  { name: 'Zug',                  rtype: 'kanton',  stimm: 91700 },
-  { name: 'Freiburg',             rtype: 'kanton',  stimm: 235900 },
-  { name: 'Solothurn',            rtype: 'kanton',  stimm: 198100 },
-  { name: 'Basel-Stadt',          rtype: 'kanton',  stimm: 128100 },
-  { name: 'Basel-Landschaft',     rtype: 'kanton',  stimm: 199400 },
-  { name: 'Schaffhausen',         rtype: 'kanton',  stimm: 57200 },
-  { name: 'Appenzell A.Rh.',      rtype: 'kanton',  stimm: 40800 },
-  { name: 'Appenzell I.Rh.',      rtype: 'kanton',  stimm: 11500 },
-  { name: 'St. Gallen',           rtype: 'kanton',  stimm: 340900 },
-  { name: 'Graubünden',           rtype: 'kanton',  stimm: 138900 },
-  { name: 'Aargau',               rtype: 'kanton',  stimm: 453400 },
-  { name: 'Thurgau',              rtype: 'kanton',  stimm: 185700 },
-  { name: 'Tessin',               rtype: 'kanton',  stimm: 249600 },
-  { name: 'Waadt',                rtype: 'kanton',  stimm: 516900 },
-  { name: 'Wallis',               rtype: 'kanton',  stimm: 215200 },
-  { name: 'Neuenburg',            rtype: 'kanton',  stimm: 119800 },
-  { name: 'Genf',                 rtype: 'kanton',  stimm: 330000 },
-  { name: 'Jura',                 rtype: 'kanton',  stimm: 52800 },
-  { name: 'Zürich (Stadt)',       rtype: 'stadt',   stimm: 310000 },
-  { name: 'Genf (Stadt)',         rtype: 'stadt',   stimm: 152000 },
-  { name: 'Basel (Stadt)',        rtype: 'stadt',   stimm: 128000 },
-  { name: 'Bern (Stadt)',         rtype: 'stadt',   stimm: 112000 },
-  { name: 'Lausanne',             rtype: 'stadt',   stimm: 94000 },
-  { name: 'Winterthur',           rtype: 'stadt',   stimm: 85000 },
-  { name: 'Luzern (Stadt)',       rtype: 'stadt',   stimm: 65000 },
-  { name: 'St. Gallen (Stadt)',   rtype: 'stadt',   stimm: 56000 },
-  { name: 'Lugano',               rtype: 'stadt',   stimm: 48000 },
-  { name: 'Biel/Bienne',          rtype: 'stadt',   stimm: 45000 },
-  { name: 'Thun',                 rtype: 'stadt',   stimm: 38000 },
-  { name: 'Köniz',                rtype: 'stadt',   stimm: 31000 },
-  { name: 'La Chaux-de-Fonds',    rtype: 'stadt',   stimm: 30000 },
-  { name: 'Schaffhausen (Stadt)', rtype: 'stadt',   stimm: 28000 },
-  { name: 'Fribourg (Stadt)',     rtype: 'stadt',   stimm: 25000 },
-  { name: 'Chur',                 rtype: 'stadt',   stimm: 23000 },
-  { name: 'Vernier',              rtype: 'stadt',   stimm: 22000 },
-  { name: 'Uster',                rtype: 'stadt',   stimm: 21000 },
-  { name: 'Sion',                 rtype: 'stadt',   stimm: 20000 },
-  { name: 'Emmen',                rtype: 'stadt',   stimm: 19000 },
-];
-
-function hDaysUntil(dateStr: string): number {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr + 'T00:00:00');
-  return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
-}
-
-function hPotenzial(stimm: number, days: number) {
-  const erreichbar = Math.round(stimm * 0.35);
-  const budget = Math.min(50000, Math.max(2500, Math.round((erreichbar * 3 * 32) / 1000 / 500) * 500));
-  const laufzeit = days > 28 ? 4 : days >= 14 ? 2 : 1;
-  return { budget, laufzeit };
-}
-
-function hTodayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 // ── Main page ────────────────────────────────────────────────────────────────
 
@@ -210,38 +139,13 @@ export default function HomePage() {
   // Hero campaign selector state
   const [heroType, setHeroType] = useState<'b2c' | 'b2b' | 'politik' | null>(null);
   const [heroUrl, setHeroUrl] = useState('');
-  const [heroRegionName, setHeroRegionName] = useState('');
-  const [heroRegionStimm, setHeroRegionStimm] = useState(0);
-  const [heroRegionType, setHeroRegionType] = useState<'schweiz' | 'kanton' | 'stadt'>('kanton');
-  const [heroVotingDate, setHeroVotingDate] = useState('');
-  const [heroKampagnenTyp, setHeroKampagnenTyp] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(null);
-
-  const heroDaysUntil = heroVotingDate ? hDaysUntil(heroVotingDate) : 0;
-  const politikReady = heroType === 'politik' && !!heroRegionName && !!heroVotingDate && !!heroKampagnenTyp;
 
   const handleHeroStart = () => {
-    if (heroType === 'politik') {
-      if (!politikReady) return;
-      const { budget, laufzeit } = hPotenzial(heroRegionStimm, heroDaysUntil);
-      const data = {
-        campaignType: 'politik',
-        politikRegion: heroRegionName,
-        politikRegionType: heroRegionType,
-        stimmberechtigte: heroRegionStimm,
-        votingDate: heroVotingDate,
-        daysUntil: heroDaysUntil,
-        politikType: heroKampagnenTyp,
-        recommendedBudget: budget,
-        recommendedLaufzeit: laufzeit,
-        _targetStep: 4,
-      };
-      router.push('/campaign?resume=' + btoa(JSON.stringify(data)));
-    } else if (heroType) {
-      const cleanUrl = heroUrl.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
-      const params = new URLSearchParams({ type: heroType });
-      if (cleanUrl) params.set('url', cleanUrl);
-      router.push('/campaign?' + params.toString());
-    }
+    if (!heroType || heroType === 'politik') return;
+    const cleanUrl = heroUrl.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
+    const params = new URLSearchParams({ type: heroType });
+    if (cleanUrl) params.set('url', cleanUrl);
+    router.push('/campaign?' + params.toString());
   };
 
   const handleStart = (url: string) => {
@@ -470,7 +374,7 @@ export default function HomePage() {
                         onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
                       >
-                        Los geht&apos;s →
+                        Kampagne starten →
                       </button>
                     </div>
                   </div>

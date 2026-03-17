@@ -65,7 +65,7 @@ function calcTierBudget(stimmber: number, rate: number, freq: number): number {
   const targetReach = stimmber * rate;
   const impressions = targetReach * freq;
   const raw = (impressions / 1000) * BLENDED_CPM;
-  return Math.max(2500, Math.round(raw / 500) * 500);
+  return Math.max(2500, Math.min(50000, Math.round(raw / 500) * 500));
 }
 
 // ─── Reach calculation (CPM formula, capped at stimmber) ─────────────────────
@@ -121,10 +121,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     ? briefing.selectedRegions.map(r => r.name)
     : [];
 
-  // Tier filtering by daysUntil (politik only)
+  // Tier availability by daysUntil (politik only) — all 3 tiers always shown
   const daysUntil = isPolitik ? (briefing.daysUntil ?? 999) : 999;
-  const maxAllowedWeeks = !isPolitik ? 4 : (daysUntil < 14 ? 1 : daysUntil < 28 ? 2 : 4);
-  const visibleTiers = TIER_DEFS.filter(t => t.lzWeeks <= maxAllowedWeeks);
+  const isTierAvailable = (lzWeeks: number) => !isPolitik || lzWeeks * 7 <= daysUntil;
+  const visibleTiers = TIER_DEFS.filter(t => isTierAvailable(t.lzWeeks)); // for default+slider logic
 
   // Compute dynamic budgets for each tier based on popSize
   const tierBudgets: Record<0 | 1 | 2, number> = {
@@ -161,8 +161,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const currentLzWeeks = activeTier.lzWeeks;
   const currentLzLabel = activeTier.lzLabel;
 
-  // Slider max: praesenz budget × 2, at least 20000
-  const sliderMax = Math.max(tierBudgets[2] * 2, 20000);
+  // Slider max: praesenz budget × 2, capped at 50000
+  const sliderMax = Math.min(50000, Math.max(tierBudgets[2] * 2, 20000));
 
   // Reach korridor from current budget + selected tier's freq, capped at popSize
   const { lo, hi, mid, pct } = calcReach(budget, currentFreq, popSize);
@@ -254,25 +254,28 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           )}
         </div>
 
-        {/* ── Three tier cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleTiers.length}, 1fr)`, gap: 12, marginBottom: 14 }}>
-          {visibleTiers.map((t) => {
-            const isActive = tierSelected === t.id;
-            const tBudget = tierBudgets[t.id];
+        {/* ── Three tier cards — always all 3, unavailable ones greyed ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+          {TIER_DEFS.map((t) => {
+            const available = isTierAvailable(t.lzWeeks);
+            const isActive  = tierSelected === t.id && available;
+            const tBudget   = tierBudgets[t.id];
             const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freq, popSize);
             return (
               <div
                 key={t.id}
-                onClick={() => handleTierSelect(t.id)}
+                onClick={() => available && handleTierSelect(t.id)}
                 style={{
                   border: isActive ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
                   background: isActive ? C.pl : C.white,
                   borderRadius: 14, padding: '16px 14px',
-                  cursor: 'pointer', transition: 'all .15s',
+                  cursor: available ? 'pointer' : 'default',
+                  transition: 'all .15s',
                   position: 'relative', userSelect: 'none',
+                  opacity: available ? 1 : 0.4,
+                  pointerEvents: available ? 'auto' : 'none',
                 }}
               >
-                {/* "Empfohlen" badge on tier id=1 */}
                 {t.id === 1 && (
                   <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: C.pl, border: `1px solid ${C.pd}`, color: C.pd, borderRadius: 100, padding: '2px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', whiteSpace: 'nowrap' as const }}>
                     Empfohlen
@@ -281,26 +284,25 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                 <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 18, fontWeight: 400, color: C.taupe, marginBottom: 4 }}>
                   {t.label}
                 </div>
-                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.primary, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
+                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: available ? C.primary : C.muted, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
                   {fmtCHF(tBudget)}
                 </div>
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
                   {t.lzLabel} · {t.freq}× Frequenz
                 </div>
-                <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
-                  ~{fmtRange(tLo, tHi)} {personLabel} ({tPct}%)
-                </div>
+                {available ? (
+                  <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted, lineHeight: 1.4 }}>
+                    ~{fmtRange(tLo, tHi)} {personLabel} ({tPct}%)
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+                    Nicht verfügbar — zu kurzfristig
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
-
-        {/* ── Short-notice note ── */}
-        {isPolitik && daysUntil < 14 && (
-          <div style={{ fontSize: 12, color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '8px 12px', marginBottom: 14 }}>
-            ⚠️ Zu kurzfristig für längere Kampagnen — nur 1-Woche-Buchung verfügbar.
-          </div>
-        )}
 
         {/* ── Headline stat (korridor) ── */}
         <div style={{ background: C.pl, borderRadius: 12, padding: '16px 22px', marginBottom: 14 }}>
