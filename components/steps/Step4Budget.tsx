@@ -55,49 +55,52 @@ const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
 
 // ─── Reach rate & budget cap by region size ───────────────────────────────────
 function getReachRate(stimmber: number): number {
-  if (stimmber < 50000)  return 0.55;
-  if (stimmber < 200000) return 0.45;
-  if (stimmber < 600000) return 0.35;
-  return 0.25;
+  if (stimmber < 10000)  return 0.68;
+  if (stimmber < 50000)  return 0.58;
+  if (stimmber < 200000) return 0.48;
+  if (stimmber < 600000) return 0.38;
+  return 0.28;
 }
 
 function getBudgetCap(stimmber: number): number {
-  if (stimmber < 50000)  return 25000;
-  if (stimmber < 200000) return 75000;
-  if (stimmber < 600000) return 150000;
+  if (stimmber < 10000)  return 25000;
+  if (stimmber < 50000)  return 50000;
+  if (stimmber < 200000) return 100000;
+  if (stimmber < 600000) return 200000;
   return 300000;
 }
 
 // ─── Tier definitions ────────────────────────────────────────────────────────
 const BLENDED_CPM = 40;
 
-const TIERS = [
-  { id: 0 as const, label: 'Sichtbar',  freqPerWeek: 3, weeks: 1, lzLabel: '1 Woche',  reachRate: 0.14 },
-  { id: 1 as const, label: 'Empfohlen', freqPerWeek: 5, weeks: 2, lzLabel: '2 Wochen', reachRate: 0.35 },
-  { id: 2 as const, label: 'Präsenz',   freqPerWeek: 7, weeks: 4, lzLabel: '4 Wochen', reachRate: 0.60 },
+const TIER_DEFS = [
+  { id: 0 as const, label: 'Sichtbar',  freqPerWeek: 3, weeks: 1, lzLabel: '1 Woche',  reachShare: 0.40 },
+  { id: 1 as const, label: 'Empfohlen', freqPerWeek: 5, weeks: 2, lzLabel: '2 Wochen', reachShare: 0.60 },
+  { id: 2 as const, label: 'Präsenz',   freqPerWeek: 7, weeks: 4, lzLabel: '4 Wochen', reachShare: 0.80 },
 ];
 
 function calcTierBudget(stimmber: number, tierIdx: number): number {
-  const cap = getBudgetCap(stimmber);
-  const t   = TIERS[tierIdx];
-  const targetReach = Math.round(stimmber * t.reachRate);
+  const maxReach = stimmber * getReachRate(stimmber);
+  const t = TIER_DEFS[tierIdx];
+  const targetReach = Math.round(maxReach * t.reachShare);
   const impressions = targetReach * t.freqPerWeek * t.weeks;
   const raw = (impressions / 1000) * BLENDED_CPM;
-  return Math.min(cap, Math.max(2500, Math.round(raw / 500) * 500));
+  return Math.min(getBudgetCap(stimmber), Math.max(2500, Math.round(raw / 500) * 500));
 }
 
 // ─── Reach calculation ────────────────────────────────────────────────────────
-function calcReach(budget: number, freqPerWeek: number, weeks: number, stimmber: number) {
+function calcReach(budget: number, tierIdx: number, stimmber: number) {
+  const t = TIER_DEFS[tierIdx];
   const doohImp    = (budget * 0.70 / 50)  * 1000;
   const displayImp = (budget * 0.30 / 15) * 1000;
   const totalImp   = doohImp + displayImp;
-  const totalFreq  = freqPerWeek * weeks;
+  const totalFreq  = t.freqPerWeek * t.weeks;
   const rawReach   = totalImp / totalFreq;
-  const maxReach   = stimmber * getReachRate(stimmber);
+  const maxReach   = stimmber * getReachRate(stimmber) * 0.80;
   const reach      = Math.min(rawReach, maxReach);
-  const lo  = Math.round(reach * 0.88 / 1000) * 1000;
-  const hi  = Math.round(reach * 1.12 / 1000) * 1000;
-  const mid = Math.round(reach / 1000) * 1000;
+  const lo  = Math.round(reach * 0.88 / 100) * 100;
+  const hi  = Math.round(reach * 1.12 / 100) * 100;
+  const mid = Math.round(reach / 100) * 100;
   const pct = Math.round(reach / stimmber * 100);
   return { lo, hi, mid, pct };
 }
@@ -138,7 +141,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     ? briefing.selectedRegions.filter(r => r.type === 'stadt').map(r => r.name)
     : [];
 
-  const visibleTiers = TIERS;
+  const visibleTiers = TIER_DEFS;
 
   // Compute dynamic budgets for each tier based on popSize
   const tierBudgets: Record<0 | 1 | 2, number> = {
@@ -175,7 +178,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     return todayStr();
   });
 
-  const activeTier     = TIERS[tierSelected];
+  const activeTier     = TIER_DEFS[tierSelected];
   const currentFreq    = activeTier.freqPerWeek;
   const currentLzWeeks = laufzeitOverride ?? activeTier.weeks;
   const currentLzLabel = laufzeitOverride
@@ -184,7 +187,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const sliderMax = getBudgetCap(popSize);
 
-  const { lo, hi, mid, pct } = calcReach(budget, currentFreq, currentLzWeeks, popSize);
+  const { lo, hi, mid, pct } = calcReach(budget, tierSelected, popSize);
   const reachFraction = Math.min(getReachRate(popSize), mid / Math.max(1, popSize));
 
   const needsBeratung = calcTierBudget(popSize, 2) >= 20000;
@@ -409,10 +412,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
         {/* ── Three tier cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
-          {TIERS.map((t) => {
+          {TIER_DEFS.map((t) => {
             const isActive = tierSelected === t.id;
             const tBudget  = tierBudgets[t.id];
-            const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freqPerWeek, t.weeks, popSize);
+            const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.id, popSize);
             return (
               <div
                 key={t.id}
