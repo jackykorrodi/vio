@@ -101,7 +101,7 @@ function calcReach(budget: number, tierIdx: number, stimmber: number, weeksOverr
   const totalPersonen = doohPersonen + displayPersonen;
   const totalFreq     = t.freqPerWeek * weeks;
   const rawReach      = totalPersonen / totalFreq;
-  const maxReach      = stimmber * getReachRate(stimmber) * 0.80;
+  const maxReach      = stimmber * getReachRate(stimmber) * t.reachShare;
   const reach         = Math.min(rawReach, maxReach);
   const lo  = Math.round(reach * 0.88 / 100) * 100;
   const hi  = Math.round(reach * 1.12 / 100) * 100;
@@ -164,7 +164,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const [budget, setBudget] = useState<number>(() => tierBudgets[defaultTier.id]);
   const [tierSelected, setTierSelected] = useState<0 | 1 | 2>(defaultTier.id);
-  const [laufzeitOverride, setLaufzeitOverride] = useState<1 | 2 | 4 | null>(null);
   const [regionPickerOpen, setRegionPickerOpen] = useState(false);
   const [regionQuery, setRegionQuery] = useState('');
   const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
@@ -189,10 +188,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const activeTier     = TIER_DEFS[tierSelected];
   const currentFreq    = activeTier.freqPerWeek;
-  const currentLzWeeks = laufzeitOverride ?? activeTier.weeks;
-  const currentLzLabel = laufzeitOverride
-    ? `${laufzeitOverride} ${laufzeitOverride === 1 ? 'Woche' : 'Wochen'}`
-    : activeTier.lzLabel;
+  const currentLzWeeks = activeTier.weeks;
+  const currentLzLabel = activeTier.lzLabel;
 
   const sliderMax = getBudgetCap(popSize);
 
@@ -256,7 +253,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const handleTierSelect = (id: 0 | 1 | 2) => {
     setTierSelected(id);
     setBudget(tierBudgets[id]);
-    setLaufzeitOverride(null);
   };
 
   // Slider changes budget and auto-highlights closest tier
@@ -490,22 +486,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           })()}
         </div>
 
-        {/* ── Laufzeit override buttons ── */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Laufzeit:</span>
-          {([{ weeks: 1 as const, label: '1 Woche' }, { weeks: 2 as const, label: '2 Wochen' }, { weeks: 4 as const, label: '4 Wochen' }]).map(opt => {
-            const isActive = currentLzWeeks === opt.weeks;
-            return (
-              <button
-                key={opt.weeks}
-                type="button"
-                onClick={() => setLaufzeitOverride(laufzeitOverride === opt.weeks ? null : opt.weeks)}
-                style={{ padding: '6px 16px', borderRadius: 100, border: `1.5px solid ${isActive ? C.primary : C.border}`, background: isActive ? C.pl : C.white, color: isActive ? C.pd : C.taupe, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', fontFamily: 'var(--font-outfit), sans-serif' }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
+        {/* ── Active laufzeit indicator ── */}
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>
+          Laufzeit: <strong style={{ color: C.taupe }}>{currentLzLabel}</strong>
+          <span style={{ color: C.muted }}> ({activeTier.label})</span>
         </div>
 
         {/* ── Headline stat (korridor) ── */}
