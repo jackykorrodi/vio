@@ -90,15 +90,16 @@ function calcTierBudget(stimmber: number, tierIdx: number): number {
 }
 
 // ─── Reach calculation ────────────────────────────────────────────────────────
-function calcReach(budget: number, tierIdx: number, stimmber: number) {
+function calcReach(budget: number, tierIdx: number, stimmber: number, weeksOverride?: number) {
   const t = TIER_DEFS[tierIdx];
+  const weeks = weeksOverride ?? t.weeks;
   const doohBudget    = budget * 0.70;
   const displayBudget = budget * 0.30;
   const doohPlays     = (doohBudget / 50) * 1000;
   const doohPersonen  = doohPlays * DOOH_MULTIPLIER;
   const displayPersonen = (displayBudget / 15) * 1000;
   const totalPersonen = doohPersonen + displayPersonen;
-  const totalFreq     = t.freqPerWeek * t.weeks;
+  const totalFreq     = t.freqPerWeek * weeks;
   const rawReach      = totalPersonen / totalFreq;
   const maxReach      = stimmber * getReachRate(stimmber) * 0.80;
   const reach         = Math.min(rawReach, maxReach);
@@ -195,7 +196,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const sliderMax = getBudgetCap(popSize);
 
-  const reach = calcReach(budget, tierSelected, popSize);
+  const reach = calcReach(budget, tierSelected, popSize, currentLzWeeks);
   const { lo, hi, mid, pct } = reach;
   const reachFraction = Math.min(getReachRate(popSize), mid / Math.max(1, popSize));
   const screenInfo = getScreenData(regionName, isPolitik);
@@ -255,6 +256,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const handleTierSelect = (id: 0 | 1 | 2) => {
     setTierSelected(id);
     setBudget(tierBudgets[id]);
+    setLaufzeitOverride(null);
   };
 
   // Slider changes budget and auto-highlights closest tier
@@ -543,7 +545,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
             </div>
           )}
           <div style={{ fontSize: 12, color: C.muted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-            70% DOOH · 30% Display · Ø {activeTier.freqPerWeek}× pro Person / Woche über {activeTier.lzLabel}
+            70% DOOH · 30% Display · Ø {activeTier.freqPerWeek}× pro Person / Woche über {currentLzLabel}
           </div>
         </div>
 
