@@ -72,18 +72,15 @@ function getBudgetCap(stimmber: number): number {
 const BLENDED_CPM = 40;
 
 const TIERS = [
-  { id: 0 as const, label: 'Sichtbar',  freqPerWeek: 3, weeks: 1, lzLabel: '1 Woche'  },
-  { id: 1 as const, label: 'Empfohlen', freqPerWeek: 5, weeks: 2, lzLabel: '2 Wochen' },
-  { id: 2 as const, label: 'Präsenz',   freqPerWeek: 7, weeks: 4, lzLabel: '4 Wochen' },
+  { id: 0 as const, label: 'Sichtbar',  freqPerWeek: 3, weeks: 1, lzLabel: '1 Woche',  reachRate: 0.14 },
+  { id: 1 as const, label: 'Empfohlen', freqPerWeek: 5, weeks: 2, lzLabel: '2 Wochen', reachRate: 0.35 },
+  { id: 2 as const, label: 'Präsenz',   freqPerWeek: 7, weeks: 4, lzLabel: '4 Wochen', reachRate: 0.60 },
 ];
 
-const TIER_RATES = [0.14, 0.35, 0.60];
-
 function calcTierBudget(stimmber: number, tierIdx: number): number {
-  const rate = getReachRate(stimmber);
-  const cap  = getBudgetCap(stimmber);
-  const t    = TIERS[tierIdx];
-  const targetReach = stimmber * rate * TIER_RATES[tierIdx];
+  const cap = getBudgetCap(stimmber);
+  const t   = TIERS[tierIdx];
+  const targetReach = Math.round(stimmber * t.reachRate);
   const impressions = targetReach * t.freqPerWeek * t.weeks;
   const raw = (impressions / 1000) * BLENDED_CPM;
   return Math.min(cap, Math.max(2500, Math.round(raw / 500) * 500));
@@ -137,6 +134,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const mapHighlightRegions = isPolitik && briefing.selectedRegions
     ? briefing.selectedRegions.map(r => r.name)
     : [];
+  const mapStadtLabels = isPolitik && briefing.selectedRegions
+    ? briefing.selectedRegions.filter(r => r.type === 'stadt').map(r => r.name)
+    : [];
 
   const visibleTiers = TIERS;
 
@@ -187,7 +187,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const { lo, hi, mid, pct } = calcReach(budget, currentFreq, currentLzWeeks, popSize);
   const reachFraction = Math.min(getReachRate(popSize), mid / Math.max(1, popSize));
 
-  const needsBeratung = calcTierBudget(popSize, 0) < 5000;
+  const needsBeratung = calcTierBudget(popSize, 2) >= 20000;
 
   // Region picker search
   const regionSearchResults = useMemo(() => {
@@ -224,14 +224,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const confirmRegionEdit = () => {
     if (!isPolitik || editRegions.length === 0) return;
-    const days = briefing.daysUntil ?? 999;
-    const availableIdxs = TIERS
-      .map((t, i) => ({ i, t }))
-      .filter(({ t }) => t.weeks === 1 || t.weeks * 7 <= days)
-      .map(({ i }) => i);
-    const recIdx = availableIdxs[Math.min(1, availableIdxs.length - 1)] ?? 0;
     const newTotal = editTotalStimm;
-    const newBudget = calcTierBudget(newTotal, recIdx);
+    const newBudget = calcTierBudget(newTotal, 1); // Empfohlen
     updateBriefing({
       selectedRegions: editRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
       totalStimmber: newTotal,
@@ -413,23 +407,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           </div>
         )}
 
-        {/* ── Three tier cards (or Beratung box for Sichtbar) ── */}
-        {needsBeratung && (
-          <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 12, padding: '16px 20px', marginBottom: 12 }}>
-            <div style={{ fontWeight: 700, color: '#7A5500', marginBottom: 6 }}>
-              Persönliche Beratung empfohlen
-            </div>
-            <div style={{ fontSize: 13, color: '#7A5500', lineHeight: 1.6, marginBottom: 12 }}>
-              Für {regionName} mit {fmtN(popSize)} Stimmberechtigten gestalten wir die optimale
-              Kampagne gemeinsam mit dir — so stellst du sicher, dass jeder Franken wirkt.
-            </div>
-            <a href="https://calendly.com/vio" target="_blank" style={{ background: '#C1666B', color: '#fff', borderRadius: 100, padding: '10px 20px', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
-              Kostenlos beraten lassen →
-            </a>
-          </div>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: needsBeratung ? '1fr 1fr' : '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
-          {TIERS.filter(t => needsBeratung ? t.id !== 0 : true).map((t) => {
+        {/* ── Three tier cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 10 }}>
+          {TIERS.map((t) => {
             const isActive = tierSelected === t.id;
             const tBudget  = tierBudgets[t.id];
             const { lo: tLo, hi: tHi, pct: tPct } = calcReach(tBudget, t.freqPerWeek, t.weeks, popSize);
@@ -467,6 +447,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
             );
           })}
         </div>
+
+        {/* ── Beratungsbox (ab CHF 20'000) ── */}
+        {needsBeratung && (
+          <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 12, padding: '16px 20px', marginBottom: 12, marginTop: 10 }}>
+            <div style={{ fontWeight: 700, color: '#7A5500', marginBottom: 6 }}>
+              Persönliche Beratung empfohlen
+            </div>
+            <div style={{ fontSize: 13, color: '#7A5500', lineHeight: 1.6, marginBottom: 12 }}>
+              Für {regionName} mit {fmtN(popSize)} Stimmberechtigten empfehlen wir ein persönliches
+              Gespräch — so gestalten wir die optimale Kampagne gemeinsam mit dir.
+            </div>
+            <a href="https://calendly.com/vio" target="_blank" style={{ background: '#C1666B', color: '#fff', borderRadius: 100, padding: '10px 20px', fontSize: 13, fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>
+              Kostenlos beraten lassen →
+            </a>
+          </div>
+        )}
 
         {/* ── Advisory text ── */}
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, padding: '14px 0', borderTop: `1px solid ${C.border}`, marginTop: 8 }}>
@@ -517,14 +513,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
               <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>📺 DOOH — Digitale Screens</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                 Bahnhöfe, Einkaufszentren, belebte Orte<br/>
-                <strong style={{ color: C.taupe }}>{fmtN(Math.round((Math.round(budget * 0.70) / 50) * 1000))} Impressionen</strong>
+                <strong style={{ color: C.taupe }}>~{fmtN(Math.round((budget * 0.70 / 50) * 1000 / (activeTier.freqPerWeek * activeTier.weeks)))} Personen erreicht</strong>
               </div>
             </div>
             <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>🖥 Display — Online Banner</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                 Schweizer Websites & Apps<br/>
-                <strong style={{ color: C.taupe }}>{fmtN(Math.round(((budget - Math.round(budget * 0.70)) / 15) * 1000))} Impressionen</strong>
+                <strong style={{ color: C.taupe }}>~{fmtN(Math.round((budget * 0.30 / 15) * 1000 / (activeTier.freqPerWeek * activeTier.weeks)))} Personen erreicht</strong>
               </div>
             </div>
           </div>
@@ -564,6 +560,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <SwissMap
               highlightRegions={mapHighlightRegions}
+              stadtLabels={mapStadtLabels}
               campaignType={briefing.campaignType}
               reachFraction={reachFraction}
               width={560}

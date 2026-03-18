@@ -19,6 +19,8 @@ const CANTON_ID_TO_NAME: Record<number, string> = {
 interface Props {
   /** Region names to highlight — for politik campaigns. Pass [] for B2C/B2B (highlights all). */
   highlightRegions: string[];
+  /** Stadt/Gemeinde names within highlighted cantons — triggers tighter zoom + label. */
+  stadtLabels?: string[];
   campaignType: 'b2c' | 'b2b' | 'politik';
   reachFraction: number;
   width?: number;
@@ -36,6 +38,7 @@ function lcg(seed: number) {
 
 export default function SwissMap({
   highlightRegions,
+  stadtLabels = [],
   campaignType,
   reachFraction,
   width = 560,
@@ -52,6 +55,9 @@ export default function SwissMap({
     campaignType !== 'politik' ||
     highlightRegions.length === 0 ||
     highlightRegions.includes('Gesamte Schweiz');
+
+  // Stadt focus: zoom tighter and show label when a Gemeinde is selected
+  const isStadtFocus = !highlightAll && stadtLabels.length > 0;
 
   // Resolve selected region names → distinct canton names for map styling/zoom
   const cantonsToHighlight = Array.from(new Set(
@@ -92,7 +98,7 @@ export default function SwissMap({
         : (countryFeature as d3.ExtendedFeatureCollection).features;
 
       // Projection: zoom into highlighted cantons when specific region selected
-      const PAD = 30;
+      const PAD = isStadtFocus ? 60 : 30;
       let projection: d3.GeoProjection;
       if (highlightedFeatures.length > 0) {
         const fc = { type: 'FeatureCollection' as const, features: highlightedFeatures };
@@ -124,10 +130,23 @@ export default function SwissMap({
       // Pre-compute TOTAL positions via rejection sampling from a large candidate pool
       const TOTAL = 200;
       const MARGIN = 6;
-      const sx0 = bounds ? bounds.x0 + MARGIN : MARGIN;
-      const sy0 = bounds ? bounds.y0 + MARGIN : MARGIN;
-      const sw  = bounds ? Math.max(1, bounds.x1 - bounds.x0 - MARGIN * 2) : width  - MARGIN * 2;
-      const sh  = bounds ? Math.max(1, bounds.y1 - bounds.y0 - MARGIN * 2) : height - MARGIN * 2;
+      let sx0: number, sy0: number, sw: number, sh: number;
+      if (isStadtFocus && bounds) {
+        // Concentrate figures in central 40% of the canton bounds to simulate Gemeinde-level
+        const cx = (bounds.x0 + bounds.x1) / 2;
+        const cy = (bounds.y0 + bounds.y1) / 2;
+        const halfW = (bounds.x1 - bounds.x0) * 0.20;
+        const halfH = (bounds.y1 - bounds.y0) * 0.20;
+        sx0 = cx - halfW;
+        sy0 = cy - halfH;
+        sw  = halfW * 2;
+        sh  = halfH * 2;
+      } else {
+        sx0 = bounds ? bounds.x0 + MARGIN : MARGIN;
+        sy0 = bounds ? bounds.y0 + MARGIN : MARGIN;
+        sw  = bounds ? Math.max(1, bounds.x1 - bounds.x0 - MARGIN * 2) : width  - MARGIN * 2;
+        sh  = bounds ? Math.max(1, bounds.y1 - bounds.y0 - MARGIN * 2) : height - MARGIN * 2;
+      }
 
       const rand = lcg(42);
       const positions: Array<{ x: number; y: number }> = [];
@@ -181,12 +200,37 @@ export default function SwissMap({
         .attr('stroke', 'none')
         .attr('opacity', 0.5);
 
+      // Stadt label: show Gemeinde name at canton centroid when Stadt focus
+      if (isStadtFocus && stadtLabels.length > 0 && highlightedFeatures.length > 0) {
+        const centroid = pathGen.centroid(highlightedFeatures[0] as d3.ExtendedFeature);
+        if (centroid && !isNaN(centroid[0]) && !isNaN(centroid[1])) {
+          // Pin circle
+          svg.append('circle')
+            .attr('cx', centroid[0])
+            .attr('cy', centroid[1] - 4)
+            .attr('r', 5)
+            .attr('fill', '#C1666B')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 1.5);
+          // Label
+          svg.append('text')
+            .attr('x', centroid[0])
+            .attr('y', centroid[1] + 14)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#5C4F3D')
+            .attr('font-size', '13')
+            .attr('font-weight', '700')
+            .attr('font-family', 'Outfit, sans-serif')
+            .text(stadtLabels[0]);
+        }
+      }
+
       drawStickFigures();
     }).catch(err => {
       console.error('SwissMap: failed to load TopoJSON', err);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(highlightRegions), campaignType, width, height]);
+  }, [JSON.stringify(highlightRegions), JSON.stringify(stadtLabels), campaignType, width, height]);
 
   // Redraw canvas only (positions stay stable) when reachFraction changes
   useEffect(() => {
