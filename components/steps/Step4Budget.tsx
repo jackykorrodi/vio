@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
+import { getScreenData, DOOH_MULTIPLIER } from '@/lib/screens';
 
 // Dynamic import avoids SSR issues with D3/canvas
 const SwissMap = dynamic(() => import('./SwissMap'), {
@@ -91,18 +92,25 @@ function calcTierBudget(stimmber: number, tierIdx: number): number {
 // ─── Reach calculation ────────────────────────────────────────────────────────
 function calcReach(budget: number, tierIdx: number, stimmber: number) {
   const t = TIER_DEFS[tierIdx];
-  const doohImp    = (budget * 0.70 / 50)  * 1000;
-  const displayImp = (budget * 0.30 / 15) * 1000;
-  const totalImp   = doohImp + displayImp;
-  const totalFreq  = t.freqPerWeek * t.weeks;
-  const rawReach   = totalImp / totalFreq;
-  const maxReach   = stimmber * getReachRate(stimmber) * 0.80;
-  const reach      = Math.min(rawReach, maxReach);
+  const doohBudget    = budget * 0.70;
+  const displayBudget = budget * 0.30;
+  const doohPlays     = (doohBudget / 50) * 1000;
+  const doohPersonen  = doohPlays * DOOH_MULTIPLIER;
+  const displayPersonen = (displayBudget / 15) * 1000;
+  const totalPersonen = doohPersonen + displayPersonen;
+  const totalFreq     = t.freqPerWeek * t.weeks;
+  const rawReach      = totalPersonen / totalFreq;
+  const maxReach      = stimmber * getReachRate(stimmber) * 0.80;
+  const reach         = Math.min(rawReach, maxReach);
   const lo  = Math.round(reach * 0.88 / 100) * 100;
   const hi  = Math.round(reach * 1.12 / 100) * 100;
   const mid = Math.round(reach / 100) * 100;
   const pct = Math.round(reach / stimmber * 100);
-  return { lo, hi, mid, pct };
+  return {
+    lo, hi, mid, pct,
+    doohPersonen:    Math.round(doohPersonen    / totalFreq),
+    displayPersonen: Math.round(displayPersonen / totalFreq),
+  };
 }
 
 // ─── Date helper (for startDate init only) ────────────────────────────────────
@@ -187,8 +195,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
   const sliderMax = getBudgetCap(popSize);
 
-  const { lo, hi, mid, pct } = calcReach(budget, tierSelected, popSize);
+  const reach = calcReach(budget, tierSelected, popSize);
+  const { lo, hi, mid, pct } = reach;
   const reachFraction = Math.min(getReachRate(popSize), mid / Math.max(1, popSize));
+  const screenInfo = getScreenData(regionName, isPolitik);
 
   const needsBeratung = calcTierBudget(popSize, 2) >= 20000;
 
@@ -513,20 +523,25 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>📺 DOOH — Digitale Screens</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>📺 DOOH — {fmtN(screenInfo.screens)} Screens</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                 Bahnhöfe, Einkaufszentren, belebte Orte<br/>
-                <strong style={{ color: C.taupe }}>~{fmtN(Math.round((budget * 0.70 / 50) * 1000 / (activeTier.freqPerWeek * activeTier.weeks)))} Personen erreicht</strong>
+                <strong style={{ color: C.taupe }}>~{fmtN(reach.doohPersonen)} Personen pro Kampagne</strong>
               </div>
             </div>
             <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>🖥 Display — Online Banner</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                 Schweizer Websites & Apps<br/>
-                <strong style={{ color: C.taupe }}>~{fmtN(Math.round((budget * 0.30 / 15) * 1000 / (activeTier.freqPerWeek * activeTier.weeks)))} Personen erreicht</strong>
+                <strong style={{ color: C.taupe }}>~{fmtN(reach.displayPersonen)} Personen pro Kampagne</strong>
               </div>
             </div>
           </div>
+          {screenInfo.politikNote && (
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 10, fontStyle: 'italic' }}>
+              ℹ️ {screenInfo.politikNote}
+            </div>
+          )}
           <div style={{ fontSize: 12, color: C.muted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
             70% DOOH · 30% Display · Ø {activeTier.freqPerWeek}× pro Person / Woche über {activeTier.lzLabel}
           </div>
