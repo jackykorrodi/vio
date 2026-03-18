@@ -109,8 +109,8 @@ function calcReach(budget: number, tierIdx: number, stimmber: number, weeksOverr
   const pct = Math.round(reach / stimmber * 100);
   return {
     lo, hi, mid, pct,
-    doohPersonen:    Math.round(doohPersonen    / totalFreq),
-    displayPersonen: Math.round(displayPersonen / totalFreq),
+    doohPersonen:    Math.round(doohPersonen),
+    displayPersonen: Math.round(displayPersonen),
   };
 }
 
@@ -512,14 +512,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
               <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>📺 DOOH — {fmtN(screenInfo.screens)} Screens</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                 Bahnhöfe, Einkaufszentren, belebte Orte<br/>
-                <strong style={{ color: C.taupe }}>~{fmtN(reach.doohPersonen)} Personen pro Kampagne</strong>
+                <strong style={{ color: C.taupe }}>~{fmtN(reach.doohPersonen)} Kontakte via Screens</strong>
               </div>
             </div>
             <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.taupe, marginBottom: 4 }}>🖥 Display — Online Banner</div>
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
                 Schweizer Websites & Apps<br/>
-                <strong style={{ color: C.taupe }}>~{fmtN(reach.displayPersonen)} Personen pro Kampagne</strong>
+                <strong style={{ color: C.taupe }}>~{fmtN(reach.displayPersonen)} Kontakte via Display</strong>
               </div>
             </div>
           </div>
@@ -529,7 +529,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
             </div>
           )}
           <div style={{ fontSize: 12, color: C.muted, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-            70% DOOH · 30% Display · Ø {activeTier.freqPerWeek}× pro Person / Woche über {currentLzLabel}
+            Davon ~{fmtN(mid)} unique {personLabel} (je {currentFreq}× gesehen) · {currentLzLabel}
           </div>
         </div>
 
