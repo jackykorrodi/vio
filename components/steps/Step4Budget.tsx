@@ -4,13 +4,6 @@ import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const C = {
-  primary: '#C1666B', pd: '#A84E53', pl: '#FFF8F8',
-  taupe: '#5C4F3D', muted: '#8A8490', border: '#EDE8E0',
-  bg: '#FAF7F2', white: '#FFFFFF',
-} as const;
-
 // ─── Canton population ────────────────────────────────────────────────────────
 const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
   'Zürich': { bev: 1539000, stimm: 1077300 },
@@ -44,18 +37,18 @@ const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
 
 // ─── Packages ─────────────────────────────────────────────────────────────────
 const PACKAGES = [
-  { id: 'sichtbar'  as const, label: 'Sichtbar',  budget: 2500,  duration: 2, freq: 3, recommended: false },
-  { id: 'praesenz'  as const, label: 'Präsenz',   budget: 9500,  duration: 4, freq: 7, recommended: true  },
-  { id: 'dominanz'  as const, label: 'Dominanz',  budget: 25000, duration: 6, freq: 7, recommended: false },
+  { id: 'sichtbar' as const, label: 'Sichtbar',  budget: 2500,  duration: 2, freq: 3, recommended: false },
+  { id: 'praesenz' as const, label: 'Präsenz',   budget: 9500,  duration: 4, freq: 7, recommended: true  },
+  { id: 'dominanz' as const, label: 'Dominanz',  budget: 25000, duration: 6, freq: 7, recommended: false },
 ] as const;
 
 type PackageId = 'sichtbar' | 'praesenz' | 'dominanz';
 
 // ─── Calculation ──────────────────────────────────────────────────────────────
 function calcReach(budget: number, stimmber: number) {
-  const freq        = budget < 5000 ? 3 : budget < 8000 ? 5 : 7;
-  const doohBudget  = budget * 0.7;
-  const dispBudget  = budget * 0.3;
+  const freq         = budget < 5000 ? 3 : budget < 8000 ? 5 : 7;
+  const doohBudget   = budget * 0.7;
+  const dispBudget   = budget * 0.3;
   const doohContacts = Math.round(doohBudget / 50 * 1000);
   const dispContacts = Math.round(dispBudget / 15 * 1000);
   const uniqueLow    = Math.min(Math.round(doohContacts / freq * 0.85), stimmber);
@@ -76,12 +69,13 @@ interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
   nextStep: () => void;
+  prevStep?: () => void;
   isActive: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function Step4Budget({ briefing, updateBriefing, nextStep }: Props) {
-  const isPolitik  = briefing.campaignType === 'politik';
+export default function Step4Budget({ briefing, updateBriefing, nextStep, prevStep }: Props) {
+  const isPolitik = briefing.campaignType === 'politik';
 
   const regionName = isPolitik
     ? (briefing.selectedRegions?.[0]?.name ?? briefing.politikRegion ?? 'Gesamte Schweiz')
@@ -93,20 +87,20 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     : popData.bev;
 
   // ── State ──
-  const [budget,          setBudget]          = useState(9500);
-  const [duration,        setDuration]        = useState(4);
-  const [selectedPackage, setSelectedPackage] = useState<PackageId>('praesenz');
-  const [regionPickerOpen,    setRegionPickerOpen]    = useState(false);
-  const [regionQuery,         setRegionQuery]         = useState('');
-  const [regionDropdownOpen,  setRegionDropdownOpen]  = useState(false);
+  const [budget,         setBudget]         = useState(9500);
+  const [duration,       setDuration]       = useState(4);
+  const [selectedPkg,    setSelectedPkg]    = useState<PackageId>('praesenz');
+  const [accordionOpen,  setAccordionOpen]  = useState(false);
+  const [regionPickerOpen,   setRegionPickerOpen]   = useState(false);
+  const [regionQuery,        setRegionQuery]        = useState('');
+  const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
   const [editRegions, setEditRegions] = useState<Region[]>(() => (briefing.selectedRegions ?? []) as Region[]);
   const [startDate] = useState<string>(() => {
     if (briefing.votingDate && briefing.recommendedLaufzeit) {
       const d = new Date(briefing.votingDate + 'T12:00:00');
       d.setDate(d.getDate() - briefing.recommendedLaufzeit * 7);
       const today = new Date();
-      const start = d < today ? today : d;
-      return start.toISOString().split('T')[0];
+      return (d < today ? today : d).toISOString().split('T')[0];
     }
     return todayStr();
   });
@@ -122,7 +116,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     return { lo, hi, pct: Math.min(Math.round(hi / stimmber * 100), 100) };
   });
 
-  const smartTip: string = (() => {
+  const smartTip = (() => {
     if (duration > 4 && budget < 5000)
       return "Tipp: Für dieses Budget lieber 2–3 Wochen wählen — so bleibt die Frequenz hoch genug um zu wirken.";
     if (pct >= 55)
@@ -146,7 +140,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     ].slice(0, 8);
   }, [regionQuery, editRegions, isPolitik]);
 
-  const editTotalStimm = editRegions.reduce((sum, r) => sum + r.stimm, 0);
+  const editTotalStimm = editRegions.reduce((s, r) => s + r.stimm, 0);
 
   const addEditRegion = (r: Region) => {
     if (!isPolitik) {
@@ -174,7 +168,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   };
 
   const handlePackageSelect = (pkg: typeof PACKAGES[number]) => {
-    setSelectedPackage(pkg.id);
+    setSelectedPkg(pkg.id);
     setBudget(pkg.budget);
     setDuration(pkg.duration);
   };
@@ -183,7 +177,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
     updateBriefing({
       budget, laufzeit: duration, startDate,
       reach: uniqueMid, freq,
-      tierSelected: PACKAGES.findIndex(p => p.id === selectedPackage),
+      tierSelected: PACKAGES.findIndex(p => p.id === selectedPkg),
       b2bReach: null,
     });
     nextStep();
@@ -193,57 +187,105 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
   const fmtCHF   = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
   const fmtN     = (n: number) => Math.round(n).toLocaleString('de-CH');
   const fmtRange = (a: number, b: number) => `${fmtN(a)}–${fmtN(b)}`;
+  const durLabel = (w: number) => `${w} ${w === 1 ? 'Woche' : 'Wochen'}`;
 
-  const personLabel   = isPolitik ? 'Stimmberechtigte' : 'Personen';
-  const ctBadgeLabel  = briefing.campaignType === 'b2c' ? 'B2C' : briefing.campaignType === 'b2b' ? 'B2B' : 'Politische Kampagne';
-  const ctBadgeColor  = briefing.campaignType === 'politik' ? '#7C3AED' : C.primary;
-  const durLabel      = (w: number) => `${w} ${w === 1 ? 'Woche' : 'Wochen'}`;
+  const personLabel  = isPolitik ? 'Stimmberechtigte' : 'Personen';
+  const ctBadgeLabel = briefing.campaignType === 'b2c' ? 'B2C' : briefing.campaignType === 'b2b' ? 'B2B' : 'Politische Kampagne';
+  const ctBadgeColor = briefing.campaignType === 'politik' ? '#7C3AED' : 'var(--primary)';
 
   const budgetPct   = ((budget   - 2500) / (50000 - 2500)) * 100;
-  const durationPct = ((duration - 1)    / (8     - 1))    * 100;
+  const durationPct = ((duration - 1)    / (8 - 1))        * 100;
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Accordion content (shared between mobile accordion + desktop sidebar) ──
+  const CalcContent = () => (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-[var(--muted)] leading-relaxed mb-1">
+        Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.
+      </p>
+      {[
+        { label: '📺 DOOH-Anteil (70%)',    value: fmtCHF(Math.round(budget * 0.7)) },
+        { label: '🖥 Display-Anteil (30%)', value: fmtCHF(Math.round(budget * 0.3)) },
+      ].map(row => (
+        <div key={row.label} className="flex justify-between text-sm">
+          <span className="text-[var(--taupe)]">{row.label}</span>
+          <strong className="text-[var(--taupe)]">{row.value}</strong>
+        </div>
+      ))}
+      <div className="h-px bg-[var(--border)] my-1" />
+      <div className="flex justify-between text-sm">
+        <span className="text-[var(--taupe)]">Ø Kontakte pro Person</span>
+        <strong className="text-[var(--primary)]">{freq}×</strong>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <section style={{ backgroundColor: C.bg }}>
+    <section className="bg-[var(--bg)]">
+      {/* Global slider + serif font styles */}
       <style>{`
-        .vio-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; cursor: pointer; border: none; display: block; }
-        .vio-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #C1666B; cursor: pointer; box-shadow: 0 1px 6px rgba(193,102,107,.3); margin-top: -8px; }
+        .vio-serif { font-family: var(--font-fraunces, Georgia), Georgia, serif; }
+        .vio-slider {
+          -webkit-appearance: none; appearance: none;
+          width: 100%; height: 4px; border-radius: 2px;
+          outline: none; cursor: pointer; border: none; display: block;
+          background: linear-gradient(to right, var(--primary) var(--fill, 0%), #F0EBE3 var(--fill, 0%));
+        }
         .vio-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; }
-        .vio-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #C1666B; cursor: pointer; box-shadow: 0 1px 6px rgba(193,102,107,.3); box-sizing: border-box; }
-        .vio-slider::-moz-range-progress { background: #C1666B; border-radius: 2px; height: 4px; }
+        .vio-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 28px; height: 28px;
+          border-radius: 50%; background: #fff;
+          border: 2px solid var(--primary); cursor: pointer;
+          box-shadow: 0 1px 6px rgba(193,102,107,.3); margin-top: -12px;
+        }
+        @media (min-width: 640px) {
+          .vio-slider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; }
+          .vio-slider::-moz-range-thumb { width: 24px; height: 24px; }
+        }
+        .vio-slider::-moz-range-thumb {
+          width: 28px; height: 28px; border-radius: 50%;
+          background: #fff; border: 2px solid var(--primary);
+          cursor: pointer; box-shadow: 0 1px 6px rgba(193,102,107,.3);
+          box-sizing: border-box;
+        }
+        .vio-slider::-moz-range-progress { background: var(--primary); border-radius: 2px; height: 4px; }
         .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: #F0EBE3; }
       `}</style>
 
-      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '40px 24px 80px', display: 'flex', gap: 32, alignItems: 'flex-start' }}>
+      <div className="max-w-[1120px] mx-auto px-5 pt-10 pb-20 sm:flex sm:gap-8 sm:items-start">
 
         {/* ══════════════ MAIN COLUMN ══════════════ */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="flex-1 min-w-0">
 
           {/* Eyebrow */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 18, height: 2, background: C.primary, borderRadius: 2 }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' as const }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-[18px] h-0.5 bg-[var(--primary)] rounded" />
+            <span className="text-[11px] font-bold tracking-[.12em] text-[var(--primary)] uppercase">
               Schritt 4
             </span>
           </div>
 
-          <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 30, fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: 24, color: C.taupe }}>
+          <h1 className="vio-serif text-[26px] sm:text-3xl font-normal tracking-tight leading-snug mb-6 text-[var(--taupe)]">
             Wie weit soll deine Kampagne strahlen?
           </h1>
 
-          {/* ── 1. CONTEXT BAR ── */}
-          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 18px', marginBottom: 24, display: 'flex', flexWrap: 'wrap' as const, alignItems: 'center', gap: 10, fontSize: 13, color: C.taupe }}>
-            <span style={{ background: ctBadgeColor, color: '#fff', borderRadius: 100, padding: '3px 11px', fontSize: 12, fontWeight: 700, letterSpacing: '.04em' }}>
+          {/* ── CONTEXT BAR ── */}
+          <div className="bg-white border border-[var(--border)] rounded-2xl px-[18px] py-3 mb-6 flex flex-wrap items-center gap-[10px] text-sm text-[var(--taupe)]">
+            <span
+              className="text-white rounded-full px-3 py-0.5 text-xs font-bold tracking-wide"
+              style={{ background: ctBadgeColor }}
+            >
               {ctBadgeLabel}
             </span>
             {isPolitik && briefing.selectedRegions && briefing.selectedRegions.length > 0 ? (
-              <span style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, alignItems: 'center' }}>
+              <span className="flex flex-wrap gap-1.5 items-center">
                 {briefing.selectedRegions.map(r => (
-                  <span key={r.name} style={{ background: '#EDE9FE', color: '#7C3AED', borderRadius: 100, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
+                  <span key={r.name} className="bg-[#EDE9FE] text-[#7C3AED] rounded-full px-2.5 py-0.5 text-xs font-semibold">
                     📍 {r.name}
                   </span>
                 ))}
-                <span style={{ color: C.muted }}>· {stimmber.toLocaleString('de-CH')} Stimmberechtigte</span>
+                <span className="text-[var(--muted)]">· {stimmber.toLocaleString('de-CH')} Stimmberechtigte</span>
               </span>
             ) : (
               <span>
@@ -252,14 +294,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
               </span>
             )}
             {isPolitik && briefing.daysUntil != null && (
-              <span style={{ color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 8, padding: '3px 10px', fontSize: 12 }}>
+              <span className="text-[#7A5500] bg-[#FFF8EE] border border-[#FDDFA4] rounded-lg px-2.5 py-0.5 text-xs">
                 🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen
               </span>
             )}
             <button
               type="button"
               onClick={() => { setRegionPickerOpen(o => !o); setEditRegions((briefing.selectedRegions ?? []) as Region[]); setRegionQuery(''); }}
-              style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, textDecoration: 'underline', fontFamily: 'var(--font-outfit), sans-serif' }}
+              className="ml-auto text-[var(--muted)] text-xs font-semibold underline cursor-pointer bg-transparent border-none min-h-[44px] px-1"
             >
               Region ändern
             </button>
@@ -267,26 +309,26 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
 
           {/* Region picker */}
           {regionPickerOpen && (
-            <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const, marginBottom: 10 }}>
+            <div className="bg-white border border-[var(--border)] rounded-xl p-[18px] mb-5">
+              <div className="text-[11px] font-bold tracking-[.1em] text-[var(--muted)] uppercase mb-2.5">
                 {isPolitik ? 'Regionen bearbeiten' : 'Region ändern'}
               </div>
               {isPolitik && editRegions.length > 0 && (
                 <>
-                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 8 }}>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
                     {editRegions.map(r => (
-                      <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#F9ECEC', border: `1px solid ${C.primary}`, color: C.pd, borderRadius: 100, padding: '4px 8px 4px 12px', fontSize: 13, fontWeight: 600 }}>
+                      <span key={r.name} className="inline-flex items-center gap-1.5 bg-[#F9ECEC] border border-[var(--primary)] text-[var(--pd)] rounded-full pl-3 pr-2 py-1 text-sm font-semibold">
                         {r.name}
-                        <button type="button" onClick={() => removeEditRegion(r.name)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 15, padding: '0 3px', lineHeight: 1 }}>×</button>
+                        <button type="button" onClick={() => removeEditRegion(r.name)} className="text-[var(--muted)] text-base leading-none cursor-pointer bg-transparent border-none min-h-[44px] min-w-[44px] flex items-center justify-center">×</button>
                       </span>
                     ))}
                   </div>
-                  <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
-                    Total: <strong style={{ color: C.taupe }}>{editTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
-                  </div>
+                  <p className="text-xs text-[var(--muted)] mb-2">
+                    Total: <strong className="text-[var(--taupe)]">{editTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+                  </p>
                 </>
               )}
-              <div style={{ position: 'relative' }}>
+              <div className="relative">
                 <input
                   type="text"
                   value={regionQuery}
@@ -294,269 +336,295 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep }: Prop
                   onChange={e => { setRegionQuery(e.target.value); setRegionDropdownOpen(true); }}
                   onFocus={() => setRegionDropdownOpen(true)}
                   onBlur={() => setTimeout(() => setRegionDropdownOpen(false), 200)}
-                  style={{ width: '100%', boxSizing: 'border-box' as const, padding: '10px 14px', borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 14, fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
+                  className="w-full px-3.5 py-2.5 rounded-lg border-[1.5px] border-[var(--border)] text-sm text-[var(--taupe)] bg-[var(--bg)] outline-none min-h-[44px]"
                 />
                 {regionDropdownOpen && regionSearchResults.length > 0 && (
-                  <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: C.white, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: 260, overflowY: 'auto', zIndex: 200 }}>
+                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(44,44,62,.12)] max-h-[260px] overflow-y-auto z-[200]">
                     {regionSearchResults.map(r => (
-                      <div key={r.name} onMouseDown={() => addEditRegion(r)} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 14, color: C.taupe, display: 'flex', justifyContent: 'space-between' }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                        <span>{r.name}</span><span style={{ fontSize: 11, color: C.muted }}>{r.stimm?.toLocaleString('de-CH')}</span>
+                      <div
+                        key={r.name}
+                        onMouseDown={() => addEditRegion(r)}
+                        className="px-3.5 py-2.5 cursor-pointer text-sm text-[var(--taupe)] flex justify-between hover:bg-[var(--bg)]"
+                      >
+                        <span>{r.name}</span>
+                        <span className="text-[11px] text-[var(--muted)]">{r.stimm?.toLocaleString('de-CH')}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              {isPolitik && editRegions.length > 0 && (
-                <button type="button" onClick={confirmRegionEdit} style={{ marginTop: 12, padding: '9px 20px', borderRadius: 100, background: C.primary, color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}>
-                  Übernehmen
+              <div className="flex gap-2 mt-3">
+                {isPolitik && editRegions.length > 0 && (
+                  <button type="button" onClick={confirmRegionEdit} className="min-h-[44px] px-5 py-2 rounded-full bg-[var(--primary)] text-white text-sm font-semibold cursor-pointer border-none">
+                    Übernehmen
+                  </button>
+                )}
+                <button type="button" onClick={() => setRegionPickerOpen(false)} className="min-h-[44px] px-5 py-2 rounded-full bg-transparent text-[var(--muted)] border border-[var(--border)] text-sm font-semibold cursor-pointer">
+                  Abbrechen
                 </button>
-              )}
-              <button type="button" onClick={() => setRegionPickerOpen(false)} style={{ marginTop: 12, marginLeft: isPolitik && editRegions.length > 0 ? 8 : 0, padding: '9px 20px', borderRadius: 100, background: 'none', color: C.muted, border: `1px solid ${C.border}`, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-outfit), sans-serif' }}>
-                Abbrechen
-              </button>
+              </div>
             </div>
           )}
 
-          {/* ── 2. THREE PACKAGE CARDS ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+          {/* ── PACKAGE CARDS ──
+              Mobile: 1-col, horizontal (name+details left, price right), left-border selected
+              Desktop: 3-col grid, stacked, checkmark circle, full border selected
+          */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             {PACKAGES.map((pkg, i) => {
-              const isActive = selectedPackage === pkg.id;
+              const isActive = selectedPkg === pkg.id;
               const pr       = pkgReach[i];
               return (
-                <div
+                <button
                   key={pkg.id}
+                  type="button"
                   onClick={() => handlePackageSelect(pkg)}
-                  style={{
-                    position: 'relative', cursor: 'pointer', userSelect: 'none' as const,
-                    border: isActive ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
-                    background: isActive ? C.pl : C.white,
-                    borderRadius: 16, padding: '20px 16px 16px',
-                    transition: 'all .15s',
-                  }}
+                  className={[
+                    'relative text-left cursor-pointer select-none rounded-2xl transition-all duration-150 min-h-[44px] w-full',
+                    // Mobile layout: horizontal flex
+                    'flex items-center gap-3 px-4 py-3',
+                    // Desktop layout: vertical block
+                    'sm:block sm:px-4 sm:py-5 sm:pt-6',
+                    // Border + bg
+                    isActive
+                      ? 'border-l-[3px] border-l-[var(--primary)] border border-[var(--border)] bg-[var(--pl)] sm:border-2 sm:border-[var(--primary)]'
+                      : 'border border-[var(--border)] bg-white',
+                  ].join(' ')}
                 >
+                  {/* Recommended badge — desktop only */}
                   {pkg.recommended && (
-                    <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: C.primary, color: '#fff', borderRadius: 100, padding: '3px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', whiteSpace: 'nowrap' as const }}>
+                    <div className="hidden sm:block absolute top-[-11px] left-1/2 -translate-x-1/2 bg-[var(--primary)] text-white rounded-full px-3 py-0.5 text-[11px] font-bold tracking-[.06em] whitespace-nowrap">
                       Empfohlen
                     </div>
                   )}
-                  {/* Checkmark */}
-                  <div style={{ position: 'absolute', top: 14, right: 14, width: 20, height: 20, borderRadius: '50%', background: isActive ? C.primary : C.border, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s', flexShrink: 0 }}>
+
+                  {/* Checkmark — desktop only */}
+                  <div className={[
+                    'hidden sm:flex absolute top-3.5 right-3.5 w-5 h-5 rounded-full items-center justify-center transition-all duration-150',
+                    isActive ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
+                  ].join(' ')}>
                     <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
                       <path d="M1 4.5L4 7.5L10 1.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: isActive ? C.pd : C.muted, textTransform: 'uppercase' as const, marginBottom: 8 }}>
-                    {pkg.label}
+
+                  {/* Left side: name + meta (mobile) / stacked (desktop) */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[10px] font-bold tracking-[.1em] uppercase mb-0.5 sm:mb-2 ${isActive ? 'text-[var(--pd)]' : 'text-[var(--muted)]'}`}>
+                      {pkg.label}
+                      {/* Mobile recommended asterisk */}
+                      {pkg.recommended && <span className="sm:hidden ml-1 text-[var(--primary)]">★</span>}
+                    </div>
+                    {/* Details: hidden on mobile main row (shown as sub), full on desktop */}
+                    <div className="hidden sm:block">
+                      <div className="vio-serif text-[22px] leading-none mb-1.5" style={{ color: isActive ? 'var(--primary)' : 'var(--taupe)' }}>
+                        {fmtCHF(pkg.budget)}
+                      </div>
+                      <div className="text-xs text-[var(--muted)] mb-2">{durLabel(pkg.duration)} · {pkg.freq}× Kontakt</div>
+                      <div className={`text-[11px] ${isActive ? 'text-[var(--pd)]' : 'text-[var(--muted)]'}`}>
+                        ~{fmtRange(pr.lo, pr.hi)} {personLabel} ({pr.pct}%)
+                      </div>
+                    </div>
+                    {/* Mobile subtitle */}
+                    <div className="sm:hidden text-xs text-[var(--muted)]">
+                      {durLabel(pkg.duration)} · {pkg.freq}× · ~{pr.pct}%
+                    </div>
                   </div>
-                  <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 22, color: isActive ? C.primary : C.taupe, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 6 }}>
+
+                  {/* Right side: price (mobile only) */}
+                  <div className={`sm:hidden vio-serif text-lg font-normal leading-none flex-shrink-0 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--taupe)]'}`}>
                     {fmtCHF(pkg.budget)}
                   </div>
-                  <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>
-                    {durLabel(pkg.duration)} · {pkg.freq}× Kontakt
-                  </div>
-                  <div style={{ fontSize: 11, color: isActive ? C.pd : C.muted }}>
-                    ~{fmtRange(pr.lo, pr.hi)} {personLabel} ({pr.pct}%)
-                  </div>
-                </div>
+                </button>
               );
             })}
           </div>
 
-          {/* ── 3. RECOMMENDATION CARD ── */}
-          <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.border}`, borderTop: `3px solid ${C.primary}`, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 16, flexWrap: 'wrap' as const }}>
+          {/* ── RECOMMENDATION CARD ── */}
+          <div className="bg-white rounded-2xl border border-[var(--border)] border-t-[3px] border-t-[var(--primary)] p-5 sm:p-[22px] mb-5">
+            <div className="flex justify-between items-start gap-4 mb-4 flex-wrap">
               <div>
-                <div style={{ display: 'inline-block', background: C.pl, color: C.pd, border: `1px solid #F0C8C8`, borderRadius: 100, padding: '3px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', marginBottom: 10 }}>
+                <span className="inline-block bg-[var(--pl)] text-[var(--pd)] border border-[#F0C8C8] rounded-full px-3 py-0.5 text-[11px] font-bold tracking-[.06em] mb-2.5">
                   Unser Vorschlag
-                </div>
-                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 36, fontWeight: 400, color: C.taupe, letterSpacing: '-.03em', lineHeight: 1 }}>
+                </span>
+                <div className="vio-serif text-4xl font-normal text-[var(--taupe)] tracking-tight leading-none">
                   {fmtRange(uniqueLow, uniqueHigh)}
                 </div>
-                <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+                <p className="text-sm text-[var(--muted)] mt-1.5">
                   {personLabel} sehen deine Kampagne · {pct}% von {regionName}
-                </div>
+                </p>
               </div>
-              <div style={{ textAlign: 'right' as const }}>
-                <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.primary, letterSpacing: '-.02em', lineHeight: 1 }}>
+              <div className="text-right">
+                <div className="vio-serif text-2xl text-[var(--primary)] tracking-tight leading-none">
                   {fmtCHF(budget)}
                 </div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
-                  {durLabel(duration)} · {freq}× Kontakt
-                </div>
+                <p className="text-xs text-[var(--muted)] mt-1">{durLabel(duration)} · {freq}× Kontakt</p>
               </div>
             </div>
-            {/* 2×2 grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <div className="grid grid-cols-2 gap-2 pt-4 border-t border-[var(--border)]">
               {[
                 { label: 'DOOH Screens',     value: fmtN(screens),                   sub: 'digitale Plakatstellen' },
                 { label: 'Display Kontakte', value: fmtN(dispContacts),              sub: 'Online-Banner Impressionen' },
                 { label: 'Laufzeit',         value: durLabel(duration),              sub: `${freq}× Kontakt pro Person` },
                 { label: 'Unique Reach',     value: fmtRange(uniqueLow, uniqueHigh), sub: `${pct}% der ${personLabel}` },
               ].map(cell => (
-                <div key={cell.label} style={{ background: C.bg, borderRadius: 10, padding: '10px 14px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: C.muted, textTransform: 'uppercase' as const, marginBottom: 4 }}>{cell.label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: C.taupe, fontFamily: 'var(--font-fraunces), Georgia, serif' }}>{cell.value}</div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{cell.sub}</div>
+                <div key={cell.label} className="bg-[var(--bg)] rounded-xl px-3.5 py-2.5">
+                  <div className="text-[10px] font-bold tracking-[.08em] text-[var(--muted)] uppercase mb-1">{cell.label}</div>
+                  <div className="vio-serif text-[15px] font-bold text-[var(--taupe)]">{cell.value}</div>
+                  <div className="text-[11px] text-[var(--muted)] mt-0.5">{cell.sub}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* ── 4. SLIDERS CARD ── */}
-          <div style={{ background: C.white, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+          {/* ── SLIDERS CARD ── */}
+          <div className="bg-white border border-[var(--border)] rounded-2xl p-5 sm:p-[22px] mb-5">
             {/* Budget */}
-            <div style={{ marginBottom: 22 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.taupe }}>Budget</span>
-                <span style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 20, color: C.primary, letterSpacing: '-.02em' }}>{fmtCHF(budget)}</span>
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2.5">
+                <span className="text-sm font-semibold text-[var(--taupe)]">Budget</span>
+                <span className="vio-serif text-xl text-[var(--primary)] tracking-tight">{fmtCHF(budget)}</span>
               </div>
               <input
                 type="range" className="vio-slider"
                 min={2500} max={50000} step={500} value={budget}
                 onChange={e => setBudget(Number(e.target.value))}
-                style={{ background: `linear-gradient(to right, ${C.primary} ${budgetPct}%, #F0EBE3 ${budgetPct}%)` }}
+                style={{ '--fill': `${budgetPct}%` } as React.CSSProperties}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginTop: 5 }}>
+              <div className="flex justify-between text-[11px] text-[var(--muted)] mt-1.5">
                 <span>CHF 2'500</span><span>CHF 50'000</span>
               </div>
             </div>
             {/* Duration */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.taupe }}>Laufzeit</span>
-                <span style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 20, color: C.primary, letterSpacing: '-.02em' }}>{durLabel(duration)}</span>
+              <div className="flex justify-between items-center mb-2.5">
+                <span className="text-sm font-semibold text-[var(--taupe)]">Laufzeit</span>
+                <span className="vio-serif text-xl text-[var(--primary)] tracking-tight">{durLabel(duration)}</span>
               </div>
               <input
                 type="range" className="vio-slider"
                 min={1} max={8} step={1} value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
-                style={{ background: `linear-gradient(to right, ${C.primary} ${durationPct}%, #F0EBE3 ${durationPct}%)` }}
+                style={{ '--fill': `${durationPct}%` } as React.CSSProperties}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginTop: 5 }}>
+              <div className="flex justify-between text-[11px] text-[var(--muted)] mt-1.5">
                 <span>1 Woche</span><span>8 Wochen</span>
               </div>
             </div>
           </div>
 
-          {/* ── 5. BREAKDOWN ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-            <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const, marginBottom: 10 }}>
-                DOOH — Digitale Screens
-              </div>
-              <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.taupe, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
-                {fmtN(screens)}
-              </div>
-              <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>Screens in {regionName}</div>
-              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>Bahnhöfe, Einkaufszentren, belebte Orte</div>
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 13, fontWeight: 700, color: C.taupe }}>
+          {/* ── BREAKDOWN ── */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="bg-white border border-[var(--border)] rounded-2xl p-4 sm:p-[18px]">
+              <div className="text-[10px] font-bold tracking-[.1em] text-[var(--muted)] uppercase mb-2.5">DOOH — Digitale Screens</div>
+              <div className="vio-serif text-2xl text-[var(--taupe)] leading-none mb-1">{fmtN(screens)}</div>
+              <p className="text-xs text-[var(--muted)] mb-2">Screens in {regionName}</p>
+              <p className="text-[11px] text-[var(--muted)] leading-relaxed">Bahnhöfe, Einkaufszentren, belebte Orte</p>
+              <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
                 {fmtN(doohContacts)} Kontakte
               </div>
             </div>
-            <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const, marginBottom: 10 }}>
-                Display — Online Banner
-              </div>
-              <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 26, color: C.taupe, letterSpacing: '-.02em', lineHeight: 1, marginBottom: 4 }}>
-                {fmtCHF(Math.round(budget * 0.3))}
-              </div>
-              <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>Display-Budget (30%)</div>
-              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>Schweizer Websites & Apps</div>
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 13, fontWeight: 700, color: C.taupe }}>
+            <div className="bg-white border border-[var(--border)] rounded-2xl p-4 sm:p-[18px]">
+              <div className="text-[10px] font-bold tracking-[.1em] text-[var(--muted)] uppercase mb-2.5">Display — Online Banner</div>
+              <div className="vio-serif text-2xl text-[var(--taupe)] leading-none mb-1">{fmtCHF(Math.round(budget * 0.3))}</div>
+              <p className="text-xs text-[var(--muted)] mb-2">Display-Budget (30%)</p>
+              <p className="text-[11px] text-[var(--muted)] leading-relaxed">Schweizer Websites & Apps</p>
+              <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
                 {fmtN(dispContacts)} Kontakte
               </div>
             </div>
           </div>
 
-          {/* ── 6. SMART TIP ── */}
-          <div style={{ background: '#F5EBEB', borderLeft: `3px solid ${C.primary}`, borderRadius: '0 12px 12px 0', padding: '14px 18px', marginBottom: 28, fontSize: 13, color: C.taupe, lineHeight: 1.7 }}>
+          {/* ── MOBILE ACCORDION: Wie berechnen wir das? ── */}
+          <div className="sm:hidden mb-5">
+            <button
+              type="button"
+              onClick={() => setAccordionOpen(o => !o)}
+              className="w-full min-h-[44px] flex items-center justify-between bg-white border border-[var(--border)] rounded-2xl px-4 py-3 text-sm font-semibold text-[var(--taupe)] cursor-pointer"
+            >
+              <span>Wie berechnen wir das?</span>
+              <span className={`text-[var(--muted)] transition-transform duration-200 ${accordionOpen ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {accordionOpen && (
+              <div className="bg-white border border-t-0 border-[var(--border)] rounded-b-2xl px-4 pb-4 pt-3">
+                <CalcContent />
+              </div>
+            )}
+          </div>
+
+          {/* ── SMART TIP ── */}
+          <div className="bg-[#F5EBEB] border-l-[3px] border-l-[var(--primary)] rounded-r-xl px-[18px] py-3.5 mb-7 text-sm text-[var(--taupe)] leading-relaxed">
             💡 {smartTip}
           </div>
 
-          {/* ── 7. CTA ── */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {/* ── CTA ──
+              Mobile: stacked col (Weiter full-width, then Zurück)
+              Desktop: inline row
+          */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <button
               type="button"
               onClick={handleNext}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.primary, color: '#fff', border: 'none', borderRadius: 100, padding: '14px 30px', fontFamily: 'var(--font-outfit), sans-serif', fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)', transition: 'all .18s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+              className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white border-none rounded-full px-8 py-3.5 text-[15px] font-semibold cursor-pointer shadow-[0_4px_16px_rgba(193,102,107,.3)] transition-all duration-150 hover:bg-[var(--pd)] hover:-translate-y-0.5"
             >
               Weiter zu den Werbemitteln →
             </button>
+            {prevStep && (
+              <button
+                type="button"
+                onClick={prevStep}
+                className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-transparent text-[var(--muted)] border border-[var(--border)] rounded-full px-6 py-3.5 text-sm font-semibold cursor-pointer transition-all duration-150 hover:text-[var(--taupe)]"
+              >
+                ← Zurück
+              </button>
+            )}
           </div>
 
         </div>{/* end main column */}
 
-        {/* ══════════════ SIDEBAR ══════════════ */}
-        <div style={{ width: 340, flexShrink: 0, position: 'sticky' as const, top: 80, display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+        {/* ══════════════ SIDEBAR — desktop only ══════════════ */}
+        <div className="hidden sm:flex w-[340px] flex-shrink-0 sticky top-20 flex-col gap-4">
 
-          {/* Sidebar card 1: Wie berechnen wir das? */}
-          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 16, padding: '20px' }}>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 16, color: C.taupe, marginBottom: 14 }}>
-              Wie berechnen wir das?
-            </div>
-            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, marginBottom: 12 }}>
-              Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-              {[
-                { label: '📺 DOOH-Anteil (70%)',    value: fmtCHF(Math.round(budget * 0.7)) },
-                { label: '🖥 Display-Anteil (30%)', value: fmtCHF(Math.round(budget * 0.3)) },
-              ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                  <span style={{ color: C.taupe }}>{row.label}</span>
-                  <strong style={{ color: C.taupe }}>{row.value}</strong>
-                </div>
-              ))}
-              <div style={{ height: 1, background: C.border, margin: '4px 0' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                <span style={{ color: C.taupe }}>Ø Kontakte pro Person</span>
-                <strong style={{ color: C.primary }}>{freq}×</strong>
-              </div>
-            </div>
+          {/* Card 1: Wie berechnen wir das? */}
+          <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
+            <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Wie berechnen wir das?</h3>
+            <CalcContent />
           </div>
 
-          {/* Sidebar card 2: Deine Zielregion */}
-          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 16, padding: '20px' }}>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 16, color: C.taupe, marginBottom: 14 }}>
-              Deine Zielregion
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.taupe, marginBottom: 6 }}>
-              📍 {regionName}
-            </div>
-            <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>
+          {/* Card 2: Deine Zielregion */}
+          <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
+            <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Deine Zielregion</h3>
+            <p className="text-sm font-bold text-[var(--taupe)] mb-1.5">📍 {regionName}</p>
+            <p className="text-sm text-[var(--muted)] mb-3.5">
               {stimmber.toLocaleString('de-CH')} {isPolitik ? 'Stimmberechtigte' : 'Einwohner'}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, fontSize: 12, color: C.muted }}>
+            </p>
+            <div className="flex flex-col gap-1.5">
               {[
                 { label: 'Erreichbar via DOOH',    value: '~85%' },
                 { label: 'Erreichbar via Display', value: '~92%' },
               ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div key={row.label} className="flex justify-between text-xs text-[var(--muted)]">
                   <span>{row.label}</span>
-                  <strong style={{ color: C.taupe }}>{row.value}</strong>
+                  <strong className="text-[var(--taupe)]">{row.value}</strong>
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.muted }}>
+            <p className="mt-3 pt-2.5 border-t border-[var(--border)] text-[11px] text-[var(--muted)]">
               Quelle: BFS Bevölkerungsstatistik 2023
-            </div>
+            </p>
           </div>
 
-          {/* Sidebar card 3: Fragen? */}
-          <div style={{ background: C.pl, border: '1px solid #F0C8C8', borderRadius: 16, padding: '20px' }}>
-            <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 16, color: C.taupe, marginBottom: 8 }}>
-              Fragen?
-            </div>
-            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 16 }}>
+          {/* Card 3: Fragen? */}
+          <div className="bg-[var(--pl)] border border-[#F0C8C8] rounded-2xl p-5">
+            <h3 className="vio-serif text-base text-[var(--taupe)] mb-2">Fragen?</h3>
+            <p className="text-sm text-[var(--muted)] leading-relaxed mb-4">
               Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.
-            </div>
+            </p>
             <a
               href="https://calendly.com/vio"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ display: 'inline-block', background: C.primary, color: '#fff', borderRadius: 100, padding: '10px 20px', fontSize: 13, fontWeight: 600, textDecoration: 'none', fontFamily: 'var(--font-outfit), sans-serif' }}
+              className="inline-block min-h-[44px] px-5 py-2.5 rounded-full bg-[var(--primary)] text-white text-sm font-semibold no-underline"
             >
               Gespräch buchen →
             </a>
