@@ -145,15 +145,8 @@ export default function HomePage() {
   };
 
   return (
-    <main style={{ backgroundColor: 'var(--off-white)', overflowX: 'hidden' }}>
+    <main style={{ overflowX: 'hidden' }}>
 
-      {/* ── Watercolor background ────────────────────────────────────────── */}
-      <div className="wc-layer">
-        <div className="wc-blob" style={{ width: 700, height: 700, background: 'radial-gradient(circle,rgba(184,169,232,.28),rgba(184,169,232,.05) 65%,transparent)', top: -200, left: -130, animationDuration: '27s' }} />
-        <div className="wc-blob" style={{ width: 480, height: 480, background: 'radial-gradient(circle,rgba(200,223,248,.3),rgba(200,223,248,.05) 65%,transparent)', top: 280, right: -110, animationDuration: '20s', animationDelay: '-9s' }} />
-        <div className="wc-blob" style={{ width: 380, height: 380, background: 'radial-gradient(circle,rgba(242,196,206,.22),transparent 65%)', bottom: 180, left: '12%', animationDuration: '25s', animationDelay: '-6s' }} />
-        <div className="wc-blob" style={{ width: 300, height: 300, background: 'radial-gradient(circle,rgba(212,168,67,.16),transparent 65%)', bottom: 0, right: '22%', animationDuration: '31s', animationDelay: '-14s' }} />
-      </div>
       <div className="grain" />
 
       {/* ── NAV ──────────────────────────────────────────────────────────── */}
