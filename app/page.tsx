@@ -12,7 +12,7 @@ const C = {
   primaryPale:  '#EDE8FF',
   primaryXpale: '#F5F2FF',
   gold:         '#D4A843',
-  ink:          '#1A1430',
+  ink:          '#2D1F52',
   slate:        '#7A7596',
   muted:        '#7A7596',
   border:       '#EDE8FF',
@@ -21,7 +21,7 @@ const C = {
   // legacy aliases
   pd:    '#8B6FD4',
   pl:    '#EDE8FF',
-  taupe: '#1A1430',
+  taupe: '#2D1F52',
 } as const;
 
 // ── Scroll-reveal wrapper ─────────────────────────────────────────────────────
@@ -230,22 +230,98 @@ export default function HomePage() {
 
             {/* ── Campaign type selector ──────────────────────────────────── */}
             <div style={{ marginTop: '36px' }}>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginBottom: '0' }}>
                 {([
-                  { value: 'b2c'     as const, sym: '◎', name: 'Privatkunden',    desc: 'B2C · Haushalte' },
-                  { value: 'b2b'     as const, sym: '◈', name: 'Geschäftskunden', desc: 'B2B · Firmen' },
-                  { value: 'politik' as const, sym: '◉', name: 'Politik',          desc: 'Abstimmungen' },
+                  {
+                    value: 'b2c' as const,
+                    name: 'Privatkunden',
+                    sub: 'B2C · Haushalte & Konsumenten',
+                    desc: 'Lokale Kunden, Haushalte und Konsumenten in deiner Region erreichen.',
+                    tags: [
+                      { label: 'DOOH', bg: '#EDE8FF', color: '#6B4FBB' },
+                      { label: 'Display', bg: '#EDE8FF', color: '#6B4FBB' },
+                      { label: 'Regional', bg: '#EEF5FF', color: '#4A78B0' },
+                    ],
+                    barGradient: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)',
+                    icon: (
+                      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <rect x="4" y="10" width="14" height="10" rx="2.5" stroke="#6B4FBB" strokeWidth="1.5"/>
+                        <path d="M8 10V7a3 3 0 0 1 6 0v3" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round"/>
+                        <circle cx="11" cy="5" r="2.2" fill="#B8A9E8" opacity=".5"/>
+                      </svg>
+                    ),
+                  },
+                  {
+                    value: 'b2b' as const,
+                    name: 'Geschäftskunden',
+                    sub: 'B2B · Firmen & Fachleute',
+                    desc: 'Firmen, Fachleute und Entscheidungsträger gezielt ansprechen.',
+                    tags: [
+                      { label: 'B2B Display', bg: '#FDF3DC', color: '#9B7120' },
+                      { label: 'Fachpublikum', bg: '#EEF5FF', color: '#4A78B0' },
+                    ],
+                    barGradient: 'linear-gradient(90deg,#D4A843,rgba(212,168,67,0.3))',
+                    icon: (
+                      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <rect x="3" y="8" width="16" height="11" rx="2.5" stroke="#D4A843" strokeWidth="1.5"/>
+                        <path d="M8 8V6a3 3 0 0 1 6 0v2" stroke="#D4A843" strokeWidth="1.5" strokeLinecap="round"/>
+                        <path d="M11 12v4M9 14h4" stroke="#D4A843" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    ),
+                  },
+                  {
+                    value: 'politik' as const,
+                    name: 'Politik',
+                    sub: 'Abstimmungen & Kandidaturen',
+                    desc: 'Abstimmungen, Kandidaturen und Initiativen wirkungsvoll platzieren.',
+                    tags: [
+                      { label: 'DOOH', bg: '#EDE8FF', color: '#6B4FBB' },
+                      { label: 'JA/NEIN', bg: '#EDE8FF', color: '#6B4FBB' },
+                      { label: 'Kandidatenwahl', bg: '#FDF3DC', color: '#9B7120' },
+                    ],
+                    barGradient: 'linear-gradient(90deg,#6B4FBB,#C8DFF8)',
+                    icon: (
+                      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                        <circle cx="11" cy="11" r="8" stroke="#6B4FBB" strokeWidth="1.5"/>
+                        <path d="M11 7v4.5l3 1.5" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ),
+                  },
                 ] as const).map(opt => {
                   const sel = heroType === opt.value;
                   return (
                     <div key={opt.value} onClick={() => setHeroType(opt.value)}
-                      style={{ flex: '1 1 0', minWidth: 0, background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.12)'}`, borderRadius: '20px', padding: '20px 16px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
-                      onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.10)'; }}
-                      onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
+                      style={{ position: 'relative', overflow: 'hidden', background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.10)'}`, borderRadius: '22px', padding: '26px 22px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
+                      onMouseEnter={e => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        el.style.transform = 'translateY(-3px)';
+                        el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.10)';
+                        el.style.borderColor = 'rgba(107,79,187,0.22)';
+                        const bar = el.querySelector('[data-gradbar]') as HTMLDivElement | null;
+                        if (bar) bar.style.opacity = '1';
+                      }}
+                      onMouseLeave={e => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        el.style.transform = 'none';
+                        el.style.boxShadow = 'none';
+                        el.style.borderColor = sel ? 'var(--violet)' : 'rgba(107,79,187,0.10)';
+                        const bar = el.querySelector('[data-gradbar]') as HTMLDivElement | null;
+                        if (bar) bar.style.opacity = '0';
+                      }}
                     >
-                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--violet-xpale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '10px' }}>{opt.sym}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '14px', color: 'var(--ink)', lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
-                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '12px', color: 'var(--slate)' }}>{opt.desc}</div>
+                      {/* Gradient top bar */}
+                      <div data-gradbar="" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: opt.barGradient, opacity: 0, transition: 'opacity .22s' }} />
+                      {/* Icon box */}
+                      <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: '#F5F2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                        {opt.icon}
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '12px', color: 'var(--slate)', lineHeight: 1.5, marginBottom: '14px' }}>{opt.sub}<br />{opt.desc}</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '5px' }}>
+                        {opt.tags.map(tag => (
+                          <span key={tag.label} style={{ fontFamily: 'var(--font-display)', fontSize: '9.5px', fontWeight: 600, textTransform: 'uppercase' as const, borderRadius: '100px', padding: '3px 9px', background: tag.bg, color: tag.color }}>{tag.label}</span>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
@@ -415,11 +491,16 @@ export default function HomePage() {
 
             {/* Card 2 — card-stat */}
             <div style={{ position: 'absolute', width: '200px', bottom: '90px', left: '4px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
-              <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--lavender)', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '8px' }}>Buchungsdauer</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1, letterSpacing: '-.02em', marginBottom: '4px' }}>1:54</div>
-              <div style={{ fontSize: '12px', color: 'var(--slate)', marginBottom: '14px' }}>Minuten bis die Kampagne steht</div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EDF7F5', border: '1px solid rgba(184,221,214,.6)', borderRadius: '100px', padding: '4px 10px', fontSize: '11px', color: '#3D8A80', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
-                Keine Agentur nötig
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '9.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: '#B8A9E8', marginBottom: '8px' }}>26 Kantone · 124 Gemeinden</div>
+              <div style={{ lineHeight: 1, marginBottom: '4px' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.02em' }}>5.4</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 400, color: '#7A7596', marginLeft: '4px' }}>Mio</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-sans)', fontSize: '10px', fontWeight: 300, color: '#7A7596', marginBottom: '10px' }}>Stimmbevölkerung erreichbar</div>
+              <div style={{ borderTop: '1px solid rgba(107,79,187,0.08)', margin: '8px 0' }} />
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--ink)' }}>600k+</span>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 300, color: '#7A7596' }}>Unternehmen CH</span>
               </div>
             </div>
 
