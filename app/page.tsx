@@ -618,7 +618,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          </div>{/* end right col */}
         </div>{/* end grid */}
       </section>
 
