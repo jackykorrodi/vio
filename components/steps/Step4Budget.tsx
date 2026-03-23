@@ -224,12 +224,12 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
     <section className="bg-[var(--bg)]">
       {/* Global slider + serif font styles */}
       <style>{`
-        .vio-serif { font-family: var(--font-fraunces, Georgia), Georgia, serif; }
+        .vio-serif { font-family: var(--font-display); font-weight: 700; }
         .vio-slider {
           -webkit-appearance: none; appearance: none;
           width: 100%; height: 4px; border-radius: 2px;
           outline: none; cursor: pointer; border: none; display: block;
-          background: linear-gradient(to right, var(--primary) var(--fill, 0%), #F0EBE3 var(--fill, 0%));
+          background: linear-gradient(to right, var(--primary) var(--fill, 0%), rgba(107,79,187,0.12) var(--fill, 0%));
         }
         .vio-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; }
         .vio-slider::-webkit-slider-thumb {
@@ -237,7 +237,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           width: 28px; height: 28px;
           border-radius: 50%; background: #fff;
           border: 2px solid var(--primary); cursor: pointer;
-          box-shadow: 0 1px 6px rgba(193,102,107,.3); margin-top: -12px;
+          box-shadow: 0 1px 6px rgba(107,79,187,0.30); margin-top: -12px;
         }
         @media (min-width: 640px) {
           .vio-slider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; }
@@ -246,11 +246,11 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .vio-slider::-moz-range-thumb {
           width: 28px; height: 28px; border-radius: 50%;
           background: #fff; border: 2px solid var(--primary);
-          cursor: pointer; box-shadow: 0 1px 6px rgba(193,102,107,.3);
+          cursor: pointer; box-shadow: 0 1px 6px rgba(107,79,187,0.30);
           box-sizing: border-box;
         }
         .vio-slider::-moz-range-progress { background: var(--primary); border-radius: 2px; height: 4px; }
-        .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: #F0EBE3; }
+        .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(107,79,187,0.12); }
       `}</style>
 
       <div className="max-w-[1120px] mx-auto px-5 pt-10 pb-20 sm:flex sm:gap-8 sm:items-start">
@@ -339,7 +339,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                   className="w-full px-3.5 py-2.5 rounded-lg border-[1.5px] border-[var(--border)] text-sm text-[var(--taupe)] bg-[var(--bg)] outline-none min-h-[44px]"
                 />
                 {regionDropdownOpen && regionSearchResults.length > 0 && (
-                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(44,44,62,.12)] max-h-[260px] overflow-y-auto z-[200]">
+                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(107,79,187,0.11)] max-h-[260px] overflow-y-auto z-[200]">
                     {regionSearchResults.map(r => (
                       <div
                         key={r.name}
@@ -565,7 +565,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             <button
               type="button"
               onClick={handleNext}
-              className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white border-none rounded-full px-8 py-3.5 text-[15px] font-semibold cursor-pointer shadow-[0_4px_16px_rgba(193,102,107,.3)] transition-all duration-150 hover:bg-[var(--pd)] hover:-translate-y-0.5"
+              className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white border-none rounded-full px-8 py-3.5 text-[15px] font-semibold cursor-pointer shadow-[0_4px_16px_rgba(107,79,187,0.30)] transition-all duration-150 hover:bg-[var(--pd)] hover:-translate-y-0.5"
             >
               Weiter zu den Werbemitteln →
             </button>

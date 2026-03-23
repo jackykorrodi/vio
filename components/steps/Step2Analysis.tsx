@@ -4,28 +4,28 @@ import { useEffect, useRef, useState } from 'react';
 import { BriefingData } from '@/lib/types';
 
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
+  primary: '#6B4FBB',
+  pl: '#EDE8FF',
+  pd: '#8B6FD4',
+  taupe: '#1A1430',
+  muted: '#7A7596',
+  border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF',
   white: '#FFFFFF',
 } as const;
 
 const page: React.CSSProperties = {
-  maxWidth: '720px',
+  maxWidth: '860px',
   margin: '0 auto',
   padding: '40px 20px 80px',
 };
 
 const card: React.CSSProperties = {
   background: C.white,
-  borderRadius: '14px',
+  borderRadius: '20px',
   border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-  padding: '20px 22px',
+  boxShadow: '0 1px 4px rgba(107,79,187,0.06)',
+  padding: '24px 28px',
   marginBottom: '14px',
 };
 
@@ -115,7 +115,7 @@ function Step2Analysis({ briefing, updateBriefing, nextStep, isActive }: Props) 
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
           Einen Moment bitte.
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
@@ -197,8 +197,8 @@ function Step2Analysis({ briefing, updateBriefing, nextStep, isActive }: Props) 
         </div>
 
         {/* ibox */}
-        <div style={{ background: C.taupe, borderRadius: '14px', padding: '20px 22px', marginTop: '14px' }}>
-          <h3 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '19px', color: '#fff', fontWeight: 400, marginBottom: '8px' }}>
+        <div style={{ background: C.taupe, borderRadius: '20px', padding: '24px 28px', marginTop: '14px' }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '19px', color: '#fff', fontWeight: 400, marginBottom: '8px' }}>
             Was passiert gerade?
           </h3>
           <p style={{ fontSize: '13px', color: 'rgba(255,255,255,.6)', lineHeight: 1.65, marginBottom: '10px' }}>

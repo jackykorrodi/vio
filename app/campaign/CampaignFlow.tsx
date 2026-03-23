@@ -14,10 +14,10 @@ import Step7Confirmation from '@/components/steps/Step7Confirmation';
 import Step8Dashboard from '@/components/steps/Step8Dashboard';
 
 const C = {
-  primary: '#C1666B',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
+  primary: '#6B4FBB',
+  muted: '#7A7596',
+  border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF',
 } as const;
 
 // Internal step numbers: 1=entry, 2=politik, 3=audience, 4=budget, 5=creative, 6=contact, 7=confirm, 8=dashboard
@@ -105,29 +105,46 @@ export default function CampaignFlow() {
   }, [currentStep]);
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: C.bg }}>
+    <main style={{ minHeight: '100vh', backgroundColor: 'var(--off-white)', position: 'relative' }}>
+
+      {/* ── Watercolor background blobs ─────────────────────────────────── */}
+      {[
+        { color: 'rgba(184,169,232,0.18)', size: 500, x: '10%',  y: '15%',  dur: 26, k: 'blob0' },
+        { color: 'rgba(200,223,248,0.16)', size: 440, x: '75%',  y: '10%',  dur: 31, k: 'blob1' },
+        { color: 'rgba(212,168,67,0.08)',  size: 320, x: '85%',  y: '65%',  dur: 28, k: 'blob3' },
+        { color: 'rgba(184,169,232,0.14)', size: 380, x: '5%',   y: '70%',  dur: 24, k: 'blob4' },
+      ].map((b, i) => (
+        <div key={i} style={{
+          position: 'fixed',
+          width: `${b.size}px`, height: `${b.size}px`,
+          left: b.x, top: b.y,
+          transform: 'translate(-50%,-50%)',
+          background: `radial-gradient(circle, ${b.color}, transparent 70%)`,
+          filter: 'blur(88px)',
+          animation: `${b.k} ${b.dur}s ease-in-out alternate infinite`,
+          zIndex: 0, pointerEvents: 'none',
+        }} />
+      ))}
 
       {/* ── Nav bar ── */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50,
-        backgroundColor: '#fff', borderBottom: `1px solid ${C.border}`,
+        backgroundColor: 'rgba(253,252,255,.92)',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        borderBottom: `1px solid ${C.border}`,
         height: '60px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', padding: '0 28px',
-        boxShadow: '0 1px 4px rgba(44,44,62,.07)',
       }}>
-        <a
-          href="/"
-          style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontSize: '26px', fontWeight: 600, color: C.primary,
-            textDecoration: 'none',
-          }}
-        >
+        <a href="/" style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '24px', fontWeight: 800,
+          color: C.primary, textDecoration: 'none', letterSpacing: '-.02em',
+        }}>
           VIO
         </a>
 
-        {/* Step indicator — completed steps are clickable */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Step indicator — violet dots + lines */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
           {INTERNAL_STEPS.map((internalStep, i) => {
             const displayStep = i + 1;
             const done = currentStep > internalStep;
@@ -137,8 +154,8 @@ export default function CampaignFlow() {
               <div key={internalStep} style={{ display: 'flex', alignItems: 'center' }}>
                 {i > 0 && (
                   <div style={{
-                    width: '16px', height: '1.5px',
-                    background: done ? C.primary : C.border,
+                    width: '14px', height: '2px', borderRadius: '2px',
+                    background: done ? C.primary : 'rgba(107,79,187,0.15)',
                     flexShrink: 0, margin: '0 1px',
                     transition: 'background .3s',
                   }} />
@@ -148,47 +165,53 @@ export default function CampaignFlow() {
                   onClick={() => { if (done) setCurrentStep(internalStep); }}
                   title={done ? `Zurück zu Schritt ${displayStep}` : undefined}
                   style={{
-                    width: '28px', height: '28px',
+                    width: active ? '28px' : '22px',
+                    height: active ? '28px' : '22px',
                     borderRadius: '50%', border: 'none', padding: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: active ? C.primary : done ? C.primary : C.border,
-                    opacity: future ? 0.4 : done ? 0.75 : 1,
+                    backgroundColor: active ? C.primary
+                      : done ? 'rgba(107,79,187,0.20)'
+                      : 'rgba(107,79,187,0.08)',
+                    opacity: future ? 0.45 : 1,
                     cursor: done ? 'pointer' : 'default',
                     transition: 'all .25s',
                     flexShrink: 0,
-                    fontSize: '11px', fontWeight: 700,
-                    color: (active || done) ? '#fff' : C.muted,
-                    fontFamily: 'var(--font-outfit), sans-serif',
+                    fontSize: active ? '12px' : '10px', fontWeight: 700,
+                    color: active ? '#fff' : done ? C.primary : C.muted,
+                    fontFamily: 'var(--font-display)',
                     outline: 'none',
                   }}
-                  onMouseEnter={e => { if (done) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'scale(1.1)'; } }}
-                  onMouseLeave={e => { if (done) { e.currentTarget.style.opacity = '0.75'; e.currentTarget.style.transform = 'none'; } }}
+                  onMouseEnter={e => { if (done) { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.color = '#fff'; } }}
+                  onMouseLeave={e => { if (done) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.backgroundColor = 'rgba(107,79,187,0.20)'; e.currentTarget.style.color = C.primary; } }}
                 >
                   {done ? '✓' : displayStep}
                 </button>
               </div>
             );
           })}
-          <span style={{ fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '8px' }}>
-            Schritt {Math.max(1, INTERNAL_STEPS.indexOf(currentStep) + 1)}/{INTERNAL_STEPS.length}
+          <span style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '10px',
+          }}>
+            {Math.max(1, INTERNAL_STEPS.indexOf(currentStep) + 1)}/{INTERNAL_STEPS.length}
           </span>
         </div>
       </nav>
 
-      {/* ── Back button (steps 2–6) ── */}
+      {/* ── Back button (ghost, violet text) ── */}
       {currentStep >= 2 && currentStep <= 6 && (
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '16px 20px 0' }}>
+        <div style={{ maxWidth: '1060px', margin: '0 auto', padding: '18px 24px 0', position: 'relative', zIndex: 1 }}>
           <button
             onClick={prevStep}
             style={{
-              background: 'none', border: 'none', padding: '4px 0',
-              fontFamily: 'var(--font-outfit), sans-serif',
-              fontSize: '13px', color: C.muted,
+              background: 'none', border: 'none', padding: '6px 0',
+              fontFamily: 'var(--font-display)',
+              fontSize: '13px', fontWeight: 600, color: C.primary,
               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
-              transition: 'color .15s',
+              transition: 'opacity .15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = C.primary; }}
-            onMouseLeave={e => { e.currentTarget.style.color = C.muted; }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '.65'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
           >
             ← Zurück
           </button>
@@ -198,7 +221,7 @@ export default function CampaignFlow() {
       {/* ── Welcome-back banner (resume flow) ── */}
       {resumeLoaded && (
         <div style={{
-          maxWidth: '720px', margin: '12px auto 0', padding: '0 20px',
+          maxWidth: '860px', margin: '12px auto 0', padding: '0 20px',
         }}>
           <div style={{
             background: '#E8F5F2', border: '1px solid #2A7F7F',

@@ -5,29 +5,29 @@ import { BriefingData } from '@/lib/types';
 import { formatCHF, formatNumber } from '@/lib/calculations';
 
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
+  primary: '#6B4FBB',
+  pl: '#EDE8FF',
+  pd: '#8B6FD4',
+  taupe: '#1A1430',
+  muted: '#7A7596',
+  border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF',
   white: '#FFFFFF',
   teal: '#2A7F7F',
 } as const;
 
 const page: React.CSSProperties = {
-  maxWidth: '720px',
+  maxWidth: '860px',
   margin: '0 auto',
   padding: '40px 20px 80px',
 };
 
 const card: React.CSSProperties = {
   background: C.white,
-  borderRadius: '14px',
+  borderRadius: '20px',
   border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-  padding: '20px 22px',
+  boxShadow: '0 1px 4px rgba(107,79,187,0.06)',
+  padding: '24px 28px',
   marginBottom: '14px',
 };
 
@@ -105,7 +105,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
     padding: '13px 15px',
     border: `1.5px solid ${hasError ? C.primary : C.border}`,
     borderRadius: '10px',
-    fontFamily: 'var(--font-outfit), sans-serif',
+    fontFamily: 'var(--font-sans)',
     fontSize: '15px',
     color: C.taupe,
     background: C.bg,
@@ -127,7 +127,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
           Wie möchtest du weitermachen?
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
@@ -135,7 +135,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
         </p>
 
         {/* Campaign summary fbox */}
-        <div style={{ background: C.taupe, borderRadius: '14px', padding: '20px 22px', marginBottom: '16px' }}>
+        <div style={{ background: C.taupe, borderRadius: '20px', padding: '24px 28px', marginBottom: '16px' }}>
           <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase', marginBottom: '14px' }}>
             Deine Kampagne auf einen Blick
           </div>
@@ -158,7 +158,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
 
         {/* Werbemittel status */}
         {wms === 'erstellen' ? (
-          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '22px' }}>✅</div>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel erstellt</div>
@@ -166,7 +166,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             </div>
           </div>
         ) : wms === 'upload' ? (
-          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '22px' }}>✅</div>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel hochgeladen</div>
@@ -174,7 +174,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             </div>
           </div>
         ) : wms === 'später' ? (
-          <div style={{ background: '#FFF8EC', border: `1.5px solid #E6AC3A`, borderRadius: '14px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ background: '#FFF8EC', border: `1.5px solid #E6AC3A`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ fontSize: '22px' }}>⏳</div>
             <div>
               <div style={{ fontSize: '13px', fontWeight: 700, color: '#7A5C00' }}>Werbemittel werden nach Buchung nachgereicht</div>
@@ -210,7 +210,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
                 onClick={() => setAbschluss(opt.value)}
                 style={{
                   background: active ? C.pl : C.white,
-                  borderRadius: '14px',
+                  borderRadius: '20px',
                   border: `2px solid ${active ? C.primary : C.border}`,
                   padding: '20px',
                   cursor: 'pointer',
@@ -347,7 +347,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
         </div>
 
         {/* Call box */}
-        <div style={{ background: C.pl, border: `1.5px solid ${C.primary}`, borderRadius: '14px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+        <div style={{ background: C.pl, border: `1.5px solid ${C.primary}`, borderRadius: '20px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
           <div style={{ fontSize: '26px' }}>📞</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: C.taupe }}>Persönliche Beratung gewünscht?</div>
@@ -361,7 +361,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
               display: 'inline-flex', alignItems: 'center',
               background: C.primary, color: '#fff', border: 'none',
               borderRadius: '100px', padding: '10px 18px',
-              fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', fontWeight: 600,
+              fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 600,
               cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
             }}
           >
@@ -400,11 +400,11 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             border: 'none',
             borderRadius: '100px',
             padding: '17px',
-            fontFamily: 'var(--font-outfit), sans-serif',
+            fontFamily: 'var(--font-sans)',
             fontSize: '17px',
             fontWeight: 600,
             cursor: loading ? 'not-allowed' : 'pointer',
-            boxShadow: loading ? 'none' : '0 4px 16px rgba(193,102,107,.3)',
+            boxShadow: loading ? 'none' : '0 4px 16px rgba(107,79,187,0.30)',
             transition: 'all .18s',
           }}
         >

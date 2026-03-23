@@ -13,13 +13,13 @@ import {
 import { CANTONS } from '@/lib/constants';
 
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
+  primary: '#6B4FBB',
+  pl: '#EDE8FF',
+  pd: '#8B6FD4',
+  taupe: '#1A1430',
+  muted: '#7A7596',
+  border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF',
   white: '#FFFFFF',
 } as const;
 
@@ -94,17 +94,17 @@ function toggleArr<T>(arr: T[], item: T): T[] {
 }
 
 const page: React.CSSProperties = {
-  maxWidth: '720px',
+  maxWidth: '860px',
   margin: '0 auto',
   padding: '40px 20px 80px',
 };
 
 const card: React.CSSProperties = {
   background: '#FFFFFF',
-  borderRadius: '14px',
+  borderRadius: '20px',
   border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-  padding: '20px 22px',
+  boxShadow: '0 1px 4px rgba(107,79,187,0.06)',
+  padding: '24px 28px',
   marginBottom: '14px',
 };
 
@@ -129,7 +129,7 @@ function Tbtn({ active, onClick, col, children }: {
         borderRadius: col ? '10px' : '100px',
         border: `1.5px solid ${active ? C.primary : C.border}`,
         background: active ? C.primary : C.white,
-        fontFamily: 'var(--font-outfit), sans-serif',
+        fontFamily: 'var(--font-sans)',
         fontSize: '13px',
         fontWeight: active ? 600 : 500,
         color: active ? '#fff' : C.muted,
@@ -157,7 +157,7 @@ function Cbtn({ active, onClick, children }: {
         borderRadius: '100px',
         border: `1.5px ${active ? 'solid' : 'dashed'} ${active ? C.primary : C.border}`,
         background: active ? C.pl : 'transparent',
-        fontFamily: 'var(--font-outfit), sans-serif',
+        fontFamily: 'var(--font-sans)',
         fontSize: '12px',
         fontWeight: 500,
         color: active ? C.primary : C.muted,
@@ -306,7 +306,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
     color: C.taupe,
     outline: 'none',
     backgroundColor: C.bg,
-    fontFamily: 'var(--font-outfit), sans-serif',
+    fontFamily: 'var(--font-sans)',
     transition: 'all .2s',
   };
 
@@ -322,7 +322,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
           {isB2B ? 'Deine Zielunternehmen.' : 'Gut schaut\u2019s aus.'}
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
@@ -333,7 +333,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
 
         {/* Found box */}
         {foundRows.length > 0 && (
-          <div style={{ background: C.taupe, borderRadius: '14px', padding: '20px 22px', marginBottom: '14px' }}>
+          <div style={{ background: C.taupe, borderRadius: '20px', padding: '24px 28px', marginBottom: '14px' }}>
             <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase', marginBottom: '14px' }}>
               Das haben wir gefunden
             </div>
@@ -533,7 +533,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
                           border: `1.5px solid ${isActive ? C.primary : C.border}`,
                           background: isActive ? C.primary : C.white,
                           color: isActive ? '#fff' : C.muted,
-                          fontFamily: 'var(--font-outfit), sans-serif',
+                          fontFamily: 'var(--font-sans)',
                           fontSize: '12px',
                           fontWeight: isActive ? 600 : 500,
                           cursor: 'pointer',
@@ -638,8 +638,8 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             background: C.primary, color: '#fff', border: 'none',
             borderRadius: '100px', padding: '15px 32px',
-            fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600,
-            cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+            fontFamily: 'var(--font-sans)', fontSize: '16px', fontWeight: 600,
+            cursor: 'pointer', boxShadow: '0 4px 16px rgba(107,79,187,0.30)',
             transition: 'all .18s', marginTop: '8px',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
@@ -652,7 +652,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
         <button
           type="button"
           onClick={handleReset}
-          style={{ background: 'none', border: 'none', fontFamily: 'var(--font-outfit), sans-serif', fontSize: '13px', color: C.muted, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px', padding: '8px 0', display: 'inline-block', marginTop: '6px' }}
+          style={{ background: 'none', border: 'none', fontFamily: 'var(--font-sans)', fontSize: '13px', color: C.muted, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px', padding: '8px 0', display: 'inline-block', marginTop: '6px' }}
         >
           Angaben zurücksetzen
         </button>

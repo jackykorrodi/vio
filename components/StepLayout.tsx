@@ -2,14 +2,6 @@
 
 import { ReactNode } from 'react';
 
-const C = {
-  terracotta: '#C1666B',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  white: '#FFFFFF',
-} as const;
-
 interface StepLayoutProps {
   step: number;
   title: string;
@@ -32,44 +24,40 @@ export default function StepLayout({
   isCompleted,
 }: StepLayoutProps) {
   return (
-    <section className="min-h-screen py-16 px-6" style={{ backgroundColor: '#FAF7F2' }}>
-      <div className="max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+    <section style={{ minHeight: '100vh', padding: '48px 24px 80px', backgroundColor: 'var(--off-white)' }}>
+      <div style={{ maxWidth: '1060px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '40px', alignItems: 'start' }}>
 
-          {/* Main – 2/3 */}
-          <div className="lg:col-span-2">
+          {/* ── Main (2/3) ─────────────────────────────────────────────── */}
+          <div>
             {/* Eyebrow */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-6 h-px" style={{ backgroundColor: C.terracotta }} />
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '.12em',
-                  textTransform: 'uppercase',
-                  color: C.terracotta,
-                }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+              <div style={{ width: '18px', height: '2px', borderRadius: '2px', backgroundColor: '#6B4FBB' }} />
+              <span style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '11px', fontWeight: 700, letterSpacing: '.14em',
+                textTransform: 'uppercase', color: '#6B4FBB',
+              }}>
                 {isCompleted ? `✓ Schritt ${step}` : `Schritt ${step}`}
               </span>
             </div>
 
             {/* Title */}
-            <h2
-              className="font-display mb-2"
-              style={{
-                fontFamily: 'var(--font-fraunces)',
-                fontSize: '2rem',
-                fontWeight: 400,
-                color: C.taupe,
-                lineHeight: 1.2,
-              }}
-            >
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '2rem', fontWeight: 800,
+              letterSpacing: '-.025em', lineHeight: 1.15,
+              color: '#1A1430', marginBottom: subtitle ? '8px' : '32px',
+            }}>
               {title}
             </h2>
 
             {subtitle && (
-              <p className="mb-8" style={{ color: C.muted, fontSize: '15px' }}>
+              <p style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '15px', color: '#7A7596',
+                lineHeight: 1.65, marginBottom: '32px',
+              }}>
                 {subtitle}
               </p>
             )}
@@ -77,33 +65,42 @@ export default function StepLayout({
             {children}
           </div>
 
-          {/* Info Box – 1/3 */}
-          <div className="lg:col-span-1">
-            <div
-              className="rounded-2xl p-6 sticky top-24"
-              style={{ backgroundColor: C.taupe }}
-            >
-              <div className="w-6 h-px mb-4" style={{ backgroundColor: C.terracotta }} />
-              <h3
-                className="font-semibold text-base mb-3"
-                style={{ color: '#FFFFFF', fontFamily: 'var(--font-outfit)' }}
-              >
-                {infoTitle}
-              </h3>
-              <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                {infoText}
-              </p>
-              {infoPoints && (
-                <ul className="space-y-2">
-                  {infoPoints.map((pt, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                      <span style={{ color: C.terracotta, flexShrink: 0 }}>→</span>
+          {/* ── Info Box (1/3) ──────────────────────────────────────────── */}
+          <div style={{
+            backgroundColor: '#F5F2FF',
+            border: '1px solid rgba(107,79,187,0.15)',
+            borderRadius: '20px',
+            padding: '28px 24px',
+            position: 'sticky',
+            top: '84px',
+          }}>
+            <div style={{ width: '18px', height: '2px', borderRadius: '2px', backgroundColor: '#D4A843', marginBottom: '16px' }} />
+            <h3 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '15px', fontWeight: 700,
+              color: '#1A1430', marginBottom: '10px',
+            }}>
+              {infoTitle}
+            </h3>
+            <p style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: '13px', fontWeight: 300,
+              lineHeight: 1.7, color: '#7A7596', marginBottom: infoPoints ? '16px' : 0,
+            }}>
+              {infoText}
+            </p>
+            {infoPoints && (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {infoPoints.map((pt, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ color: '#6B4FBB', flexShrink: 0, fontSize: '12px', marginTop: '2px' }}>→</span>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', fontWeight: 300, color: '#7A7596', lineHeight: 1.6 }}>
                       {pt}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
         </div>

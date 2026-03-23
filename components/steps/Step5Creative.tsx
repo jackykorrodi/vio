@@ -4,19 +4,19 @@ import { useState, useRef } from 'react';
 import { BriefingData } from '@/lib/types';
 
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
+  primary: '#6B4FBB',
+  pl: '#EDE8FF',
+  pd: '#8B6FD4',
+  taupe: '#1A1430',
+  muted: '#7A7596',
+  border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF',
   white: '#FFFFFF',
   teal: '#2A7F7F',
 } as const;
 
 const page: React.CSSProperties = {
-  maxWidth: '720px',
+  maxWidth: '860px',
   margin: '0 auto',
   padding: '40px 20px 80px',
 };
@@ -203,7 +203,7 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: 30, fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: 6, color: C.taupe }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: 6, color: C.taupe }}>
           Deine Werbemittel.
         </h1>
         <p style={{ fontSize: 14, color: C.muted, marginBottom: 28, lineHeight: 1.6 }}>
@@ -273,8 +273,8 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: C.primary, color: '#fff', border: 'none',
               borderRadius: 100, padding: '15px 32px',
-              fontFamily: 'var(--font-outfit), sans-serif', fontSize: 16, fontWeight: 600,
-              cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+              fontFamily: 'var(--font-sans)', fontSize: 16, fontWeight: 600,
+              cursor: 'pointer', boxShadow: '0 4px 16px rgba(107,79,187,0.30)',
               transition: 'all .18s', marginTop: 8,
             }}
             onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}

@@ -5,28 +5,28 @@ import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 
 const C = {
-  primary: '#C1666B',
-  pl: '#F9ECEC',
-  pd: '#A84E53',
-  taupe: '#5C4F3D',
-  muted: '#8A8490',
-  border: '#EDE8E0',
-  bg: '#FAF7F2',
+  primary: '#6B4FBB',
+  pl: '#EDE8FF',
+  pd: '#8B6FD4',
+  taupe: '#1A1430',
+  muted: '#7A7596',
+  border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF',
   white: '#FFFFFF',
 } as const;
 
 const page: React.CSSProperties = {
-  maxWidth: '720px',
+  maxWidth: '860px',
   margin: '0 auto',
   padding: '40px 20px 80px',
 };
 
 const card: React.CSSProperties = {
   background: C.white,
-  borderRadius: '14px',
+  borderRadius: '20px',
   border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-  padding: '20px 22px',
+  boxShadow: '0 1px 4px rgba(107,79,187,0.06)',
+  padding: '24px 28px',
   marginBottom: '14px',
 };
 
@@ -254,7 +254,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
 
         <h1
           style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontFamily: 'var(--font-display)',
             fontSize: '30px',
             fontWeight: 400,
             letterSpacing: '-.02em',
@@ -324,7 +324,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       borderRadius: '8px',
                       border: `1.5px solid ${C.border}`,
                       fontSize: '15px',
-                      fontFamily: 'var(--font-outfit), sans-serif',
+                      fontFamily: 'var(--font-sans)',
                       color: C.taupe,
                       backgroundColor: C.white,
                       outline: 'none',
@@ -345,11 +345,11 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       border: 'none',
                       borderRadius: '100px',
                       padding: '15px 32px',
-                      fontFamily: 'var(--font-outfit), sans-serif',
+                      fontFamily: 'var(--font-sans)',
                       fontSize: '16px',
                       fontWeight: 600,
                       cursor: 'pointer',
-                      boxShadow: '0 4px 16px rgba(193,102,107,.3)',
+                      boxShadow: '0 4px 16px rgba(107,79,187,0.30)',
                       transition: 'all .18s',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
@@ -504,7 +504,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                         style={{
                           width: '100%', boxSizing: 'border-box', padding: '12px 16px',
                           borderRadius: '8px', border: `1.5px solid ${C.border}`,
-                          fontSize: '15px', fontFamily: 'var(--font-outfit), sans-serif',
+                          fontSize: '15px', fontFamily: 'var(--font-sans)',
                           color: C.taupe, backgroundColor: C.white, outline: 'none',
                         }}
                       />
@@ -555,7 +555,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                       min={politikTodayStr()}
                       value={votingDate}
                       onChange={e => setVotingDate(e.target.value)}
-                      style={{ padding: '12px 16px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
+                      style={{ padding: '12px 16px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
                     />
                     {votingDate && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 14px', borderRadius: '100px', backgroundColor: '#F9EDEA', color: '#B3502A', fontSize: '13px', fontWeight: 600 }}>
@@ -598,9 +598,9 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                       background: C.primary, color: '#fff', border: 'none', borderRadius: '100px',
-                      padding: '15px 32px', fontFamily: 'var(--font-outfit), sans-serif',
+                      padding: '15px 32px', fontFamily: 'var(--font-sans)',
                       fontSize: '16px', fontWeight: 600, cursor: 'pointer',
-                      boxShadow: '0 4px 16px rgba(193,102,107,.3)', transition: 'all .18s',
+                      boxShadow: '0 4px 16px rgba(107,79,187,0.30)', transition: 'all .18s',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
