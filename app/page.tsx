@@ -178,7 +178,7 @@ export default function HomePage() {
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', backgroundColor: 'var(--off-white)' }}>
+      <section style={{ position: 'relative' }}>
         <div id="hero-grid" style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'center',
           gap: '60px', padding: '80px 64px 72px',
@@ -194,8 +194,8 @@ export default function HomePage() {
             transition: 'opacity .7s ease, transform .7s ease',
           }}>
             {/* Eyebrow */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: C.primaryXpale, border: '1px solid rgba(107,79,187,.15)', borderRadius: '100px', padding: '7px 18px', fontSize: '11px', color: C.primary, letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '28px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: C.gold, flexShrink: 0, display: 'inline-block' }} />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'var(--violet-xpale)', border: '1px solid rgba(107,79,187,.15)', borderRadius: '100px', padding: '7px 18px', fontSize: '11px', color: 'var(--violet)', letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '28px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', flexShrink: 0, display: 'block' }} />
               Schweizer Werbeplattform
             </div>
 
@@ -231,7 +231,7 @@ export default function HomePage() {
           {/* hero-right: B2C/B2B/Politik form */}
           <div style={{ position: 'relative', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
             {/* Type cards */}
-            <div style={{ display: 'flex', gap: '14px', marginBottom: '0' }}>
+            <div style={{ display: 'flex', gap: '12px' }}>
               {([
                 { value: 'b2c'     as const, sym: '◎', name: 'Privatkunden',    desc: 'B2C · Haushalte' },
                 { value: 'b2b'     as const, sym: '◈', name: 'Geschäftskunden', desc: 'B2B · Firmen' },
@@ -240,13 +240,13 @@ export default function HomePage() {
                 const sel = heroType === opt.value;
                 return (
                   <div key={opt.value} onClick={() => setHeroType(opt.value)}
-                    style={{ flex: 1, background: sel ? C.primaryXpale : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? C.primary : 'rgba(107,79,187,0.12)'}`, borderRadius: '20px', padding: '24px 20px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
+                    style={{ flex: '1 1 0', minWidth: 0, background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.12)'}`, borderRadius: '20px', padding: '20px 16px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left', overflow: 'visible' }}
                     onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.10)'; }}
                     onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
                   >
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: C.primaryXpale, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '12px' }}>{opt.sym}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', color: C.ink, lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
-                    <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '12px', color: C.slate }}>{opt.desc}</div>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--violet-xpale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '10px' }}>{opt.sym}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '14px', color: 'var(--ink)', lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
+                    <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '12px', color: 'var(--slate)' }}>{opt.desc}</div>
                   </div>
                 );
               })}
