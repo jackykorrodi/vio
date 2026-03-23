@@ -180,7 +180,7 @@ export default function HomePage() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section style={{ position: 'relative' }}>
         <div id="hero-grid" style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'center',
+          display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'flex-start',
           gap: '60px', padding: '80px 64px 72px',
           maxWidth: '1380px', margin: '0 auto', minHeight: '90vh', position: 'relative',
         }}>
@@ -226,183 +226,225 @@ export default function HomePage() {
                 Wie es funktioniert ↓
               </a>
             </div>
-          </div>
 
-          {/* hero-right: B2C/B2B/Politik form */}
-          <div style={{ position: 'relative', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
-            {/* Type cards */}
-            <div style={{ display: 'flex', gap: '12px' }}>
-              {([
-                { value: 'b2c'     as const, sym: '◎', name: 'Privatkunden',    desc: 'B2C · Haushalte' },
-                { value: 'b2b'     as const, sym: '◈', name: 'Geschäftskunden', desc: 'B2B · Firmen' },
-                { value: 'politik' as const, sym: '◉', name: 'Politik',          desc: 'Abstimmungen' },
-              ] as const).map(opt => {
-                const sel = heroType === opt.value;
-                return (
-                  <div key={opt.value} onClick={() => setHeroType(opt.value)}
-                    style={{ flex: '1 1 0', minWidth: 0, background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.12)'}`, borderRadius: '20px', padding: '20px 16px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left', overflow: 'visible' }}
-                    onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.10)'; }}
-                    onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
-                  >
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--violet-xpale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '10px' }}>{opt.sym}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '14px', color: 'var(--ink)', lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
-                    <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '12px', color: 'var(--slate)' }}>{opt.desc}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Accordion */}
-            <div style={{ maxHeight: heroType ? '1000px' : '0px', overflow: 'hidden', transition: 'max-height 300ms ease' }}>
-              <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '20px', marginTop: '10px', textAlign: 'left' }}>
-
-                {/* B2C / B2B */}
-                {heroType !== 'politik' && heroType !== null && (
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>Deine Website-URL</div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <input type="url" value={heroUrl} placeholder="https://deine-website.ch"
-                        onChange={e => setHeroUrl(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleHeroStart()}
-                        style={{ flex: 1, minWidth: 0, padding: '12px 16px', borderRadius: '100px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
-                      />
-                      <button type="button" onClick={handleHeroStart}
-                        style={{ padding: '12px 24px', borderRadius: '100px', backgroundColor: C.primary, color: '#fff', border: 'none', fontFamily: 'var(--font-sans)', fontSize: '15px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(107,79,187,.30)', transition: 'transform .18s, background-color .18s', flexShrink: 0 }}
-                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
-                      >Kampagne starten →</button>
+            {/* ── Campaign type selector ──────────────────────────────────── */}
+            <div style={{ marginTop: '36px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '0' }}>
+                {([
+                  { value: 'b2c'     as const, sym: '◎', name: 'Privatkunden',    desc: 'B2C · Haushalte' },
+                  { value: 'b2b'     as const, sym: '◈', name: 'Geschäftskunden', desc: 'B2B · Firmen' },
+                  { value: 'politik' as const, sym: '◉', name: 'Politik',          desc: 'Abstimmungen' },
+                ] as const).map(opt => {
+                  const sel = heroType === opt.value;
+                  return (
+                    <div key={opt.value} onClick={() => setHeroType(opt.value)}
+                      style={{ flex: '1 1 0', minWidth: 0, background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.12)'}`, borderRadius: '20px', padding: '20px 16px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
+                      onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.10)'; }}
+                      onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
+                    >
+                      <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'var(--violet-xpale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '10px' }}>{opt.sym}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '14px', color: 'var(--ink)', lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '12px', color: 'var(--slate)' }}>{opt.desc}</div>
                     </div>
-                  </div>
-                )}
+                  );
+                })}
+              </div>
 
-                {/* Politik */}
-                {heroType === 'politik' && (
-                  <div>
-                    {/* Region picker */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Region / Wahlkreis</div>
-                      {heroRegions.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', marginBottom: '6px' }}>
-                          {heroRegions.map(r => (
-                            <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: C.pl, border: `1px solid ${C.primary}`, color: C.pd, borderRadius: '100px', padding: '4px 8px 4px 12px', fontSize: '12px', fontWeight: 600 }}>
-                              {r.name}
-                              <button type="button" onClick={() => setHeroRegions(prev => prev.filter(x => x.name !== r.name))} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '14px', padding: '0 3px', lineHeight: 1 }}>×</button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {heroRegions.length > 0 && (
-                        <div style={{ fontSize: '12px', color: C.muted, marginBottom: '6px' }}>
-                          Total: <strong style={{ color: C.taupe }}>{heroTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
-                        </div>
-                      )}
-                      {heroRegions.length < 10 && (
-                        <div>
-                          <input type="text" value={heroQuery} placeholder="Kanton oder Gemeinde suchen..."
-                            onChange={e => { setHeroQuery(e.target.value); setHeroDropdownOpen(true); }}
-                            onFocus={() => setHeroDropdownOpen(true)}
-                            onBlur={() => setTimeout(() => setHeroDropdownOpen(false), 200)}
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
-                          />
-                          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 4px 12px rgba(44,44,62,.08)', maxHeight: '320px', overflowY: 'scroll', WebkitOverflowScrolling: 'touch' as unknown as undefined, marginTop: '4px', width: '100%', display: heroDropdownOpen ? 'block' : 'none' }}>
-                            {heroSearchResults.schweiz.length > 0 && (
-                              <div>
-                                <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
-                                {heroSearchResults.schweiz.map(r => (
-                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                                  >
-                                    <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {heroSearchResults.kantone.length > 0 && (
-                              <div>
-                                <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
-                                {heroSearchResults.kantone.map(r => (
-                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                                  >
-                                    <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {heroSearchResults.staedte.length > 0 && (
-                              <div>
-                                <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
-                                {heroSearchResults.staedte.map(r => (
-                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                                  >
-                                    <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+              {/* Accordion */}
+              <div style={{ maxHeight: heroType ? '1000px' : '0px', overflow: 'hidden', transition: 'max-height 300ms ease' }}>
+                <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '20px', marginTop: '10px', textAlign: 'left' }}>
 
-                    {/* Voting date */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Abstimmungs- oder Wahltag</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input type="date" min={heroTodayStr()} value={heroVotingDate}
-                          onChange={e => setHeroVotingDate(e.target.value)}
-                          style={{ padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
+                  {/* B2C / B2B */}
+                  {heroType !== 'politik' && heroType !== null && (
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>Deine Website-URL</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <input type="url" value={heroUrl} placeholder="https://deine-website.ch"
+                          onChange={e => setHeroUrl(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleHeroStart()}
+                          style={{ flex: 1, minWidth: 0, padding: '12px 16px', borderRadius: '100px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
                         />
-                        {heroVotingDate && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '100px', backgroundColor: '#F9EDEA', color: '#B3502A', fontSize: '12px', fontWeight: 600 }}>
-                            Noch {heroDaysUntil(heroVotingDate)} Tage
-                          </span>
+                        <button type="button" onClick={handleHeroStart}
+                          style={{ padding: '12px 24px', borderRadius: '100px', backgroundColor: C.primary, color: '#fff', border: 'none', fontFamily: 'var(--font-sans)', fontSize: '15px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(107,79,187,.30)', transition: 'transform .18s, background-color .18s', flexShrink: 0 }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
+                        >Kampagne starten →</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Politik */}
+                  {heroType === 'politik' && (
+                    <div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Region / Wahlkreis</div>
+                        {heroRegions.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', marginBottom: '6px' }}>
+                            {heroRegions.map(r => (
+                              <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: C.pl, border: `1px solid ${C.primary}`, color: C.pd, borderRadius: '100px', padding: '4px 8px 4px 12px', fontSize: '12px', fontWeight: 600 }}>
+                                {r.name}
+                                <button type="button" onClick={() => setHeroRegions(prev => prev.filter(x => x.name !== r.name))} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '14px', padding: '0 3px', lineHeight: 1 }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {heroRegions.length > 0 && (
+                          <div style={{ fontSize: '12px', color: C.muted, marginBottom: '6px' }}>
+                            Total: <strong style={{ color: C.taupe }}>{heroTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+                          </div>
+                        )}
+                        {heroRegions.length < 10 && (
+                          <div>
+                            <input type="text" value={heroQuery} placeholder="Kanton oder Gemeinde suchen..."
+                              onChange={e => { setHeroQuery(e.target.value); setHeroDropdownOpen(true); }}
+                              onFocus={() => setHeroDropdownOpen(true)}
+                              onBlur={() => setTimeout(() => setHeroDropdownOpen(false), 200)}
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
+                            />
+                            <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 4px 12px rgba(44,44,62,.08)', maxHeight: '220px', overflowY: 'scroll', WebkitOverflowScrolling: 'touch' as unknown as undefined, marginTop: '4px', width: '100%', display: heroDropdownOpen ? 'block' : 'none' }}>
+                              {heroSearchResults.schweiz.length > 0 && (
+                                <div>
+                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
+                                  {heroSearchResults.schweiz.map(r => (
+                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                                    ><span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span></div>
+                                  ))}
+                                </div>
+                              )}
+                              {heroSearchResults.kantone.length > 0 && (
+                                <div>
+                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
+                                  {heroSearchResults.kantone.map(r => (
+                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                                    ><span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span></div>
+                                  ))}
+                                </div>
+                              )}
+                              {heroSearchResults.staedte.length > 0 && (
+                                <div>
+                                  <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
+                                  {heroSearchResults.staedte.map(r => (
+                                    <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                                    ><span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span></div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Kampagnentyp */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Kampagnentyp</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        {([
-                          { value: 'ja'       as const, ico: '✅', name: 'JA-Kampagne' },
-                          { value: 'nein'     as const, ico: '❌', name: 'NEIN-Kampagne' },
-                          { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
-                          { value: 'event'    as const, ico: '📣', name: 'Event & Mobilisierung' },
-                        ]).map(opt => {
-                          const active = heroPolitikType === opt.value;
-                          return (
-                            <div key={opt.value} onClick={() => setHeroPolitikType(opt.value)}
-                              style={{ padding: '10px 12px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all .2s' }}
-                            >
-                              <span style={{ fontSize: '16px' }}>{opt.ico}</span>
-                              <span style={{ fontWeight: 600, fontSize: '13px', color: C.taupe }}>{opt.name}</span>
-                            </div>
-                          );
-                        })}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Abstimmungs- oder Wahltag</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input type="date" min={heroTodayStr()} value={heroVotingDate}
+                            onChange={e => setHeroVotingDate(e.target.value)}
+                            style={{ padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
+                          />
+                          {heroVotingDate && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '100px', backgroundColor: '#F9EDEA', color: '#B3502A', fontSize: '12px', fontWeight: 600 }}>
+                              Noch {heroDaysUntil(heroVotingDate)} Tage
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Kampagnentyp</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          {([
+                            { value: 'ja'       as const, ico: '✅', name: 'JA-Kampagne' },
+                            { value: 'nein'     as const, ico: '❌', name: 'NEIN-Kampagne' },
+                            { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
+                            { value: 'event'    as const, ico: '📣', name: 'Event & Mobilisierung' },
+                          ]).map(opt => {
+                            const active = heroPolitikType === opt.value;
+                            return (
+                              <div key={opt.value} onClick={() => setHeroPolitikType(opt.value)}
+                                style={{ padding: '10px 12px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all .2s' }}
+                              >
+                                <span style={{ fontSize: '16px' }}>{opt.ico}</span>
+                                <span style={{ fontWeight: 600, fontSize: '13px', color: C.taupe }}>{opt.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {heroAllFilled && (
+                        <button type="button" onClick={handleHeroPolitikSubmit}
+                          style={{ width: '100%', padding: '14px 24px', borderRadius: '100px', background: C.primary, color: '#fff', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', boxShadow: '0 4px 16px rgba(107,79,187,.30)', transition: 'all .18s' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+                        >Kampagne starten →</button>
+                      )}
                     </div>
+                  )}
 
-                    {/* Submit */}
-                    {heroAllFilled && (
-                      <button type="button" onClick={handleHeroPolitikSubmit}
-                        style={{ width: '100%', padding: '14px 24px', borderRadius: '100px', background: C.primary, color: '#fff', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', boxShadow: '0 4px 16px rgba(107,79,187,.30)', transition: 'all .18s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
-                      >
-                        Kampagne starten →
-                      </button>
-                    )}
-                  </div>
-                )}
-
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* ── hero-right: floating UI cards ──────────────────────────────── */}
+          <div style={{ position: 'relative', height: '540px', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
+
+            {/* Paint pool */}
+            <div style={{ position: 'absolute', width: '420px', height: '420px', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '55% 45% 60% 40% / 48% 56% 44% 52%', background: 'radial-gradient(ellipse at 30% 35%,rgba(184,169,232,.45) 0%,transparent 55%),radial-gradient(ellipse at 68% 65%,rgba(200,223,248,.4) 0%,transparent 55%),radial-gradient(ellipse at 55% 25%,rgba(242,196,206,.28) 0%,transparent 45%),radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.55) 0%,transparent 55%)', filter: 'blur(4px)', animation: 'morphPool 14s ease-in-out infinite alternate', pointerEvents: 'none' }} />
+
+            {/* Card 1 — card-main */}
+            <div style={{ position: 'absolute', width: '290px', top: '40px', left: '50%', transform: 'translateX(-46%)', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatA 7s ease-in-out infinite' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--violet-pale)', borderRadius: '100px', padding: '4px 12px', fontSize: '10px', color: 'var(--violet)', fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--violet)', animation: 'blink 2s ease-in-out infinite', flexShrink: 0, display: 'block' }} />
+                Kampagne · Live
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1, marginBottom: '4px', letterSpacing: '-.02em' }}>124&apos;800</div>
+              <div style={{ fontSize: '12px', color: 'var(--slate)', marginBottom: '16px' }}>Personen im Kanton Zürich</div>
+              <div style={{ height: '7px', background: 'var(--violet-pale)', borderRadius: '100px', overflow: 'hidden', marginBottom: '10px' }}>
+                <div style={{ height: '100%', width: '0%', background: 'linear-gradient(90deg,var(--violet),var(--lavender))', borderRadius: '100px', animation: 'growBar 2.2s cubic-bezier(.4,0,.2,1) .8s forwards' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                <span style={{ color: 'var(--slate)' }}>CHF 3&apos;200 · 14 Tage</span>
+                <span style={{ color: 'var(--violet)', fontWeight: 600 }}>72% Potenzial</span>
+              </div>
+            </div>
+
+            {/* Card 2 — card-stat */}
+            <div style={{ position: 'absolute', width: '200px', bottom: '90px', left: '4px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
+              <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--lavender)', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '8px' }}>Buchungsdauer</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '36px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1, letterSpacing: '-.02em', marginBottom: '4px' }}>1:54</div>
+              <div style={{ fontSize: '12px', color: 'var(--slate)', marginBottom: '14px' }}>Minuten bis die Kampagne steht</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#EDF7F5', border: '1px solid rgba(184,221,214,.6)', borderRadius: '100px', padding: '4px 10px', fontSize: '11px', color: '#3D8A80', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
+                Keine Agentur nötig
+              </div>
+            </div>
+
+            {/* Card 3 — card-reach */}
+            <div style={{ position: 'absolute', width: '208px', top: '200px', right: '8px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatC 7s ease-in-out infinite' }}>
+              <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--lavender)', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '12px' }}>Kanäle</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--violet-pale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--violet)', flexShrink: 0 }}>▦</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink)' }}>DOOH Screens</div>
+                    <div style={{ fontSize: '10px', color: 'var(--slate)' }}>70% · CHF 50 CPM</div>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--violet)', fontFamily: 'var(--font-display)', flexShrink: 0 }}>87&apos;360</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--sky-pale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#7B8FD4', flexShrink: 0 }}>◻</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink)' }}>Online Display</div>
+                    <div style={{ fontSize: '10px', color: 'var(--slate)' }}>30% · CHF 15 CPM</div>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--violet)', fontFamily: 'var(--font-display)', flexShrink: 0 }}>37&apos;440</div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

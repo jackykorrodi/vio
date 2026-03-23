@@ -14,7 +14,13 @@
 @keyframes blob4 { 0% { transform: translate(-50%,-50%) scale(1.00); } 100% { transform: translate(calc(-50% + 30px), calc(-50% - 60px)) scale(0.95); } }
 
 /* ── Reference watercolour system (homepage) ────────────────────────────── */
-@keyframes drift { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(24px,-16px) scale(1.04)} 66%{transform:translate(-16px,22px) scale(.97)} 100%{transform:translate(12px,-8px) scale(1.02)} }
+@keyframes drift    { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(24px,-16px) scale(1.04)} 66%{transform:translate(-16px,22px) scale(.97)} 100%{transform:translate(12px,-8px) scale(1.02)} }
+@keyframes floatA   { 0%,100%{transform:translateX(-46%) translateY(0)} 50%{transform:translateX(-46%) translateY(-12px)} }
+@keyframes floatB   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+@keyframes floatC   { 0%,100%{transform:translateY(-6px)} 50%{transform:translateY(6px)} }
+@keyframes morphPool{ 0%{border-radius:55% 45% 60% 40%/48% 56% 44% 52%} 50%{border-radius:42% 58% 44% 56%/58% 42% 56% 44%} 100%{border-radius:60% 40% 50% 50%/44% 58% 42% 56%} }
+@keyframes blink    { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+@keyframes growBar  { to{width:72%} }
 .wc-layer { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
 .wc-blob  { position:absolute; border-radius:50%; filter:blur(88px); animation:drift 22s ease-in-out infinite alternate; }
 .grain    { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.026;
