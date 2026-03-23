@@ -67,7 +67,7 @@ function buildStrokes(scaled: [number, number][]): Stroke[] {
     strokes.push({
       pts:   [[i0[0]+jit(), i0[1]+jit()], [i1[0]+jit(), i1[1]+jit()]],
       color: VIOLET_COLORS[Math.floor(Math.random() * VIOLET_COLORS.length)],
-      alpha: 0.04 + Math.random() * 0.055,
+      alpha: 0.10 + Math.random() * 0.1375,
       width: 6 + Math.random() * 16,
       scanT: t,
     });
@@ -191,7 +191,7 @@ export default function SwissAquarelle() {
         ref={canvasRef}
         width={800}
         height={460}
-        style={{ width: '100%', height: '100%', opacity: 0.5 }}
+        style={{ width: '100%', height: '100%', opacity: 1 }}
       />
     </div>
   );

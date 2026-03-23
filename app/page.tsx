@@ -213,8 +213,8 @@ export default function HomePage() {
             </h1>
 
             {/* Sub */}
-            <p style={{ fontSize: '17px', lineHeight: 1.7, color: C.slate, maxWidth: '430px', fontWeight: 300, marginBottom: '44px', fontFamily: 'var(--font-sans)' }}>
-              In unter 2 Minuten zur fertigen Kampagne – ohne Agentur, ohne Fachjargon. DOOH-Screens und Online-Display, alles in einer Buchung. Einfach, fair, Schweiz.
+            <p style={{ fontSize: '17px', lineHeight: 1.7, color: 'var(--slate)', maxWidth: '430px', fontWeight: 300, marginBottom: '44px', fontFamily: 'var(--font-sans)' }}>
+              In wenigen Schritten zur fertigen Kampagne – ohne Agentur, ohne Fachjargon. DOOH-Screens und Online-Display, alles in einer Buchung. Einfach, fair, Schweiz.
             </p>
 
             {/* Buttons */}
@@ -238,22 +238,27 @@ export default function HomePage() {
           {/* hero-right: B2C/B2B/Politik form */}
           <div style={{ position: 'relative', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
             {/* Type cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '0' }}>
-              {([
-                { value: 'b2c'    as const, ico: '👥', name: 'Privatkunden (B2C)', desc: 'Menschen & Haushalte' },
-                { value: 'b2b'    as const, ico: '🏢', name: 'Geschäftskunden (B2B)', desc: 'Firmen & Fachleute' },
-                { value: 'politik' as const, ico: '🗳️', name: 'Politische Kampagne', desc: 'Abstimmungen & Wahlen' },
-              ] as const).map(opt => (
-                <div key={opt.value} onClick={() => setHeroType(opt.value)}
-                  style={{ background: heroType === opt.value ? C.pl : C.white, border: `2px solid ${heroType === opt.value ? C.primary : C.border}`, borderRadius: '12px', padding: '16px 14px', cursor: 'pointer', transition: 'all .2s', textAlign: 'left' }}
-                  onMouseEnter={e => { if (heroType !== opt.value) (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; }}
-                  onMouseLeave={e => { if (heroType !== opt.value) (e.currentTarget as HTMLDivElement).style.borderColor = C.border; }}
-                >
-                  <div style={{ fontSize: '22px', marginBottom: '7px' }}>{opt.ico}</div>
-                  <div style={{ fontWeight: 700, fontSize: '13px', color: C.taupe, lineHeight: 1.3 }}>{opt.name}</div>
-                  <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{opt.desc}</div>
-                </div>
-              ))}
+            <div style={{ background: 'rgba(237,232,255,0.15)', borderRadius: '28px', padding: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                {([
+                  { value: 'b2c'     as const, sym: '◎', name: 'Privatkunden (B2C)',  desc: 'Menschen & Haushalte' },
+                  { value: 'b2b'     as const, sym: '◈', name: 'Geschäftskunden (B2B)', desc: 'Firmen & Fachleute' },
+                  { value: 'politik' as const, sym: '◉', name: 'Politische Kampagne', desc: 'Abstimmungen & Wahlen' },
+                ] as const).map(opt => {
+                  const sel = heroType === opt.value;
+                  return (
+                    <div key={opt.value} onClick={() => setHeroType(opt.value)}
+                      style={{ background: sel ? C.primaryXpale : C.white, border: `${sel ? 2 : 1.5}px solid ${sel ? C.primary : 'rgba(107,79,187,0.09)'}`, borderRadius: '22px', padding: '28px 24px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
+                      onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.10)'; }}
+                      onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
+                    >
+                      <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: C.primaryXpale, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginBottom: '14px' }}>{opt.sym}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '16px', color: C.ink, lineHeight: 1.3, marginBottom: '4px' }}>{opt.name}</div>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 300, fontSize: '13px', color: C.slate }}>{opt.desc}</div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Accordion */}
