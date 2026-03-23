@@ -13,6 +13,14 @@
 @keyframes blob3 { 0% { transform: translate(-50%,-50%) scale(1.00); } 100% { transform: translate(calc(-50% - 55px), calc(-50% - 35px)) scale(1.05); } }
 @keyframes blob4 { 0% { transform: translate(-50%,-50%) scale(1.00); } 100% { transform: translate(calc(-50% + 30px), calc(-50% - 60px)) scale(0.95); } }
 
+/* ── Reference watercolour system (homepage) ────────────────────────────── */
+@keyframes drift { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(24px,-16px) scale(1.04)} 66%{transform:translate(-16px,22px) scale(.97)} 100%{transform:translate(12px,-8px) scale(1.02)} }
+.wc-layer { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.wc-blob  { position:absolute; border-radius:50%; filter:blur(88px); animation:drift 22s ease-in-out infinite alternate; }
+.grain    { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.026;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:256px; }
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

@@ -6,25 +6,24 @@ import { Region, ALL_REGIONS } from '@/lib/regions';
 import SwissAquarelle from '@/components/SwissAquarelle';
 
 const C = {
-  primary:     '#6B4FBB',
-  primaryLight:'#8B6FD4',
-  primaryPale: '#EDE8FF',
-  primaryXpale:'#F5F2FF',
-  gold:        '#D4A843',
-  ink:         '#1A1430',
-  slate:       '#7A7596',
-  muted:       '#7A7596',
-  border:      '#EDE8FF',
-  bg:          '#FDFCFF',
-  white:       '#FFFFFF',
-  // legacy aliases kept for existing sections
-  pd:          '#8B6FD4',
-  pl:          '#EDE8FF',
-  taupe:       '#1A1430',
+  primary:      '#6B4FBB',
+  primaryLight: '#8B6FD4',
+  primaryPale:  '#EDE8FF',
+  primaryXpale: '#F5F2FF',
+  gold:         '#D4A843',
+  ink:          '#1A1430',
+  slate:        '#7A7596',
+  muted:        '#7A7596',
+  border:       '#EDE8FF',
+  bg:           '#FDFCFF',
+  white:        '#FFFFFF',
+  // legacy aliases
+  pd:    '#8B6FD4',
+  pl:    '#EDE8FF',
+  taupe: '#1A1430',
 } as const;
 
-// ── Scroll reveal wrapper ────────────────────────────────────────────────────
-
+// ── Scroll-reveal wrapper ─────────────────────────────────────────────────────
 function Reveal({ children, style, delay = 0 }: {
   children: React.ReactNode;
   style?: React.CSSProperties;
@@ -32,7 +31,6 @@ function Reveal({ children, style, delay = 0 }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -43,144 +41,59 @@ function Reveal({ children, style, delay = 0 }: {
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
-
   return (
-    <div
-      ref={ref}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'none' : 'translateY(28px)',
-        transition: `opacity .65s ease ${delay}ms, transform .65s ease ${delay}ms`,
-        ...style,
-      }}
-    >
+    <div ref={ref} style={{
+      opacity:    visible ? 1 : 0,
+      transform:  visible ? 'none' : 'translateY(28px)',
+      transition: `opacity .65s ease ${delay}ms, transform .65s ease ${delay}ms`,
+      ...style,
+    }}>
       {children}
     </div>
   );
 }
 
-// ── URL input used in hero + CTA ─────────────────────────────────────────────
-
-function UrlInput({
-  placeholder,
-  buttonLabel,
-  dark = false,
-  onSubmit,
-}: {
-  placeholder: string;
-  buttonLabel: string;
-  dark?: boolean;
-  onSubmit: (url: string) => void;
-}) {
-  const [val, setVal] = useState('');
-  const submit = () => onSubmit(val);
-
-  return (
-    <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '520px' }}>
-      <input
-        type="url"
-        value={val}
-        placeholder={placeholder}
-        onChange={e => setVal(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && submit()}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          padding: '14px 20px',
-          borderRadius: '100px',
-          border: dark ? '1.5px solid rgba(255,255,255,.25)' : `1.5px solid ${C.border}`,
-          fontSize: '15px',
-          fontFamily: 'var(--font-sans)',
-          color: dark ? '#fff' : C.taupe,
-          backgroundColor: dark ? 'rgba(255,255,255,.12)' : C.white,
-          outline: 'none',
-        }}
-      />
-      <button
-        type="button"
-        onClick={submit}
-        style={{
-          padding: '14px 26px',
-          borderRadius: '100px',
-          backgroundColor: dark ? C.white : C.primary,
-          color: dark ? C.pd : '#fff',
-          border: 'none',
-          fontFamily: 'var(--font-sans)',
-          fontSize: '15px',
-          fontWeight: 700,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          boxShadow: dark ? '0 4px 16px rgba(0,0,0,.15)' : '0 4px 16px rgba(107,79,187,0.30)',
-          transition: 'transform .18s, box-shadow .18s',
-          flexShrink: 0,
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = dark
-            ? '0 8px 24px rgba(0,0,0,.2)'
-            : '0 8px 24px rgba(107,79,187,0.40)';
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = 'none';
-          e.currentTarget.style.boxShadow = dark
-            ? '0 4px 16px rgba(0,0,0,.15)'
-            : '0 4px 16px rgba(107,79,187,0.30)';
-        }}
-      >
-        {buttonLabel}
-      </button>
-    </div>
-  );
-}
-
-
-// ── Main page ────────────────────────────────────────────────────────────────
-
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const router = useRouter();
   const [heroVisible, setHeroVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setHeroVisible(true), 80); return () => clearTimeout(t); }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => setHeroVisible(true), 80);
-    return () => clearTimeout(t);
-  }, []);
+  // Hero campaign-type selector state
+  const [heroType, setHeroType]   = useState<'b2c' | 'b2b' | 'politik' | null>(null);
+  const [heroUrl,  setHeroUrl]    = useState('');
 
-  // Hero campaign selector state
-  const [heroType, setHeroType] = useState<'b2c' | 'b2b' | 'politik' | null>(null);
-  const [heroUrl, setHeroUrl] = useState('');
-
-  // Hero politik state
-  const [heroRegions, setHeroRegions] = useState<Region[]>([]);
-  const [heroQuery, setHeroQuery] = useState('');
-  const [heroDropdownOpen, setHeroDropdownOpen] = useState(false);
-  const [heroVotingDate, setHeroVotingDate] = useState('');
-  const [heroPolitikType, setHeroPolitikType] = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(null);
+  // Politik sub-form state
+  const [heroRegions,      setHeroRegions]      = useState<Region[]>([]);
+  const [heroQuery,        setHeroQuery]         = useState('');
+  const [heroDropdownOpen, setHeroDropdownOpen]  = useState(false);
+  const [heroVotingDate,   setHeroVotingDate]    = useState('');
+  const [heroPolitikType,  setHeroPolitikType]   = useState<'ja' | 'nein' | 'kandidat' | 'event' | null>(null);
 
   const heroSearchResults = useMemo(() => {
-    const q = heroQuery.trim().toLowerCase();
+    const q    = heroQuery.trim().toLowerCase();
     const pool = ALL_REGIONS
       .filter(r => !q || r.name.toLowerCase().includes(q))
       .filter(r => !heroRegions.some(s => s.name === r.name));
-    const schweiz = pool.filter(r => r.type === 'schweiz');
-    const kantone = pool.filter(r => r.type === 'kanton');
-    const staedte = pool.filter(r => r.type === 'stadt').sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return { schweiz, kantone, staedte };
+    return {
+      schweiz: pool.filter(r => r.type === 'schweiz'),
+      kantone: pool.filter(r => r.type === 'kanton'),
+      staedte: pool.filter(r => r.type === 'stadt').sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    };
   }, [heroQuery, heroRegions]);
 
   const heroTotalStimm = heroRegions.reduce((sum, r) => sum + r.stimm, 0);
-  const heroAllFilled = heroRegions.length >= 1 && !!heroVotingDate && !!heroPolitikType;
+  const heroAllFilled  = heroRegions.length >= 1 && !!heroVotingDate && !!heroPolitikType;
 
   const heroDaysUntil = (dateStr: string) => {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today  = new Date(); today.setHours(0, 0, 0, 0);
     const target = new Date(dateStr + 'T00:00:00');
     return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
   };
-
   const heroTodayStr = () => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   };
-
   const addHeroRegion = (r: Region) => {
     if (heroRegions.length >= 10) return;
     setHeroRegions(prev => [...prev, r]);
@@ -197,27 +110,27 @@ export default function HomePage() {
       { rate: 0.35, freq: 7, weeks: 4 },
     ].filter(t => t.weeks === 1 || t.weeks * 7 <= days);
     const recommended = tiers[Math.min(1, tiers.length - 1)];
-    const total = heroTotalStimm;
-    const raw = (Math.round(total * recommended.rate) * recommended.freq / 1000) * 40;
+    const total  = heroTotalStimm;
+    const raw    = (Math.round(total * recommended.rate) * recommended.freq / 1000) * 40;
     const budget = Math.max(2500, Math.round(raw / 500) * 500);
     const laufzeit = recommended.weeks;
-    const startD = new Date(heroVotingDate + 'T12:00:00');
+    const startD   = new Date(heroVotingDate + 'T12:00:00');
     startD.setDate(startD.getDate() - laufzeit * 7);
-    const today = new Date();
+    const today       = new Date();
     const actualStart = startD < today ? today : startD;
     const prefill = {
-      campaignType: 'politik',
-      politikType: heroPolitikType,
-      votingDate: heroVotingDate,
-      daysUntil: days,
-      selectedRegions: heroRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
-      totalStimmber: total,
-      stimmberechtigte: total,
-      politikRegion: heroRegions[0]?.name ?? '',
-      politikRegionType: heroRegions[0]?.type ?? 'kanton',
-      recommendedBudget: budget,
+      campaignType:        'politik',
+      politikType:         heroPolitikType,
+      votingDate:          heroVotingDate,
+      daysUntil:           days,
+      selectedRegions:     heroRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
+      totalStimmber:       total,
+      stimmberechtigte:    total,
+      politikRegion:       heroRegions[0]?.name ?? '',
+      politikRegionType:   heroRegions[0]?.type ?? 'kanton',
+      recommendedBudget:   budget,
       recommendedLaufzeit: laufzeit,
-      startDate: actualStart.toISOString().split('T')[0],
+      startDate:           actualStart.toISOString().split('T')[0],
     };
     sessionStorage.setItem('vio_politik_prefill', JSON.stringify(prefill));
     router.push('/campaign?type=politik');
@@ -226,194 +139,113 @@ export default function HomePage() {
   const handleHeroStart = () => {
     if (!heroType || heroType === 'politik') return;
     const cleanUrl = heroUrl.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
-    const params = new URLSearchParams({ type: heroType });
+    const params   = new URLSearchParams({ type: heroType });
     if (cleanUrl) params.set('url', cleanUrl);
     router.push('/campaign?' + params.toString());
   };
 
-  const handleStart = (url: string) => {
-    let clean = url.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
-    if (clean) {
-      router.push(`/campaign?url=${encodeURIComponent(clean)}`);
-    } else {
-      router.push('/campaign');
-    }
-  };
-
   return (
-    <main style={{ backgroundColor: C.bg, overflowX: 'hidden' }}>
+    <main style={{ backgroundColor: 'var(--off-white)', overflowX: 'hidden' }}>
 
-      {/* ── Watercolor background blobs ───────────────────────────────────── */}
-      {[
-        { color: 'rgba(184,169,232,0.22)', size: 600, x: '15%',  y: '18%',  dur: 26, k: 'blob0' },
-        { color: 'rgba(200,223,248,0.20)', size: 520, x: '72%',  y: '12%',  dur: 31, k: 'blob1' },
-        { color: 'rgba(245,220,230,0.15)', size: 420, x: '88%',  y: '58%',  dur: 22, k: 'blob2' },
-        { color: 'rgba(212,168,67,0.10)',  size: 360, x: '8%',   y: '72%',  dur: 28, k: 'blob3' },
-        { color: 'rgba(184,169,232,0.18)', size: 460, x: '48%',  y: '88%',  dur: 24, k: 'blob4' },
-      ].map((b, i) => (
-        <div key={i} style={{
-          position: 'fixed',
-          width: `${b.size}px`, height: `${b.size}px`,
-          left: b.x, top: b.y,
-          transform: 'translate(-50%,-50%)',
-          background: `radial-gradient(circle, ${b.color}, transparent 70%)`,
-          filter: 'blur(88px)',
-          animation: `${b.k} ${b.dur}s ease-in-out alternate infinite`,
-          zIndex: 0, pointerEvents: 'none',
-        }} />
-      ))}
+      {/* ── Watercolor background ────────────────────────────────────────── */}
+      <div className="wc-layer">
+        <div className="wc-blob" style={{ width: 700, height: 700, background: 'radial-gradient(circle,rgba(184,169,232,.28),rgba(184,169,232,.05) 65%,transparent)', top: -200, left: -130, animationDuration: '27s' }} />
+        <div className="wc-blob" style={{ width: 480, height: 480, background: 'radial-gradient(circle,rgba(200,223,248,.3),rgba(200,223,248,.05) 65%,transparent)', top: 280, right: -110, animationDuration: '20s', animationDelay: '-9s' }} />
+        <div className="wc-blob" style={{ width: 380, height: 380, background: 'radial-gradient(circle,rgba(242,196,206,.22),transparent 65%)', bottom: 180, left: '12%', animationDuration: '25s', animationDelay: '-6s' }} />
+        <div className="wc-blob" style={{ width: 300, height: 300, background: 'radial-gradient(circle,rgba(212,168,67,.16),transparent 65%)', bottom: 0, right: '22%', animationDuration: '31s', animationDelay: '-14s' }} />
+      </div>
+      <div className="grain" />
 
-      {/* ── NAV ─────────────────────────────────────────────────────────── */}
+      {/* ── NAV ──────────────────────────────────────────────────────────── */}
       <nav style={{
-        position: 'sticky', top: 0, zIndex: 100,
-        backgroundColor: 'rgba(253,252,255,.9)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        borderBottom: `1px solid ${C.border}`,
-        height: '64px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 clamp(20px, 5vw, 56px)',
+        padding: '22px clamp(20px,5vw,64px)',
+        position: 'sticky', top: 0, zIndex: 100,
+        backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)',
+        backgroundColor: 'rgba(253,252,255,.8)',
+        borderBottom: '1px solid rgba(107,79,187,.08)',
       }}>
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '26px', fontWeight: 800, color: C.primary, letterSpacing: '-.02em',
-        }}>
-          VIO
-        </span>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-          {(['#how', '#whom', '#warum'] as const).map((href, i) => (
-            <a
-              key={href}
-              href={href}
-              style={{ fontSize: '14px', color: C.slate, textDecoration: 'none', fontFamily: 'var(--font-sans)', fontWeight: 400 }}
-              onMouseEnter={e => { e.currentTarget.style.color = C.primary; }}
-              onMouseLeave={e => { e.currentTarget.style.color = C.slate; }}
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: C.primary, letterSpacing: '.02em' }}>VIO</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '38px' }}>
+          {(['#how', '#whom', '#preise'] as const).map((href, i) => (
+            <a key={href} href={href} style={{ textDecoration: 'none', color: C.slate, fontSize: '14px', fontWeight: 400, letterSpacing: '.02em', transition: 'color .2s', fontFamily: 'var(--font-sans)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = C.primary; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = C.slate; }}
             >
-              {['Wie es funktioniert', 'Für wen', 'Warum VIO'][i]}
+              {['Wie es funktioniert', 'Für wen', 'Preise'][i]}
             </a>
           ))}
-          <button
-            type="button"
-            onClick={() => router.push('/campaign')}
-            style={{
-              padding: '11px 26px',
-              borderRadius: '100px',
-              backgroundColor: C.primary,
-              color: '#fff',
-              border: 'none',
-              fontFamily: 'var(--font-display)',
-              fontSize: '13px', fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 6px 24px rgba(107,79,187,0.30)',
-              transition: 'background-color .18s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.primaryLight; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; }}
+          <button type="button" onClick={() => router.push('/campaign')} style={{ background: C.primary, color: '#fff', padding: '11px 26px', borderRadius: '100px', fontSize: '13px', fontWeight: 600, letterSpacing: '.02em', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', boxShadow: '0 4px 16px rgba(107,79,187,.22)', transition: 'all .25s' }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.primaryLight; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(107,79,187,.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(107,79,187,.22)'; }}
           >
-            Kampagne starten →
+            Kampagne starten
           </button>
         </div>
       </nav>
 
-      {/* ── HERO ────────────────────────────────────────────────────────── */}
-      <section style={{
-        position: 'relative',
-        minHeight: '88vh',
-        backgroundColor: 'var(--off-white)',
-        display: 'flex', alignItems: 'center',
-        padding: '90px clamp(20px, 5vw, 64px) 80px',
-        zIndex: 1,
-      }}>
-        <SwissAquarelle />
-
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <section style={{ position: 'relative', backgroundColor: 'var(--off-white)' }}>
         <div id="hero-grid" style={{
-          position: 'relative', zIndex: 2,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)',
-          gap: 'clamp(32px, 5vw, 72px)',
-          maxWidth: '1120px', width: '100%', margin: '0 auto',
-          alignItems: 'center',
-          opacity: heroVisible ? 1 : 0,
-          transform: heroVisible ? 'none' : 'translateY(20px)',
-          transition: 'opacity .7s ease, transform .7s ease',
+          display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'center',
+          gap: '60px', padding: '80px clamp(20px,5vw,64px) 72px',
+          maxWidth: '1380px', margin: '0 auto', minHeight: '90vh', position: 'relative',
         }}>
+          <SwissAquarelle />
 
-          {/* ── LEFT: Text ─────────────────────────────────────────────── */}
-          <div>
+          {/* hero-left */}
+          <div style={{
+            maxWidth: '560px', position: 'relative', zIndex: 2,
+            opacity: heroVisible ? 1 : 0,
+            transform: heroVisible ? 'none' : 'translateY(20px)',
+            transition: 'opacity .7s ease, transform .7s ease',
+          }}>
             {/* Eyebrow */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              backgroundColor: C.primaryXpale,
-              border: `1px solid rgba(107,79,187,.15)`,
-              borderRadius: '100px',
-              padding: '6px 18px',
-              marginBottom: '28px',
-            }}>
-              <span style={{
-                width: '6px', height: '6px', borderRadius: '50%',
-                backgroundColor: C.gold, flexShrink: 0, display: 'inline-block',
-              }} />
-              <span style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: '11px', fontWeight: 700,
-                color: C.primary, letterSpacing: '.08em', textTransform: 'uppercase',
-              }}>
-                Nur Schweizer Medien
-              </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: C.primaryXpale, border: '1px solid rgba(107,79,187,.15)', borderRadius: '100px', padding: '7px 18px', fontSize: '11px', color: C.primary, letterSpacing: '.1em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '28px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: C.gold, flexShrink: 0, display: 'inline-block' }} />
+              Schweizer Werbeplattform
             </div>
 
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(38px, 5.5vw, 68px)',
-              fontWeight: 800,
-              letterSpacing: '-.03em',
-              lineHeight: 1.07,
-              color: C.ink,
-              marginBottom: '20px',
-            }}>
-              VIO –<br />Sichtbarkeit<br />für alle.
+            {/* H1 */}
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px,5vw,78px)', fontWeight: 800, lineHeight: 1.06, color: C.ink, letterSpacing: '-.02em', marginBottom: '26px' }}>
+              Deine Botschaft.<br />
+              <em style={{ fontStyle: 'italic', fontWeight: 300, color: C.primary, letterSpacing: 0 }}>Überall.</em>
             </h1>
 
-            <p style={{
-              fontSize: 'clamp(15px, 1.8vw, 18px)',
-              color: C.muted,
-              lineHeight: 1.7,
-              maxWidth: '420px',
-              marginBottom: '36px',
-            }}>
-              In weniger als 2 Minuten zur fertigen Kampagne — einfach, fair, persönlich.
+            {/* Sub */}
+            <p style={{ fontSize: '17px', lineHeight: 1.7, color: C.slate, maxWidth: '430px', fontWeight: 300, marginBottom: '44px', fontFamily: 'var(--font-sans)' }}>
+              In unter 2 Minuten zur fertigen Kampagne – ohne Agentur, ohne Fachjargon. DOOH-Screens und Online-Display, alles in einer Buchung. Einfach, fair, Schweiz.
             </p>
 
-            {/* Trust micro-badges */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 20px' }}>
-              {['🔒 Keine Kreditkarte', '⚡ Bereit in 2 Min.', '✓ Kein Fachjargon'].map(t => (
-                <span key={t} style={{ fontSize: '13px', color: C.muted, fontWeight: 400 }}>{t}</span>
-              ))}
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
+              <button type="button" onClick={() => router.push('/campaign')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: C.primary, color: '#fff', padding: '16px 34px', borderRadius: '100px', border: 'none', fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700, letterSpacing: '.01em', cursor: 'pointer', transition: 'all .28s', boxShadow: '0 6px 24px rgba(107,79,187,.3)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.primaryLight; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 14px 36px rgba(107,79,187,.38)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(107,79,187,.3)'; }}
+              >
+                Jetzt starten →
+              </button>
+              <a href="#how" style={{ color: C.primary, textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px', transition: 'gap .22s', fontFamily: 'var(--font-sans)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.gap = '10px'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.gap = '6px'; }}
+              >
+                Wie es funktioniert ↓
+              </a>
             </div>
           </div>
 
-          {/* ── RIGHT: Campaign type selector + accordion ──────────────── */}
-          <div style={{ opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
+          {/* hero-right: B2C/B2B/Politik form */}
+          <div style={{ position: 'relative', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
             {/* Type cards */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '0' }}>
               {([
-                { value: 'b2c' as const, ico: '👥', name: 'Privatkunden (B2C)', desc: 'Menschen & Haushalte' },
-                { value: 'b2b' as const, ico: '🏢', name: 'Geschäftskunden (B2B)', desc: 'Firmen & Fachleute' },
+                { value: 'b2c'    as const, ico: '👥', name: 'Privatkunden (B2C)', desc: 'Menschen & Haushalte' },
+                { value: 'b2b'    as const, ico: '🏢', name: 'Geschäftskunden (B2B)', desc: 'Firmen & Fachleute' },
                 { value: 'politik' as const, ico: '🗳️', name: 'Politische Kampagne', desc: 'Abstimmungen & Wahlen' },
               ] as const).map(opt => (
-                <div
-                  key={opt.value}
-                  onClick={() => setHeroType(opt.value)}
-                  style={{
-                    background: heroType === opt.value ? C.pl : C.white,
-                    border: `2px solid ${heroType === opt.value ? C.primary : C.border}`,
-                    borderRadius: '12px',
-                    padding: '16px 14px',
-                    cursor: 'pointer',
-                    transition: 'all .2s',
-                    textAlign: 'left',
-                  }}
+                <div key={opt.value} onClick={() => setHeroType(opt.value)}
+                  style={{ background: heroType === opt.value ? C.pl : C.white, border: `2px solid ${heroType === opt.value ? C.primary : C.border}`, borderRadius: '12px', padding: '16px 14px', cursor: 'pointer', transition: 'all .2s', textAlign: 'left' }}
                   onMouseEnter={e => { if (heroType !== opt.value) (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; }}
                   onMouseLeave={e => { if (heroType !== opt.value) (e.currentTarget as HTMLDivElement).style.borderColor = C.border; }}
                 >
@@ -425,73 +257,29 @@ export default function HomePage() {
             </div>
 
             {/* Accordion */}
-            <div style={{
-              maxHeight: heroType ? '1000px' : '0px',
-              overflow: 'hidden',
-              transition: 'max-height 300ms ease',
-            }}>
-              <div style={{
-                background: C.white,
-                border: `1px solid ${C.border}`,
-                borderRadius: '12px',
-                padding: '20px',
-                marginTop: '10px',
-                textAlign: 'left',
-              }}>
+            <div style={{ maxHeight: heroType ? '1000px' : '0px', overflow: 'hidden', transition: 'max-height 300ms ease' }}>
+              <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '20px', marginTop: '10px', textAlign: 'left' }}>
 
-                {/* B2C / B2B: URL input */}
+                {/* B2C / B2B */}
                 {heroType !== 'politik' && heroType !== null && (
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>
-                      Deine Website-URL
-                    </div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '10px' }}>Deine Website-URL</div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <input
-                        type="url"
-                        value={heroUrl}
-                        placeholder="https://deine-website.ch"
+                      <input type="url" value={heroUrl} placeholder="https://deine-website.ch"
                         onChange={e => setHeroUrl(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleHeroStart()}
-                        style={{
-                          flex: 1, minWidth: 0,
-                          padding: '12px 16px',
-                          borderRadius: '100px',
-                          border: `1.5px solid ${C.border}`,
-                          fontSize: '15px',
-                          fontFamily: 'var(--font-sans)',
-                          color: C.taupe,
-                          backgroundColor: C.bg,
-                          outline: 'none',
-                        }}
+                        style={{ flex: 1, minWidth: 0, padding: '12px 16px', borderRadius: '100px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
                       />
-                      <button
-                        type="button"
-                        onClick={handleHeroStart}
-                        style={{
-                          padding: '12px 24px',
-                          borderRadius: '100px',
-                          backgroundColor: C.primary,
-                          color: '#fff',
-                          border: 'none',
-                          fontFamily: 'var(--font-sans)',
-                          fontSize: '15px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          boxShadow: '0 4px 16px rgba(107,79,187,0.30)',
-                          transition: 'transform .18s, background-color .18s',
-                          flexShrink: 0,
-                        }}
+                      <button type="button" onClick={handleHeroStart}
+                        style={{ padding: '12px 24px', borderRadius: '100px', backgroundColor: C.primary, color: '#fff', border: 'none', fontFamily: 'var(--font-sans)', fontSize: '15px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(107,79,187,.30)', transition: 'transform .18s, background-color .18s', flexShrink: 0 }}
                         onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
-                      >
-                        Kampagne starten →
-                      </button>
+                      >Kampagne starten →</button>
                     </div>
                   </div>
                 )}
 
-                {/* Politik: inline form */}
+                {/* Politik */}
                 {heroType === 'politik' && (
                   <div>
                     {/* Region picker */}
@@ -514,21 +302,21 @@ export default function HomePage() {
                       )}
                       {heroRegions.length < 10 && (
                         <div>
-                          <input
-                            type="text"
-                            value={heroQuery}
-                            placeholder="Kanton oder Gemeinde suchen..."
+                          <input type="text" value={heroQuery} placeholder="Kanton oder Gemeinde suchen..."
                             onChange={e => { setHeroQuery(e.target.value); setHeroDropdownOpen(true); }}
                             onFocus={() => setHeroDropdownOpen(true)}
                             onBlur={() => setTimeout(() => setHeroDropdownOpen(false), 200)}
                             style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.bg, outline: 'none' }}
                           />
-                          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 4px 12px rgba(44,44,62,.08)', maxHeight: '320px', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', marginTop: '4px', width: '100%', display: heroDropdownOpen ? 'block' : 'none' }}>
+                          <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: '10px', boxShadow: '0 4px 12px rgba(44,44,62,.08)', maxHeight: '320px', overflowY: 'scroll', WebkitOverflowScrolling: 'touch' as unknown as undefined, marginTop: '4px', width: '100%', display: heroDropdownOpen ? 'block' : 'none' }}>
                             {heroSearchResults.schweiz.length > 0 && (
                               <div>
                                 <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
                                 {heroSearchResults.schweiz.map(r => (
-                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                                  >
                                     <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
                                   </div>
                                 ))}
@@ -538,7 +326,10 @@ export default function HomePage() {
                               <div>
                                 <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
                                 {heroSearchResults.kantone.map(r => (
-                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                                  >
                                     <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
                                   </div>
                                 ))}
@@ -548,7 +339,10 @@ export default function HomePage() {
                               <div>
                                 <div style={{ padding: '6px 12px 2px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
                                 {heroSearchResults.staedte.map(r => (
-                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }} onMouseEnter={e => { e.currentTarget.style.background = C.bg; }} onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+                                  <div key={r.name} onMouseDown={() => addHeroRegion(r)} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: C.taupe }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.bg; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                                  >
                                     <span>{r.name}</span><span style={{ fontSize: '11px', color: C.muted }}>{r.stimm.toLocaleString('de-CH')}</span>
                                   </div>
                                 ))}
@@ -563,10 +357,7 @@ export default function HomePage() {
                     <div style={{ marginBottom: '16px' }}>
                       <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Abstimmungs- oder Wahltag</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input
-                          type="date"
-                          min={heroTodayStr()}
-                          value={heroVotingDate}
+                        <input type="date" min={heroTodayStr()} value={heroVotingDate}
                           onChange={e => setHeroVotingDate(e.target.value)}
                           style={{ padding: '10px 14px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '14px', fontFamily: 'var(--font-sans)', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
                         />
@@ -583,14 +374,16 @@ export default function HomePage() {
                       <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase', marginBottom: '8px' }}>Kampagnentyp</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         {([
-                          { value: 'ja' as const, ico: '✅', name: 'JA-Kampagne' },
-                          { value: 'nein' as const, ico: '❌', name: 'NEIN-Kampagne' },
+                          { value: 'ja'       as const, ico: '✅', name: 'JA-Kampagne' },
+                          { value: 'nein'     as const, ico: '❌', name: 'NEIN-Kampagne' },
                           { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
-                          { value: 'event' as const, ico: '📣', name: 'Event & Mobilisierung' },
+                          { value: 'event'    as const, ico: '📣', name: 'Event & Mobilisierung' },
                         ]).map(opt => {
                           const active = heroPolitikType === opt.value;
                           return (
-                            <div key={opt.value} onClick={() => setHeroPolitikType(opt.value)} style={{ padding: '10px 12px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all .2s' }}>
+                            <div key={opt.value} onClick={() => setHeroPolitikType(opt.value)}
+                              style={{ padding: '10px 12px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all .2s' }}
+                            >
                               <span style={{ fontSize: '16px' }}>{opt.ico}</span>
                               <span style={{ fontWeight: 600, fontSize: '13px', color: C.taupe }}>{opt.name}</span>
                             </div>
@@ -601,10 +394,8 @@ export default function HomePage() {
 
                     {/* Submit */}
                     {heroAllFilled && (
-                      <button
-                        type="button"
-                        onClick={handleHeroPolitikSubmit}
-                        style={{ width: '100%', padding: '14px 24px', borderRadius: '100px', background: C.primary, color: '#fff', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', boxShadow: '0 4px 16px rgba(107,79,187,0.30)', transition: 'all .18s' }}
+                      <button type="button" onClick={handleHeroPolitikSubmit}
+                        style={{ width: '100%', padding: '14px 24px', borderRadius: '100px', background: C.primary, color: '#fff', border: 'none', fontSize: '15px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-sans)', boxShadow: '0 4px 16px rgba(107,79,187,.30)', transition: 'all .18s' }}
                         onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
                       >
@@ -617,530 +408,166 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-        </div>{/* end grid */}
+        </div>
       </section>
 
       {/* ── TRUST STRIP ──────────────────────────────────────────────────── */}
-      <div style={{
-        position: 'relative', zIndex: 1,
-        borderTop: '1px solid rgba(107,79,187,0.08)',
-        borderBottom: '1px solid rgba(107,79,187,0.08)',
-        backgroundColor: 'rgba(237,232,255,0.18)',
-        padding: '14px clamp(20px, 5vw, 56px)',
-      }}>
-        <div style={{
-          maxWidth: '1120px', margin: '0 auto',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 'clamp(16px, 4vw, 44px)', flexWrap: 'wrap',
-        }}>
-          {[
-            { label: '500+ KMU', sub: 'Schweizer Unternehmen' },
-            { label: 'Politik', sub: 'Parteien & Gemeinden' },
-            { label: 'Vereine', sub: 'NGOs & Non-Profits' },
-            { label: 'DOOH-Netzwerk', sub: 'Ganze Schweiz' },
-            { label: 'Ab CHF 2\'500', sub: 'Kein Mindestvertrag' },
-          ].map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {i > 0 && <span style={{ color: 'rgba(107,79,187,0.18)', fontSize: '18px', fontWeight: 300 }}>|</span>}
-              <div>
-                <span style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '13px', fontWeight: 700,
-                  color: C.ink,
-                }}>
-                  {item.label}
-                </span>
-                <span style={{ fontSize: '12px', color: C.muted, marginLeft: '5px' }}>
-                  {item.sub}
-                </span>
-              </div>
+      <div style={{ borderTop: '1px solid rgba(107,79,187,.08)', borderBottom: '1px solid rgba(107,79,187,.08)', background: 'rgba(237,232,255,.18)', padding: '20px clamp(20px,5vw,64px)', display: 'flex', alignItems: 'center', gap: '52px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.12em', color: '#B8A9E8', fontFamily: 'var(--font-display)', fontWeight: 700, whiteSpace: 'nowrap' }}>Vertrauen bei</span>
+        <div style={{ display: 'flex', gap: '36px', flexWrap: 'wrap' }}>
+          {['KMUs in der ganzen Schweiz', 'Politische Kampagnen', 'Vereine & NGOs', 'Schweizer DOOH-Netzwerk', "Ab CHF 2'500"].map(item => (
+            <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#3D3557', whiteSpace: 'nowrap' }}>
+              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'linear-gradient(135deg,#8B6FD4,#B8A9E8)', flexShrink: 0 }} />
+              {item}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── HOW IT WORKS ────────────────────────────────────────────────── */}
-      <section id="how" style={{ position: 'relative', zIndex: 1, padding: '100px clamp(20px, 5vw, 56px)' }}>
-        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
-          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
-              color: C.primary, textTransform: 'uppercase', marginBottom: '14px',
-            }}>
-              So einfach geht&apos;s
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 4vw, 46px)',
-              fontWeight: 800, letterSpacing: '-.025em', color: C.ink,
-            }}>
-              Drei Schritte zur Kampagne
-            </h2>
-          </Reveal>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {[
-              {
-                n: '01', ico: '🌐', pastel: 'rgba(107,79,187,0.08)',
-                title: 'URL eingeben',
-                desc: 'Gib deine Website-Adresse ein. Wir schauen uns an, was du anbietest und für wen.',
-              },
-              {
-                n: '02', ico: '🔍', pastel: 'rgba(212,168,67,0.10)',
-                title: 'Wir finden deine Zielgruppe',
-                desc: 'Wir analysieren deinen Auftritt und leiten automatisch ab, wen du erreichen möchtest — nach Region, Branche und Grösse.',
-              },
-              {
-                n: '03', ico: '📺', pastel: 'rgba(200,223,248,0.25)',
-                title: 'Kampagne live',
-                desc: 'Budget festlegen, Werbemittel hochladen, fertig. Deine Kampagne läuft auf Schweizer DOOH-Screens und im Web.',
-              },
-            ].map((s, i) => (
-              <Reveal key={s.n} delay={i * 100}>
-                <div
-                  style={{
-                    backgroundColor: C.white,
-                    borderRadius: '24px',
-                    border: `1px solid rgba(107,79,187,0.09)`,
-                    padding: '32px 28px',
-                    height: '100%',
-                    boxShadow: '0 2px 8px rgba(26,20,48,.05)',
-                    transition: 'transform .22s, box-shadow .22s, border-top-color .22s',
-                    cursor: 'default',
-                    borderTop: '3px solid transparent',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'translateY(-5px)';
-                    el.style.boxShadow = '0 12px 32px rgba(107,79,187,0.13)';
-                    el.style.borderTopColor = C.primary;
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'none';
-                    el.style.boxShadow = '0 2px 8px rgba(26,20,48,.05)';
-                    el.style.borderTopColor = 'transparent';
-                  }}
-                >
-                  {/* Step icon box */}
-                  <div style={{
-                    width: '50px', height: '50px', borderRadius: '16px',
-                    backgroundColor: s.pastel,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '22px', marginBottom: '20px',
-                  }}>
-                    {s.ico}
-                  </div>
-                  <div style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '11px', fontWeight: 700, letterSpacing: '.12em',
-                    color: C.primary, marginBottom: '10px',
-                  }}>
-                    {s.n}
-                  </div>
-                  <h3 style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '21px', fontWeight: 700, color: C.ink, marginBottom: '10px', letterSpacing: '-.01em',
-                  }}>
-                    {s.title}
-                  </h3>
-                  <p style={{ fontSize: '14px', color: C.muted, lineHeight: 1.65 }}>
-                    {s.desc}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
+      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
+      <section id="how" style={{ padding: '96px clamp(20px,5vw,64px)', maxWidth: '1380px', margin: '0 auto' }}>
+        <Reveal>
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.14em', color: C.gold, fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '14px' }}>So einfach geht&apos;s</div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px,3.6vw,56px)', fontWeight: 800, lineHeight: 1.1, color: C.ink, marginBottom: '14px', letterSpacing: '-.02em' }}>
+            Drei Schritte.<br /><em style={{ fontStyle: 'italic', fontWeight: 300, color: C.primary, letterSpacing: 0 }}>Eine Kampagne.</em>
+          </h2>
+          <p style={{ fontSize: '16px', color: C.slate, lineHeight: 1.65, maxWidth: '500px', fontWeight: 300, marginBottom: '60px', fontFamily: 'var(--font-sans)' }}>
+            Kein Fachjargon, keine versteckten Kosten. Du gibst uns dein Anliegen – wir machen daraus eine professionelle Kampagne.
+          </p>
+        </Reveal>
+        <div id="steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '20px' }}>
+          {[
+            { n: 'Schritt 01', mark: '◎', bg: '#F5F2FF', title: 'Website eingeben',    desc: 'Wir lesen deine Website und schlagen eine passende Zielgruppe vor. Du passt sie an – wenn nötig.' },
+            { n: 'Schritt 02', mark: '◈', bg: '#EEF5FF', title: 'Budget & Reichweite', desc: 'Du siehst sofort, wie viele Menschen du erreichst. Klare Zahlen, fairer All-in-Preis.' },
+            { n: 'Schritt 03', mark: '◉', bg: '#FDF0F3', title: 'Kampagne starten',    desc: 'Wir übernehmen die Auslieferung auf Schweizer DOOH-Screens und Display-Netzwerken.' },
+          ].map((s, i) => (
+            <Reveal key={s.n} delay={i * 100}>
+              <div
+                style={{ background: 'white', border: '1.5px solid rgba(107,79,187,.09)', borderRadius: '24px', padding: '40px 34px', transition: 'all .3s', position: 'relative', overflow: 'hidden', borderTop: '3px solid transparent', height: '100%', boxSizing: 'border-box' }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(107,79,187,.2)'; el.style.transform = 'translateY(-5px)'; el.style.boxShadow = '0 20px 56px rgba(107,79,187,.09)'; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(107,79,187,.09)'; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
+              >
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', color: '#B8A9E8', letterSpacing: '.1em', marginBottom: '22px', fontWeight: 600, textTransform: 'uppercase' }}>{s.n}</div>
+                <div style={{ width: '50px', height: '50px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', fontSize: '20px', background: s.bg }}>{s.mark}</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: C.ink, marginBottom: '10px', lineHeight: 1.25, letterSpacing: '-.01em' }}>{s.title}</h3>
+                <p style={{ fontSize: '14px', color: C.slate, lineHeight: 1.65, fontWeight: 300 }}>{s.desc}</p>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </section>
 
       {/* ── STATS BAND ───────────────────────────────────────────────────── */}
       <Reveal>
-        <div style={{
-          position: 'relative', zIndex: 1,
-          padding: '72px clamp(20px, 5vw, 56px)',
-          backgroundColor: C.primaryXpale,
-          borderTop: '1px solid rgba(107,79,187,0.08)',
-          borderBottom: '1px solid rgba(107,79,187,0.08)',
-        }}>
-          <div id="stats-grid" style={{
-            maxWidth: '1040px', margin: '0 auto',
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '32px',
-            textAlign: 'center',
-          }}>
+        <div style={{ borderTop: '1px solid rgba(107,79,187,.08)', borderBottom: '1px solid rgba(107,79,187,.08)', padding: '64px clamp(20px,5vw,64px)' }}>
+          <div id="stats-grid" style={{ maxWidth: '1380px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
             {[
-              { value: '< 2 Min', label: 'Buchungszeit' },
-              { value: '26', label: 'Kantone abgedeckt' },
-              { value: "CHF 2'500", label: 'Mindestbudget' },
-              { value: '70%', label: 'Budget für DOOH' },
-            ].map(stat => (
-              <div key={stat.label}>
-                <div style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 'clamp(32px, 4vw, 50px)',
-                  fontWeight: 800,
-                  color: C.primary,
-                  letterSpacing: '-.03em',
-                  lineHeight: 1,
-                  marginBottom: '8px',
-                }}>
-                  {stat.value}
+              { num: '2',      unit: 'min',  desc: 'Von der Idee zur fertigen Kampagne', small: false },
+              { num: '26',     unit: '',     desc: 'Schweizer Kantone buchbar',           small: false },
+              { num: "2'500",  unit: ' CHF', desc: 'Mindestbudget – kein Mehr',           small: true  },
+              { num: '70',     unit: '%',    desc: 'DOOH – sichtbar im öffentlichen Raum', small: false },
+            ].map((s, i) => (
+              <div key={i} style={{ paddingTop: 0, paddingBottom: 0, paddingLeft: i === 0 ? 0 : 40, paddingRight: 40, borderRight: i < 3 ? '1px solid rgba(107,79,187,.08)' : 'none' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: s.small ? '34px' : '50px', fontWeight: 800, color: C.primary, lineHeight: 1, letterSpacing: s.small ? '-.02em' : '-.03em', marginBottom: '6px' }}>
+                  {s.num}<span style={{ fontSize: s.small ? '16px' : '22px', color: '#B8A9E8', fontWeight: 600 }}>{s.unit}</span>
                 </div>
-                <div style={{ fontSize: '13px', color: C.slate, fontWeight: 500 }}>
-                  {stat.label}
-                </div>
+                <div style={{ fontSize: '13px', color: C.slate, lineHeight: 1.5, fontWeight: 300 }}>{s.desc}</div>
               </div>
             ))}
           </div>
         </div>
       </Reveal>
 
-      <style>{`
-        @media (max-width: 860px) {
-          #hero-grid { grid-template-columns: 1fr !important; }
-          #stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (max-width: 480px) {
-          #stats-grid { gap: 20px !important; }
-        }
-      `}</style>
-
       {/* ── AUDIENCE (dark) ──────────────────────────────────────────────── */}
-      <section id="whom" style={{
-        background: 'linear-gradient(145deg, #1E1530, #16112A)',
-        padding: '100px clamp(20px, 5vw, 56px)',
-        position: 'relative', zIndex: 1,
-      }}>
-        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
-          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
-              color: 'rgba(184,169,232,.7)', textTransform: 'uppercase', marginBottom: '14px',
-            }}>
-              Perfekt geeignet für
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 4vw, 46px)',
-              fontWeight: 800, letterSpacing: '-.025em', color: '#fff',
-            }}>
-              Für wen ist VIO gemacht?
-            </h2>
-          </Reveal>
+      <div id="whom" style={{ background: 'linear-gradient(145deg,#1E1530 0%,#16112A 100%)', position: 'relative', overflow: 'hidden' }}>
+        {/* Glow blobs */}
+        <div style={{ position: 'absolute', width: '500px', height: '500px', background: 'radial-gradient(circle,rgba(107,79,187,.22) 0%,transparent 70%)', borderRadius: '50%', filter: 'blur(100px)', top: -150, right: -80, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', width: '380px', height: '380px', background: 'radial-gradient(circle,rgba(200,223,248,.1) 0%,transparent 70%)', borderRadius: '50%', filter: 'blur(100px)', bottom: -80, left: '8%', pointerEvents: 'none' }} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+        <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '96px clamp(20px,5vw,64px)', position: 'relative', zIndex: 2 }}>
+          <Reveal>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.14em', color: 'rgba(212,168,67,.85)', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '14px' }}>Für wen</div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px,3.6vw,56px)', fontWeight: 800, lineHeight: 1.1, color: '#fff', marginBottom: '14px', letterSpacing: '-.02em' }}>
+              Werbung war nie<br /><em style={{ fontStyle: 'italic', fontWeight: 300, color: '#B8A9E8', letterSpacing: 0 }}>so zugänglich.</em>
+            </h2>
+            <p style={{ fontSize: '16px', color: 'rgba(255,255,255,.44)', lineHeight: 1.65, maxWidth: '500px', fontWeight: 300, marginBottom: '60px', fontFamily: 'var(--font-sans)' }}>
+              VIO ist für alle gebaut, die eine echte Botschaft haben – aber bisher keinen Zugang zu den richtigen Werkzeugen hatten.
+            </p>
+          </Reveal>
+          <div id="audience-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '20px' }}>
             {[
-              {
-                ico: '🏪',
-                title: 'KMU & Detailhandel',
-                desc: 'Regionale Unternehmen, die ihre Bekanntheit in der Gemeinde oder im Kanton erhöhen möchten — ohne Agentur, ohne grosses Budget.',
-                topBar: C.primary,
-              },
-              {
-                ico: '🗳️',
-                title: 'Politik & Gemeinden',
-                desc: 'Politische Parteien, Kandidierende und Gemeinden, die ihre Botschaft gezielt in bestimmten Regionen platzieren wollen.',
-                topBar: C.gold,
-              },
-              {
-                ico: '🤝',
-                title: 'Vereine & NGOs',
-                desc: 'Non-Profit-Organisationen und Vereine, die für Events, Mitglieder oder Spenden werben — mit maximalem Wirkungsgrad.',
-                topBar: '#C8DFF8',
-              },
+              { ico: '🏪', title: 'KMU-Inhaber',    desc: 'Keine Zeit für Agenturgespräche. Deine Kunden sind draussen – erreiche sie schnell, zum richtigen Preis.',                           bar: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)', iconBg: '#EDE8FF' },
+              { ico: '🗳️', title: 'Politikerinnen', desc: 'Deine Botschaft, deine Region. VIO bringt dein Anliegen zu den richtigen Menschen.',                                                 bar: 'linear-gradient(90deg,#D4A843,rgba(212,168,67,.3))', iconBg: '#FDF3DC' },
+              { ico: '🤝', title: 'Vereine & NGOs', desc: 'Kleines Budget, grosse Sache. Beweise, dass man auch ohne Grosskonzern-Mittel etwas bewegen kann.',                                   bar: 'linear-gradient(90deg,#C8DFF8,#8B6FD4)', iconBg: '#EEF5FF' },
             ].map((w, i) => (
               <Reveal key={w.title} delay={i * 100}>
                 <div
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.96)',
-                    borderRadius: '20px',
-                    overflow: 'hidden',
-                    padding: '0',
-                    height: '100%',
-                    transition: 'transform .22s, box-shadow .22s',
-                    cursor: 'default',
-                    boxShadow: '0 4px 20px rgba(0,0,0,.18)',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'translateY(-5px)';
-                    el.style.boxShadow = '0 16px 40px rgba(0,0,0,.28)';
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'none';
-                    el.style.boxShadow = '0 4px 20px rgba(0,0,0,.18)';
-                  }}
+                  style={{ background: 'rgba(255,255,255,.96)', borderRadius: '22px', padding: '36px 30px', transition: 'all .32s', boxShadow: '0 8px 32px rgba(0,0,0,.2)', cursor: 'default', height: '100%', boxSizing: 'border-box' }}
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-6px)'; el.style.boxShadow = '0 24px 60px rgba(0,0,0,.28)'; }}
+                  onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'none'; el.style.boxShadow = '0 8px 32px rgba(0,0,0,.2)'; }}
                 >
-                  {/* Colored top bar */}
-                  <div style={{ height: '3px', backgroundColor: w.topBar }} />
-                  <div style={{ padding: '28px 26px' }}>
-                    <div style={{ fontSize: '36px', marginBottom: '16px' }}>{w.ico}</div>
-                    <h3 style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '21px', fontWeight: 700, color: C.ink, marginBottom: '10px', letterSpacing: '-.01em',
-                    }}>
-                      {w.title}
-                    </h3>
-                    <p style={{ fontSize: '14px', color: C.slate, lineHeight: 1.65 }}>
-                      {w.desc}
-                    </p>
-                  </div>
+                  <div style={{ height: '3px', borderRadius: '100px', background: w.bar, marginBottom: '26px' }} />
+                  <div style={{ width: '52px', height: '52px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px', fontSize: '24px', background: w.iconBg }}>{w.ico}</div>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 700, color: C.ink, marginBottom: '10px', lineHeight: 1.3, letterSpacing: '-.01em' }}>{w.title}</h3>
+                  <p style={{ fontSize: '14px', color: C.slate, lineHeight: 1.68, fontWeight: 300 }}>{w.desc}</p>
                 </div>
               </Reveal>
             ))}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ── REASON WHY ──────────────────────────────────────────────────── */}
-      <section id="warum" style={{ padding: '100px clamp(20px, 5vw, 56px)' }}>
-        <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
-          <Reveal style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <div style={{
-              fontSize: '11px', fontWeight: 700, letterSpacing: '.15em',
-              color: C.primary, textTransform: 'uppercase', marginBottom: '14px',
-            }}>
-              Warum VIO
-            </div>
-            <h2 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(28px, 4vw, 46px)',
-              fontWeight: 400, letterSpacing: '-.02em', color: C.taupe,
-            }}>
-              Was VIO einzigartig macht
-            </h2>
-          </Reveal>
-
-          {/* Big card */}
-          <Reveal style={{ marginBottom: '16px' }}>
-            <div style={{
-              backgroundColor: C.taupe,
-              borderRadius: '16px',
-              padding: '40px 36px',
-              boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-            }}>
-              <h3 style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(22px, 3vw, 30px)',
-                fontWeight: 400,
-                color: '#fff',
-                marginBottom: '16px',
-                lineHeight: 1.25,
-                letterSpacing: '-.02em',
-              }}>
-                Wir kommen aus der Medienbranche.<br />Wir wissen wo es hakt.
-              </h3>
-              <p style={{
-                fontSize: '15px',
-                color: 'rgba(255,255,255,.65)',
-                lineHeight: 1.7,
-                maxWidth: '680px',
-              }}>
-                Auf der einen Seite grosse Unternehmen mit Agenturen und Spezialisten.
-                Auf der anderen KMUs, Vereine, Politiker – mit echten Botschaften, aber keinem
-                Zugang zu denselben Werkzeugen. Diesen Gap wollten wir schliessen.
-              </p>
-            </div>
-          </Reveal>
-
-          {/* 3 smaller cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {[
-              {
-                ico: '⚡',
-                title: 'Schnell wenn du es brauchst',
-                desc: 'In 2 Minuten buchst du eine Kampagne – ohne Agentur, ohne Fachwissen. Keine Fachbegriffe, keine versteckten Kosten.',
-              },
-              {
-                ico: '💬',
-                title: 'Persönlich wenn du es willst',
-                desc: 'Hinter VIO stecken echte Menschen. Wir sind erreichbar, beraten gerne und freuen uns über jede Kampagne die wir gemeinsam auf den Weg bringen.',
-              },
-              {
-                ico: '🇨🇭',
-                title: '100% Schweiz',
-                desc: 'Nur echte Schweizer Medien. Faire Preise. Transparente Abrechnung.',
-              },
-            ].map((r, i) => (
-              <Reveal key={r.title} delay={i * 100}>
-                <div
-                  style={{
-                    backgroundColor: C.white,
-                    borderRadius: '14px',
-                    border: `1px solid ${C.border}`,
-                    padding: '26px 22px',
-                    height: '100%',
-                    boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-                    transition: 'transform .2s, box-shadow .2s',
-                    cursor: 'default',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'translateY(-4px)';
-                    el.style.boxShadow = '0 10px 28px rgba(44,44,62,.11)';
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLDivElement;
-                    el.style.transform = 'none';
-                    el.style.boxShadow = '0 1px 4px rgba(44,44,62,.07)';
-                  }}
-                >
-                  <div style={{ fontSize: '30px', marginBottom: '14px' }}>{r.ico}</div>
-                  <h3 style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '20px', fontWeight: 400, color: C.taupe, marginBottom: '10px',
-                  }}>
-                    {r.title}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: C.muted, lineHeight: 1.65 }}>
-                    {r.desc}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section id="preise" style={{ padding: '112px clamp(20px,5vw,64px)', textAlign: 'center', maxWidth: '820px', margin: '0 auto' }}>
+        <Reveal>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#FDF3DC', border: '1px solid rgba(212,168,67,.28)', borderRadius: '100px', padding: '7px 18px', fontSize: '11px', color: '#9B7120', fontFamily: 'var(--font-display)', letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '32px' }}>
+            🇨🇭 Gemacht für die Schweiz
           </div>
-        </div>
-      </section>
-
-      {/* ── BOTTOM CTA ──────────────────────────────────────────────────── */}
-      <section style={{
-        position: 'relative', zIndex: 1,
-        padding: '100px clamp(20px, 5vw, 56px)',
-        textAlign: 'center',
-        backgroundColor: 'var(--off-white)',
-        borderTop: '1px solid rgba(107,79,187,0.08)',
-      }}>
-        <Reveal style={{ maxWidth: '620px', margin: '0 auto' }}>
-          {/* Gold pill badge */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '7px',
-            backgroundColor: 'var(--gold-pale)',
-            border: '1px solid rgba(212,168,67,0.30)',
-            borderRadius: '100px',
-            padding: '6px 18px',
-            marginBottom: '28px',
-          }}>
-            <span style={{
-              width: '6px', height: '6px', borderRadius: '50%',
-              backgroundColor: C.gold, display: 'inline-block', flexShrink: 0,
-            }} />
-            <span style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '11px', fontWeight: 700,
-              color: C.gold, letterSpacing: '.08em', textTransform: 'uppercase',
-            }}>
-              Jetzt starten
-            </span>
-          </div>
-
-          <h2 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(30px, 5vw, 52px)',
-            fontWeight: 800, letterSpacing: '-.025em', lineHeight: 1.1,
-            color: C.ink, marginBottom: '18px',
-          }}>
-            Bereit, loszulegen?
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px,4vw,60px)', fontWeight: 800, lineHeight: 1.1, color: C.ink, letterSpacing: '-.02em', marginBottom: '18px' }}>
+            Bereit für deine<br /><em style={{ fontStyle: 'italic', fontWeight: 300, color: C.primary, letterSpacing: 0 }}>erste Kampagne?</em>
           </h2>
-          <p style={{
-            fontSize: '16px', color: C.muted,
-            lineHeight: 1.65, marginBottom: '40px',
-          }}>
-            Gib deine Website-URL ein und entdecke, wie viele Menschen du mit deinem Budget erreichen kannst.
+          <p style={{ fontSize: '16px', color: C.slate, lineHeight: 1.65, fontWeight: 300, marginBottom: '44px', fontFamily: 'var(--font-sans)' }}>
+            In weniger als 2 Minuten bist du live. Kein Risiko, kein Fachwissen nötig.
           </p>
-
-          {/* 2 Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => router.push('/campaign')}
-              style={{
-                padding: '15px 36px',
-                borderRadius: '100px',
-                backgroundColor: C.primary,
-                color: '#fff',
-                border: 'none',
-                fontFamily: 'var(--font-display)',
-                fontSize: '15px', fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 6px 24px rgba(107,79,187,0.30)',
-                transition: 'background-color .18s, transform .18s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.primaryLight; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.transform = 'none'; }}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => router.push('/campaign')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: C.primary, color: '#fff', padding: '16px 34px', borderRadius: '100px', border: 'none', fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 24px rgba(107,79,187,.3)', transition: 'all .28s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.primaryLight; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 14px 36px rgba(107,79,187,.38)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(107,79,187,.3)'; }}
             >
               Kampagne starten →
             </button>
-            <a
-              href="#how"
-              style={{
-                padding: '15px 36px',
-                borderRadius: '100px',
-                backgroundColor: 'transparent',
-                color: C.primary,
-                border: 'none',
-                fontFamily: 'var(--font-display)',
-                fontSize: '15px', fontWeight: 700,
-                cursor: 'pointer',
-                textDecoration: 'none',
-                display: 'inline-block',
-                transition: 'opacity .18s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '.7'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+            <a href="mailto:hello@vio.ch"
+              style={{ color: C.primary, textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px', transition: 'gap .22s', fontFamily: 'var(--font-sans)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.gap = '10px'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.gap = '6px'; }}
             >
-              Mehr erfahren
+              Beratungsgespräch buchen ↗
             </a>
           </div>
         </Reveal>
       </section>
 
-      {/* ── FOOTER ──────────────────────────────────────────────────────── */}
-      <footer id="contact" style={{
-        backgroundColor: C.taupe,
-        padding: '36px clamp(20px, 5vw, 56px)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
-      }}>
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '26px', fontWeight: 600, color: C.primary,
-        }}>
-          VIO
-        </span>
-
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-          {[
-            { label: 'hello@vio.ch', href: 'mailto:hello@vio.ch' },
-            { label: 'Impressum', href: '#' },
-            { label: 'Datenschutz', href: '#' },
-          ].map(l => (
-            <a
-              key={l.label}
-              href={l.href}
-              style={{
-                fontSize: '13px', color: 'rgba(255,255,255,.55)',
-                textDecoration: 'none', fontWeight: 500,
-                transition: 'color .15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,.55)'; }}
-            >
-              {l.label}
-            </a>
-          ))}
+      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+      <footer style={{ borderTop: '1px solid rgba(107,79,187,.08)', padding: '36px clamp(20px,5vw,64px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: C.primary, letterSpacing: '.02em' }}>VIO</div>
+          <div style={{ fontSize: '10.5px', letterSpacing: '.14em', textTransform: 'uppercase', color: '#B8A9E8', marginTop: '5px', fontFamily: 'var(--font-display)', fontWeight: 600 }}>Reichweite für alle</div>
         </div>
-
-        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,.3)', fontWeight: 500 }}>
-          © {new Date().getFullYear()} VIO. Alle Rechte vorbehalten.
-        </span>
+        <div style={{ fontSize: '12px', color: '#C8C4D8' }}>© {new Date().getFullYear()} VIO · Schweiz · Alle Rechte vorbehalten</div>
       </footer>
+
+      <style>{`
+        @media (max-width: 860px) {
+          #hero-grid     { grid-template-columns: 1fr !important; min-height: auto !important; }
+          #steps-grid    { grid-template-columns: 1fr !important; }
+          #audience-grid { grid-template-columns: 1fr !important; }
+          #stats-grid    { grid-template-columns: repeat(2,1fr) !important; }
+        }
+        @media (max-width: 480px) {
+          #stats-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
     </main>
   );
