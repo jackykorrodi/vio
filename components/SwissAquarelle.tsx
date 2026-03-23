@@ -66,6 +66,7 @@ export default function SwissAquarelle() {
     let raf: number;
 
     function frame(ts: number) {
+      if (!ctx) return;
       if (!start) start = ts;
       const elapsed = (ts - start) % CYCLE;
 
