@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
-import { Fraunces, Outfit } from 'next/font/google';
+import { Plus_Jakarta_Sans, Jost } from 'next/font/google';
 import './globals.css';
 
-const fraunces = Fraunces({
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['300', '400', '600'],
+  weight: ['300', '400', '500', '600', '700', '800'],
   style: ['normal', 'italic'],
-  variable: '--font-fraunces',
+  variable: '--font-display',
   display: 'swap',
 });
 
-const outfit = Outfit({
+const jost = Jost({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-outfit',
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-sans',
   display: 'swap',
 });
 
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de">
-      <body className={`${fraunces.variable} ${outfit.variable}`}>
+    <html lang="de" className={`${plusJakarta.variable} ${jost.variable}`}>
+      <body>
         {/* ── Watercolour background — fixed, behind all pages ─────────── */}
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', width: '700px', height: '700px', borderRadius: '50%', filter: 'blur(88px)', background: 'radial-gradient(circle, rgba(184,169,232,0.28), rgba(184,169,232,0.05) 65%, transparent)', top: '-200px', left: '-130px', animation: 'drift 27s ease-in-out infinite alternate' }} />

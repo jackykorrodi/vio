@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import SwissAquarelle from '@/components/SwissAquarelle';
+import VioLogo from '@/components/VioLogo';
 
 const C = {
   primary:      '#6B4FBB',
@@ -158,7 +159,7 @@ export default function HomePage() {
         backgroundColor: 'rgba(253,252,255,.8)',
         borderBottom: '1px solid rgba(107,79,187,.08)',
       }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: C.primary, letterSpacing: '.02em' }}>VIO</span>
+        <VioLogo size="sm" />
         <div style={{ display: 'flex', alignItems: 'center', gap: '38px' }}>
           {(['#how', '#whom', '#preise'] as const).map((href, i) => (
             <a key={href} href={href} style={{ textDecoration: 'none', color: C.slate, fontSize: '14px', fontWeight: 400, letterSpacing: '.02em', transition: 'color .2s', fontFamily: 'var(--font-sans)' }}
