@@ -71,10 +71,11 @@ interface Props {
   nextStep: () => void;
   prevStep?: () => void;
   isActive: boolean;
+  stepNumber?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function Step4Budget({ briefing, updateBriefing, nextStep, prevStep }: Props) {
+export default function Step4Budget({ briefing, updateBriefing, nextStep, prevStep, stepNumber }: Props) {
   const isPolitik = briefing.campaignType === 'politik';
 
   const regionName = isPolitik
@@ -253,16 +254,16 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(107,79,187,0.12); }
       `}</style>
 
-      <div className="max-w-[1120px] mx-auto px-5 pt-10 pb-20 sm:flex sm:gap-8 sm:items-start">
+      <div className="max-w-[1100px] mx-auto px-7 pt-6 pb-20 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
 
         {/* ══════════════ MAIN COLUMN ══════════════ */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
 
           {/* Eyebrow */}
           <div className="flex items-center gap-2 mb-2">
             <div className="w-[18px] h-0.5 bg-[var(--primary)] rounded" />
             <span className="text-[11px] font-bold tracking-[.12em] text-[var(--primary)] uppercase">
-              Schritt 4
+              {stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 4'}
             </span>
           </div>
 
@@ -370,7 +371,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               Mobile: 1-col, horizontal (name+details left, price right), left-border selected
               Desktop: 3-col grid, stacked, checkmark circle, full border selected
           */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5" style={{ gap: '12px' }}>
             {PACKAGES.map((pkg, i) => {
               const isActive = selectedPkg === pkg.id;
               const pr       = pkgReach[i];
@@ -384,7 +385,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                     // Mobile layout: horizontal flex
                     'flex items-center gap-3 px-4 py-3',
                     // Desktop layout: vertical block
-                    'sm:block sm:px-4 sm:py-5 sm:pt-6',
+                    'sm:block sm:px-4 sm:py-[18px]',
                     // Border + bg
                     isActive
                       ? 'border-l-[3px] border-l-[var(--primary)] border border-[var(--border)] bg-[var(--pl)] sm:border-2 sm:border-[var(--primary)]'
@@ -417,7 +418,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                     </div>
                     {/* Details: hidden on mobile main row (shown as sub), full on desktop */}
                     <div className="hidden sm:block">
-                      <div className="vio-serif text-[22px] leading-none mb-1.5" style={{ color: isActive ? 'var(--primary)' : 'var(--taupe)' }}>
+                      <div className="vio-serif leading-none mb-1.5" style={{ color: isActive ? 'var(--primary)' : 'var(--taupe)', fontSize: 'clamp(20px, 2vw, 26px)' }}>
                         {fmtCHF(pkg.budget)}
                       </div>
                       <div className="text-xs text-[var(--muted)] mb-2">{durLabel(pkg.duration)} · {pkg.freq}× Kontakt</div>
@@ -469,9 +470,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 { label: 'Unique Reach',     value: fmtRange(uniqueLow, uniqueHigh), sub: `${pct}% der ${personLabel}` },
               ].map(cell => (
                 <div key={cell.label} className="bg-[var(--bg)] rounded-xl px-3.5 py-2.5">
-                  <div className="text-[10px] font-bold tracking-[.08em] text-[var(--muted)] uppercase mb-1">{cell.label}</div>
-                  <div className="vio-serif text-[15px] font-bold text-[var(--taupe)]">{cell.value}</div>
-                  <div className="text-[11px] text-[var(--muted)] mt-0.5">{cell.sub}</div>
+                  <div className="text-[10px] font-bold uppercase mb-1" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>{cell.label}</div>
+                  <div className="vio-serif font-bold" style={{ fontSize: '18px', color: 'var(--ink)' }}>{cell.value}</div>
+                  <div className="mt-0.5" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>{cell.sub}</div>
                 </div>
               ))}
             </div>
@@ -516,19 +517,19 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           {/* ── BREAKDOWN ── */}
           <div className="grid grid-cols-2 gap-3 mb-5">
             <div className="bg-white border border-[var(--border)] rounded-2xl p-4 sm:p-[18px]">
-              <div className="text-[10px] font-bold tracking-[.1em] text-[var(--muted)] uppercase mb-2.5">DOOH — Digitale Screens</div>
-              <div className="vio-serif text-2xl text-[var(--taupe)] leading-none mb-1">{fmtN(screens)}</div>
-              <p className="text-xs text-[var(--muted)] mb-2">Screens in {regionName}</p>
-              <p className="text-[11px] text-[var(--muted)] leading-relaxed">Bahnhöfe, Einkaufszentren, belebte Orte</p>
+              <div className="text-[10px] font-bold uppercase mb-2.5" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>DOOH — Digitale Screens</div>
+              <div className="vio-serif leading-none mb-1" style={{ fontSize: '18px', color: 'var(--ink)' }}>{fmtN(screens)}</div>
+              <p className="mb-2" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>Screens in {regionName}</p>
+              <p className="leading-relaxed" style={{ fontSize: '11px', color: 'var(--slate)', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>Bahnhöfe, Einkaufszentren, belebte Orte</p>
               <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
                 {fmtN(doohContacts)} Kontakte
               </div>
             </div>
             <div className="bg-white border border-[var(--border)] rounded-2xl p-4 sm:p-[18px]">
-              <div className="text-[10px] font-bold tracking-[.1em] text-[var(--muted)] uppercase mb-2.5">Display — Online Banner</div>
-              <div className="vio-serif text-2xl text-[var(--taupe)] leading-none mb-1">{fmtCHF(Math.round(budget * 0.3))}</div>
-              <p className="text-xs text-[var(--muted)] mb-2">Display-Budget (30%)</p>
-              <p className="text-[11px] text-[var(--muted)] leading-relaxed">Schweizer Websites & Apps</p>
+              <div className="text-[10px] font-bold uppercase mb-2.5" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>Display — Online Banner</div>
+              <div className="vio-serif leading-none mb-1" style={{ fontSize: '18px', color: 'var(--ink)' }}>{fmtCHF(Math.round(budget * 0.3))}</div>
+              <p className="mb-2" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>Display-Budget (30%)</p>
+              <p className="leading-relaxed" style={{ fontSize: '11px', color: 'var(--slate)', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>Schweizer Websites & Apps</p>
               <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
                 {fmtN(dispContacts)} Kontakte
               </div>
@@ -565,7 +566,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             <button
               type="button"
               onClick={handleNext}
-              className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white border-none rounded-full px-8 py-3.5 text-[15px] font-semibold cursor-pointer shadow-[0_4px_16px_rgba(107,79,187,0.30)] transition-all duration-150 hover:bg-[var(--pd)] hover:-translate-y-0.5"
+              className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white border-none rounded-full px-7 text-[15px] font-bold cursor-pointer transition-all duration-150 hover:bg-[var(--pd)] hover:-translate-y-0.5" style={{ padding: '15px 28px', boxShadow: '0 6px 20px rgba(107,79,187,0.28)', fontFamily: 'var(--font-display)' }}
             >
               Weiter zu den Werbemitteln →
             </button>
@@ -582,17 +583,17 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
         </div>{/* end main column */}
 
-        {/* ══════════════ SIDEBAR — desktop only ══════════════ */}
-        <div className="hidden sm:flex w-[340px] flex-shrink-0 sticky top-20 flex-col gap-4">
+        {/* ══════════════ SIDEBAR ══════════════ */}
+        <div className="hidden md:flex flex-col sticky" style={{ gap: '14px', top: '80px' }}>
 
           {/* Card 1: Wie berechnen wir das? */}
-          <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
+          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '20px 18px' }}>
             <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Wie berechnen wir das?</h3>
             <CalcContent />
           </div>
 
           {/* Card 2: Deine Zielregion */}
-          <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
+          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '20px 18px' }}>
             <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Deine Zielregion</h3>
             <p className="text-sm font-bold text-[var(--taupe)] mb-1.5">📍 {regionName}</p>
             <p className="text-sm text-[var(--muted)] mb-3.5">
@@ -615,7 +616,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           </div>
 
           {/* Card 3: Fragen? */}
-          <div className="bg-[var(--pl)] border border-[#F0C8C8] rounded-2xl p-5">
+          <div style={{ background: '#F5F2FF', borderRadius: '16px', padding: '18px' }}>
             <h3 className="vio-serif text-base text-[var(--taupe)] mb-2">Fragen?</h3>
             <p className="text-sm text-[var(--muted)] leading-relaxed mb-4">
               Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.
@@ -624,7 +625,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               href="https://calendly.com/vio"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block min-h-[44px] px-5 py-2.5 rounded-full bg-[var(--primary)] text-white text-sm font-semibold no-underline"
+              style={{ display: 'inline-block', background: '#6B4FBB', color: '#fff', borderRadius: '100px', padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}
             >
               Gespräch buchen →
             </a>

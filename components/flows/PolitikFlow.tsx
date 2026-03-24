@@ -157,7 +157,7 @@ export default function PolitikFlow({ resumeData }: Props) {
 
       {/* ── Step 2: Reichweite & Budget ── */}
       {currentStep === 2 && (
-        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
+        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={2} />
       )}
 
       {/* ── Step 3: Werbemittel ── */}

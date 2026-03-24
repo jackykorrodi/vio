@@ -201,7 +201,7 @@ export default function B2BFlow({ initialUrl = '', resumeData }: Props) {
 
       {/* ── Step 4: Budget & Reichweite ── */}
       {currentStep === 4 && (
-        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
+        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={4} />
       )}
 
       {/* ── Step 5: Werbemittel ── */}
