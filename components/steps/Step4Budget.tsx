@@ -254,9 +254,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(107,79,187,0.12); }
         .vio-budget-wrap {
           max-width: 1200px; margin: 0 auto;
-          padding: 32px 40px 80px;
+          padding: 24px 24px 80px;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 340px;
+          grid-template-columns: minmax(0, 1fr) 300px;
           gap: 40px;
           align-items: start;
         }
@@ -282,7 +282,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
       <div className="vio-budget-wrap">
 
         {/* ══════════════ MAIN COLUMN ══════════════ */}
-        <div className="min-w-0" style={{ maxWidth: '860px' }}>
+        <div className="min-w-0">
 
           {/* Eyebrow */}
           <div className="flex items-center gap-2 mb-2">
@@ -579,7 +579,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           </div>
 
           {/* ── SMART TIP ── */}
-          <div className="bg-[#F5EBEB] border-l-[3px] border-l-[var(--primary)] rounded-r-xl px-[18px] py-3.5 mb-7 text-sm text-[var(--taupe)] leading-relaxed">
+          <div style={{ background:'#F5F2FF', borderLeft:'3px solid #6B4FBB', borderRadius:'0 12px 12px 0', padding:'14px 18px', marginBottom:'28px', fontSize:'14px', color:'var(--ink)', lineHeight:1.6 }}>
             💡 {smartTip}
           </div>
 

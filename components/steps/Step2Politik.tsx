@@ -6,9 +6,9 @@ import { Region, ALL_REGIONS } from '@/lib/regions';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary: '#C1666B', pd: '#A84E53', pl: '#F9ECEC',
-  taupe: '#5C4F3D', muted: '#8A8490', border: '#EDE8E0',
-  bg: '#FAF7F2', white: '#FFFFFF',
+  primary: '#6B4FBB', pd: '#8B6FD4', pl: '#EDE8FF',
+  taupe: '#2D1F52', muted: '#7A7596', border: 'rgba(107,79,187,0.12)',
+  bg: '#FDFCFF', white: '#FFFFFF',
 } as const;
 
 const card: React.CSSProperties = {
@@ -165,18 +165,18 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
   };
 
   return (
-    <section style={{ backgroundColor: C.bg }}>
+    <section style={{ backgroundColor: 'var(--off-white)' }}>
       <div style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 20px 80px' }}>
 
         {/* ── Eyebrow ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <div style={{ width: '18px', height: '2px', background: C.primary, borderRadius: '2px' }} />
-          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: '#D4A843', textTransform: 'uppercase' }}>
             Schritt 2 · Politische Kampagne
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
+        <h1 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
           Wahlkreis & Kampagnenziel
         </h1>
         <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
@@ -236,7 +236,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                   style={{
                     width: '100%', boxSizing: 'border-box', padding: '12px 16px',
                     borderRadius: '8px', border: `1.5px solid ${C.border}`,
-                    fontSize: '15px', fontFamily: 'var(--font-outfit), sans-serif',
+                    fontSize: '15px', fontFamily: 'var(--font-sans), sans-serif',
                     color: C.taupe, backgroundColor: C.white, outline: 'none',
                   }}
                 />
@@ -283,7 +283,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                 min={todayStr()}
                 value={votingDate}
                 onChange={e => setVotingDate(e.target.value)}
-                style={{ padding: '12px 16px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-outfit), sans-serif', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
+                style={{ padding: '12px 16px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans), sans-serif', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
               />
               {votingDate && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 14px', borderRadius: '100px', backgroundColor: '#F9EDEA', color: '#B3502A', fontSize: '13px', fontWeight: 600 }}>
@@ -335,7 +335,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                   { label: 'Empf. Laufzeit',       value: `${potenzial.laufzeit} ${potenzial.laufzeit === 1 ? 'Woche' : 'Wochen'}` },
                   { label: 'Kampagnenstart',        value: formatDateDE(potenzial.start) },
                 ].map(stat => (
-                  <div key={stat.label} style={{ background: C.pl, borderRadius: '10px', padding: '14px 16px', border: `1px solid rgba(193,102,107,.15)` }}>
+                  <div key={stat.label} style={{ background: C.pl, borderRadius: '10px', padding: '14px 16px', border: `1px solid rgba(107,79,187,.15)` }}>
                     <div style={{ fontSize: '11px', color: C.muted, fontWeight: 600, marginBottom: '4px', textTransform: 'uppercase' as const, letterSpacing: '.08em' }}>{stat.label}</div>
                     <div style={{ fontSize: '16px', fontWeight: 700, color: C.taupe }}>{stat.value}</div>
                   </div>
@@ -352,7 +352,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
             <button
               type="button"
               onClick={handleWeiter}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: C.primary, color: '#fff', border: 'none', borderRadius: '100px', padding: '15px 32px', fontFamily: 'var(--font-outfit), sans-serif', fontSize: '16px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 16px rgba(193,102,107,.3)', transition: 'all .18s' }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: C.primary, color: '#fff', border: 'none', borderRadius: '100px', padding: '15px 32px', fontFamily: 'var(--font-sans), sans-serif', fontSize: '16px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 16px rgba(107,79,187,.3)', transition: 'all .18s' }}
               onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
             >
