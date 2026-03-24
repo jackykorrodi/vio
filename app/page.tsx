@@ -182,7 +182,7 @@ export default function HomePage() {
       <section style={{ position: 'relative' }}>
         <div id="hero-grid" style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'flex-start',
-          gap: '60px', padding: '80px 64px 72px',
+          gap: '80px', padding: '120px 64px 100px',
           maxWidth: '1380px', margin: '0 auto', minHeight: '90vh', position: 'relative',
         }}>
           <SwissAquarelle />
@@ -201,13 +201,13 @@ export default function HomePage() {
             </div>
 
             {/* H1 */}
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px,5vw,78px)', fontWeight: 800, lineHeight: 1.06, color: C.ink, letterSpacing: '-.02em', marginBottom: '26px' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(52px,5.5vw,86px)', fontWeight: 800, lineHeight: 1.06, color: C.ink, letterSpacing: '-.02em', marginBottom: '26px' }}>
               Deine Botschaft.<br />
               <em style={{ fontStyle: 'italic', fontWeight: 300, color: C.primary, letterSpacing: 0 }}>Überall.</em>
             </h1>
 
             {/* Sub */}
-            <p style={{ fontSize: '17px', lineHeight: 1.7, color: 'var(--slate)', maxWidth: '430px', fontWeight: 300, marginBottom: '44px', fontFamily: 'var(--font-sans)' }}>
+            <p style={{ fontSize: '17px', lineHeight: 1.7, color: 'var(--slate)', maxWidth: '460px', fontWeight: 300, marginBottom: '44px', fontFamily: 'var(--font-sans)' }}>
               In wenigen Schritten zur fertigen Kampagne – ohne Agentur, ohne Fachjargon. DOOH-Screens und Online-Display, alles in einer Buchung. Einfach, fair, Schweiz.
             </p>
 
@@ -229,8 +229,8 @@ export default function HomePage() {
             </div>
 
             {/* ── Campaign type selector ──────────────────────────────────── */}
-            <div style={{ marginTop: '36px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginBottom: '0' }}>
+            <div style={{ marginTop: '56px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '18px', marginBottom: '0' }}>
                 {([
                   {
                     value: 'b2c' as const,
@@ -291,7 +291,7 @@ export default function HomePage() {
                   const sel = heroType === opt.value;
                   return (
                     <div key={opt.value} onClick={() => setHeroType(opt.value)}
-                      style={{ position: 'relative', overflow: 'hidden', background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.10)'}`, borderRadius: '22px', padding: '26px 22px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
+                      style={{ position: 'relative', overflow: 'hidden', background: sel ? 'var(--violet-xpale)' : C.white, border: `${sel ? '2px' : '1.5px'} solid ${sel ? 'var(--violet)' : 'rgba(107,79,187,0.10)'}`, borderRadius: '22px', padding: '32px 28px', cursor: 'pointer', transition: 'all .22s', textAlign: 'left' }}
                       onMouseEnter={e => {
                         const el = e.currentTarget as HTMLDivElement;
                         el.style.transform = 'translateY(-3px)';
@@ -312,7 +312,7 @@ export default function HomePage() {
                       {/* Gradient top bar */}
                       <div data-gradbar="" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: opt.barGradient, opacity: 0, transition: 'opacity .22s' }} />
                       {/* Icon box */}
-                      <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: '#F5F2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                      <div style={{ width: '46px', height: '46px', borderRadius: '13px', background: '#F5F2FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
                         {opt.icon}
                       </div>
                       <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', color: 'var(--ink)', letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: '3px' }}>{opt.name}</div>
@@ -467,13 +467,13 @@ export default function HomePage() {
           </div>
 
           {/* ── hero-right: floating UI cards ──────────────────────────────── */}
-          <div style={{ position: 'relative', height: '540px', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
+          <div style={{ position: 'relative', height: '580px', zIndex: 2, opacity: heroVisible ? 1 : 0, transition: 'opacity .7s ease .25s' }}>
 
             {/* Paint pool */}
             <div style={{ position: 'absolute', width: '420px', height: '420px', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '55% 45% 60% 40% / 48% 56% 44% 52%', background: 'radial-gradient(ellipse at 30% 35%,rgba(184,169,232,.45) 0%,transparent 55%),radial-gradient(ellipse at 68% 65%,rgba(200,223,248,.4) 0%,transparent 55%),radial-gradient(ellipse at 55% 25%,rgba(242,196,206,.28) 0%,transparent 45%),radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.55) 0%,transparent 55%)', filter: 'blur(4px)', animation: 'morphPool 14s ease-in-out infinite alternate', pointerEvents: 'none' }} />
 
             {/* Card 1 — card-main */}
-            <div style={{ position: 'absolute', width: '290px', top: '40px', left: '50%', transform: 'translateX(-46%)', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatA 7s ease-in-out infinite' }}>
+            <div style={{ position: 'absolute', width: '290px', top: '20px', left: '50%', transform: 'translateX(-46%)', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatA 7s ease-in-out infinite' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--violet-pale)', borderRadius: '100px', padding: '4px 12px', fontSize: '10px', color: 'var(--violet)', fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
                 <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--violet)', animation: 'blink 2s ease-in-out infinite', flexShrink: 0, display: 'block' }} />
                 Kampagne · Live
@@ -490,7 +490,7 @@ export default function HomePage() {
             </div>
 
             {/* Card 2 — card-stat */}
-            <div style={{ position: 'absolute', width: '200px', bottom: '90px', left: '4px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
+            <div style={{ position: 'absolute', width: '200px', bottom: '50px', left: '-10px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '9.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: '#B8A9E8', marginBottom: '8px' }}>26 Kantone · 124 Gemeinden</div>
               <div style={{ lineHeight: 1, marginBottom: '4px' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.02em' }}>5.4</span>
@@ -505,7 +505,7 @@ export default function HomePage() {
             </div>
 
             {/* Card 3 — card-reach */}
-            <div style={{ position: 'absolute', width: '208px', top: '200px', right: '8px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatC 7s ease-in-out infinite' }}>
+            <div style={{ position: 'absolute', width: '208px', top: '220px', right: '-10px', background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatC 7s ease-in-out infinite' }}>
               <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--lavender)', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '12px' }}>Kanäle</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -532,9 +532,9 @@ export default function HomePage() {
       </section>
 
       {/* ── TRUST STRIP ──────────────────────────────────────────────────── */}
-      <div style={{ borderTop: '1px solid rgba(107,79,187,.08)', borderBottom: '1px solid rgba(107,79,187,.08)', background: 'rgba(237,232,255,.18)', padding: '20px clamp(20px,5vw,64px)', display: 'flex', alignItems: 'center', gap: '52px', flexWrap: 'wrap' }}>
+      <div style={{ borderTop: '1px solid rgba(107,79,187,.08)', borderBottom: '1px solid rgba(107,79,187,.08)', background: 'rgba(237,232,255,.18)', padding: '18px clamp(20px,5vw,64px)', display: 'flex', alignItems: 'center', gap: '52px', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.12em', color: '#B8A9E8', fontFamily: 'var(--font-display)', fontWeight: 700, whiteSpace: 'nowrap' }}>Vertrauen bei</span>
-        <div style={{ display: 'flex', gap: '36px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
           {['KMUs in der ganzen Schweiz', 'Politische Kampagnen', 'Vereine & NGOs', 'Schweizer DOOH-Netzwerk', "Ab CHF 2'500"].map(item => (
             <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#3D3557', whiteSpace: 'nowrap' }}>
               <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'linear-gradient(135deg,#8B6FD4,#B8A9E8)', flexShrink: 0 }} />
