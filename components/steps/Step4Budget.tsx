@@ -282,7 +282,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
       <div className="vio-budget-wrap">
 
         {/* ══════════════ MAIN COLUMN ══════════════ */}
-        <div className="min-w-0">
+        <div className="min-w-0" style={{ maxWidth: '860px' }}>
 
           {/* Eyebrow */}
           <div className="flex items-center gap-2 mb-2">
@@ -495,9 +495,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 { label: 'Unique Reach',     value: fmtRange(uniqueLow, uniqueHigh), sub: `${pct}% der ${personLabel}` },
               ].map(cell => (
                 <div key={cell.label} className="bg-[var(--bg)] rounded-xl px-3.5 py-2.5">
-                  <div className="text-[10px] font-bold uppercase mb-1" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>{cell.label}</div>
-                  <div className="vio-serif" style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink)' }}>{cell.value}</div>
-                  <div className="mt-0.5" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>{cell.sub}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: '4px' }}>{cell.label}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{cell.value}</div>
+                  <div style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 300, color: 'var(--slate)', marginTop: '2px' }}>{cell.sub}</div>
                 </div>
               ))}
             </div>
@@ -540,21 +540,21 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           </div>
 
           {/* ── BREAKDOWN ── */}
-          <div className="grid grid-cols-2 mb-5" style={{ gap: '16px' }}>
-            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '16px', padding: '20px 18px' }}>
-              <div className="text-[10px] font-bold uppercase mb-2.5" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>DOOH — Digitale Screens</div>
-              <div className="vio-serif leading-none mb-1" style={{ fontSize: '18px', color: 'var(--ink)' }}>{fmtN(screens)}</div>
-              <p className="mb-2" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>Screens in {regionName}</p>
-              <p className="leading-relaxed" style={{ fontSize: '11px', color: 'var(--slate)', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>Bahnhöfe, Einkaufszentren, belebte Orte</p>
+          <div className="grid grid-cols-2 mb-5" style={{ gap: '20px' }}>
+            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '18px', padding: '24px 22px', boxShadow: '0 2px 8px rgba(107,79,187,0.06)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: '10px' }}>DOOH — Digitale Screens</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: '4px' }}>{fmtN(screens)}</div>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 300, color: 'var(--slate)', marginBottom: '6px' }}>Screens in {regionName}</p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 300, color: 'var(--slate)', lineHeight: 1.5 }}>Bahnhöfe, Einkaufszentren, belebte Orte</p>
               <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
                 {fmtN(doohContacts)} Kontakte
               </div>
             </div>
-            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '16px', padding: '20px 18px' }}>
-              <div className="text-[10px] font-bold uppercase mb-2.5" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>Display — Online Banner</div>
-              <div className="vio-serif leading-none mb-1" style={{ fontSize: '18px', color: 'var(--ink)' }}>{fmtCHF(Math.round(budget * 0.3))}</div>
-              <p className="mb-2" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>Display-Budget (30%)</p>
-              <p className="leading-relaxed" style={{ fontSize: '11px', color: 'var(--slate)', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>Schweizer Websites & Apps</p>
+            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '18px', padding: '24px 22px', boxShadow: '0 2px 8px rgba(107,79,187,0.06)' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: '10px' }}>Display — Online Banner</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: '4px' }}>{fmtCHF(Math.round(budget * 0.3))}</div>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 300, color: 'var(--slate)', marginBottom: '6px' }}>Display-Budget (30%)</p>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 300, color: 'var(--slate)', lineHeight: 1.5 }}>Schweizer Websites & Apps</p>
               <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
                 {fmtN(dispContacts)} Kontakte
               </div>
