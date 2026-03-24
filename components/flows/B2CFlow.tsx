@@ -12,6 +12,7 @@ import Step7Confirmation from '@/components/steps/Step7Confirmation';
 import Step8Dashboard from '@/components/steps/Step8Dashboard';
 
 const TOTAL_STEPS = 7;
+const STEP_LABELS = ['Website', 'Analyse', 'Zielgruppe', 'Budget', 'Werbemittel', 'Abschluss', 'Bestätigung'];
 
 const C = {
   primary: '#6B4FBB',
@@ -32,6 +33,11 @@ export default function B2CFlow({ initialUrl = '', resumeData }: Props) {
   const [currentStep, setCurrentStep] = useState(_targetStep ?? 1);
   const [step5Phase, setStep5Phase] = useState<'creative' | 'adcreator'>('creative');
   const [resumeLoaded] = useState(!!resumeData);
+  const [showLabels, setShowLabels] = useState(false);
+
+  useEffect(() => {
+    setShowLabels(window.innerWidth >= 640);
+  }, []);
 
   const [briefing, setBriefing] = useState<BriefingData>({
     ...initialBriefing,
@@ -92,7 +98,7 @@ export default function B2CFlow({ initialUrl = '', resumeData }: Props) {
       ))}
 
       {/* ── Nav ── */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(253,252,255,.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px' }}>
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(253,252,255,.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: showLabels ? '8px 28px' : '0 28px' }}>
         <a href="/" style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 800, color: C.primary, textDecoration: 'none', letterSpacing: '-.02em' }}>VIO</a>
         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
           {STEPS.map((step, i) => {
@@ -102,14 +108,21 @@ export default function B2CFlow({ initialUrl = '', resumeData }: Props) {
             return (
               <div key={step} style={{ display: 'flex', alignItems: 'center' }}>
                 {i > 0 && <div style={{ width: '14px', height: '2px', borderRadius: '2px', background: done ? C.primary : 'rgba(107,79,187,0.15)', flexShrink: 0, margin: '0 1px', transition: 'background .3s' }} />}
-                <button type="button"
-                  onClick={() => { if (done) setCurrentStep(step); }}
-                  style={{ width: active ? '28px' : '22px', height: active ? '28px' : '22px', borderRadius: '50%', border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: active ? C.primary : done ? 'rgba(107,79,187,0.20)' : 'rgba(107,79,187,0.08)', opacity: future ? 0.45 : 1, cursor: done ? 'pointer' : 'default', transition: 'all .25s', flexShrink: 0, fontSize: active ? '12px' : '10px', fontWeight: 700, color: active ? '#fff' : done ? C.primary : C.muted, fontFamily: 'var(--font-display)', outline: 'none' }}
-                  onMouseEnter={e => { if (done) { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.color = '#fff'; } }}
-                  onMouseLeave={e => { if (done) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.backgroundColor = 'rgba(107,79,187,0.20)'; e.currentTarget.style.color = C.primary; } }}
-                >
-                  {done ? '✓' : step}
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                  <button type="button"
+                    onClick={() => { if (done) setCurrentStep(step); }}
+                    style={{ width: active ? '28px' : '22px', height: active ? '28px' : '22px', borderRadius: '50%', border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: active ? C.primary : done ? 'rgba(107,79,187,0.20)' : 'rgba(107,79,187,0.08)', opacity: future ? 0.45 : 1, cursor: done ? 'pointer' : 'default', transition: 'all .25s', flexShrink: 0, fontSize: active ? '12px' : '10px', fontWeight: 700, color: active ? '#fff' : done ? C.primary : C.muted, fontFamily: 'var(--font-display)', outline: 'none' }}
+                    onMouseEnter={e => { if (done) { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.backgroundColor = C.primary; e.currentTarget.style.color = '#fff'; } }}
+                    onMouseLeave={e => { if (done) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.backgroundColor = 'rgba(107,79,187,0.20)'; e.currentTarget.style.color = C.primary; } }}
+                  >
+                    {done ? '✓' : step}
+                  </button>
+                  {showLabels && (
+                    <span style={{ fontSize: '9px', fontWeight: active ? 700 : 500, color: active ? C.primary : C.muted, fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', opacity: future ? 0.45 : 1, letterSpacing: '.02em' }}>
+                      {STEP_LABELS[i]}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -194,7 +207,7 @@ export default function B2CFlow({ initialUrl = '', resumeData }: Props) {
 
       {/* ── Step 5: Werbemittel ── */}
       {currentStep === 5 && step5Phase === 'creative' && (
-        <Step5Creative briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} onUploadSelected={() => setStep5Phase('adcreator')} isActive />
+        <Step5Creative briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} onUploadSelected={() => setStep5Phase('adcreator')} isActive stepNumber={5} />
       )}
       {currentStep === 5 && step5Phase === 'adcreator' && (
         <Step5AdCreator briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
@@ -207,7 +220,7 @@ export default function B2CFlow({ initialUrl = '', resumeData }: Props) {
 
       {/* ── Step 7: Bestätigung ── */}
       {currentStep === 7 && (
-        <Step7Confirmation briefing={briefing} nextStep={nextStep} />
+        <Step7Confirmation briefing={briefing} nextStep={nextStep} stepNumber={7} />
       )}
 
       {/* ── Step 8: Dashboard (bonus, not in progress indicator) ── */}

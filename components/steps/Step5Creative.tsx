@@ -29,9 +29,10 @@ interface Props {
   nextStep: () => void;           // goes to Contact (for upload / spaeter)
   onUploadSelected: () => void;   // goes to Ad Creator (for erstellen)
   isActive: boolean;
+  stepNumber?: number;
 }
 
-export default function Step5Creative({ briefing, updateBriefing, nextStep, onUploadSelected }: Props) {
+export default function Step5Creative({ briefing, updateBriefing, nextStep, onUploadSelected, stepNumber }: Props) {
   const selected = briefing.werbemittel;
   const [openItem, setOpenItem] = useState<'upload' | 'erstellen' | 'spaeter' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -199,7 +200,7 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <div style={{ width: 18, height: 2, background: C.primary, borderRadius: 2 }} />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' }}>
-            Schritt 4
+            {stepNumber ? `Schritt ${stepNumber}` : 'Werbemittel'}
           </span>
         </div>
 

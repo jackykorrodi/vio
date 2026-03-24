@@ -98,6 +98,10 @@ export interface BriefingData {
   werbemittelFiles?: string[];  // uploaded file names for option A
   adCreation?: 'upload' | 'selbst' | 'later'; // werbemittel choice for routing
   adCreationFee?: number;       // 500 when erstellen lassen selected
+  // B2B audience fields (direct storage, in addition to analysis)
+  branche?: string[];
+  nogaCodes?: string[];
+  unternehmensgroesse?: string[];
   // Session persistence
   sessionId?: string;
   dealId?: string;

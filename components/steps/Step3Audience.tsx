@@ -136,7 +136,7 @@ function Tbtn({ active, onClick, col, children }: {
         cursor: 'pointer',
         transition: 'all .15s',
         whiteSpace: 'nowrap',
-        boxShadow: active ? '0 2px 8px rgba(193,102,107,.25)' : 'none',
+        boxShadow: active ? '0 2px 8px rgba(107,79,187,.25)' : 'none',
         ...(col ? { width: '100%', textAlign: 'left' as const } : {}),
       }}
     >
@@ -201,12 +201,15 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
   const [auto, setAuto] = useState<'kein_auto' | 'ein_auto' | 'mehrere_autos' | null>(analysis?.auto ?? null);
 
   // ── B2B state ──────────────────────────────────────────────────────────
-  const [branche, setBranche] = useState(analysis?.branche || '');
-  const [nogaCode, setNogaCode] = useState(analysis?.nogaCode || '');
+  const [selectedBranches, setSelectedBranches] = useState<string[]>(
+    briefing.branche?.length ? briefing.branche : (analysis?.branche ? [analysis.branche] : [])
+  );
+  const [selectedNogaCodes, setSelectedNogaCodes] = useState<string[]>(
+    briefing.nogaCodes?.length ? briefing.nogaCodes : (analysis?.nogaCode ? [analysis.nogaCode] : [])
+  );
   const [unternehmensgroesse, setUnternehmensgroesse] = useState<UnternehmensgroesseOption[]>(
     Array.isArray(analysis?.unternehmensgroesse) ? analysis.unternehmensgroesse : []
   );
-  const [showBrancheSuggestions, setShowBrancheSuggestions] = useState(false);
 
   // ── Helpers ────────────────────────────────────────────────────────────
   const toggleCanton = (code: string) => {
@@ -234,8 +237,8 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
     setKinder(analysis?.kinder ?? null);
     setBildung(analysis?.bildung ?? null);
     setAuto(analysis?.auto ?? null);
-    setBranche(analysis?.branche || '');
-    setNogaCode(analysis?.nogaCode || '');
+    setSelectedBranches(analysis?.branche ? [analysis.branche] : []);
+    setSelectedNogaCodes(analysis?.nogaCode ? [analysis.nogaCode] : []);
     setUnternehmensgroesse(
       Array.isArray(analysis?.unternehmensgroesse) ? analysis.unternehmensgroesse : []
     );
@@ -257,8 +260,8 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
       kinder,
       bildung,
       auto,
-      branche: branche.trim() || null,
-      nogaCode: nogaCode.trim() || null,
+      branche: selectedBranches[0] || null,
+      nogaCode: selectedNogaCodes[0] || null,
       unternehmensgroesse,
       needsManualInput: false,
       isManualFallback: analysis?.isManualFallback || false,
@@ -267,7 +270,12 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
       ogLogo: analysis?.ogLogo || '',
       favicon: analysis?.favicon || '',
     };
-    updateBriefing({ analysis: updated });
+    updateBriefing({
+      analysis: updated,
+      branche: selectedBranches,
+      nogaCodes: selectedNogaCodes,
+      unternehmensgroesse: unternehmensgroesse,
+    });
     nextStep();
   };
 
@@ -509,71 +517,47 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
             {/* Branche + NOGA */}
             <div style={card}>
               <div style={clabel}>Branche & NOGA-Code</div>
-
-              {/* Suggestion chips */}
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{ fontSize: '12px', color: C.muted, marginBottom: '7px' }}>
-                  Branche wählen:
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {BRANCHE_SUGGESTIONS.map(s => {
-                    const isActive = branche === s.label;
-                    return (
-                      <button
-                        key={s.label}
-                        type="button"
-                        onClick={() => {
-                          setBranche(s.label);
-                          setNogaCode(s.noga);
-                          setShowBrancheSuggestions(false);
-                        }}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '100px',
-                          border: `1.5px solid ${isActive ? C.primary : C.border}`,
-                          background: isActive ? C.primary : C.white,
-                          color: isActive ? '#fff' : C.muted,
-                          fontFamily: 'var(--font-sans)',
-                          fontSize: '12px',
-                          fontWeight: isActive ? 600 : 500,
-                          cursor: 'pointer',
-                          transition: 'all .15s',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {s.label}
-                        {s.range && (
-                          <span style={{ opacity: 0.6, marginLeft: '4px', fontSize: '10px' }}>
-                            {s.range}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div style={{ fontSize: '12px', color: C.muted, marginBottom: '10px' }}>
+                Mehrfachauswahl möglich
               </div>
-
-              {/* Free-text inputs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'start' }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: '5px' }}>Freitext Branche</div>
-                  <input
-                    style={inputStyle}
-                    placeholder="z.B. Detailhandel"
-                    value={branche}
-                    onChange={e => setBranche(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: '5px' }}>NOGA-Code</div>
-                  <input
-                    style={{ ...inputStyle, width: '80px' }}
-                    placeholder="z.B. 47"
-                    maxLength={3}
-                    value={nogaCode}
-                    onChange={e => setNogaCode(e.target.value.replace(/\D/g, ''))}
-                  />
-                </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {BRANCHE_SUGGESTIONS.map(s => {
+                  const isActive = selectedBranches.includes(s.label);
+                  return (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={() => {
+                        setSelectedBranches(prev => toggleArr(prev, s.label));
+                        setSelectedNogaCodes(prev =>
+                          isActive ? prev.filter(n => n !== s.noga) : [...prev, s.noga]
+                        );
+                      }}
+                      style={{
+                        padding: '7px 13px',
+                        borderRadius: '100px',
+                        border: `1.5px solid ${isActive ? C.primary : C.border}`,
+                        background: isActive ? C.primary : C.white,
+                        color: isActive ? '#fff' : C.muted,
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '12px',
+                        fontWeight: isActive ? 600 : 500,
+                        cursor: 'pointer',
+                        transition: 'all .15s',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-start',
+                        gap: '1px',
+                      }}
+                    >
+                      <span>{s.label}</span>
+                      {s.range && (
+                        <span style={{ opacity: 0.55, fontSize: '10px' }}>{s.range}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
