@@ -252,9 +252,34 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         }
         .vio-slider::-moz-range-progress { background: var(--primary); border-radius: 2px; height: 4px; }
         .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(107,79,187,0.12); }
+        .vio-budget-wrap {
+          max-width: 1200px; margin: 0 auto;
+          padding: 32px 40px 80px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 340px;
+          gap: 40px;
+          align-items: start;
+        }
+        .vio-pkg-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+        @media (max-width: 900px) {
+          .vio-budget-wrap {
+            grid-template-columns: 1fr;
+            padding: 20px 16px 80px;
+            gap: 24px;
+          }
+          .vio-pkg-grid {
+            grid-template-columns: 1fr;
+          }
+          .vio-sidebar { display: none; }
+        }
       `}</style>
 
-      <div className="max-w-[1100px] mx-auto px-7 pt-6 pb-20 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
+      <div className="vio-budget-wrap">
 
         {/* ══════════════ MAIN COLUMN ══════════════ */}
         <div className="min-w-0">
@@ -371,7 +396,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               Mobile: 1-col, horizontal (name+details left, price right), left-border selected
               Desktop: 3-col grid, stacked, checkmark circle, full border selected
           */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5" style={{ gap: '12px' }}>
+          <div className="vio-pkg-grid">
             {PACKAGES.map((pkg, i) => {
               const isActive = selectedPkg === pkg.id;
               const pr       = pkgReach[i];
@@ -385,7 +410,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                     // Mobile layout: horizontal flex
                     'flex items-center gap-3 px-4 py-3',
                     // Desktop layout: vertical block
-                    'sm:block sm:px-4 sm:py-[18px]',
+                    'sm:block sm:px-[18px] sm:py-5',
                     // Border + bg
                     isActive
                       ? 'border-l-[3px] border-l-[var(--primary)] border border-[var(--border)] bg-[var(--pl)] sm:border-2 sm:border-[var(--primary)]'
@@ -462,7 +487,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <p className="text-xs text-[var(--muted)] mt-1">{durLabel(duration)} · {freq}× Kontakt</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-4 border-t border-[var(--border)]">
+            <div className="grid grid-cols-2 pt-4 border-t border-[var(--border)]" style={{ gap: '16px 32px' }}>
               {[
                 { label: 'DOOH Screens',     value: fmtN(screens),                   sub: 'digitale Plakatstellen' },
                 { label: 'Display Kontakte', value: fmtN(dispContacts),              sub: 'Online-Banner Impressionen' },
@@ -471,7 +496,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               ].map(cell => (
                 <div key={cell.label} className="bg-[var(--bg)] rounded-xl px-3.5 py-2.5">
                   <div className="text-[10px] font-bold uppercase mb-1" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>{cell.label}</div>
-                  <div className="vio-serif font-bold" style={{ fontSize: '18px', color: 'var(--ink)' }}>{cell.value}</div>
+                  <div className="vio-serif" style={{ fontSize: '20px', fontWeight: 800, color: 'var(--ink)' }}>{cell.value}</div>
                   <div className="mt-0.5" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>{cell.sub}</div>
                 </div>
               ))}
@@ -515,8 +540,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           </div>
 
           {/* ── BREAKDOWN ── */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div className="bg-white border border-[var(--border)] rounded-2xl p-4 sm:p-[18px]">
+          <div className="grid grid-cols-2 mb-5" style={{ gap: '16px' }}>
+            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '16px', padding: '20px 18px' }}>
               <div className="text-[10px] font-bold uppercase mb-2.5" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>DOOH — Digitale Screens</div>
               <div className="vio-serif leading-none mb-1" style={{ fontSize: '18px', color: 'var(--ink)' }}>{fmtN(screens)}</div>
               <p className="mb-2" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>Screens in {regionName}</p>
@@ -525,7 +550,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 {fmtN(doohContacts)} Kontakte
               </div>
             </div>
-            <div className="bg-white border border-[var(--border)] rounded-2xl p-4 sm:p-[18px]">
+            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '16px', padding: '20px 18px' }}>
               <div className="text-[10px] font-bold uppercase mb-2.5" style={{ letterSpacing: '.12em', color: '#B8A9E8' }}>Display — Online Banner</div>
               <div className="vio-serif leading-none mb-1" style={{ fontSize: '18px', color: 'var(--ink)' }}>{fmtCHF(Math.round(budget * 0.3))}</div>
               <p className="mb-2" style={{ fontSize: '12px', fontWeight: 300, color: 'var(--slate)', fontFamily: 'var(--font-sans)' }}>Display-Budget (30%)</p>
@@ -584,16 +609,16 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         </div>{/* end main column */}
 
         {/* ══════════════ SIDEBAR ══════════════ */}
-        <div className="hidden md:flex flex-col sticky" style={{ gap: '14px', top: '80px' }}>
+        <div className="vio-sidebar flex flex-col" style={{ position: 'sticky', top: '80px' }}>
 
           {/* Card 1: Wie berechnen wir das? */}
-          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '20px 18px' }}>
+          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '22px 20px', marginBottom: '16px' }}>
             <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Wie berechnen wir das?</h3>
             <CalcContent />
           </div>
 
           {/* Card 2: Deine Zielregion */}
-          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '20px 18px' }}>
+          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '22px 20px', marginBottom: '16px' }}>
             <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Deine Zielregion</h3>
             <p className="text-sm font-bold text-[var(--taupe)] mb-1.5">📍 {regionName}</p>
             <p className="text-sm text-[var(--muted)] mb-3.5">
