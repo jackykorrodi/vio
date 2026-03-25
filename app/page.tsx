@@ -107,7 +107,7 @@ export default function HomePage() {
         }}>
 
           {/* Swiss map — sibling of hero-left/right, centered over grid */}
-          <div style={{ position: 'absolute', left: '50%', top: '0px', transform: 'translateX(-50%)', width: '480px', height: '280px', zIndex: 1, pointerEvents: 'none' as const, overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', left: '50%', top: '80px', transform: 'translateX(-50%)', width: '480px', height: '280px', zIndex: 1, pointerEvents: 'none' as const, overflow: 'hidden' }}>
             <SwissAquarelle style={{ width: '100%', height: '100%' }} />
           </div>
 
@@ -212,7 +212,7 @@ export default function HomePage() {
             </div>
 
             {/* Card 2 — card-stat */}
-            <div style={{ position: 'absolute', width: '200px', bottom: '90px', left: '4px', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
+            <div style={{ position: 'absolute', width: '200px', bottom: '160px', left: '60px', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: '9.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: '#B8A9E8', marginBottom: '8px' }}>26 Kantone · 124 Gemeinden</div>
               <div style={{ lineHeight: 1, marginBottom: '4px' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.02em' }}>5.4</span>
