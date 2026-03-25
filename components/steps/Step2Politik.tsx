@@ -165,50 +165,53 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
   };
 
   return (
-    <section style={{ backgroundColor: 'var(--off-white)' }}>
-      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 20px 80px' }}>
+    <section style={{ backgroundColor: '#FDFCFF', position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+
+      {/* Background blobs */}
+      {[
+        { color: 'rgba(184,169,232,0.18)', size: 500, top: '-100px', right: '-80px' },
+        { color: 'rgba(200,223,248,0.16)', size: 440, top: '300px', left: '-100px' },
+        { color: 'rgba(212,168,67,0.08)',  size: 320, bottom: '10%', right: '10%' },
+      ].map((b, i) => (
+        <div key={i} style={{ position: 'fixed', width: `${b.size}px`, height: `${b.size}px`, top: (b as unknown as Record<string,string>).top, right: (b as unknown as Record<string,string>).right, bottom: (b as unknown as Record<string,string>).bottom, left: (b as unknown as Record<string,string>).left, background: `radial-gradient(circle,${b.color},transparent 65%)`, filter: 'blur(88px)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }} />
+      ))}
+
+      <div style={{ maxWidth: '760px', margin: '0 auto', padding: '40px 20px 80px', position: 'relative', zIndex: 1 }}>
 
         {/* ── Eyebrow ── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ width: '18px', height: '2px', background: C.primary, borderRadius: '2px' }} />
-          <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: '#D4A843', textTransform: 'uppercase' }}>
-            Schritt 2 · Politische Kampagne
+          <div style={{ width: 18, height: 2, background: '#6B4FBB', borderRadius: 2 }} />
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#D4A843' }}>
+            Schritt 1 · Politische Kampagne
           </span>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.taupe }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px,2.4vw,34px)', fontWeight: 800, letterSpacing: '-.025em', color: '#2D1F52', marginBottom: '6px' }}>
           Wahlkreis & Kampagnenziel
         </h1>
-        <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: '14px', color: '#7A7596', fontWeight: 300, lineHeight: 1.6, marginBottom: '32px' }}>
           Wähle deine Zielregion(en), das Abstimmungsdatum und den Kampagnentyp.
         </p>
 
-        <div style={card}>
+        {/* ── Main card ── */}
+        <div style={{ background: 'white', borderRadius: '24px', padding: '40px', border: '1px solid rgba(107,79,187,0.09)', boxShadow: '0 4px 24px rgba(107,79,187,0.06)' }}>
 
           {/* ── Multi-region picker ─────────────────────────────────────────── */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={clabel}>Region / Wahlkreis</div>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Region / Wahlkreis</div>
 
-            {/* Selected tags */}
             {selectedRegions.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', marginBottom: '8px' }}>
                 {selectedRegions.map(r => (
-                  <span key={r.name} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    background: C.pl, border: `1px solid ${C.primary}`,
-                    color: C.pd, borderRadius: '100px',
-                    padding: '5px 8px 5px 14px', fontSize: '13px', fontWeight: 600,
-                  }}>
+                  <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#EDE8FF', border: '1px solid rgba(107,79,187,0.25)', borderRadius: '100px', padding: '5px 12px', fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: '#6B4FBB' }}>
                     {r.name}
                     {r.type === 'stadt' && r.kanton && (
-                      <span style={{ fontSize: '11px', color: '#7C3AED', background: '#EDE9FE', borderRadius: '100px', padding: '1px 7px' }}>
-                        {r.kanton}
-                      </span>
+                      <span style={{ fontSize: '11px', color: '#7C3AED', background: '#EDE9FE', borderRadius: '100px', padding: '1px 7px' }}>{r.kanton}</span>
                     )}
                     <button
                       type="button"
                       onClick={() => removeRegion(r.name)}
-                      style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: '16px', padding: '0 4px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                      style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(107,79,187,0.15)', border: 'none', color: '#6B4FBB', cursor: 'pointer', fontSize: '12px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0 }}
                       aria-label={`${r.name} entfernen`}
                     >×</button>
                   </span>
@@ -216,14 +219,12 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
               </div>
             )}
 
-            {/* Total */}
             {selectedRegions.length > 0 && (
-              <div style={{ fontSize: '12px', color: C.muted, marginBottom: '10px' }}>
-                Total: <strong style={{ color: C.taupe }}>{totalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+              <div style={{ fontSize: '12px', color: '#7A7596', marginBottom: '10px' }}>
+                Total: <strong style={{ color: '#2D1F52' }}>{totalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
               </div>
             )}
 
-            {/* Search input */}
             {selectedRegions.length < 10 && (
               <div style={{ position: 'relative' }}>
                 <input
@@ -231,37 +232,27 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                   value={query}
                   placeholder="Kanton oder Gemeinde suchen..."
                   onChange={e => { setQuery(e.target.value); setDropdownOpen(true); }}
-                  onFocus={() => setDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
-                  style={{
-                    width: '100%', boxSizing: 'border-box', padding: '12px 16px',
-                    borderRadius: '8px', border: `1.5px solid ${C.border}`,
-                    fontSize: '15px', fontFamily: 'var(--font-sans), sans-serif',
-                    color: C.taupe, backgroundColor: C.white, outline: 'none',
-                  }}
+                  onFocus={e => { setDropdownOpen(true); e.currentTarget.style.borderColor = '#6B4FBB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,79,187,0.10)'; }}
+                  onBlur={e => { setTimeout(() => setDropdownOpen(false), 200); e.currentTarget.style.borderColor = 'rgba(107,79,187,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  style={{ width: '100%', boxSizing: 'border-box' as const, border: '1.5px solid rgba(107,79,187,0.15)', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', fontFamily: 'var(--font-sans)', color: '#2D1F52', background: '#FDFCFF', outline: 'none', transition: 'border-color .2s, box-shadow .2s' }}
                 />
                 {dropdownOpen && searchResults.length > 0 && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-                    background: C.white, border: `1px solid ${C.border}`,
-                    borderRadius: '10px', boxShadow: '0 8px 24px rgba(44,44,62,.12)',
-                    maxHeight: '300px', overflowY: 'auto', zIndex: 100,
-                  }}>
+                  <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'white', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '12px', boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: '300px', overflowY: 'auto' as const, zIndex: 100 }}>
                     {searchResults.filter(r => r.type === 'schweiz').length > 0 && (
                       <div>
-                        <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Schweiz</div>
+                        <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Schweiz</div>
                         {searchResults.filter(r => r.type === 'schweiz').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                       </div>
                     )}
                     {searchResults.filter(r => r.type === 'kanton').length > 0 && (
                       <div>
-                        <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Kantone</div>
+                        <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Kantone</div>
                         {searchResults.filter(r => r.type === 'kanton').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                       </div>
                     )}
                     {searchResults.filter(r => r.type === 'stadt').length > 0 && (
                       <div>
-                        <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' }}>Städte & Gemeinden</div>
+                        <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Städte & Gemeinden</div>
                         {searchResults.filter(r => r.type === 'stadt').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                       </div>
                     )}
@@ -270,48 +261,95 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
               </div>
             )}
             {selectedRegions.length >= 10 && (
-              <p style={{ fontSize: '12px', color: C.muted, marginTop: '6px' }}>Maximal 10 Regionen ausgewählt.</p>
+              <p style={{ fontSize: '12px', color: '#7A7596', marginTop: '6px' }}>Maximal 10 Regionen ausgewählt.</p>
             )}
           </div>
 
+          <div style={{ height: '1px', background: 'rgba(107,79,187,0.08)', margin: '24px 0' }} />
+
           {/* ── Voting date ─────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={clabel}>Abstimmungs- oder Wahltag</div>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Abstimmungs- oder Wahltag</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="date"
                 min={todayStr()}
                 value={votingDate}
                 onChange={e => setVotingDate(e.target.value)}
-                style={{ padding: '12px 16px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans), sans-serif', color: C.taupe, backgroundColor: C.white, outline: 'none', cursor: 'pointer' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#6B4FBB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,79,187,0.10)'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'rgba(107,79,187,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
+                style={{ padding: '12px 16px', border: '1.5px solid rgba(107,79,187,0.15)', borderRadius: '12px', fontSize: '15px', fontFamily: 'var(--font-sans)', color: '#2D1F52', background: '#FDFCFF', outline: 'none', cursor: 'pointer', transition: 'border-color .2s, box-shadow .2s' }}
               />
               {votingDate && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 14px', borderRadius: '100px', backgroundColor: '#F9EDEA', color: '#B3502A', fontSize: '13px', fontWeight: 600 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', background: '#EDE8FF', color: '#6B4FBB', borderRadius: '100px', padding: '6px 14px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '12px' }}>
                   Noch {calcDaysUntil(votingDate)} Tage
                 </span>
               )}
             </div>
           </div>
 
+          <div style={{ height: '1px', background: 'rgba(107,79,187,0.08)', margin: '24px 0' }} />
+
           {/* ── Kampagnentyp ─────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={clabel}>Kampagnentyp</div>
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Kampagnentyp</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {([
-                { value: 'ja'       as const, ico: '✅', name: 'JA-Kampagne' },
-                { value: 'nein'     as const, ico: '❌', name: 'NEIN-Kampagne' },
-                { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
-                { value: 'event'    as const, ico: '📣', name: 'Event & Mobilisierung' },
+                {
+                  value: 'ja' as const, name: 'JA-Kampagne',
+                  iconBg: '#EDE8FF',
+                  icon: (
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                      <circle cx="11" cy="11" r="8" stroke="#6B4FBB" strokeWidth="1.5"/>
+                      <path d="M7.5 11l2.5 2.5 4.5-4.5" stroke="#6B4FBB" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ),
+                },
+                {
+                  value: 'nein' as const, name: 'NEIN-Kampagne',
+                  iconBg: '#FEE2E2',
+                  icon: (
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                      <circle cx="11" cy="11" r="8" stroke="#E05252" strokeWidth="1.5"/>
+                      <path d="M8 8l6 6M14 8l-6 6" stroke="#E05252" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                  ),
+                },
+                {
+                  value: 'kandidat' as const, name: 'Kandidatenwahl',
+                  iconBg: '#FDF3DC',
+                  icon: (
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                      <circle cx="11" cy="8" r="3.5" stroke="#D4A843" strokeWidth="1.5"/>
+                      <path d="M4 19c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#D4A843" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  ),
+                },
+                {
+                  value: 'event' as const, name: 'Event & Mobilisierung',
+                  iconBg: '#EEF5FF',
+                  icon: (
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                      <path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="#4A78B0" strokeWidth="1.5" strokeLinecap="round"/>
+                      <circle cx="11" cy="11" r="4" stroke="#4A78B0" strokeWidth="1.5"/>
+                      <path d="M5.5 5.5l1.5 1.5M15 15l1.5 1.5M15 5.5L13.5 7M7 15l-1.5 1.5" stroke="#4A78B0" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  ),
+                },
               ]).map(opt => {
                 const active = politikType === opt.value;
                 return (
                   <div
                     key={opt.value}
                     onClick={() => setPolitikType(opt.value)}
-                    style={{ padding: '14px 16px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all .2s' }}
+                    style={{ background: active ? '#F5F2FF' : 'white', border: active ? '2px solid #6B4FBB' : '1.5px solid rgba(107,79,187,0.10)', borderRadius: '16px', padding: '18px 16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', transition: 'all .2s' }}
+                    onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = 'rgba(107,79,187,0.28)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(107,79,187,0.10)'; } }}
+                    onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = 'rgba(107,79,187,0.10)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; } }}
                   >
-                    <span style={{ fontSize: '18px' }}>{opt.ico}</span>
-                    <span style={{ fontWeight: 600, fontSize: '14px', color: C.taupe }}>{opt.name}</span>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '13px', background: opt.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {opt.icon}
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '14px', color: '#2D1F52' }}>{opt.name}</span>
                   </div>
                 );
               })}
@@ -320,31 +358,39 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
 
           {/* ── Potenzialberechnung ─────────────────────────────────────────── */}
           {allFilled && potenzial && (
-            <div style={{ marginBottom: '20px' }}>
-              <div style={clabel}>Potenzialberechnung</div>
-              {daysUntil < 14 && (
-                <div style={{ fontSize: '12px', color: '#7A5500', background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: '8px', padding: '8px 12px', marginBottom: '10px' }}>
-                  ⚠️ Weniger als 14 Tage bis zur Abstimmung — nur 1-Wochen-Kampagne möglich.
-                </div>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                {[
-                  { label: 'Stimmberechtigte',    value: totalStimm.toLocaleString('de-CH') },
-                  { label: 'Erreichbare Personen', value: `~${potenzial.erreichbar.toLocaleString('de-CH')}` },
-                  { label: 'Empf. Budget',         value: `CHF ${potenzial.budget.toLocaleString('de-CH')}` },
-                  { label: 'Empf. Laufzeit',       value: `${potenzial.laufzeit} ${potenzial.laufzeit === 1 ? 'Woche' : 'Wochen'}` },
-                  { label: 'Kampagnenstart',        value: formatDateDE(potenzial.start) },
-                ].map(stat => (
-                  <div key={stat.label} style={{ background: C.pl, borderRadius: '10px', padding: '14px 16px', border: `1px solid rgba(107,79,187,.15)` }}>
-                    <div style={{ fontSize: '11px', color: C.muted, fontWeight: 600, marginBottom: '4px', textTransform: 'uppercase' as const, letterSpacing: '.08em' }}>{stat.label}</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700, color: C.taupe }}>{stat.value}</div>
+            <>
+              <div style={{ height: '1px', background: 'rgba(107,79,187,0.08)', margin: '24px 0' }} />
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Potenzialberechnung</div>
+                {daysUntil < 14 && (
+                  <div style={{ background: '#FDF3DC', border: '1px solid rgba(212,168,67,0.3)', borderRadius: '12px', padding: '12px 16px', color: '#9B7120', fontSize: '13px', fontWeight: 300, display: 'flex', gap: '10px', marginBottom: '14px' }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                      <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#D4A843" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M8 6v3.5" stroke="#D4A843" strokeWidth="1.5" strokeLinecap="round"/>
+                      <circle cx="8" cy="11" r=".75" fill="#D4A843"/>
+                    </svg>
+                    Weniger als 14 Tage bis zur Abstimmung — nur 1-Wochen-Kampagne möglich.
                   </div>
-                ))}
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  {[
+                    { label: 'Stimmberechtigte',     value: totalStimm.toLocaleString('de-CH') },
+                    { label: 'Erreichbare Personen',  value: `~${potenzial.erreichbar.toLocaleString('de-CH')}` },
+                    { label: 'Empf. Budget',          value: `CHF ${potenzial.budget.toLocaleString('de-CH')}` },
+                    { label: 'Empf. Laufzeit',        value: `${potenzial.laufzeit} ${potenzial.laufzeit === 1 ? 'Woche' : 'Wochen'}` },
+                    { label: 'Kampagnenstart',         value: formatDateDE(potenzial.start) },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ background: '#F5F2FF', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '14px', padding: '16px 18px' }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', textTransform: 'uppercase' as const, letterSpacing: '.1em', color: '#B8A9E8', marginBottom: '6px' }}>{stat.label}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '20px', color: '#2D1F52' }}>{stat.value}</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: '12px', color: '#7A7596', lineHeight: 1.5 }}>
+                  Diese Werte werden als Voreinstellung für Budget und Laufzeit übernommen.
+                </p>
               </div>
-              <p style={{ fontSize: '12px', color: C.muted, lineHeight: 1.5 }}>
-                Diese Werte werden als Voreinstellung für Budget und Laufzeit übernommen.
-              </p>
-            </div>
+            </>
           )}
 
           {/* ── Weiter ─────────────────────────────────────────────────────── */}
@@ -352,13 +398,14 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
             <button
               type="button"
               onClick={handleWeiter}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: C.primary, color: '#fff', border: 'none', borderRadius: '100px', padding: '15px 32px', fontFamily: 'var(--font-sans), sans-serif', fontSize: '16px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 16px rgba(107,79,187,.3)', transition: 'all .18s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.pd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = C.primary; e.currentTarget.style.transform = 'none'; }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#6B4FBB', color: 'white', border: 'none', borderRadius: '100px', padding: '16px 32px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '16px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(107,79,187,0.28)', transition: 'all .18s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#8B6FD4'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#6B4FBB'; e.currentTarget.style.transform = 'none'; }}
             >
               Weiter zu Budget & Reichweite →
             </button>
           )}
+
         </div>
       </div>
     </section>
