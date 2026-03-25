@@ -189,7 +189,7 @@ export default function HomePage() {
             {/* Aqua pool */}
             <div style={{ position: 'absolute', width: '420px', height: '420px', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '55% 45% 60% 40% / 48% 56% 44% 52%', background: 'radial-gradient(ellipse at 30% 35%,rgba(184,169,232,.45) 0%,transparent 55%),radial-gradient(ellipse at 68% 65%,rgba(200,223,248,.4) 0%,transparent 55%),radial-gradient(ellipse at 55% 25%,rgba(242,196,206,.28) 0%,transparent 45%),radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.55) 0%,transparent 55%)', filter: 'blur(4px)', animation: 'morphPool 14s ease-in-out infinite alternate', pointerEvents: 'none' }} />
 
-            <div style={{ position: 'absolute', left: '50%', top: '0px', transform: 'translateX(-50%)', width: '480px', zIndex: 1, pointerEvents: 'none' as const }}>
+            <div style={{ position: 'absolute', left: '50%', top: '0px', transform: 'translateX(-50%)', width: '480px', height: '280px', zIndex: 1, pointerEvents: 'none' as const, overflow: 'hidden' }}>
               <SwissAquarelle />
             </div>
 
