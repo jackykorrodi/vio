@@ -222,112 +222,143 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <section className="bg-[var(--bg)]">
-      {/* Global slider + serif font styles */}
+    <section>
       <style>{`
-        .vio-serif { font-family: var(--font-display); font-weight: 700; }
-        .vio-slider {
-          -webkit-appearance: none; appearance: none;
-          width: 100%; height: 4px; border-radius: 2px;
-          outline: none; cursor: pointer; border: none; display: block;
-          background: linear-gradient(to right, var(--primary) var(--fill, 0%), rgba(107,79,187,0.12) var(--fill, 0%));
-        }
-        .vio-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; }
-        .vio-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 28px; height: 28px;
-          border-radius: 50%; background: #fff;
-          border: 2px solid var(--primary); cursor: pointer;
-          box-shadow: 0 1px 6px rgba(107,79,187,0.30); margin-top: -12px;
-        }
-        @media (min-width: 640px) {
-          .vio-slider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -10px; }
-          .vio-slider::-moz-range-thumb { width: 24px; height: 24px; }
-        }
-        .vio-slider::-moz-range-thumb {
-          width: 28px; height: 28px; border-radius: 50%;
-          background: #fff; border: 2px solid var(--primary);
-          cursor: pointer; box-shadow: 0 1px 6px rgba(107,79,187,0.30);
-          box-sizing: border-box;
-        }
-        .vio-slider::-moz-range-progress { background: var(--primary); border-radius: 2px; height: 4px; }
-        .vio-slider::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(107,79,187,0.12); }
-        .vio-budget-wrap {
-          max-width: 1200px; margin: 0 auto;
-          padding: 24px 24px 80px;
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) 300px;
-          gap: 40px;
-          align-items: start;
-        }
-        .vio-pkg-grid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-        @media (max-width: 900px) {
-          .vio-budget-wrap {
-            grid-template-columns: 1fr;
-            padding: 20px 16px 80px;
-            gap: 24px;
-          }
-          .vio-pkg-grid {
-            grid-template-columns: 1fr;
-          }
-          .vio-sidebar { display: none; }
+        .wrap{max-width:1320px;margin:0 auto;padding:32px 48px 100px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:48px;align-items:start;}
+        .eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+        .eline{width:20px;height:2px;background:#6B4FBB;border-radius:2px;flex-shrink:0;}
+        .etxt{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#D4A843;}
+        .step4-h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(26px,2.4vw,34px);font-weight:800;letter-spacing:-.025em;line-height:1.15;color:#2D1F52;margin-bottom:28px;}
+        .ctx-bar{background:white;border:1px solid rgba(107,79,187,0.10);border-radius:14px;padding:13px 18px;margin-bottom:32px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+        .badge-v{background:#6B4FBB;color:white;border-radius:100px;padding:3px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;}
+        .badge-r{background:#EDE8FF;color:#6B4FBB;border-radius:100px;padding:3px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;}
+        .badge-d{background:#FDF3DC;color:#9B7120;border:1px solid rgba(212,168,67,0.3);border-radius:8px;padding:3px 10px;font-size:11px;}
+        .ctx-change{margin-left:auto;font-size:12px;color:#6B4FBB;font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:none;}
+        .pkg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:32px;}
+        .pkg{background:white;border:1.5px solid rgba(107,79,187,0.10);border-radius:20px;padding:24px 20px;cursor:pointer;position:relative;transition:all .2s;text-align:left;width:100%;}
+        .pkg:hover{border-color:rgba(107,79,187,0.25);transform:translateY(-3px);box-shadow:0 10px 28px rgba(107,79,187,0.09);}
+        .pkg.active{border:2px solid #6B4FBB;background:#F5F2FF;}
+        .pkg-rec{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#6B4FBB;color:white;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;border-radius:100px;padding:3px 12px;white-space:nowrap;}
+        .pkg-check{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;background:rgba(107,79,187,0.10);display:flex;align-items:center;justify-content:center;}
+        .pkg.active .pkg-check{background:#6B4FBB;}
+        .pkg-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7A7596;margin-bottom:12px;}
+        .pkg.active .pkg-lbl{color:#8B6FD4;}
+        .pkg-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(20px,1.8vw,26px);font-weight:800;color:#2D1F52;letter-spacing:-.025em;line-height:1;margin-bottom:6px;}
+        .pkg.active .pkg-price{color:#6B4FBB;}
+        .pkg-dur{font-size:12px;color:#7A7596;margin-bottom:5px;}
+        .pkg-reach{font-size:11px;color:#7A7596;}
+        .pkg.active .pkg-reach{color:#8B6FD4;}
+        .proposal{background:white;border:1px solid rgba(107,79,187,0.10);border-top:3px solid #6B4FBB;border-radius:20px;padding:28px;margin-bottom:28px;}
+        .prop-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px;flex-wrap:wrap;}
+        .prop-badge{background:#EDE8FF;color:#6B4FBB;border:1px solid rgba(107,79,187,0.2);border-radius:100px;padding:3px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;display:inline-block;margin-bottom:10px;}
+        .prop-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(32px,3vw,44px);font-weight:800;color:#2D1F52;letter-spacing:-.03em;line-height:1;}
+        .prop-sub{font-size:13px;color:#7A7596;margin-top:6px;font-weight:300;}
+        .prop-right{text-align:right;flex-shrink:0;}
+        .prop-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:#6B4FBB;letter-spacing:-.02em;}
+        .prop-psub{font-size:12px;color:#7A7596;margin-top:3px;}
+        .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-top:20px;border-top:1px solid rgba(107,79,187,0.08);}
+        .stat{background:#F5F2FF;border-radius:14px;padding:16px 18px;}
+        .stat-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B8A9E8;margin-bottom:8px;}
+        .stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#2D1F52;letter-spacing:-.02em;line-height:1.1;}
+        .stat-sub{font-size:11px;color:#7A7596;margin-top:4px;font-weight:300;}
+        .sliders{background:white;border:1px solid rgba(107,79,187,0.10);border-radius:20px;padding:28px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+        .sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+        .sl-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:600;color:#2D1F52;}
+        .sl-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#6B4FBB;letter-spacing:-.02em;}
+        .step4-range{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;display:block;}
+        .step4-range::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:white;border:2.5px solid #6B4FBB;cursor:pointer;box-shadow:0 2px 8px rgba(107,79,187,0.25);margin-top:-9px;}
+        .step4-range::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:white;border:2.5px solid #6B4FBB;cursor:pointer;box-shadow:0 2px 8px rgba(107,79,187,0.25);box-sizing:border-box;}
+        .sl-ends{display:flex;justify-content:space-between;font-size:11px;color:#B8A9E8;margin-top:8px;}
+        .kanal{background:white;border:1px solid rgba(107,79,187,0.10);border-radius:20px;padding:24px 28px;margin-bottom:28px;}
+        .kanal-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:#2D1F52;margin-bottom:16px;}
+        .kanal-row{display:flex;align-items:center;gap:16px;margin-bottom:12px;}
+        .kanal-row:last-child{margin-bottom:0;}
+        .kanal-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;color:#2D1F52;width:140px;flex-shrink:0;}
+        .kanal-bar-wrap{flex:1;height:8px;background:rgba(107,79,187,0.08);border-radius:100px;overflow:hidden;}
+        .kanal-bar{height:100%;border-radius:100px;}
+        .kanal-pct{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:#6B4FBB;width:36px;text-align:right;flex-shrink:0;}
+        .kanal-note{font-size:11px;color:#7A7596;font-weight:300;margin-top:12px;padding-top:12px;border-top:1px solid rgba(107,79,187,0.08);}
+        .tip{background:#F5F2FF;border-left:3px solid #6B4FBB;border-radius:0 14px 14px 0;padding:16px 20px;margin-bottom:28px;font-size:13px;color:#2D1F52;line-height:1.7;font-weight:300;}
+        .tip strong{font-weight:700;}
+        .cta-btn{background:#6B4FBB;color:white;border:none;border-radius:100px;padding:17px 40px;font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(107,79,187,0.28);transition:all .2s;}
+        .cta-btn:hover{background:#8B6FD4;transform:translateY(-2px);}
+        .sidebar{position:sticky;top:80px;display:flex;flex-direction:column;gap:16px;}
+        .sc{background:white;border:1px solid rgba(107,79,187,0.10);border-radius:18px;padding:22px 20px;}
+        .sc-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:#2D1F52;margin-bottom:12px;}
+        .sc-note{font-size:12px;color:#7A7596;line-height:1.6;margin-bottom:12px;font-weight:300;}
+        .sc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(107,79,187,0.06);font-size:13px;}
+        .sc-row:last-of-type{border-bottom:none;}
+        .sc-l{color:#7A7596;}
+        .sc-r{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:#2D1F52;}
+        .sc-rv{color:#6B4FBB;}
+        .rname{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:#6B4FBB;margin-bottom:3px;}
+        .rpop{font-size:12px;color:#7A7596;font-weight:300;margin-bottom:12px;}
+        .rsrc{font-size:10px;color:#B8A9E8;margin-top:10px;padding-top:8px;border-top:1px solid rgba(107,79,187,0.07);}
+        .fragen{background:#F5F2FF;border-radius:16px;padding:20px;}
+        .fragen h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:#2D1F52;margin-bottom:8px;}
+        .fragen p{font-size:12px;color:#7A7596;line-height:1.6;margin-bottom:14px;font-weight:300;}
+        .fragen-btn{background:#6B4FBB;color:white;border:none;border-radius:100px;padding:10px 22px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+        .region-picker{background:white;border:1px solid rgba(107,79,187,0.10);border-radius:14px;padding:18px;margin-bottom:20px;}
+        .region-picker-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7A7596;margin-bottom:10px;}
+        .region-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+        .region-tag{display:inline-flex;align-items:center;gap:4px;background:#FAECEC;border:1px solid #6B4FBB;border-radius:100px;padding:4px 12px;font-size:13px;font-weight:600;color:#6B4FBB;}
+        .region-tag-x{background:none;border:none;cursor:pointer;font-size:16px;color:#7A7596;line-height:1;padding:0 4px;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;}
+        .region-total{font-size:12px;color:#7A7596;margin-bottom:8px;}
+        .region-input{width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(107,79,187,0.10);font-size:14px;color:#2D1F52;background:#FDFCFF;outline:none;min-height:44px;}
+        .region-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:white;border:1px solid rgba(107,79,187,0.10);border-radius:14px;box-shadow:0 8px 24px rgba(107,79,187,0.11);max-height:260px;overflow-y:auto;z-index:200;}
+        .region-dropdown-item{padding:10px 14px;cursor:pointer;font-size:14px;color:#2D1F52;display:flex;justify-content:space-between;}
+        .region-dropdown-item:hover{background:#FDFCFF;}
+        .region-actions{display:flex;gap:8px;margin-top:12px;}
+        .region-confirm-btn{min-height:44px;padding:8px 20px;border-radius:100px;background:#6B4FBB;color:white;font-size:14px;font-weight:600;border:none;cursor:pointer;}
+        .region-cancel-btn{min-height:44px;padding:8px 20px;border-radius:100px;background:transparent;color:#7A7596;border:1px solid rgba(107,79,187,0.10);font-size:14px;font-weight:600;cursor:pointer;}
+        .mobile-calc{display:none;margin-bottom:20px;}
+        .mobile-calc-btn{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;background:white;border:1px solid rgba(107,79,187,0.10);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:600;color:#2D1F52;cursor:pointer;}
+        .mobile-calc-body{background:white;border:1px solid rgba(107,79,187,0.10);border-top:none;border-radius:0 0 14px 14px;padding:12px 16px 16px;}
+        .mobile-calc-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+        @media (max-width:900px){
+          .wrap{grid-template-columns:1fr;padding:20px 16px 80px;gap:24px;}
+          .pkg-grid{grid-template-columns:1fr;}
+          .sidebar{display:none;}
+          .sliders{grid-template-columns:1fr;gap:20px;}
+          .mobile-calc{display:block;}
         }
       `}</style>
 
-      <div className="vio-budget-wrap">
+      <div className="wrap">
 
         {/* ══════════════ MAIN COLUMN ══════════════ */}
-        <div className="min-w-0">
+        <div>
 
           {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-[18px] h-0.5 bg-[var(--primary)] rounded" />
-            <span className="text-[11px] font-bold tracking-[.12em] text-[var(--primary)] uppercase">
-              {stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 4'}
-            </span>
+          <div className="eyebrow">
+            <div className="eline" />
+            <span className="etxt">{stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 4'}</span>
           </div>
 
-          <h1 className="vio-serif text-[26px] sm:text-3xl font-normal tracking-tight leading-snug mb-6 text-[var(--taupe)]">
-            Wie weit soll deine Kampagne strahlen?
-          </h1>
+          <h1 className="step4-h1">Wie weit soll deine Kampagne strahlen?</h1>
 
           {/* ── CONTEXT BAR ── */}
-          <div className="bg-white border border-[var(--border)] rounded-2xl px-[18px] py-3 mb-6 flex flex-wrap items-center gap-[10px] text-sm text-[var(--taupe)]">
-            <span
-              className="text-white rounded-full px-3 py-0.5 text-xs font-bold tracking-wide"
-              style={{ background: ctBadgeColor }}
-            >
-              {ctBadgeLabel}
-            </span>
+          <div className="ctx-bar">
+            <span className="badge-v">{ctBadgeLabel}</span>
             {isPolitik && briefing.selectedRegions && briefing.selectedRegions.length > 0 ? (
-              <span className="flex flex-wrap gap-1.5 items-center">
+              <>
                 {briefing.selectedRegions.map(r => (
-                  <span key={r.name} className="bg-[#EDE9FE] text-[#7C3AED] rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                    📍 {r.name}
-                  </span>
+                  <span key={r.name} className="badge-r">📍 {r.name}</span>
                 ))}
-                <span className="text-[var(--muted)]">· {stimmber.toLocaleString('de-CH')} Stimmberechtigte</span>
-              </span>
+                <span style={{ fontSize: '13px', color: '#7A7596' }}>
+                  {stimmber.toLocaleString('de-CH')} Stimmberechtigte
+                </span>
+              </>
             ) : (
-              <span>
-                📍 <strong>{regionName}</strong>
-                &nbsp;·&nbsp;{stimmber.toLocaleString('de-CH')}&nbsp;{isPolitik ? 'Stimmberechtigte' : 'Personen'}
-              </span>
+              <span className="badge-r">📍 {regionName}</span>
             )}
             {isPolitik && briefing.daysUntil != null && (
-              <span className="text-[#7A5500] bg-[#FFF8EE] border border-[#FDDFA4] rounded-lg px-2.5 py-0.5 text-xs">
-                🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen
-              </span>
+              <span className="badge-d">🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen</span>
             )}
             <button
               type="button"
+              className="ctx-change"
               onClick={() => { setRegionPickerOpen(o => !o); setEditRegions((briefing.selectedRegions ?? []) as Region[]); setRegionQuery(''); }}
-              className="ml-auto text-[var(--muted)] text-xs font-semibold underline cursor-pointer bg-transparent border-none min-h-[44px] px-1"
             >
               Region ändern
             </button>
@@ -335,68 +366,57 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
           {/* Region picker */}
           {regionPickerOpen && (
-            <div className="bg-white border border-[var(--border)] rounded-xl p-[18px] mb-5">
-              <div className="text-[11px] font-bold tracking-[.1em] text-[var(--muted)] uppercase mb-2.5">
+            <div className="region-picker">
+              <div className="region-picker-title">
                 {isPolitik ? 'Regionen bearbeiten' : 'Region ändern'}
               </div>
               {isPolitik && editRegions.length > 0 && (
                 <>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
+                  <div className="region-tags">
                     {editRegions.map(r => (
-                      <span key={r.name} className="inline-flex items-center gap-1.5 bg-[#F9ECEC] border border-[var(--primary)] text-[var(--pd)] rounded-full pl-3 pr-2 py-1 text-sm font-semibold">
+                      <span key={r.name} className="region-tag">
                         {r.name}
-                        <button type="button" onClick={() => removeEditRegion(r.name)} className="text-[var(--muted)] text-base leading-none cursor-pointer bg-transparent border-none min-h-[44px] min-w-[44px] flex items-center justify-center">×</button>
+                        <button type="button" className="region-tag-x" onClick={() => removeEditRegion(r.name)}>×</button>
                       </span>
                     ))}
                   </div>
-                  <p className="text-xs text-[var(--muted)] mb-2">
-                    Total: <strong className="text-[var(--taupe)]">{editTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+                  <p className="region-total">
+                    Total: <strong>{editTotalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
                   </p>
                 </>
               )}
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <input
                   type="text"
+                  className="region-input"
                   value={regionQuery}
                   placeholder={isPolitik ? 'Kanton oder Gemeinde suchen...' : 'Kanton suchen...'}
                   onChange={e => { setRegionQuery(e.target.value); setRegionDropdownOpen(true); }}
                   onFocus={() => setRegionDropdownOpen(true)}
                   onBlur={() => setTimeout(() => setRegionDropdownOpen(false), 200)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border-[1.5px] border-[var(--border)] text-sm text-[var(--taupe)] bg-[var(--bg)] outline-none min-h-[44px]"
                 />
                 {regionDropdownOpen && regionSearchResults.length > 0 && (
-                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-[var(--border)] rounded-xl shadow-[0_8px_24px_rgba(107,79,187,0.11)] max-h-[260px] overflow-y-auto z-[200]">
+                  <div className="region-dropdown">
                     {regionSearchResults.map(r => (
-                      <div
-                        key={r.name}
-                        onMouseDown={() => addEditRegion(r)}
-                        className="px-3.5 py-2.5 cursor-pointer text-sm text-[var(--taupe)] flex justify-between hover:bg-[var(--bg)]"
-                      >
+                      <div key={r.name} className="region-dropdown-item" onMouseDown={() => addEditRegion(r)}>
                         <span>{r.name}</span>
-                        <span className="text-[11px] text-[var(--muted)]">{r.stimm?.toLocaleString('de-CH')}</span>
+                        <span style={{ fontSize: '11px', color: '#B8A9E8' }}>{r.stimm?.toLocaleString('de-CH')}</span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="flex gap-2 mt-3">
+              <div className="region-actions">
                 {isPolitik && editRegions.length > 0 && (
-                  <button type="button" onClick={confirmRegionEdit} className="min-h-[44px] px-5 py-2 rounded-full bg-[var(--primary)] text-white text-sm font-semibold cursor-pointer border-none">
-                    Übernehmen
-                  </button>
+                  <button type="button" className="region-confirm-btn" onClick={confirmRegionEdit}>Übernehmen</button>
                 )}
-                <button type="button" onClick={() => setRegionPickerOpen(false)} className="min-h-[44px] px-5 py-2 rounded-full bg-transparent text-[var(--muted)] border border-[var(--border)] text-sm font-semibold cursor-pointer">
-                  Abbrechen
-                </button>
+                <button type="button" className="region-cancel-btn" onClick={() => setRegionPickerOpen(false)}>Abbrechen</button>
               </div>
             </div>
           )}
 
-          {/* ── PACKAGE CARDS ──
-              Mobile: 1-col, horizontal (name+details left, price right), left-border selected
-              Desktop: 3-col grid, stacked, checkmark circle, full border selected
-          */}
-          <div className="vio-pkg-grid">
+          {/* ── PACKAGE CARDS ── */}
+          <div className="pkg-grid">
             {PACKAGES.map((pkg, i) => {
               const isActive = selectedPkg === pkg.id;
               const pr       = pkgReach[i];
@@ -405,201 +425,147 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                   key={pkg.id}
                   type="button"
                   onClick={() => handlePackageSelect(pkg)}
-                  className={[
-                    'relative text-left cursor-pointer select-none rounded-2xl transition-all duration-150 min-h-[44px] w-full',
-                    // Mobile layout: horizontal flex
-                    'flex items-center gap-3 px-4 py-3',
-                    // Desktop layout: vertical block
-                    'sm:block sm:px-[18px] sm:py-5',
-                    // Border + bg
-                    isActive
-                      ? 'border-l-[3px] border-l-[var(--primary)] border border-[var(--border)] bg-[var(--pl)] sm:border-2 sm:border-[var(--primary)]'
-                      : 'border border-[var(--border)] bg-white',
-                  ].join(' ')}
+                  className={`pkg${isActive ? ' active' : ''}`}
                 >
-                  {/* Recommended badge — desktop only */}
-                  {pkg.recommended && (
-                    <div className="hidden sm:block absolute top-[-11px] left-1/2 -translate-x-1/2 bg-[var(--primary)] text-white rounded-full px-3 py-0.5 text-[11px] font-bold tracking-[.06em] whitespace-nowrap">
-                      Empfohlen
-                    </div>
-                  )}
-
-                  {/* Checkmark — desktop only */}
-                  <div className={[
-                    'hidden sm:flex absolute top-3.5 right-3.5 w-5 h-5 rounded-full items-center justify-center transition-all duration-150',
-                    isActive ? 'bg-[var(--primary)]' : 'bg-[var(--border)]',
-                  ].join(' ')}>
-                    <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                      <path d="M1 4.5L4 7.5L10 1.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  {pkg.recommended && <div className="pkg-rec">Empfohlen</div>}
+                  <div className="pkg-check">
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 7L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-
-                  {/* Left side: name + meta (mobile) / stacked (desktop) */}
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-[10px] font-bold tracking-[.1em] uppercase mb-0.5 sm:mb-2 ${isActive ? 'text-[var(--pd)]' : 'text-[var(--muted)]'}`}>
-                      {pkg.label}
-                      {/* Mobile recommended asterisk */}
-                      {pkg.recommended && <span className="sm:hidden ml-1 text-[var(--primary)]">★</span>}
-                    </div>
-                    {/* Details: hidden on mobile main row (shown as sub), full on desktop */}
-                    <div className="hidden sm:block">
-                      <div className="vio-serif leading-none mb-1.5" style={{ color: isActive ? 'var(--primary)' : 'var(--taupe)', fontSize: 'clamp(20px, 2vw, 26px)' }}>
-                        {fmtCHF(pkg.budget)}
-                      </div>
-                      <div className="text-xs text-[var(--muted)] mb-2">{durLabel(pkg.duration)} · {pkg.freq}× Kontakt</div>
-                      <div className={`text-[11px] ${isActive ? 'text-[var(--pd)]' : 'text-[var(--muted)]'}`}>
-                        ~{fmtRange(pr.lo, pr.hi)} {personLabel} ({pr.pct}%)
-                      </div>
-                    </div>
-                    {/* Mobile subtitle */}
-                    <div className="sm:hidden text-xs text-[var(--muted)]">
-                      {durLabel(pkg.duration)} · {pkg.freq}× · ~{pr.pct}%
-                    </div>
-                  </div>
-
-                  {/* Right side: price (mobile only) */}
-                  <div className={`sm:hidden vio-serif text-lg font-normal leading-none flex-shrink-0 ${isActive ? 'text-[var(--primary)]' : 'text-[var(--taupe)]'}`}>
-                    {fmtCHF(pkg.budget)}
-                  </div>
+                  <div className="pkg-lbl">{pkg.label}</div>
+                  <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
+                  <div className="pkg-dur">{durLabel(pkg.duration)} · {pkg.freq}× Kontakt</div>
+                  <div className="pkg-reach">~{fmtRange(pr.lo, pr.hi)} {personLabel} ({pr.pct}%)</div>
                 </button>
               );
             })}
           </div>
 
-          {/* ── RECOMMENDATION CARD ── */}
-          <div className="bg-white rounded-2xl border border-[var(--border)] border-t-[3px] border-t-[var(--primary)] p-5 sm:p-[22px] mb-5">
-            <div className="flex justify-between items-start gap-4 mb-4 flex-wrap">
+          {/* ── PROPOSAL CARD ── */}
+          <div className="proposal">
+            <div className="prop-head">
               <div>
-                <span className="inline-block bg-[var(--pl)] text-[var(--pd)] border border-[#F0C8C8] rounded-full px-3 py-0.5 text-[11px] font-bold tracking-[.06em] mb-2.5">
-                  Unser Vorschlag
-                </span>
-                <div className="vio-serif text-4xl font-normal text-[var(--taupe)] tracking-tight leading-none">
-                  {fmtRange(uniqueLow, uniqueHigh)}
-                </div>
-                <p className="text-sm text-[var(--muted)] mt-1.5">
-                  {personLabel} sehen deine Kampagne · {pct}% von {regionName}
-                </p>
+                <div className="prop-badge">Unser Vorschlag</div>
+                <div className="prop-num">{fmtRange(uniqueLow, uniqueHigh)}</div>
+                <div className="prop-sub">{personLabel} sehen deine Kampagne · {pct}% von {regionName}</div>
               </div>
-              <div className="text-right">
-                <div className="vio-serif text-2xl text-[var(--primary)] tracking-tight leading-none">
-                  {fmtCHF(budget)}
-                </div>
-                <p className="text-xs text-[var(--muted)] mt-1">{durLabel(duration)} · {freq}× Kontakt</p>
+              <div className="prop-right">
+                <div className="prop-price">{fmtCHF(budget)}</div>
+                <div className="prop-psub">{durLabel(duration)} · {freq}× Kontakt</div>
               </div>
             </div>
-            <div className="grid grid-cols-2 pt-4 border-t border-[var(--border)]" style={{ gap: '16px 32px' }}>
-              {[
-                { label: 'DOOH Screens',     value: fmtN(screens),                   sub: 'digitale Plakatstellen' },
-                { label: 'Display Kontakte', value: fmtN(dispContacts),              sub: 'Online-Banner Impressionen' },
-                { label: 'Laufzeit',         value: durLabel(duration),              sub: `${freq}× Kontakt pro Person` },
-                { label: 'Unique Reach',     value: fmtRange(uniqueLow, uniqueHigh), sub: `${pct}% der ${personLabel}` },
-              ].map(cell => (
-                <div key={cell.label} className="bg-[var(--bg)] rounded-xl px-3.5 py-2.5">
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: '4px' }}>{cell.label}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{cell.value}</div>
-                  <div style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 300, color: 'var(--slate)', marginTop: '2px' }}>{cell.sub}</div>
-                </div>
-              ))}
+            <div className="stats">
+              <div className="stat">
+                <div className="stat-lbl">Laufzeit</div>
+                <div className="stat-val">{durLabel(duration)}</div>
+                <div className="stat-sub">{freq}× Kontakt / Person</div>
+              </div>
+              <div className="stat">
+                <div className="stat-lbl">Unique Reach</div>
+                <div className="stat-val">~{fmtN(uniqueMid)}</div>
+                <div className="stat-sub">geschätzte Personen</div>
+              </div>
+              <div className="stat">
+                <div className="stat-lbl">Reichweite</div>
+                <div className="stat-val">{pct}%</div>
+                <div className="stat-sub">der {personLabel}</div>
+              </div>
             </div>
           </div>
 
-          {/* ── SLIDERS CARD ── */}
-          <div className="bg-white border border-[var(--border)] rounded-2xl p-5 sm:p-[22px] mb-5">
-            {/* Budget */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-2.5">
-                <span className="text-sm font-semibold text-[var(--taupe)]">Budget</span>
-                <span className="vio-serif text-xl text-[var(--primary)] tracking-tight">{fmtCHF(budget)}</span>
+          {/* ── SLIDERS ── */}
+          <div className="sliders">
+            <div>
+              <div className="sl-top">
+                <span className="sl-label">Budget</span>
+                <span className="sl-val">{fmtCHF(budget)}</span>
               </div>
               <input
-                type="range" className="vio-slider"
+                type="range"
+                className="step4-range"
                 min={2500} max={50000} step={500} value={budget}
                 onChange={e => setBudget(Number(e.target.value))}
-                style={{ '--fill': `${budgetPct}%` } as React.CSSProperties}
+                style={{ background: `linear-gradient(to right, #6B4FBB ${budgetPct}%, rgba(107,79,187,0.12) ${budgetPct}%)` }}
               />
-              <div className="flex justify-between text-[11px] text-[var(--muted)] mt-1.5">
-                <span>CHF 2'500</span><span>CHF 50'000</span>
-              </div>
+              <div className="sl-ends"><span>CHF 2&apos;500</span><span>CHF 50&apos;000</span></div>
             </div>
-            {/* Duration */}
             <div>
-              <div className="flex justify-between items-center mb-2.5">
-                <span className="text-sm font-semibold text-[var(--taupe)]">Laufzeit</span>
-                <span className="vio-serif text-xl text-[var(--primary)] tracking-tight">{durLabel(duration)}</span>
+              <div className="sl-top">
+                <span className="sl-label">Laufzeit</span>
+                <span className="sl-val">{durLabel(duration)}</span>
               </div>
               <input
-                type="range" className="vio-slider"
+                type="range"
+                className="step4-range"
                 min={1} max={8} step={1} value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
-                style={{ '--fill': `${durationPct}%` } as React.CSSProperties}
+                style={{ background: `linear-gradient(to right, #6B4FBB ${durationPct}%, rgba(107,79,187,0.12) ${durationPct}%)` }}
               />
-              <div className="flex justify-between text-[11px] text-[var(--muted)] mt-1.5">
-                <span>1 Woche</span><span>8 Wochen</span>
-              </div>
+              <div className="sl-ends"><span>1 Woche</span><span>8 Wochen</span></div>
             </div>
           </div>
 
-          {/* ── BREAKDOWN ── */}
-          <div className="grid grid-cols-2 mb-5" style={{ gap: '20px' }}>
-            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '18px', padding: '24px 22px', boxShadow: '0 2px 8px rgba(107,79,187,0.06)' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: '10px' }}>DOOH — Digitale Screens</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: '4px' }}>{fmtN(screens)}</div>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 300, color: 'var(--slate)', marginBottom: '6px' }}>Screens in {regionName}</p>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 300, color: 'var(--slate)', lineHeight: 1.5 }}>Bahnhöfe, Einkaufszentren, belebte Orte</p>
-              <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
-                {fmtN(doohContacts)} Kontakte
+          {/* ── KANAL SPLIT ── */}
+          <div className="kanal">
+            <div className="kanal-title">So wirkt dein Budget</div>
+            <div className="kanal-row">
+              <div className="kanal-label">DOOH Screens</div>
+              <div className="kanal-bar-wrap">
+                <div className="kanal-bar" style={{ width: '70%', background: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)' }} />
               </div>
+              <div className="kanal-pct">70%</div>
             </div>
-            <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '18px', padding: '24px 22px', boxShadow: '0 2px 8px rgba(107,79,187,0.06)' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: '10px' }}>Display — Online Banner</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: '4px' }}>{fmtCHF(Math.round(budget * 0.3))}</div>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', fontWeight: 300, color: 'var(--slate)', marginBottom: '6px' }}>Display-Budget (30%)</p>
-              <p style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 300, color: 'var(--slate)', lineHeight: 1.5 }}>Schweizer Websites & Apps</p>
-              <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-sm font-bold text-[var(--taupe)]">
-                {fmtN(dispContacts)} Kontakte
+            <div className="kanal-row">
+              <div className="kanal-label">Online Display</div>
+              <div className="kanal-bar-wrap">
+                <div className="kanal-bar" style={{ width: '30%', background: 'linear-gradient(90deg,#7B8FD4,#C8DFF8)' }} />
               </div>
+              <div className="kanal-pct">30%</div>
             </div>
+            <div className="kanal-note">Digitale Plakatwände im öffentlichen Raum · Schweizer Newsportale & Apps</div>
           </div>
 
-          {/* ── MOBILE ACCORDION: Wie berechnen wir das? ── */}
-          <div className="sm:hidden mb-5">
-            <button
-              type="button"
-              onClick={() => setAccordionOpen(o => !o)}
-              className="w-full min-h-[44px] flex items-center justify-between bg-white border border-[var(--border)] rounded-2xl px-4 py-3 text-sm font-semibold text-[var(--taupe)] cursor-pointer"
-            >
+          {/* ── SMART TIP ── */}
+          <div className="tip">💡 <strong>Tipp:</strong> {smartTip}</div>
+
+          {/* ── MOBILE CALC ACCORDION ── */}
+          <div className="mobile-calc">
+            <button type="button" className="mobile-calc-btn" onClick={() => setAccordionOpen(o => !o)}>
               <span>Wie berechnen wir das?</span>
-              <span className={`text-[var(--muted)] transition-transform duration-200 ${accordionOpen ? 'rotate-180' : ''}`}>▾</span>
+              <span style={{ color: '#7A7596', transition: 'transform .2s', display: 'inline-block', transform: accordionOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
             </button>
             {accordionOpen && (
-              <div className="bg-white border border-t-0 border-[var(--border)] rounded-b-2xl px-4 pb-4 pt-3">
-                <CalcContent />
+              <div className="mobile-calc-body">
+                <p style={{ fontSize: '12px', color: '#7A7596', lineHeight: 1.6, marginBottom: '8px' }}>
+                  Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.
+                </p>
+                <div className="mobile-calc-row">
+                  <span style={{ color: '#7A7596' }}>DOOH-Anteil (70%)</span>
+                  <strong style={{ color: '#2D1F52' }}>{fmtCHF(Math.round(budget * 0.7))}</strong>
+                </div>
+                <div className="mobile-calc-row">
+                  <span style={{ color: '#7A7596' }}>Display-Anteil (30%)</span>
+                  <strong style={{ color: '#2D1F52' }}>{fmtCHF(Math.round(budget * 0.3))}</strong>
+                </div>
+                <div className="mobile-calc-row" style={{ borderTop: '1px solid rgba(107,79,187,0.08)', marginTop: '8px', paddingTop: '8px' }}>
+                  <span style={{ color: '#7A7596' }}>Ø Kontakte pro Person</span>
+                  <strong style={{ color: '#6B4FBB' }}>{freq}×</strong>
+                </div>
               </div>
             )}
           </div>
 
-          {/* ── SMART TIP ── */}
-          <div style={{ background:'#F5F2FF', borderLeft:'3px solid #6B4FBB', borderRadius:'0 12px 12px 0', padding:'14px 18px', marginBottom:'28px', fontSize:'14px', color:'var(--ink)', lineHeight:1.6 }}>
-            💡 {smartTip}
-          </div>
-
-          {/* ── CTA ──
-              Mobile: stacked col (Weiter full-width, then Zurück)
-              Desktop: inline row
-          */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <button
-              type="button"
-              onClick={handleNext}
-              className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white border-none rounded-full px-7 text-[15px] font-bold cursor-pointer transition-all duration-150 hover:bg-[var(--pd)] hover:-translate-y-0.5" style={{ padding: '15px 28px', boxShadow: '0 6px 20px rgba(107,79,187,0.28)', fontFamily: 'var(--font-display)' }}
-            >
+          {/* ── CTA ── */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" className="cta-btn" onClick={handleNext}>
               Weiter zu den Werbemitteln →
             </button>
             {prevStep && (
               <button
                 type="button"
                 onClick={prevStep}
-                className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 bg-transparent text-[var(--muted)] border border-[var(--border)] rounded-full px-6 py-3.5 text-sm font-semibold cursor-pointer transition-all duration-150 hover:text-[var(--taupe)]"
+                style={{ background: 'transparent', color: '#7A7596', border: '1px solid rgba(107,79,187,0.10)', borderRadius: '100px', padding: '15px 28px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
               >
                 ← Zurück
               </button>
@@ -609,51 +575,29 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         </div>{/* end main column */}
 
         {/* ══════════════ SIDEBAR ══════════════ */}
-        <div className="vio-sidebar flex flex-col" style={{ position: 'sticky', top: '80px' }}>
+        <div className="sidebar">
 
-          {/* Card 1: Wie berechnen wir das? */}
-          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '22px 20px', marginBottom: '16px' }}>
-            <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Wie berechnen wir das?</h3>
-            <CalcContent />
+          <div className="sc">
+            <div className="sc-title">Wie berechnen wir das?</div>
+            <div className="sc-note">Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.</div>
+            <div className="sc-row"><span className="sc-l">DOOH-Anteil (70%)</span><span className="sc-r">{fmtCHF(Math.round(budget * 0.7))}</span></div>
+            <div className="sc-row"><span className="sc-l">Display-Anteil (30%)</span><span className="sc-r">{fmtCHF(Math.round(budget * 0.3))}</span></div>
+            <div className="sc-row"><span className="sc-l">Ø Kontakte pro Person</span><span className="sc-r sc-rv">{freq}×</span></div>
           </div>
 
-          {/* Card 2: Deine Zielregion */}
-          <div style={{ background: '#fff', border: '1px solid rgba(107,79,187,0.09)', borderRadius: '20px', padding: '22px 20px', marginBottom: '16px' }}>
-            <h3 className="vio-serif text-base text-[var(--taupe)] mb-3.5">Deine Zielregion</h3>
-            <p className="text-sm font-bold text-[var(--taupe)] mb-1.5">📍 {regionName}</p>
-            <p className="text-sm text-[var(--muted)] mb-3.5">
-              {stimmber.toLocaleString('de-CH')} {isPolitik ? 'Stimmberechtigte' : 'Einwohner'}
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {[
-                { label: 'Erreichbar via DOOH',    value: '~85%' },
-                { label: 'Erreichbar via Display', value: '~92%' },
-              ].map(row => (
-                <div key={row.label} className="flex justify-between text-xs text-[var(--muted)]">
-                  <span>{row.label}</span>
-                  <strong className="text-[var(--taupe)]">{row.value}</strong>
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 pt-2.5 border-t border-[var(--border)] text-[11px] text-[var(--muted)]">
-              Quelle: BFS Bevölkerungsstatistik 2023
-            </p>
+          <div className="sc">
+            <div className="sc-title">Deine Zielregion</div>
+            <div className="rname">📍 {regionName}</div>
+            <div className="rpop">{stimmber.toLocaleString('de-CH')} {isPolitik ? 'Stimmberechtigte' : 'Einwohner'}</div>
+            <div className="sc-row"><span className="sc-l">Erreichbar via DOOH</span><span className="sc-r">~85%</span></div>
+            <div className="sc-row"><span className="sc-l">Erreichbar via Display</span><span className="sc-r">~92%</span></div>
+            <div className="rsrc">Quelle: BFS Bevölkerungsstatistik 2023</div>
           </div>
 
-          {/* Card 3: Fragen? */}
-          <div style={{ background: '#F5F2FF', borderRadius: '16px', padding: '18px' }}>
-            <h3 className="vio-serif text-base text-[var(--taupe)] mb-2">Fragen?</h3>
-            <p className="text-sm text-[var(--muted)] leading-relaxed mb-4">
-              Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.
-            </p>
-            <a
-              href="https://calendly.com/vio"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-block', background: '#6B4FBB', color: '#fff', borderRadius: '100px', padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, textDecoration: 'none' }}
-            >
-              Gespräch buchen →
-            </a>
+          <div className="fragen">
+            <h3>Fragen?</h3>
+            <p>Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.</p>
+            <button type="button" className="fragen-btn">Gespräch buchen →</button>
           </div>
 
         </div>{/* end sidebar */}
