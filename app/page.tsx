@@ -106,6 +106,11 @@ export default function HomePage() {
           position: 'relative', zIndex: 1,
         }}>
 
+          {/* Swiss map — sibling of hero-left/right, centered over grid */}
+          <div style={{ position: 'absolute', left: '50%', top: '0px', transform: 'translateX(-50%)', width: '480px', height: '280px', zIndex: 1, pointerEvents: 'none' as const, overflow: 'hidden' }}>
+            <SwissAquarelle style={{ width: '100%', height: '100%' }} />
+          </div>
+
           {/* hero-left */}
           <div style={{
             position: 'relative', zIndex: 2,
@@ -188,10 +193,6 @@ export default function HomePage() {
           }}>
             {/* Aqua pool */}
             <div style={{ position: 'absolute', width: '420px', height: '420px', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '55% 45% 60% 40% / 48% 56% 44% 52%', background: 'radial-gradient(ellipse at 30% 35%,rgba(184,169,232,.45) 0%,transparent 55%),radial-gradient(ellipse at 68% 65%,rgba(200,223,248,.4) 0%,transparent 55%),radial-gradient(ellipse at 55% 25%,rgba(242,196,206,.28) 0%,transparent 45%),radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.55) 0%,transparent 55%)', filter: 'blur(4px)', animation: 'morphPool 14s ease-in-out infinite alternate', pointerEvents: 'none', zIndex: 0 }} />
-
-            <div style={{ position: 'absolute', left: '50%', top: '0px', transform: 'translateX(-50%)', width: '480px', height: '280px', zIndex: 1, pointerEvents: 'none' as const, overflow: 'hidden' }}>
-              <SwissAquarelle style={{ width: '100%', height: '100%' }} />
-            </div>
 
             {/* Card 1 — card-main */}
             <div style={{ position: 'absolute', width: '290px', top: '40px', left: '50%', transform: 'translateX(-46%)', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatA 7s ease-in-out infinite' }}>
