@@ -97,7 +97,7 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
   ctx.restore();
 }
 
-export default function SwissAquarelle() {
+export default function SwissAquarelle({ style }: { style?: React.CSSProperties } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -186,6 +186,7 @@ export default function SwissAquarelle() {
       pointerEvents: 'none',
       width:         '480px',
       height:        '280px',
+      ...style,
     }}>
       <canvas
         ref={canvasRef}
