@@ -3,60 +3,166 @@
 import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
+import doohScreens from '@/public/dooh-screens.json';
 
-// ─── Canton population ────────────────────────────────────────────────────────
-const CANTON_POP: Record<string, { bev: number; stimm: number }> = {
-  'Zürich': { bev: 1539000, stimm: 1077300 },
-  'Bern': { bev: 1050000, stimm: 735000 },
-  'Luzern': { bev: 428000, stimm: 299600 },
-  'Uri': { bev: 37000, stimm: 25900 },
-  'Schwyz': { bev: 166000, stimm: 116200 },
-  'Obwalden': { bev: 39000, stimm: 27300 },
-  'Nidwalden': { bev: 44000, stimm: 30800 },
-  'Glarus': { bev: 41000, stimm: 28700 },
-  'Zug': { bev: 131000, stimm: 91700 },
-  'Freiburg': { bev: 337000, stimm: 235900 },
-  'Solothurn': { bev: 283000, stimm: 198100 },
-  'Basel-Stadt': { bev: 181000, stimm: 128100 },
-  'Basel-Landschaft': { bev: 290000, stimm: 199400 },
-  'Schaffhausen': { bev: 84000, stimm: 57200 },
-  'Appenzell A.Rh.': { bev: 58000, stimm: 40800 },
-  'Appenzell I.Rh.': { bev: 16000, stimm: 11500 },
-  'St. Gallen': { bev: 514000, stimm: 340900 },
-  'Graubünden': { bev: 201000, stimm: 138900 },
-  'Aargau': { bev: 693000, stimm: 453400 },
-  'Thurgau': { bev: 279000, stimm: 185700 },
-  'Tessin': { bev: 356000, stimm: 249600 },
-  'Waadt': { bev: 815000, stimm: 516900 },
-  'Wallis': { bev: 345000, stimm: 215200 },
-  'Neuenburg': { bev: 175000, stimm: 119800 },
-  'Genf': { bev: 509000, stimm: 330000 },
-  'Jura': { bev: 73000, stimm: 52800 },
-  'Gesamte Schweiz': { bev: 8816000, stimm: 5571000 },
+type DoohEntry = {
+  type: 'schweiz' | 'kanton' | 'stadt';
+  name?: string;
+  kanton: string;
+  screens: number;
+  standorte: number;
+  reach: number;
 };
+const DOOH_DATA = doohScreens as DoohEntry[];
 
-// ─── Packages ─────────────────────────────────────────────────────────────────
-const PACKAGES = [
-  { id: 'sichtbar' as const, label: 'Sichtbar',  budget: 2500,  duration: 2, freq: 3, recommended: false },
-  { id: 'praesenz' as const, label: 'Präsenz',   budget: 9500,  duration: 4, freq: 7, recommended: true  },
-  { id: 'dominanz' as const, label: 'Dominanz',  budget: 25000, duration: 6, freq: 7, recommended: false },
+// ─── Tier configuration ───────────────────────────────────────────────────────
+const TIERS = {
+  hochfrequenz: {
+    praesenzRate: 0.70,
+    maxDurchdringung: 0.45,
+    displayAnteil: 0.30,
+    doohBand: 0.10,
+    kombBand: 0.07,
+  },
+  mittelgross: {
+    praesenzRate: 0.75,
+    maxDurchdringung: 0.55,
+    displayAnteil: 0.25,
+    doohBand: 0.15,
+    kombBand: 0.10,
+  },
+  regional: {
+    praesenzRate: 0.85,
+    maxDurchdringung: 0.75,
+    displayAnteil: 0.20,
+    doohBand: 0.20,
+    kombBand: 0.13,
+  },
+} as const;
+
+type TierKey = keyof typeof TIERS;
+
+const HOCHFREQUENZ_STAEDTE = [
+  'Zürich','Bern','Basel','Genf','Lausanne','Winterthur','Luzern','St. Gallen'
+];
+const HOCHFREQUENZ_KANTONE = ['ZH','BE','GE','BS'];
+const MITTELGROSS_KANTONE = [
+  'AG','VD','BL','LU','SG','TI','SO','TG','FR','NE','VS','GR','SZ','ZG','SH'
+];
+
+const PAKETE = [
+  { id: 'sichtbar' as const, label: 'Sichtbar',  faktor: 0.35, weeks: 1, recommended: false },
+  { id: 'praesenz' as const, label: 'Präsenz',   faktor: 0.60, weeks: 2, recommended: true  },
+  { id: 'dominanz' as const, label: 'Dominanz',  faktor: 0.80, weeks: 4, recommended: false },
 ] as const;
 
-type PackageId = 'sichtbar' | 'praesenz' | 'dominanz';
+type PaketId = 'sichtbar' | 'praesenz' | 'dominanz';
 
-// ─── Calculation ──────────────────────────────────────────────────────────────
-function calcReach(budget: number, stimmber: number) {
-  const freq         = budget < 5000 ? 3 : budget < 8000 ? 5 : 7;
-  const doohBudget   = budget * 0.7;
-  const dispBudget   = budget * 0.3;
-  const doohContacts = Math.round(doohBudget / 50 * 1000);
-  const dispContacts = Math.round(dispBudget / 15 * 1000);
-  const uniqueLow    = Math.min(Math.round(doohContacts / freq * 0.85), stimmber);
-  const uniqueHigh   = Math.min(Math.round(doohContacts / freq * 1.1),  stimmber);
-  const uniqueMid    = Math.round((uniqueLow + uniqueHigh) / 2);
-  const pct          = Math.min(Math.round(uniqueHigh / stimmber * 100), 100);
-  const screens      = Math.max(3, Math.round(budget / 950));
-  return { freq, doohContacts, dispContacts, uniqueLow, uniqueHigh, uniqueMid, pct, screens };
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getTierForRegion(r: { type: string; name?: string; kanton?: string; screens?: number }): TierKey {
+  if (r.type === 'schweiz') return 'mittelgross';
+  if (r.type === 'stadt') {
+    if (HOCHFREQUENZ_STAEDTE.includes(r.name ?? '')) return 'hochfrequenz';
+    if ((r.screens ?? 0) >= 80) return 'mittelgross';
+    return 'regional';
+  }
+  if (r.type === 'kanton') {
+    if (HOCHFREQUENZ_KANTONE.includes(r.kanton ?? '')) return 'hochfrequenz';
+    if (MITTELGROSS_KANTONE.includes(r.kanton ?? '')) return 'mittelgross';
+    return 'regional';
+  }
+  return 'regional';
+}
+
+function snap(n: number, step: number): number {
+  return Math.round(n / step) * step;
+}
+
+// ─── Reach model ──────────────────────────────────────────────────────────────
+interface ReachResult {
+  doohMitte: number;
+  displayUnique: number;
+  gesamtMitte: number;
+  von: number;
+  bis: number;
+  vonPct: number;
+  bisPct: number;
+  cappedAt80: boolean;
+  screens: number;
+  tier: TierKey;
+  kombBand: number;
+}
+
+function calcVioReach(
+  budget: number,
+  stimmber: number,
+  paketFaktor: number,
+  selectedRegions: Array<{ name?: string; type: string; kanton?: string; stimm: number }>,
+): ReachResult {
+  let totalStimm = 0;
+  let sumPraesenz = 0;
+  let sumDurchdringung = 0;
+  let sumDisplayAnteil = 0;
+  let sumKombBand = 0;
+  let totalScreens = 0;
+
+  selectedRegions.forEach(r => {
+    const s = r.stimm;
+    const doohEntry = DOOH_DATA.find(d =>
+      r.type === 'schweiz' ? d.type === 'schweiz' :
+      r.type === 'kanton'  ? d.type === 'kanton' && d.kanton === r.kanton :
+      d.type === 'stadt' && d.name === r.name
+    );
+    const screens = doohEntry?.screens ?? 0;
+    const tierKey = getTierForRegion({ type: r.type, name: r.name, kanton: r.kanton, screens });
+    const tier = TIERS[tierKey];
+
+    totalStimm += s;
+    sumPraesenz += s * tier.praesenzRate;
+    sumDurchdringung += s * tier.maxDurchdringung;
+    sumDisplayAnteil += s * tier.displayAnteil;
+    sumKombBand += s * tier.kombBand;
+    totalScreens += screens;
+  });
+
+  if (totalStimm === 0) {
+    return { doohMitte: 0, displayUnique: 0, gesamtMitte: 0, von: 0, bis: 0, vonPct: 0, bisPct: 0, cappedAt80: false, screens: 0, tier: 'regional', kombBand: 0.13 };
+  }
+
+  const avgPraesenz      = sumPraesenz      / totalStimm;
+  const avgDurchdringung = sumDurchdringung / totalStimm;
+  const avgDisplayAnteil = sumDisplayAnteil / totalStimm;
+  const avgKombBand      = sumKombBand      / totalStimm;
+
+  const doohMitte    = Math.round(stimmber * avgPraesenz * avgDurchdringung * paketFaktor);
+  const displayBudget = budget * avgDisplayAnteil;
+  const displayRaw    = Math.round(displayBudget / 15 * 1000 * 0.35);
+  const displayUnique = Math.min(displayRaw, Math.round(doohMitte * 1.5));
+
+  let gesamtMitte = doohMitte + displayUnique;
+  const cap80     = Math.round(stimmber * 0.80);
+  const cappedAt80 = gesamtMitte > cap80;
+  gesamtMitte = Math.min(gesamtMitte, cap80);
+
+  const von    = snap(Math.max(0, Math.round(gesamtMitte * (1 - avgKombBand))), 500);
+  const bis    = Math.min(snap(Math.round(gesamtMitte * (1 + avgKombBand)), 500), Math.round(stimmber * 0.80));
+  const vonPct = Math.round(von / stimmber * 100);
+  const bisPct = Math.round(bis / stimmber * 100);
+
+  const dominantRegion  = selectedRegions.reduce((a, b) => a.stimm > b.stimm ? a : b);
+  const dominantScreens = DOOH_DATA.find(d =>
+    dominantRegion.type === 'schweiz' ? d.type === 'schweiz' :
+    dominantRegion.type === 'kanton'  ? d.type === 'kanton' && d.kanton === dominantRegion.kanton :
+    d.type === 'stadt' && d.name === dominantRegion.name
+  )?.screens ?? 0;
+  const dominantTier = getTierForRegion({
+    type: dominantRegion.type,
+    name: dominantRegion.name,
+    kanton: dominantRegion.kanton,
+    screens: dominantScreens,
+  });
+
+  return { doohMitte, displayUnique, gesamtMitte, von, bis, vonPct, bisPct, cappedAt80, screens: totalScreens, tier: dominantTier, kombBand: avgKombBand };
 }
 
 function todayStr(): string {
@@ -78,20 +184,35 @@ interface Props {
 export default function Step4Budget({ briefing, updateBriefing, nextStep, prevStep, stepNumber }: Props) {
   const isPolitik = briefing.campaignType === 'politik';
 
-  const regionName = isPolitik
-    ? (briefing.selectedRegions?.[0]?.name ?? briefing.politikRegion ?? 'Gesamte Schweiz')
-    : (briefing.analysis?.region?.[0] ?? 'Gesamte Schweiz');
+  const selectedRegions = useMemo(() => {
+    if (isPolitik && briefing.selectedRegions?.length) {
+      return briefing.selectedRegions.map(r => ({
+        name: r.name,
+        type: r.type,
+        kanton: r.kanton,
+        stimm: r.stimm,
+      }));
+    }
+    const rName = briefing.analysis?.region?.[0] ?? 'Gesamte Schweiz';
+    const found = ALL_REGIONS.find(r => r.name === rName);
+    return [{
+      name:   found?.name   ?? 'Gesamte Schweiz',
+      type:   found?.type   ?? 'schweiz',
+      kanton: found?.kanton ?? 'CH',
+      stimm:  found?.stimm  ?? 5571000,
+    }];
+  }, [briefing, isPolitik]);
 
-  const popData  = CANTON_POP[regionName] ?? CANTON_POP['Gesamte Schweiz'];
-  const stimmber = isPolitik
-    ? (briefing.totalStimmber ?? briefing.stimmberechtigte ?? popData.stimm)
-    : popData.bev;
+  const stimmber  = selectedRegions.reduce((s, r) => s + r.stimm, 0);
+  const regionName = selectedRegions.length === 1
+    ? (selectedRegions[0].name ?? 'Gesamte Schweiz')
+    : `${selectedRegions.length} Regionen`;
 
   // ── State ──
-  const [budget,         setBudget]         = useState(9500);
-  const [duration,       setDuration]       = useState(4);
-  const [selectedPkg,    setSelectedPkg]    = useState<PackageId>('praesenz');
-  const [accordionOpen,  setAccordionOpen]  = useState(false);
+  const [budget,             setBudget]             = useState(9500);
+  const [duration,           setDuration]           = useState(4);
+  const [selectedPkg,        setSelectedPkg]        = useState<PaketId>('praesenz');
+  const [accordionOpen,      setAccordionOpen]      = useState(false);
   const [regionPickerOpen,   setRegionPickerOpen]   = useState(false);
   const [regionQuery,        setRegionQuery]        = useState('');
   const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
@@ -107,24 +228,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   });
 
   // ── Derived ──
-  const { freq, doohContacts, dispContacts, uniqueLow, uniqueHigh, uniqueMid, pct, screens } =
-    calcReach(budget, stimmber);
-
-  const pkgReach = PACKAGES.map(p => {
-    const dooh = Math.round(p.budget * 0.7 / 50 * 1000);
-    const lo   = Math.min(Math.round(dooh / p.freq * 0.85), stimmber);
-    const hi   = Math.min(Math.round(dooh / p.freq * 1.1),  stimmber);
-    return { lo, hi, pct: Math.min(Math.round(hi / stimmber * 100), 100) };
-  });
+  const currentPaket = PAKETE.find(p => p.id === selectedPkg) ?? PAKETE[1];
+  const reach = useMemo(() =>
+    calcVioReach(budget, stimmber, currentPaket.faktor, selectedRegions),
+    [budget, stimmber, currentPaket.faktor, selectedRegions]
+  );
+  const pkgReach = useMemo(() => PAKETE.map(pkg => {
+    const pkgBudget = pkg.faktor / 0.60 * budget;
+    return calcVioReach(pkgBudget, stimmber, pkg.faktor, selectedRegions);
+  }), [budget, stimmber, selectedRegions]);
 
   const smartTip = (() => {
-    if (duration > 4 && budget < 5000)
-      return "Tipp: Für dieses Budget lieber 2–3 Wochen wählen — so bleibt die Frequenz hoch genug um zu wirken.";
-    if (pct >= 55)
+    if (reach.bisPct >= 55)
       return "Stark: Du erreichst über die Hälfte aller Stimmberechtigten. Maximale Durchdringung.";
-    if (pct >= 40)
-      return `Gute Durchdringung — ${pct}% der Stimmberechtigten sehen deine Kampagne mindestens ${freq}×.`;
-    return "Tipp: Mit etwas mehr Budget lässt sich die Reichweite deutlich steigern — ab CHF 5'000 steigt die Frequenz auf 5× pro Person.";
+    if (reach.bisPct >= 40)
+      return `Gute Durchdringung — bis zu ${reach.bisPct}% der Stimmberechtigten sehen deine Kampagne.`;
+    return "Tipp: Mit etwas mehr Budget lässt sich die Reichweite deutlich steigern.";
   })();
 
   // ── Region picker ──
@@ -168,17 +287,23 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
     setRegionPickerOpen(false); setRegionQuery('');
   };
 
-  const handlePackageSelect = (pkg: typeof PACKAGES[number]) => {
+  const handlePackageSelect = (pkg: typeof PAKETE[number]) => {
     setSelectedPkg(pkg.id);
-    setBudget(pkg.budget);
-    setDuration(pkg.duration);
+    setDuration(pkg.weeks);
   };
 
   const handleNext = () => {
     updateBriefing({
-      budget, laufzeit: duration, startDate,
-      reach: uniqueMid, freq,
-      tierSelected: PACKAGES.findIndex(p => p.id === selectedPkg),
+      budget,
+      laufzeit: currentPaket.weeks,
+      startDate,
+      reach: reach.gesamtMitte,
+      reachVon:    reach.von,
+      reachBis:    reach.bis,
+      reachVonPct: reach.vonPct,
+      reachBisPct: reach.bisPct,
+      screens:     reach.screens,
+      tierSelected: PAKETE.findIndex(p => p.id === selectedPkg),
       b2bReach: null,
     });
     nextStep();
@@ -201,11 +326,11 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const CalcContent = () => (
     <div className="flex flex-col gap-2">
       <p className="text-xs text-[var(--muted)] leading-relaxed mb-1">
-        Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.
+        Deine Reichweite basiert auf DOOH-Screens und Online-Display in deiner Zielregion.
       </p>
       {[
-        { label: '📺 DOOH-Anteil (70%)',    value: fmtCHF(Math.round(budget * 0.7)) },
-        { label: '🖥 Display-Anteil (30%)', value: fmtCHF(Math.round(budget * 0.3)) },
+        { label: 'Reichweite', value: `~${fmtN(reach.von)} – ${fmtN(reach.bis)}` },
+        { label: 'Screens',    value: fmtN(reach.screens) },
       ].map(row => (
         <div key={row.label} className="flex justify-between text-sm">
           <span className="text-[var(--taupe)]">{row.label}</span>
@@ -214,8 +339,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
       ))}
       <div className="h-px bg-[var(--border)] my-1" />
       <div className="flex justify-between text-sm">
-        <span className="text-[var(--taupe)]">Ø Kontakte pro Person</span>
-        <strong className="text-[var(--primary)]">{freq}×</strong>
+        <span className="text-[var(--taupe)]">Laufzeit</span>
+        <strong className="text-[var(--primary)]">{durLabel(currentPaket.weeks)}</strong>
       </div>
     </div>
   );
@@ -417,9 +542,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
           {/* ── PACKAGE CARDS ── */}
           <div className="pkg-grid">
-            {PACKAGES.map((pkg, i) => {
+            {PAKETE.map((pkg, i) => {
               const isActive = selectedPkg === pkg.id;
-              const pr       = pkgReach[i];
+              const r        = pkgReach[i];
               return (
                 <button
                   key={pkg.id}
@@ -434,9 +559,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                     </svg>
                   </div>
                   <div className="pkg-lbl">{pkg.label}</div>
-                  <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
-                  <div className="pkg-dur">{durLabel(pkg.duration)} · {pkg.freq}× Kontakt</div>
-                  <div className="pkg-reach">~{fmtRange(pr.lo, pr.hi)} {personLabel} ({pr.pct}%)</div>
+                  <div className="pkg-price">~{fmtN(r.von)} – {fmtN(r.bis)}</div>
+                  <div className="pkg-dur">{r.cappedAt80 ? 'bis zu 80% der Stimmber.' : `${r.vonPct}%–${r.bisPct}% der Stimmber.`}</div>
+                  <div className="pkg-reach">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
                 </button>
               );
             })}
@@ -447,28 +572,32 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             <div className="prop-head">
               <div>
                 <div className="prop-badge">Unser Vorschlag</div>
-                <div className="prop-num">{fmtRange(uniqueLow, uniqueHigh)}</div>
-                <div className="prop-sub">{personLabel} sehen deine Kampagne · {pct}% von {regionName}</div>
+                <div className="prop-num">~{fmtN(reach.von)} – {fmtN(reach.bis)}</div>
+                <div className="prop-sub">
+                  {reach.cappedAt80
+                    ? `bis zu 80% der Stimmberechtigten`
+                    : `${reach.vonPct}%–${reach.bisPct}% der Stimmberechtigten`}
+                </div>
               </div>
               <div className="prop-right">
                 <div className="prop-price">{fmtCHF(budget)}</div>
-                <div className="prop-psub">{durLabel(duration)} · {freq}× Kontakt</div>
+                <div className="prop-psub">{durLabel(currentPaket.weeks)} · {fmtN(reach.screens)} Screens</div>
               </div>
             </div>
             <div className="stats">
               <div className="stat">
                 <div className="stat-lbl">Laufzeit</div>
-                <div className="stat-val">{durLabel(duration)}</div>
-                <div className="stat-sub">{freq}× Kontakt / Person</div>
+                <div className="stat-val">{durLabel(currentPaket.weeks)}</div>
+                <div className="stat-sub">Kampagnendauer</div>
               </div>
               <div className="stat">
                 <div className="stat-lbl">Unique Reach</div>
-                <div className="stat-val">~{fmtN(uniqueMid)}</div>
+                <div className="stat-val">~{fmtN(reach.gesamtMitte)}</div>
                 <div className="stat-sub">geschätzte Personen</div>
               </div>
               <div className="stat">
                 <div className="stat-lbl">Reichweite</div>
-                <div className="stat-val">{pct}%</div>
+                <div className="stat-val">{reach.vonPct}%–{reach.bisPct}%</div>
                 <div className="stat-sub">der {personLabel}</div>
               </div>
             </div>
@@ -512,16 +641,16 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             <div className="kanal-row">
               <div className="kanal-label">DOOH Screens</div>
               <div className="kanal-bar-wrap">
-                <div className="kanal-bar" style={{ width: '70%', background: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)' }} />
+                <div className="kanal-bar" style={{ width: `${Math.min(100, reach.screens / 183.36)}%`, background: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)' }} />
               </div>
-              <div className="kanal-pct">70%</div>
+              <div className="kanal-pct">{fmtN(reach.screens)}</div>
             </div>
             <div className="kanal-row">
-              <div className="kanal-label">Online Display</div>
+              <div className="kanal-label">Laufzeit</div>
               <div className="kanal-bar-wrap">
-                <div className="kanal-bar" style={{ width: '30%', background: 'linear-gradient(90deg,#7B8FD4,#C8DFF8)' }} />
+                <div className="kanal-bar" style={{ width: `${Math.min(100, currentPaket.weeks / 8 * 100)}%`, background: 'linear-gradient(90deg,#7B8FD4,#C8DFF8)' }} />
               </div>
-              <div className="kanal-pct">30%</div>
+              <div className="kanal-pct">{durLabel(currentPaket.weeks)}</div>
             </div>
             <div className="kanal-note">Digitale Plakatwände im öffentlichen Raum · Schweizer Newsportale & Apps</div>
           </div>
@@ -538,19 +667,19 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             {accordionOpen && (
               <div className="mobile-calc-body">
                 <p style={{ fontSize: '12px', color: '#7A7596', lineHeight: 1.6, marginBottom: '8px' }}>
-                  Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.
+                  Deine geschätzte Reichweite basiert auf DOOH-Screens und Online-Display in deiner Zielregion.
                 </p>
                 <div className="mobile-calc-row">
-                  <span style={{ color: '#7A7596' }}>DOOH-Anteil (70%)</span>
-                  <strong style={{ color: '#2D1F52' }}>{fmtCHF(Math.round(budget * 0.7))}</strong>
+                  <span style={{ color: '#7A7596' }}>Reichweite</span>
+                  <strong style={{ color: '#2D1F52' }}>~{fmtN(reach.von)} – {fmtN(reach.bis)}</strong>
                 </div>
                 <div className="mobile-calc-row">
-                  <span style={{ color: '#7A7596' }}>Display-Anteil (30%)</span>
-                  <strong style={{ color: '#2D1F52' }}>{fmtCHF(Math.round(budget * 0.3))}</strong>
+                  <span style={{ color: '#7A7596' }}>Screens</span>
+                  <strong style={{ color: '#2D1F52' }}>{fmtN(reach.screens)}</strong>
                 </div>
                 <div className="mobile-calc-row" style={{ borderTop: '1px solid rgba(107,79,187,0.08)', marginTop: '8px', paddingTop: '8px' }}>
-                  <span style={{ color: '#7A7596' }}>Ø Kontakte pro Person</span>
-                  <strong style={{ color: '#6B4FBB' }}>{freq}×</strong>
+                  <span style={{ color: '#7A7596' }}>Laufzeit</span>
+                  <strong style={{ color: '#6B4FBB' }}>{durLabel(currentPaket.weeks)}</strong>
                 </div>
               </div>
             )}
@@ -579,19 +708,19 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
           <div className="sc">
             <div className="sc-title">Wie berechnen wir das?</div>
-            <div className="sc-note">Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.</div>
-            <div className="sc-row"><span className="sc-l">DOOH-Anteil (70%)</span><span className="sc-r">{fmtCHF(Math.round(budget * 0.7))}</span></div>
-            <div className="sc-row"><span className="sc-l">Display-Anteil (30%)</span><span className="sc-r">{fmtCHF(Math.round(budget * 0.3))}</span></div>
-            <div className="sc-row"><span className="sc-l">Ø Kontakte pro Person</span><span className="sc-r sc-rv">{freq}×</span></div>
+            <div className="sc-note">Deine Reichweite wird anhand der DOOH-Screens und der Stimmberechtigten in deiner Zielregion berechnet.</div>
+            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{fmtN(reach.von)} – {fmtN(reach.bis)}</span></div>
+            <div className="sc-row"><span className="sc-l">Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
+            <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r sc-rv">{durLabel(currentPaket.weeks)}</span></div>
           </div>
 
           <div className="sc">
             <div className="sc-title">Deine Zielregion</div>
             <div className="rname">📍 {regionName}</div>
             <div className="rpop">{stimmber.toLocaleString('de-CH')} {isPolitik ? 'Stimmberechtigte' : 'Einwohner'}</div>
-            <div className="sc-row"><span className="sc-l">Erreichbar via DOOH</span><span className="sc-r">~85%</span></div>
-            <div className="sc-row"><span className="sc-l">Erreichbar via Display</span><span className="sc-r">~92%</span></div>
-            <div className="rsrc">Quelle: BFS Bevölkerungsstatistik 2023</div>
+            <div className="sc-row"><span className="sc-l">DOOH Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
+            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{reach.vonPct}%–{reach.bisPct}%</span></div>
+            <div className="rsrc">Quelle: VIO DOOH-Screendaten & BFS 2023</div>
           </div>
 
           <div className="fragen">

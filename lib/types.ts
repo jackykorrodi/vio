@@ -69,6 +69,11 @@ export interface BriefingData {
   laufzeit: number;
   startDate: string;
   reach: number;
+  reachVon?: number;
+  reachBis?: number;
+  reachVonPct?: number;
+  reachBisPct?: number;
+  screens?: number;
   freq?: number;
   tierSelected?: number;
   b2bReach: { unternehmen: number; mitarbeiter: number } | null;
