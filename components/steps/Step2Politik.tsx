@@ -112,7 +112,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
   );
 
   // ── Search results ─────────────────────────────────────────────────────────
-  const searchResults = useMemo(() => {
+  const searchResults = useMemo<{ schweiz: Region[]; kantone: Region[]; staedte: Region[] }>(() => {
     const q = query.trim().toLowerCase();
     const pool = ALL_REGIONS
       .filter(r => !q || r.name.toLowerCase().includes(q))
@@ -121,7 +121,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
     const kantone = pool.filter(r => r.type === 'kanton');
     const staedte = pool.filter(r => r.type === 'stadt')
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return [...schweiz.slice(0, 1), ...kantone.slice(0, 5), ...staedte.slice(0, 6)];
+    return { schweiz, kantone, staedte };
   }, [query, selectedRegions]);
 
   const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
@@ -236,24 +236,24 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                   onBlur={e => { setTimeout(() => setDropdownOpen(false), 200); e.currentTarget.style.borderColor = 'rgba(107,79,187,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
                   style={{ width: '100%', boxSizing: 'border-box' as const, border: '1.5px solid rgba(107,79,187,0.15)', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', fontFamily: 'var(--font-sans)', color: '#2D1F52', background: '#FDFCFF', outline: 'none', transition: 'border-color .2s, box-shadow .2s' }}
                 />
-                {dropdownOpen && searchResults.length > 0 && (
+                {dropdownOpen && (searchResults.schweiz.length > 0 || searchResults.kantone.length > 0 || searchResults.staedte.length > 0) && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, maxHeight: '320px', overflowY: 'auto' as const, WebkitOverflowScrolling: 'touch' as const, background: 'white', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '12px', boxShadow: '0 8px 24px rgba(107,79,187,0.11)', marginTop: '4px' }}>
-                    {searchResults.filter(r => r.type === 'schweiz').length > 0 && (
+                    {searchResults.schweiz.length > 0 && (
                       <div>
                         <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Schweiz</div>
-                        {searchResults.filter(r => r.type === 'schweiz').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                        {searchResults.schweiz.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                       </div>
                     )}
-                    {searchResults.filter(r => r.type === 'kanton').length > 0 && (
+                    {searchResults.kantone.length > 0 && (
                       <div>
                         <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Kantone</div>
-                        {searchResults.filter(r => r.type === 'kanton').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                        {searchResults.kantone.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                       </div>
                     )}
-                    {searchResults.filter(r => r.type === 'stadt').length > 0 && (
+                    {searchResults.staedte.length > 0 && (
                       <div>
                         <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Städte & Gemeinden</div>
-                        {searchResults.filter(r => r.type === 'stadt').map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
+                        {searchResults.staedte.map(r => <RegionRow key={r.name} r={r} onSelect={addRegion} />)}
                       </div>
                     )}
                   </div>
