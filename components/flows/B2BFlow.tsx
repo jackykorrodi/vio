@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { initialBriefing, BriefingData } from '@/lib/types';
-import Step2Analysis from '@/components/steps/Step2Analysis';
-import Step3Audience from '@/components/steps/Step3Audience';
+import Step1B2B from '@/components/steps/Step1B2B';
 import Step4Budget from '@/components/steps/Step4Budget';
 import Step5Creative from '@/components/steps/Step5Creative';
 import Step5AdCreator from '@/components/steps/Step5AdCreator';
@@ -11,8 +10,8 @@ import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
 import Step8Dashboard from '@/components/steps/Step8Dashboard';
 
-const TOTAL_STEPS = 7;
-const STEP_LABELS = ['Website', 'Analyse', 'Zielgruppe', 'Budget', 'Werbemittel', 'Abschluss', 'Bestätigung'];
+const TOTAL_STEPS = 5;
+const STEP_LABELS = ['Zielgruppe', 'Budget', 'Werbemittel', 'Abschluss', 'Bestätigung'];
 
 const C = {
   primary: '#6B4FBB',
@@ -27,7 +26,7 @@ interface Props {
   resumeData?: Partial<BriefingData> & { _targetStep?: number };
 }
 
-export default function B2BFlow({ initialUrl = '', resumeData }: Props) {
+export default function B2BFlow({ resumeData }: Props) {
   const { _targetStep, ...resumeRest } = resumeData ?? {};
 
   const [currentStep, setCurrentStep] = useState(_targetStep ?? 1);
@@ -41,7 +40,6 @@ export default function B2BFlow({ initialUrl = '', resumeData }: Props) {
 
   const [briefing, setBriefing] = useState<BriefingData>({
     ...initialBriefing,
-    url: initialUrl,
     campaignType: 'b2b',
     ...resumeRest,
   });
@@ -53,13 +51,13 @@ export default function B2BFlow({ initialUrl = '', resumeData }: Props) {
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
   const prevStep = () => {
-    if (currentStep === 5 && step5Phase === 'adcreator') { setStep5Phase('creative'); return; }
-    if (currentStep === 3) { setCurrentStep(1); return; }
+    if (currentStep === 3 && step5Phase === 'adcreator') { setStep5Phase('creative'); return; }
     setCurrentStep(prev => Math.max(1, prev - 1));
   };
 
+  // Generate sessionId when entering Werbemittel (step 3)
   useEffect(() => {
-    if (currentStep === 5 && !briefing.sessionId) {
+    if (currentStep === 3 && !briefing.sessionId) {
       updateBriefing({ sessionId: crypto.randomUUID() });
     }
   }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -67,18 +65,6 @@ export default function B2BFlow({ initialUrl = '', resumeData }: Props) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
-
-  const [urlInput, setUrlInput] = useState(
-    (initialUrl || briefing.url || '').replace(/^https?:\/\//, '').replace(/^www\./, '')
-  );
-
-  const handleAnalyzeStart = () => {
-    let clean = urlInput.trim().replace(/^https?:\/\//, '').replace(/^www\./, '');
-    if (!clean) return;
-    clean = 'https://' + clean;
-    setBriefing({ ...initialBriefing, url: clean, campaignType: 'b2b' });
-    setCurrentStep(2);
-  };
 
   const displayStep = Math.min(currentStep, TOTAL_STEPS);
   const STEPS = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
@@ -147,84 +133,37 @@ export default function B2BFlow({ initialUrl = '', resumeData }: Props) {
         </div>
       )}
 
-      {/* ── Step 1: URL eingeben ── */}
+      {/* ── Step 1: Zielgruppe ── */}
       {currentStep === 1 && (
-        <section style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ maxWidth: '860px', margin: '0 auto', padding: '40px 20px 80px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ width: '18px', height: '2px', background: C.primary, borderRadius: '2px' }} />
-              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', color: C.primary, textTransform: 'uppercase' as const }}>Schritt 1 · B2B Kampagne</span>
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 400, letterSpacing: '-.02em', lineHeight: 1.25, marginBottom: '6px', color: C.ink }}>
-              Deine Website-URL
-            </h1>
-            <p style={{ fontSize: '14px', color: C.muted, marginBottom: '28px', lineHeight: 1.6 }}>
-              Wir analysieren deine Website automatisch und schlagen eine passende Zielgruppe für Geschäftskunden vor.
-            </p>
-            <div style={{ background: '#fff', borderRadius: '20px', border: `1px solid ${C.border}`, boxShadow: '0 1px 4px rgba(107,79,187,0.06)', padding: '24px 28px', marginBottom: '14px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', color: C.muted, textTransform: 'uppercase' as const, marginBottom: '10px' }}>Website-URL</div>
-              <input
-                type="url"
-                value={urlInput}
-                placeholder="https://deine-website.ch"
-                onChange={e => setUrlInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAnalyzeStart()}
-                style={{ width: '100%', boxSizing: 'border-box' as const, padding: '12px 16px', borderRadius: '8px', border: `1.5px solid ${C.border}`, fontSize: '15px', fontFamily: 'var(--font-sans)', color: C.ink, backgroundColor: C.bg, outline: 'none', marginBottom: '14px' }}
-              />
-              <button
-                type="button"
-                onClick={handleAnalyzeStart}
-                disabled={!urlInput.trim()}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: urlInput.trim() ? C.primary : 'rgba(107,79,187,0.40)', color: '#fff', border: 'none', borderRadius: '100px', padding: '15px 32px', fontFamily: 'var(--font-sans)', fontSize: '16px', fontWeight: 600, cursor: urlInput.trim() ? 'pointer' : 'not-allowed', boxShadow: urlInput.trim() ? '0 4px 16px rgba(107,79,187,0.30)' : 'none', transition: 'all .18s' }}
-              >
-                Analysieren und weiter →
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' as const, paddingTop: '16px', borderTop: `1px solid ${C.border}` }}>
-              {['🔒 Deine Daten bleiben bei uns', '⚡ Bereit in 15 Sekunden', '🇨🇭 Nur Schweizer Medien'].map(t => (
-                <span key={t} style={{ fontSize: '12px', color: C.muted, fontWeight: 500 }}>{t}</span>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Step1B2B briefing={briefing} updateBriefing={updateBriefing} onComplete={nextStep} isActive />
       )}
 
-      {/* ── Step 2: Analyse ── */}
+      {/* ── Step 2: Budget & Reichweite ── */}
       {currentStep === 2 && (
-        <Step2Analysis briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
+        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={2} />
       )}
 
-      {/* ── Step 3: Zielgruppe (B2B fields via briefing.campaignType) ── */}
-      {currentStep === 3 && (
-        <Step3Audience briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
+      {/* ── Step 3: Werbemittel ── */}
+      {currentStep === 3 && step5Phase === 'creative' && (
+        <Step5Creative briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} onUploadSelected={() => setStep5Phase('adcreator')} isActive stepNumber={3} />
       )}
-
-      {/* ── Step 4: Budget & Reichweite ── */}
-      {currentStep === 4 && (
-        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={4} />
-      )}
-
-      {/* ── Step 5: Werbemittel ── */}
-      {currentStep === 5 && step5Phase === 'creative' && (
-        <Step5Creative briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} onUploadSelected={() => setStep5Phase('adcreator')} isActive stepNumber={5} />
-      )}
-      {currentStep === 5 && step5Phase === 'adcreator' && (
+      {currentStep === 3 && step5Phase === 'adcreator' && (
         <Step5AdCreator briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
       )}
 
-      {/* ── Step 6: Abschluss ── */}
-      {currentStep === 6 && (
+      {/* ── Step 4: Abschluss ── */}
+      {currentStep === 4 && (
         <Step6Contact briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} goToStep={setCurrentStep} isActive />
       )}
 
-      {/* ── Step 7: Bestätigung ── */}
-      {currentStep === 7 && (
-        <Step7Confirmation briefing={briefing} nextStep={nextStep} stepNumber={7} />
+      {/* ── Step 5: Bestätigung ── */}
+      {currentStep === 5 && (
+        <Step7Confirmation briefing={briefing} nextStep={nextStep} stepNumber={5} />
       )}
 
-      {/* ── Step 8: Dashboard (bonus, not in progress indicator) ── */}
-      {currentStep === 8 && (
-        <Step8Dashboard briefing={briefing} onBack={() => setCurrentStep(7)} onSubmitSuccess={() => setCurrentStep(7)} />
+      {/* ── Step 6: Dashboard (bonus) ── */}
+      {currentStep === 6 && (
+        <Step8Dashboard briefing={briefing} onBack={() => setCurrentStep(5)} onSubmitSuccess={() => setCurrentStep(5)} />
       )}
 
     </main>

@@ -102,6 +102,10 @@ export interface BriefingData {
   branche?: string[];
   nogaCodes?: string[];
   unternehmensgroesse?: string[];
+  selectedKantone?: string[];
+  totalFirmen?: number;
+  totalMA?: number;
+  erreichbarFirmen?: number;
   // Session persistence
   sessionId?: string;
   dealId?: string;
