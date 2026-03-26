@@ -121,7 +121,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
     const kantone = pool.filter(r => r.type === 'kanton');
     const staedte = pool.filter(r => r.type === 'stadt')
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return [...schweiz, ...kantone, ...staedte].slice(0, 8);
+    return [...schweiz.slice(0, 1), ...kantone.slice(0, 5), ...staedte.slice(0, 6)];
   }, [query, selectedRegions]);
 
   const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
