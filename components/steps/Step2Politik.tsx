@@ -165,7 +165,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
   };
 
   return (
-    <section style={{ backgroundColor: '#FDFCFF', position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+    <section style={{ backgroundColor: '#FDFCFF', position: 'relative', minHeight: '100vh', overflow: 'visible' }}>
 
       {/* Background blobs */}
       {[
@@ -194,7 +194,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
         </p>
 
         {/* ── Main card ── */}
-        <div style={{ background: 'white', borderRadius: '24px', padding: '40px', border: '1px solid rgba(107,79,187,0.09)', boxShadow: '0 4px 24px rgba(107,79,187,0.06)' }}>
+        <div style={{ background: 'white', borderRadius: '24px', padding: '40px', border: '1px solid rgba(107,79,187,0.09)', boxShadow: '0 4px 24px rgba(107,79,187,0.06)', overflow: 'visible' }}>
 
           {/* ── Multi-region picker ─────────────────────────────────────────── */}
           <div style={{ marginBottom: '24px' }}>
@@ -237,7 +237,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                   style={{ width: '100%', boxSizing: 'border-box' as const, border: '1.5px solid rgba(107,79,187,0.15)', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', fontFamily: 'var(--font-sans)', color: '#2D1F52', background: '#FDFCFF', outline: 'none', transition: 'border-color .2s, box-shadow .2s' }}
                 />
                 {dropdownOpen && searchResults.length > 0 && (
-                  <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'white', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '12px', boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: '300px', overflowY: 'auto' as const, zIndex: 100 }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, maxHeight: '320px', overflowY: 'auto' as const, WebkitOverflowScrolling: 'touch' as const, background: 'white', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '12px', boxShadow: '0 8px 24px rgba(107,79,187,0.11)', marginTop: '4px' }}>
                     {searchResults.filter(r => r.type === 'schweiz').length > 0 && (
                       <div>
                         <div style={{ padding: '8px 14px 4px', fontSize: '10px', fontWeight: 700, letterSpacing: '.1em', color: '#7A7596', textTransform: 'uppercase' as const }}>Schweiz</div>
