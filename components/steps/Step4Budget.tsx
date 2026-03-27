@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
-import doohScreens from '@/public/dooh-screens.json';
+import doohScreens from '@/lib/dooh-screens.json';
 
 type DoohEntry = {
   type: 'schweiz' | 'kanton' | 'stadt';
