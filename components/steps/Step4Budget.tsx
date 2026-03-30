@@ -51,9 +51,9 @@ const MITTELGROSS_KANTONE = [
 ];
 
 const PAKETE = [
-  { id: 'sichtbar' as const, label: 'Sichtbar',  faktor: 0.35, weeks: 1, recommended: false },
-  { id: 'praesenz' as const, label: 'Präsenz',   faktor: 0.60, weeks: 2, recommended: true  },
-  { id: 'dominanz' as const, label: 'Dominanz',  faktor: 0.80, weeks: 4, recommended: false },
+  { id: 'sichtbar' as const, label: 'Sichtbar',  budget:  2500, faktor: 0.35, weeks: 1, recommended: false },
+  { id: 'praesenz' as const, label: 'Präsenz',   budget:  9500, faktor: 0.60, weeks: 2, recommended: true  },
+  { id: 'dominanz' as const, label: 'Dominanz',  budget: 25000, faktor: 0.80, weeks: 4, recommended: false },
 ] as const;
 
 type PaketId = 'sichtbar' | 'praesenz' | 'dominanz';
@@ -212,7 +212,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const [budget,             setBudget]             = useState(9500);
   const [duration,           setDuration]           = useState(4);
   const [selectedPkg,        setSelectedPkg]        = useState<PaketId>('praesenz');
-  const [accordionOpen,      setAccordionOpen]      = useState(false);
   const [regionPickerOpen,   setRegionPickerOpen]   = useState(false);
   const [regionQuery,        setRegionQuery]        = useState('');
   const [regionDropdownOpen, setRegionDropdownOpen] = useState(false);
@@ -233,10 +232,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
     calcVioReach(budget, stimmber, currentPaket.faktor, selectedRegions),
     [budget, stimmber, currentPaket.faktor, selectedRegions]
   );
-  const pkgReach = useMemo(() => PAKETE.map(pkg => {
-    const pkgBudget = pkg.faktor / 0.60 * budget;
-    return calcVioReach(pkgBudget, stimmber, pkg.faktor, selectedRegions);
-  }), [budget, stimmber, selectedRegions]);
+  const pkgReach = useMemo(() => PAKETE.map(pkg =>
+    calcVioReach(pkg.budget, stimmber, pkg.faktor, selectedRegions)
+  ), [stimmber, selectedRegions]);
 
   const smartTip = (() => {
     if (reach.bisPct >= 55)
@@ -289,6 +287,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
   const handlePackageSelect = (pkg: typeof PAKETE[number]) => {
     setSelectedPkg(pkg.id);
+    setBudget(pkg.budget);
     setDuration(pkg.weeks);
   };
 
@@ -321,29 +320,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
   const budgetPct   = ((budget   - 2500) / (50000 - 2500)) * 100;
   const durationPct = ((duration - 1)    / (8 - 1))        * 100;
-
-  // ── Accordion content (shared between mobile accordion + desktop sidebar) ──
-  const CalcContent = () => (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs text-[var(--muted)] leading-relaxed mb-1">
-        Deine Reichweite basiert auf DOOH-Screens und Online-Display in deiner Zielregion.
-      </p>
-      {[
-        { label: 'Reichweite', value: `~${fmtN(reach.von)} – ${fmtN(reach.bis)}` },
-        { label: 'Screens',    value: fmtN(reach.screens) },
-      ].map(row => (
-        <div key={row.label} className="flex justify-between text-sm">
-          <span className="text-[var(--taupe)]">{row.label}</span>
-          <strong className="text-[var(--taupe)]">{row.value}</strong>
-        </div>
-      ))}
-      <div className="h-px bg-[var(--border)] my-1" />
-      <div className="flex justify-between text-sm">
-        <span className="text-[var(--taupe)]">Laufzeit</span>
-        <strong className="text-[var(--primary)]">{durLabel(currentPaket.weeks)}</strong>
-      </div>
-    </div>
-  );
 
   // ─────────────────────────────────────────────────────────────────────────────
   return (
@@ -559,9 +535,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                     </svg>
                   </div>
                   <div className="pkg-lbl">{pkg.label}</div>
-                  <div className="pkg-price">~{fmtN(r.von)} – {fmtN(r.bis)}</div>
-                  <div className="pkg-dur">{r.cappedAt80 ? 'bis zu 80% der Stimmber.' : `${r.vonPct}%–${r.bisPct}% der Stimmber.`}</div>
-                  <div className="pkg-reach">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
+                  <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
+                  <div className="pkg-dur">{durLabel(pkg.weeks)} · ~{fmtN(r.von)} – {fmtN(r.bis)}</div>
+                  <div className="pkg-reach">{r.cappedAt80 ? 'bis zu 80%' : `${r.vonPct}%–${r.bisPct}%`} der Stimmber. · {fmtN(r.screens)} Screens</div>
                 </button>
               );
             })}
@@ -584,7 +560,12 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <div className="prop-psub">{durLabel(currentPaket.weeks)} · {fmtN(reach.screens)} Screens</div>
               </div>
             </div>
-            <div className="stats">
+            <div className="stats" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
+              <div className="stat">
+                <div className="stat-lbl">Screens</div>
+                <div className="stat-val">{fmtN(reach.screens)}</div>
+                <div className="stat-sub">digitale Standorte</div>
+              </div>
               <div className="stat">
                 <div className="stat-lbl">Laufzeit</div>
                 <div className="stat-val">{durLabel(currentPaket.weeks)}</div>
@@ -592,13 +573,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               </div>
               <div className="stat">
                 <div className="stat-lbl">Unique Reach</div>
-                <div className="stat-val">~{fmtN(reach.gesamtMitte)}</div>
-                <div className="stat-sub">geschätzte Personen</div>
+                <div className="stat-val" style={{ fontSize: 'clamp(13px,1.2vw,16px)' }}>~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
+                <div className="stat-sub">{reach.vonPct}%–{reach.bisPct}% der Stimmber.</div>
               </div>
               <div className="stat">
                 <div className="stat-lbl">Reichweite</div>
                 <div className="stat-val">{reach.vonPct}%–{reach.bisPct}%</div>
-                <div className="stat-sub">der {personLabel}</div>
+                <div className="stat-sub">der Stimmberechtigten</div>
               </div>
             </div>
           </div>
@@ -635,55 +616,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             </div>
           </div>
 
-          {/* ── KANAL SPLIT ── */}
-          <div className="kanal">
-            <div className="kanal-title">So wirkt dein Budget</div>
-            <div className="kanal-row">
-              <div className="kanal-label">DOOH Screens</div>
-              <div className="kanal-bar-wrap">
-                <div className="kanal-bar" style={{ width: `${Math.min(100, reach.screens / 183.36)}%`, background: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)' }} />
-              </div>
-              <div className="kanal-pct">{fmtN(reach.screens)}</div>
-            </div>
-            <div className="kanal-row">
-              <div className="kanal-label">Laufzeit</div>
-              <div className="kanal-bar-wrap">
-                <div className="kanal-bar" style={{ width: `${Math.min(100, currentPaket.weeks / 8 * 100)}%`, background: 'linear-gradient(90deg,#7B8FD4,#C8DFF8)' }} />
-              </div>
-              <div className="kanal-pct">{durLabel(currentPaket.weeks)}</div>
-            </div>
-            <div className="kanal-note">Digitale Plakatwände im öffentlichen Raum · Schweizer Newsportale & Apps</div>
-          </div>
-
           {/* ── SMART TIP ── */}
           <div className="tip">💡 <strong>Tipp:</strong> {smartTip}</div>
-
-          {/* ── MOBILE CALC ACCORDION ── */}
-          <div className="mobile-calc">
-            <button type="button" className="mobile-calc-btn" onClick={() => setAccordionOpen(o => !o)}>
-              <span>Wie berechnen wir das?</span>
-              <span style={{ color: '#7A7596', transition: 'transform .2s', display: 'inline-block', transform: accordionOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
-            </button>
-            {accordionOpen && (
-              <div className="mobile-calc-body">
-                <p style={{ fontSize: '12px', color: '#7A7596', lineHeight: 1.6, marginBottom: '8px' }}>
-                  Deine geschätzte Reichweite basiert auf DOOH-Screens und Online-Display in deiner Zielregion.
-                </p>
-                <div className="mobile-calc-row">
-                  <span style={{ color: '#7A7596' }}>Reichweite</span>
-                  <strong style={{ color: '#2D1F52' }}>~{fmtN(reach.von)} – {fmtN(reach.bis)}</strong>
-                </div>
-                <div className="mobile-calc-row">
-                  <span style={{ color: '#7A7596' }}>Screens</span>
-                  <strong style={{ color: '#2D1F52' }}>{fmtN(reach.screens)}</strong>
-                </div>
-                <div className="mobile-calc-row" style={{ borderTop: '1px solid rgba(107,79,187,0.08)', marginTop: '8px', paddingTop: '8px' }}>
-                  <span style={{ color: '#7A7596' }}>Laufzeit</span>
-                  <strong style={{ color: '#6B4FBB' }}>{durLabel(currentPaket.weeks)}</strong>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* ── CTA ── */}
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
