@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import doohScreens from '@/lib/dooh-screens.json';
+import demonymsRaw from '@/lib/demonyms.json';
+const DEMONYMS = demonymsRaw as Record<string, string>;
 
 type DoohEntry = {
   type: 'schweiz' | 'kanton' | 'stadt';
@@ -191,6 +193,10 @@ interface Props {
   stepNumber?: number;
 }
 
+function getEinwohner(regionName: string): string {
+  return DEMONYMS[regionName] ?? `Einwohnerinnen und Einwohner von ${regionName}`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Step4Budget({ briefing, updateBriefing, nextStep, prevStep, stepNumber }: Props) {
   const isPolitik = briefing.campaignType === 'politik';
@@ -218,6 +224,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const regionName = selectedRegions.length === 1
     ? (selectedRegions[0].name ?? 'Gesamte Schweiz')
     : `${selectedRegions.length} Regionen`;
+  const primaryRegionName = selectedRegions[0]?.name ?? 'Gesamte Schweiz';
+  const einwohner = getEinwohner(primaryRegionName);
 
   // ── State ──
   const [budget,             setBudget]             = useState(9500);
@@ -548,7 +556,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                   <div className="pkg-lbl">{pkg.label}</div>
                   <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
                   <div className="pkg-dur">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
-                  <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(r.von)}–{fmtN(r.bis)} Personen</div>
+                  <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(r.von)}–{fmtN(r.bis)} {einwohner}</div>
                 </button>
               );
             })}
@@ -561,7 +569,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <div className="prop-badge">Unser Vorschlag</div>
                 <div className="prop-num">~{fmtN(reach.von)} – {fmtN(reach.bis)}</div>
                 <div className="prop-sub">
-                  Deine Botschaft erreicht ~{fmtN(reach.von)}–{fmtN(reach.bis)} Personen
+                  Deine Botschaft erreicht ~{fmtN(reach.von)}–{fmtN(reach.bis)} {einwohner}
                 </div>
               </div>
               <div className="prop-right">
