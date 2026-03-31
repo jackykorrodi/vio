@@ -10,6 +10,7 @@ type DoohEntry = {
   name?: string;
   kanton: string;
   screens: number;
+  screens_politik: number;
   standorte: number;
   reach: number;
 };
@@ -78,6 +79,24 @@ function snap(n: number, step: number): number {
   return Math.round(n / step) * step;
 }
 
+function getDoohScreens(
+  regionName: string,
+  regionType: string,
+  kanton: string | undefined,
+  isPolitik: boolean,
+): number {
+  let entry: DoohEntry | undefined;
+  if (regionType === 'schweiz') {
+    entry = DOOH_DATA.find(d => d.type === 'schweiz');
+  } else if (regionType === 'kanton') {
+    entry = DOOH_DATA.find(d => d.type === 'kanton' && d.kanton === kanton);
+  } else {
+    entry = DOOH_DATA.find(d => d.type === 'stadt' && d.name === regionName);
+  }
+  if (!entry) return 0;
+  return isPolitik ? entry.screens_politik : entry.screens;
+}
+
 // ─── Reach model ──────────────────────────────────────────────────────────────
 interface ReachResult {
   doohMitte: number;
@@ -98,6 +117,7 @@ function calcVioReach(
   stimmber: number,
   paketFaktor: number,
   selectedRegions: Array<{ name?: string; type: string; kanton?: string; stimm: number }>,
+  isPolitik: boolean,
 ): ReachResult {
   let totalStimm = 0;
   let sumPraesenz = 0;
@@ -108,12 +128,7 @@ function calcVioReach(
 
   selectedRegions.forEach(r => {
     const s = r.stimm;
-    const doohEntry = DOOH_DATA.find(d =>
-      r.type === 'schweiz' ? d.type === 'schweiz' :
-      r.type === 'kanton'  ? d.type === 'kanton' && d.kanton === r.kanton :
-      d.type === 'stadt' && d.name === r.name
-    );
-    const screens = doohEntry?.screens ?? 0;
+    const screens = getDoohScreens(r.name ?? '', r.type, r.kanton, isPolitik);
     const tierKey = getTierForRegion({ type: r.type, name: r.name, kanton: r.kanton, screens });
     const tier = TIERS[tierKey];
 
@@ -150,11 +165,7 @@ function calcVioReach(
   const bisPct = Math.round(bis / stimmber * 100);
 
   const dominantRegion  = selectedRegions.reduce((a, b) => a.stimm > b.stimm ? a : b);
-  const dominantScreens = DOOH_DATA.find(d =>
-    dominantRegion.type === 'schweiz' ? d.type === 'schweiz' :
-    dominantRegion.type === 'kanton'  ? d.type === 'kanton' && d.kanton === dominantRegion.kanton :
-    d.type === 'stadt' && d.name === dominantRegion.name
-  )?.screens ?? 0;
+  const dominantScreens = getDoohScreens(dominantRegion.name ?? '', dominantRegion.type, dominantRegion.kanton, isPolitik);
   const dominantTier = getTierForRegion({
     type: dominantRegion.type,
     name: dominantRegion.name,
@@ -229,12 +240,12 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   // ── Derived ──
   const currentPaket = PAKETE.find(p => p.id === selectedPkg) ?? PAKETE[1];
   const reach = useMemo(() =>
-    calcVioReach(budget, stimmber, currentPaket.faktor, selectedRegions),
-    [budget, stimmber, currentPaket.faktor, selectedRegions]
+    calcVioReach(budget, stimmber, currentPaket.faktor, selectedRegions, isPolitik),
+    [budget, stimmber, currentPaket.faktor, selectedRegions, isPolitik]
   );
   const pkgReach = useMemo(() => PAKETE.map(pkg =>
-    calcVioReach(pkg.budget, stimmber, pkg.faktor, selectedRegions)
-  ), [stimmber, selectedRegions]);
+    calcVioReach(pkg.budget, stimmber, pkg.faktor, selectedRegions, isPolitik)
+  ), [stimmber, selectedRegions, isPolitik]);
 
   const smartTip = (() => {
     if (reach.bisPct >= 55)
@@ -536,8 +547,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                   </div>
                   <div className="pkg-lbl">{pkg.label}</div>
                   <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
-                  <div className="pkg-dur">{durLabel(pkg.weeks)} · ~{fmtN(r.von)} – {fmtN(r.bis)}</div>
-                  <div className="pkg-reach">{r.cappedAt80 ? 'bis zu 80%' : `${r.vonPct}%–${r.bisPct}%`} der Stimmber. · {fmtN(r.screens)} Screens</div>
+                  <div className="pkg-dur">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
+                  <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(r.von)}–{fmtN(r.bis)} Personen</div>
                 </button>
               );
             })}
@@ -550,9 +561,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <div className="prop-badge">Unser Vorschlag</div>
                 <div className="prop-num">~{fmtN(reach.von)} – {fmtN(reach.bis)}</div>
                 <div className="prop-sub">
-                  {reach.cappedAt80
-                    ? `bis zu 80% der Stimmberechtigten`
-                    : `${reach.vonPct}%–${reach.bisPct}% der Stimmberechtigten`}
+                  Deine Botschaft erreicht ~{fmtN(reach.von)}–{fmtN(reach.bis)} Personen
                 </div>
               </div>
               <div className="prop-right">
