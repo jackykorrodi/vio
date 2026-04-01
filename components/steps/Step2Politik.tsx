@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
+import { buildVioPackages } from '@/lib/vio-paketlogik';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -11,19 +12,10 @@ const C = {
   bg: '#FDFCFF', white: '#FFFFFF',
 } as const;
 
-const card: React.CSSProperties = {
-  background: C.white, borderRadius: '14px',
-  border: `1px solid ${C.border}`,
-  boxShadow: '0 1px 4px rgba(44,44,62,.07)',
-  padding: '20px 22px', marginBottom: '14px',
-};
-const clabel: React.CSSProperties = {
-  fontSize: '11px', fontWeight: 700, letterSpacing: '.1em',
-  color: C.muted, textTransform: 'uppercase' as const, marginBottom: '10px',
-};
-
-// ─── Potenzial calculation ────────────────────────────────────────────────────
-const BLENDED_CPM = 40; // (0.70×50) + (0.30×15)
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function calcDaysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -31,45 +23,11 @@ function calcDaysUntil(dateStr: string): number {
   return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
 }
 
-function calcPotenzial(totalStimm: number, days: number, votingDate: string) {
-  const tiers = [
-    { rate: 0.14, freq: 3, weeks: 1 },
-    { rate: 0.25, freq: 5, weeks: 2 },
-    { rate: 0.35, freq: 7, weeks: 4 },
-  ].filter(t => t.weeks === 1 || t.weeks * 7 <= days);
-
-  const recommended = tiers[Math.min(1, tiers.length - 1)];
-  const targetReach = Math.round(totalStimm * recommended.rate);
-  const impressions  = targetReach * recommended.freq;
-  const raw          = (impressions / 1000) * BLENDED_CPM;
-  const budget       = Math.max(2500, Math.round(raw / 500) * 500);
-  const laufzeit     = recommended.weeks;
-
-  const startD = new Date(votingDate + 'T12:00:00');
-  startD.setDate(startD.getDate() - laufzeit * 7);
-  const today = new Date();
-  const actualStart = startD < today ? today : startD;
-  const start = actualStart.toISOString().split('T')[0];
-
-  return { erreichbar: targetReach, budget, laufzeit, start };
-}
-
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-function formatDateDE(dateStr: string): string {
-  const d = new Date(dateStr + 'T12:00:00');
-  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
-  onComplete: () => void; // jumps to Step 4 (Budget)
+  onComplete: () => void;
   isActive: boolean;
 }
 
@@ -125,9 +83,17 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
   }, [query, selectedRegions]);
 
   const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
-  const daysUntil  = votingDate ? calcDaysUntil(votingDate) : 0;
   const allFilled  = selectedRegions.length >= 1 && !!votingDate && !!politikType;
-  const potenzial  = allFilled ? calcPotenzial(totalStimm, daysUntil, votingDate) : null;
+
+  // ── buildVioPackages preview ───────────────────────────────────────────────
+  const vioData = useMemo(() => {
+    if (!allFilled) return null;
+    return buildVioPackages({
+      regions: selectedRegions.map(r => ({ eligibleVoters: r.stimm })),
+      voteDate: votingDate || null,
+      campaignType: politikType ?? undefined,
+    });
+  }, [allFilled, selectedRegions, votingDate, politikType]);
 
   const addRegion = (r: Region) => {
     if (selectedRegions.length >= 10) return;
@@ -141,28 +107,28 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
   };
 
   const handleWeiter = () => {
-    if (!allFilled || !potenzial) return;
+    if (!allFilled || !vioData) return;
     const days = calcDaysUntil(votingDate);
+    const rec = vioData.packages[vioData.recommendedPackage];
     updateBriefing({
       politikType: politikType!,
       votingDate,
-      daysUntil: days,
-      selectedRegions: selectedRegions.map(r => ({
-        name: r.name,
-        type: r.type,
-        stimm: r.stimm,
-        kanton: r.kanton,
-      })),
+      daysUntil:        days,
+      selectedRegions:  selectedRegions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
       totalStimmber:    totalStimm,
       stimmberechtigte: totalStimm,
       politikRegion:    selectedRegions[0]?.name ?? '',
       politikRegionType: (selectedRegions[0]?.type ?? 'kanton') as 'kanton' | 'stadt' | 'schweiz',
-      recommendedBudget:   potenzial.budget,
-      recommendedLaufzeit: potenzial.laufzeit,
-      startDate:           potenzial.start,
+      // Store full Step1Output for Step 2 to render
+      vioPackages:         vioData,
+      // Legacy fields for downstream steps
+      recommendedBudget:   rec.finalBudget,
+      recommendedLaufzeit: Math.round(rec.durationDays / 7),
     });
     onComplete();
   };
+
+  const rec = vioData?.packages[vioData.recommendedPackage];
 
   return (
     <section style={{ backgroundColor: '#FDFCFF', position: 'relative', minHeight: '100vh', overflow: 'visible' }}>
@@ -356,38 +322,29 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
             </div>
           </div>
 
-          {/* ── Potenzialberechnung ─────────────────────────────────────────── */}
-          {allFilled && potenzial && (
+          {/* ── Potenzialvorschau (buildVioPackages) ──────────────────────────── */}
+          {allFilled && vioData && rec && (
             <>
               <div style={{ height: '1px', background: 'rgba(107,79,187,0.08)', margin: '24px 0' }} />
               <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Potenzialberechnung</div>
-                {daysUntil < 14 && (
-                  <div style={{ background: '#FDF3DC', border: '1px solid rgba(212,168,67,0.3)', borderRadius: '12px', padding: '12px 16px', color: '#9B7120', fontSize: '13px', fontWeight: 300, display: 'flex', gap: '10px', marginBottom: '14px' }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                      <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#D4A843" strokeWidth="1.5" strokeLinejoin="round"/>
-                      <path d="M8 6v3.5" stroke="#D4A843" strokeWidth="1.5" strokeLinecap="round"/>
-                      <circle cx="8" cy="11" r=".75" fill="#D4A843"/>
-                    </svg>
-                    Weniger als 14 Tage bis zur Abstimmung — nur 1-Wochen-Kampagne möglich.
-                  </div>
-                )}
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Kampagnenpotenzial</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                   {[
-                    { label: 'Stimmberechtigte',     value: totalStimm.toLocaleString('de-CH') },
-                    { label: 'Erreichbare Personen',  value: `~${potenzial.erreichbar.toLocaleString('de-CH')}` },
-                    { label: 'Empf. Budget',          value: `CHF ${potenzial.budget.toLocaleString('de-CH')}` },
-                    { label: 'Empf. Laufzeit',        value: `${potenzial.laufzeit} ${potenzial.laufzeit === 1 ? 'Woche' : 'Wochen'}` },
-                    { label: 'Kampagnenstart',         value: formatDateDE(potenzial.start) },
+                    { label: 'Stimmberechtigte',    value: vioData.eligibleVotersTotal.toLocaleString('de-CH') },
+                    { label: 'Erreichbare Personen', value: `~${rec.targetReachPeople.toLocaleString('de-CH')}` },
+                    { label: 'Empf. Budget',         value: `CHF ${rec.finalBudget.toLocaleString('de-CH')}` },
+                    { label: 'Laufzeit',             value: `${rec.durationDays / 7} Wochen` },
+                    { label: 'Frequenz',             value: `Ø ${rec.frequency} Kontakte pro Person` },
+                    ...(rec.recommendedStartDate ? [{ label: 'Empf. Kampagnenstart', value: rec.recommendedStartDate }] : []),
                   ].map(stat => (
                     <div key={stat.label} style={{ background: '#F5F2FF', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '14px', padding: '16px 18px' }}>
                       <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', textTransform: 'uppercase' as const, letterSpacing: '.1em', color: '#B8A9E8', marginBottom: '6px' }}>{stat.label}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '20px', color: '#2D1F52' }}>{stat.value}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '18px', color: '#2D1F52', lineHeight: 1.2 }}>{stat.value}</div>
                     </div>
                   ))}
                 </div>
                 <p style={{ fontSize: '12px', color: '#7A7596', lineHeight: 1.5 }}>
-                  Diese Werte werden als Voreinstellung für Budget und Laufzeit übernommen.
+                  Im nächsten Schritt wählst du dein Paket – alle drei Optionen werden detailliert angezeigt.
                 </p>
               </div>
             </>

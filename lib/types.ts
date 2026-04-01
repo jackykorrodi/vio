@@ -1,3 +1,5 @@
+import type { Step1Output } from './vio-paketlogik';
+
 export type AlterOption = 'jung' | 'mittel' | 'alt';
 export type WohnlageOption = 'staedtisch' | 'agglo' | 'laendlich';
 export type LifecycleOption =
@@ -62,6 +64,7 @@ export interface BriefingData {
   recommendedLaufzeit?: number;
   selectedRegions?: Array<{ name: string; type: string; stimm: number; kanton?: string }>;
   totalStimmber?: number;
+  vioPackages?: Step1Output;
   // Step 3
   analysis: AnalysisResult | null;
   // Step 4

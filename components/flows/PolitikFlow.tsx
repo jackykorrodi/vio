@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step2Politik from '@/components/steps/Step2Politik';
-import Step4Budget from '@/components/steps/Step4Budget';
+import Step2PolitikBudget from '@/components/steps/Step2PolitikBudget';
 import Step5Creative from '@/components/steps/Step5Creative';
 import Step5AdCreator from '@/components/steps/Step5AdCreator';
 import Step6Contact from '@/components/steps/Step6Contact';
@@ -157,7 +157,7 @@ export default function PolitikFlow({ resumeData }: Props) {
 
       {/* ── Step 2: Reichweite & Budget ── */}
       {currentStep === 2 && (
-        <Step4Budget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={2} />
+        <Step2PolitikBudget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={2} />
       )}
 
       {/* ── Step 3: Werbemittel ── */}
