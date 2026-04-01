@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import { buildVioPackages } from '@/lib/vio-paketlogik';
+import { getInhabitants } from '@/lib/vio-inhabitants-map';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -82,8 +83,9 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
     return { schweiz, kantone, staedte };
   }, [query, selectedRegions]);
 
-  const totalStimm = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
-  const allFilled  = selectedRegions.length >= 1 && !!votingDate && !!politikType;
+  const totalStimm   = selectedRegions.reduce((sum, r) => sum + r.stimm, 0);
+  const inhabitants  = getInhabitants(selectedRegions.map(r => r.name));
+  const allFilled    = selectedRegions.length >= 1 && !!votingDate && !!politikType;
 
   // ── buildVioPackages preview ───────────────────────────────────────────────
   const vioData = useMemo(() => {
@@ -187,7 +189,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
 
             {selectedRegions.length > 0 && (
               <div style={{ fontSize: '12px', color: '#7A7596', marginBottom: '10px' }}>
-                Total: <strong style={{ color: '#2D1F52' }}>{totalStimm.toLocaleString('de-CH')}</strong> Stimmberechtigte
+                Total: <strong style={{ color: '#2D1F52' }}>{totalStimm.toLocaleString('de-CH')}</strong> {inhabitants}
               </div>
             )}
 
@@ -330,7 +332,7 @@ export default function Step2Politik({ briefing, updateBriefing, onComplete }: P
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' as const, color: '#B8A9E8', marginBottom: '10px' }}>Kampagnenpotenzial</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                   {[
-                    { label: 'Stimmberechtigte',    value: vioData.eligibleVotersTotal.toLocaleString('de-CH') },
+                    { label: inhabitants,            value: vioData.eligibleVotersTotal.toLocaleString('de-CH') },
                     { label: 'Erreichbare Personen', value: `~${rec.targetReachPeople.toLocaleString('de-CH')}` },
                     { label: 'Empf. Budget',         value: `CHF ${rec.finalBudget.toLocaleString('de-CH')}` },
                     { label: 'Laufzeit',             value: `${rec.durationDays / 7} Wochen` },

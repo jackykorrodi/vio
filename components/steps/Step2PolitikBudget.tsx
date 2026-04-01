@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { computeStartDateISO } from '@/lib/vio-paketlogik';
+import { getInhabitants } from '@/lib/vio-inhabitants-map';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
@@ -110,6 +111,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   }
 
   // ── Derived display values ───────────────────────────────────────────────────
+  const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
   const budgetPct  = Math.min(100, Math.max(0, ((budget - 2500) / (200000 - 2500)) * 100));
   const earliestStart = fmtLong(addDays(todayISO(), 10));
@@ -262,7 +264,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               <span key={r.name} className="s2-chip s2-chip-region">📍 {r.name}</span>
             ))}
             <span className="s2-ctx-voters">
-              {vioData.eligibleVotersTotal.toLocaleString('de-CH')} Stimmberechtigte
+              {vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}
             </span>
             {vioData.daysUntilVote != null && (
               <span className="s2-chip s2-chip-date">
@@ -319,7 +321,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   <div className="s2-reach-box">
                     <div className="s2-reach-lbl">Reichweite</div>
                     <div className="s2-reach-val">~{p.targetReachPeople.toLocaleString('de-CH')} Personen</div>
-                    <div className="s2-reach-pct">{Math.round(p.uniqueReachPercent * 100)}% der Stimmberechtigten</div>
+                    <div className="s2-reach-pct">{Math.round(p.uniqueReachPercent * 100)}% der {inhabitants}</div>
                   </div>
 
                   {/* Dates */}
@@ -435,7 +437,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             <div className="s2-si">
               <div className="s2-si-lbl">Reichweite</div>
               <div className="s2-si-val">~{pkg.targetReachPeople.toLocaleString('de-CH')}</div>
-              <div className="s2-si-sub">{Math.round(pkg.uniqueReachPercent * 100)}% der Stimmber.</div>
+              <div className="s2-si-sub">{Math.round(pkg.uniqueReachPercent * 100)}% der {inhabitants}</div>
             </div>
             <div className="s2-si">
               <div className="s2-si-lbl">Budget total</div>
