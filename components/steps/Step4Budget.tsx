@@ -5,7 +5,8 @@ import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import doohScreens from '@/lib/dooh-screens.json';
 import demonymsRaw from '@/lib/demonyms.json';
-import { getB2BReach } from '@/lib/b2b-reach-data';
+import { getMitarbeitende } from '@/lib/b2b-data';
+import { buildB2BPackages } from '@/lib/b2b-paketlogik';
 const DEMONYMS = demonymsRaw as Record<string, string>;
 
 type DoohEntry = {
@@ -72,11 +73,6 @@ const BRANCHE_CODE_TO_LABEL: Record<string, string> = {
 const KANTON_TO_B2B_REGION: Record<string, string> = {
   'CH': 'Gesamte Schweiz', 'ZH': 'Zürich', 'BE': 'Bern',
   'BS': 'Basel', 'BL': 'Basel', 'GE': 'Genf',
-};
-const B2B_PKG_FACTORS: Record<string, { vonF: number; bisF: number }> = {
-  sichtbar: { vonF: 0.55, bisF: 0.60 },
-  praesenz: { vonF: 1.00, bisF: 1.00 },
-  dominanz: { vonF: 1.30, bisF: 1.50 },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -293,22 +289,27 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
     calcVioReach(pkg.budget, stimmber, pkg.faktor, selectedRegions, isPolitik)
   ), [stimmber, selectedRegions, isPolitik]);
 
-  // ── B2B reach ──
-  const b2bBaseReach = useMemo(
-    () => isB2B ? getB2BReach(b2bRegionForLookup, b2bBrancheLabel) : { min: 0, max: 0 },
-    [isB2B, b2bRegionForLookup, b2bBrancheLabel],
+  // ── B2B reach (paketlogik) ──
+  const b2bGroesse = briefing.unternehmensgroesse?.[0] ?? 'Alle';
+  const b2bMitarbeitende = useMemo(
+    () => isB2B ? getMitarbeitende(b2bRegionForLookup, b2bBrancheLabel, b2bGroesse) : 0,
+    [isB2B, b2bRegionForLookup, b2bBrancheLabel, b2bGroesse],
   );
-  const b2bPkgReach = useMemo(() =>
-    PAKETE.map(pkg => ({
-      von: snap(Math.round(b2bBaseReach.min * (B2B_PKG_FACTORS[pkg.id]?.vonF ?? 1)), 500),
-      bis: snap(Math.round(b2bBaseReach.max * (B2B_PKG_FACTORS[pkg.id]?.bisF ?? 1)), 500),
-    })),
-    [b2bBaseReach],
+  const b2bPakete = useMemo(
+    () => isB2B ? buildB2BPackages({ mitarbeitende: b2bMitarbeitende }) : null,
+    [isB2B, b2bMitarbeitende],
   );
-  const b2bCurReach = useMemo(() => {
-    const idx = PAKETE.findIndex(p => p.id === selectedPkg);
-    return b2bPkgReach[idx] ?? { von: 0, bis: 0 };
-  }, [b2bPkgReach, selectedPkg]);
+  const b2bPkgList = useMemo(() =>
+    PAKETE.map(pkg => {
+      const p = b2bPakete?.packages[pkg.id];
+      return { von: p?.targetReachPeople ?? 0, budget: p?.finalBudget ?? pkg.budget };
+    }),
+    [b2bPakete],
+  );
+  const b2bCurPkg = useMemo(() => {
+    const p = b2bPakete?.packages[selectedPkg];
+    return { von: p?.targetReachPeople ?? 0, budget: p?.finalBudget ?? 0 };
+  }, [b2bPakete, selectedPkg]);
 
   // ── Region picker ──
   const regionSearchResults = useMemo(() => {
@@ -359,17 +360,17 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
   const handleNext = () => {
     updateBriefing({
-      budget,
-      laufzeit: currentPaket.weeks,
+      budget:      isB2B ? b2bCurPkg.budget  : budget,
+      laufzeit:    isB2B ? (b2bPakete?.packages[selectedPkg]?.durationDays ?? currentPaket.weeks * 7) / 7 : currentPaket.weeks,
       startDate,
-      reach:       isB2B ? b2bCurReach.von : reach.gesamtMitte,
-      reachVon:    isB2B ? b2bCurReach.von : reach.von,
-      reachBis:    isB2B ? b2bCurReach.bis : reach.bis,
-      reachVonPct: isB2B ? undefined        : reach.vonPct,
-      reachBisPct: isB2B ? undefined        : reach.bisPct,
+      reach:       isB2B ? b2bCurPkg.von     : reach.gesamtMitte,
+      reachVon:    isB2B ? b2bCurPkg.von     : reach.von,
+      reachBis:    isB2B ? b2bCurPkg.von     : reach.bis,
+      reachVonPct: isB2B ? undefined          : reach.vonPct,
+      reachBisPct: isB2B ? undefined          : reach.bisPct,
       screens:     reach.screens,
       tierSelected: PAKETE.findIndex(p => p.id === selectedPkg),
-      b2bReach: isB2B ? { unternehmen: 0, mitarbeiter: b2bCurReach.von } : null,
+      b2bReach: isB2B ? { unternehmen: 0, mitarbeiter: b2bCurPkg.von } : null,
     });
     nextStep();
   };
@@ -381,7 +382,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const durLabel = (w: number) => `${w} ${w === 1 ? 'Woche' : 'Wochen'}`;
 
   const smartTip = isB2B
-    ? `B2B-Kampagnen erreichen in ${b2bRegionForLookup} rund ${fmtN(b2bBaseReach.min)}–${fmtN(b2bBaseReach.max)} Mitarbeitende in ${b2bBrancheDisplay}.`
+    ? `B2B-Kampagnen erreichen in ${b2bRegionForLookup} rund ${fmtN(b2bMitarbeitende)} Mitarbeitende in ${b2bBrancheDisplay}.`
     : (() => {
         if (reach.bisPct >= 55)
           return "Stark: Du erreichst über die Hälfte aller Stimmberechtigten. Maximale Durchdringung.";
@@ -610,16 +611,16 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                   onClick={() => handlePackageSelect(pkg)}
                   className={`pkg${isActive ? ' active' : ''}`}
                 >
-                  {pkg.recommended && <div className="pkg-rec">Empfohlen</div>}
+                  {(isB2B ? pkg.id === 'praesenz' : pkg.recommended) && <div className="pkg-rec">Empfohlen</div>}
                   <div className="pkg-check">
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
                       <path d="M1 4L3.5 7L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
                   <div className="pkg-lbl">{pkg.label}</div>
-                  <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
+                  <div className="pkg-price">{fmtCHF(isB2B ? (b2bPkgList[i]?.budget ?? pkg.budget) : pkg.budget)}</div>
                   <div className="pkg-dur">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
-                  <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(isB2B ? b2bPkgReach[i].von : r.von)}–{fmtN(isB2B ? b2bPkgReach[i].bis : r.bis)} {einwohner}</div>
+                  <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(isB2B ? b2bPkgList[i].von : r.von)} {einwohner}</div>
                 </button>
               );
             })}
@@ -630,13 +631,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             <div className="prop-head">
               <div>
                 <div className="prop-badge">Unser Vorschlag</div>
-                <div className="prop-num">~{fmtN(isB2B ? b2bCurReach.von : reach.von)} – {fmtN(isB2B ? b2bCurReach.bis : reach.bis)}</div>
+                <div className="prop-num">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${fmtN(reach.von)} – ${fmtN(reach.bis)}`}</div>
                 <div className="prop-sub">
-                  Deine Botschaft erreicht ~{fmtN(isB2B ? b2bCurReach.von : reach.von)}–{fmtN(isB2B ? b2bCurReach.bis : reach.bis)} {einwohner}
+                  Deine Botschaft erreicht ~{isB2B ? fmtN(b2bCurPkg.von) : `${fmtN(reach.von)}–${fmtN(reach.bis)}`} {einwohner}
                 </div>
               </div>
               <div className="prop-right">
-                <div className="prop-price">{fmtCHF(budget)}</div>
+                <div className="prop-price">{fmtCHF(isB2B ? b2bCurPkg.budget : budget)}</div>
                 <div className="prop-psub">{durLabel(currentPaket.weeks)} · {fmtN(reach.screens)} Screens</div>
               </div>
             </div>
@@ -653,12 +654,12 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               </div>
               <div className="stat">
                 <div className="stat-lbl">Unique Reach</div>
-                <div className="stat-val" style={{ fontSize: 'clamp(13px,1.2vw,16px)' }}>~{fmtN(isB2B ? b2bCurReach.von : reach.von)}–{fmtN(isB2B ? b2bCurReach.bis : reach.bis)}</div>
+                <div className="stat-val" style={{ fontSize: 'clamp(13px,1.2vw,16px)' }}>{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${fmtN(reach.von)}–${fmtN(reach.bis)}`}</div>
                 <div className="stat-sub">{isB2B ? `in ${b2bBrancheDisplay}` : `${reach.vonPct}%–${reach.bisPct}% der Stimmber.`}</div>
               </div>
               <div className="stat">
                 <div className="stat-lbl">Reichweite</div>
-                <div className="stat-val">{isB2B ? `~${fmtN(b2bCurReach.von)}–${fmtN(b2bCurReach.bis)}` : `${reach.vonPct}%–${reach.bisPct}%`}</div>
+                <div className="stat-val">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `${reach.vonPct}%–${reach.bisPct}%`}</div>
                 <div className="stat-sub">{isB2B ? 'Mitarbeitende' : 'der Stimmberechtigten'}</div>
               </div>
             </div>
@@ -723,7 +724,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           <div className="sc">
             <div className="sc-title">Wie berechnen wir das?</div>
             <div className="sc-note">{isB2B ? 'Deine Reichweite basiert auf DOOH-Screens und Branchendaten für Mitarbeitende in deiner Zielregion.' : 'Deine Reichweite wird anhand der DOOH-Screens und der Stimmberechtigten in deiner Zielregion berechnet.'}</div>
-            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{isB2B ? fmtRange(b2bCurReach.von, b2bCurReach.bis) : `${fmtN(reach.von)} – ${fmtN(reach.bis)}`}</span></div>
+            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{isB2B ? fmtN(b2bCurPkg.von) : `${fmtN(reach.von)} – ${fmtN(reach.bis)}`}</span></div>
             <div className="sc-row"><span className="sc-l">Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
             <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r sc-rv">{durLabel(currentPaket.weeks)}</span></div>
           </div>
@@ -734,9 +735,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             {isB2B && b2bBrancheCodes.length > 0 && (
               <div className="rname" style={{ fontSize: '13px', marginBottom: '3px' }}>🏢 {b2bBrancheLabel}</div>
             )}
-            <div className="rpop">{isB2B ? `~${fmtN(b2bBaseReach.min)}–${fmtN(b2bBaseReach.max)} Mitarbeitende` : `${stimmber.toLocaleString('de-CH')} ${isPolitik ? 'Stimmberechtigte' : 'Einwohner'}`}</div>
+            <div className="rpop">{isB2B ? `~${fmtN(b2bMitarbeitende)} Mitarbeitende` : `${stimmber.toLocaleString('de-CH')} ${isPolitik ? 'Stimmberechtigte' : 'Einwohner'}`}</div>
             <div className="sc-row"><span className="sc-l">DOOH Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
-            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">{isB2B ? `~${fmtN(b2bBaseReach.min)}–${fmtN(b2bBaseReach.max)}` : `~${reach.vonPct}%–${reach.bisPct}%`}</span></div>
+            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${reach.vonPct}%–${reach.bisPct}%`}</span></div>
             <div className="rsrc">{isB2B ? 'Quelle: VIO B2B-Branchendaten & BFS 2022' : 'Quelle: VIO DOOH-Screendaten & BFS 2023'}</div>
           </div>
 
