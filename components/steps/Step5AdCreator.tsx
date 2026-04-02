@@ -101,9 +101,9 @@ function extractDomain(url: string): string {
 
 function hexRgba(hex: string, a: number): string {
   const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16) || 193;
-  const g = parseInt(h.slice(2, 4), 16) || 102;
-  const b = parseInt(h.slice(4, 6), 16) || 107;
+  const r = parseInt(h.slice(0, 2), 16) || 107;
+  const g = parseInt(h.slice(2, 4), 16) || 79;
+  const b = parseInt(h.slice(4, 6), 16) || 187;
   return `rgba(${r},${g},${b},${a})`;
 }
 
@@ -211,7 +211,7 @@ function AdPreview({
   onDragStart, onSelect, selectedEl, onSizeChange,
 }: AdPreviewProps) {
   const layerRef = useRef<HTMLDivElement>(null);
-  const stack    = adFont ? fontStack(adFont) : "'Fraunces',serif";
+  const stack    = adFont ? fontStack(adFont) : "'Plus Jakarta Sans',sans-serif";
   const domain   = extractDomain(lpUrl);
   const fw       = adBold ? '700' : '300';
   const subFw    = adBold ? '600' : '300';
@@ -325,7 +325,7 @@ function AdPreview({
              onMouseDown={e => handleDown('cta', e)}>
           <ElToolbar id="cta" fmtId={fmtId} onSizeChange={onSizeChange} />
           <div className="v15-ad-cta"
-               style={{ fontSize: sz.cta, color: colors.ctaTxt, background: colors.ctaBg, padding: ctaPad, borderRadius: 100, fontFamily: "'Outfit',sans-serif", fontWeight: 600, display: 'inline-block', whiteSpace: 'nowrap' }}>
+               style={{ fontSize: sz.cta, color: colors.ctaTxt, background: colors.ctaBg, padding: ctaPad, borderRadius: 100, fontFamily: "'Jost',sans-serif", fontWeight: 600, display: 'inline-block', whiteSpace: 'nowrap' }}>
             {cta || 'Mehr erfahren'}
           </div>
         </div>
@@ -334,7 +334,7 @@ function AdPreview({
         {domain && !isWide && (
           <div className={elCls('domain')} style={elStyle('domain')} onMouseDown={e => handleDown('domain', e)}>
             <ElToolbar id="domain" fmtId={fmtId} onSizeChange={onSizeChange} />
-            <div style={{ fontSize: sz.domain, fontFamily: "'Outfit',sans-serif", color: colors.domain, opacity: fmtId==='quer' ? 0.55 : 0.5, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: sz.domain, fontFamily: "'Jost',sans-serif", color: colors.domain, opacity: fmtId==='quer' ? 0.55 : 0.5, whiteSpace: 'nowrap' }}>
               {domain}
             </div>
           </div>
@@ -359,7 +359,7 @@ function AdPreview({
 export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: Props) {
   const ana        = briefing.analysis;
   const domain     = extractDomain(briefing.url);
-  const themeColor = ana?.themeColor || '#C1666B';
+  const themeColor = ana?.themeColor || '#6B4FBB';
 
   const hlSugs  = ana?.headlines ?? [];
   const subSugs = ana?.sublines  ?? [];
@@ -388,13 +388,13 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     Object.fromEntries(['quer','hoch','wide','med','tall'].map(f => [f, '50% 50%']))
   );
   const [focusFmt, setFocusFmt] = useState('quer');
-  const [adFont,   setAdFont]   = useState(briefing.adFont || 'Outfit');
+  const [adFont,   setAdFont]   = useState(briefing.adFont || 'Plus Jakarta Sans');
   const [adBold,   setAdBold]   = useState(false);
   const [animation, setAnimation] = useState(briefing.adAnimation || 'cta');
   const [fontOptions, setFontOptions] = useState<Array<{ name: string; label?: string; sub: string }>>([
-    { name: 'Outfit', sub: 'Standard' },
-    { name: 'Inter',  sub: 'Alternativ' },
-    { name: 'DM Sans',sub: 'Alternativ' },
+    { name: 'Plus Jakarta Sans', sub: 'Standard' },
+    { name: 'Playfair Display',  sub: 'Alternativ' },
+    { name: 'DM Sans',           sub: 'Alternativ' },
   ]);
   const [fontSubtitle, setFontSubtitle] = useState('');
   const [colors, setColors] = useState<Colors>({
@@ -402,7 +402,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     hl:     briefing.adTextColor   || '#FFFFFF',
     sub:    '#FFFFFF',
     logo:   '#FFFFFF',
-    ctaTxt: '#5C4F3D',
+    ctaTxt: '#2D1F52',
     ctaBg:  briefing.adAccentColor || '#FFFFFF',
     domain: '#FFFFFF',
   });
@@ -441,14 +441,14 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
     // Font section
     const detected = ana?.fontFamily || null;
-    const primaryFont = detected || 'Outfit';
+    const primaryFont = detected || 'Plus Jakarta Sans';
     // Pick contrasting alternates: if primary is serif → use sans; if sans → use serif+display
     const isSerif = SERIF_FONTS.has(primaryFont);
     const contrastFonts: [string, string] = isSerif
-      ? ['Outfit', 'Inter']
-      : ['Playfair Display', 'Fraunces'];
+      ? ['Plus Jakarta Sans', 'DM Sans']
+      : ['Playfair Display', 'DM Sans'];
     const opts = [
-      { name: primaryFont, label: detected ? 'Originalschrift' : 'Outfit', sub: detected || 'Standard' },
+      { name: primaryFont, label: detected ? 'Originalschrift' : 'Plus Jakarta Sans', sub: detected || 'Standard' },
       { name: contrastFonts[0], sub: isSerif ? 'Sans-Serif' : 'Serif' },
       { name: contrastFonts[1], sub: isSerif ? 'Modern' : 'Display' },
     ];
@@ -662,17 +662,17 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
     : `Zu klein – min. 1200px empfohlen (${bgQual.w}×${bgQual.h})`
     : '';
 
-  const qualColor = bgQual ? (bgQual.level === 'good' ? '#4CAF7D' : bgQual.level === 'warn' ? '#E8A838' : '#E05252') : '';
+  const qualColor = bgQual ? (bgQual.level === 'good' ? '#3DAA74' : bgQual.level === 'warn' ? '#D4942A' : '#D05050') : '';
 
   // ── Shared sidebar styles ──────────────────────────────────────────────────
-  const sTitle: React.CSSProperties = { fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', marginBottom: 9, marginTop: 15 };
+  const sTitle: React.CSSProperties = { fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#7A6F96', marginBottom: 9, marginTop: 15 };
   const sFg:    React.CSSProperties = { marginBottom: 9 };
-  const sLbl:   React.CSSProperties = { fontSize: 11, fontWeight: 500, color: '#8a7a67', display: 'block', marginBottom: 3 };
-  const sInp:   React.CSSProperties = { fontFamily: "'Outfit',sans-serif", fontSize: 12, color: '#5C4F3D', background: '#FAF7F2', border: '1px solid #ede8e1', borderRadius: 7, padding: '7px 9px', width: '100%', outline: 'none' };
-  const sDivider: React.CSSProperties = { height: 1, background: '#ede8e1', margin: '13px 0' };
+  const sLbl:   React.CSSProperties = { fontSize: 11, fontWeight: 500, color: '#7A6F96', display: 'block', marginBottom: 3 };
+  const sInp:   React.CSSProperties = { fontFamily: "'Jost',sans-serif", fontSize: 12, color: '#2D1F52', background: '#F5F2FB', border: '1px solid #E8E4F0', borderRadius: 8, padding: '7px 10px', width: '100%', outline: 'none' };
+  const sDivider: React.CSSProperties = { height: 1, background: '#E8E4F0', margin: '13px 0' };
 
   function styleBtn(active: boolean): React.CSSProperties {
-    return { flex: 1, fontSize: 11, fontWeight: 500, padding: '6px 3px', borderRadius: 6, border: `1.5px solid ${active ? '#C1666B' : '#ede8e1'}`, background: active ? '#f9eeef' : 'white', color: active ? '#C1666B' : '#8a7a67', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all .15s', textAlign: 'center' };
+    return { flex: 1, fontSize: 11, fontWeight: 500, padding: '6px 3px', borderRadius: 7, border: `1.5px solid ${active ? '#6B4FBB' : '#E8E4F0'}`, background: active ? 'rgba(107,79,187,.07)' : 'white', color: active ? '#6B4FBB' : '#7A6F96', cursor: 'pointer', fontFamily: "'Jost',sans-serif", transition: 'all .15s', textAlign: 'center' };
   }
 
   function isCardActive(fmtId: string): boolean {
@@ -682,36 +682,36 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
 
   function cardStyle(fmtId: string): React.CSSProperties {
     return isCardActive(fmtId)
-      ? { boxShadow: '0 0 0 2.5px #C1666B', borderColor: '#C1666B' }
+      ? { boxShadow: '0 0 0 2.5px #6B4FBB', borderColor: '#6B4FBB' }
       : {};
   }
 
   // ────────────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '310px 1fr', minHeight: 'calc(100vh - 52px)', fontFamily: "'Outfit',sans-serif" }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '310px 1fr', minHeight: 'calc(100vh - 52px)', fontFamily: "'Jost',sans-serif" }}>
 
       {/* ═══════════════════════ SIDEBAR ═══════════════════════ */}
-      <div style={{ background: 'white', borderRight: '1px solid #ede8e1', padding: 14, overflowY: 'auto', position: 'sticky', top: 52, height: 'calc(100vh - 52px)' }}
+      <div style={{ background: 'white', borderRight: '1px solid #E8E4F0', padding: 14, overflowY: 'auto', position: 'sticky', top: 52, height: 'calc(100vh - 52px)' }}
            className="v15-sidebar">
 
         {/* CRAWL CARD */}
-        <div style={{ background: 'linear-gradient(135deg,#f9eeef,#faf7f2)', border: '1.5px solid #C1666B', borderRadius: 9, padding: '11px 13px', marginBottom: 13 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#C1666B', marginBottom: 7 }}>
+        <div style={{ background: 'linear-gradient(135deg,#f0ecfb,#f8f5ff)', border: '1.5px solid #6B4FBB', borderRadius: 10, padding: '11px 13px', marginBottom: 13 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#6B4FBB', marginBottom: 7 }}>
             🔗 Von Website geladen
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: '#5C4F3D', fontWeight: 600 }}>{domain}</span>
+            <span style={{ fontSize: 12, color: '#2D1F52', fontWeight: 600 }}>{domain}</span>
             <span style={{ fontSize: 10, color: '#3A9E7A', fontWeight: 600, background: '#F0FFF6', border: '1px solid #B8E8CC', borderRadius: 4, padding: '2px 7px', whiteSpace: 'nowrap' }}>
               Analyse abgeschlossen ✓
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 7, background: 'rgba(255,255,255,.6)', borderRadius: 6, padding: '6px 8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 7, background: 'rgba(255,255,255,.7)', borderRadius: 7, padding: '6px 8px', flexWrap: 'wrap' }}>
             <div style={{ width: 18, height: 18, borderRadius: 4, border: '1px solid rgba(0,0,0,.1)', background: colors.bg, flexShrink: 0 }} />
             {logoThumb && (
               <img src={logoThumb} alt="" style={{ height: 20, width: 'auto', maxWidth: 56, objectFit: 'contain', borderRadius: 3 }}
                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             )}
-            <span style={{ fontSize: 10, color: '#8a7a67' }}>
+            <span style={{ fontSize: 10, color: '#7A6F96' }}>
               {domain}{ana?.fontFamily ? ` · ${ana.fontFamily}` : ''}
             </span>
           </div>
@@ -732,7 +732,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {hlSugs.map((h, i) => (
                 <div key={h}
-                     style={{ background: activeHlIdx === i ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${activeHlIdx === i ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeHlIdx === i ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
+                     style={{ background: activeHlIdx === i ? 'rgba(107,79,187,.07)' : '#F5F2FB', border: `1.5px solid ${activeHlIdx === i ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeHlIdx === i ? '#6B4FBB' : '#2D1F52', transition: 'all .15s', lineHeight: 1.4 }}
                      onClick={() => { setHeadline(h); setActiveHlIdx(i); }}>
                   {h}
                 </div>
@@ -748,7 +748,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {subSugs.map((s, i) => (
                 <div key={s}
-                     style={{ background: activeSubIdx === i ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${activeSubIdx === i ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeSubIdx === i ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
+                     style={{ background: activeSubIdx === i ? 'rgba(107,79,187,.07)' : '#F5F2FB', border: `1.5px solid ${activeSubIdx === i ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeSubIdx === i ? '#6B4FBB' : '#2D1F52', transition: 'all .15s', lineHeight: 1.4 }}
                      onClick={() => { setSubline(s); setActiveSubIdx(i); }}>
                   {s}
                 </div>
@@ -764,7 +764,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
               {ctaSugs.map((s, i) => (
                 <div key={s}
-                     style={{ background: activeCtaIdx === i ? '#f9eeef' : '#FAF7F2', border: `1.5px solid ${activeCtaIdx === i ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeCtaIdx === i ? '#C1666B' : '#5C4F3D', transition: 'all .15s', lineHeight: 1.4 }}
+                     style={{ background: activeCtaIdx === i ? 'rgba(107,79,187,.07)' : '#F5F2FB', border: `1.5px solid ${activeCtaIdx === i ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, padding: '6px 9px', cursor: 'pointer', fontSize: 12, color: activeCtaIdx === i ? '#6B4FBB' : '#2D1F52', transition: 'all .15s', lineHeight: 1.4 }}
                      onClick={() => { setCta(s); setActiveCtaIdx(i); }}>
                   {s}
                 </div>
@@ -800,11 +800,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           <div style={sFg}>
             {logoThumb ? (
               <img src={logoThumb} alt="logo"
-                   style={{ width: '100%', height: 60, objectFit: 'contain', borderRadius: 7, border: '1px solid #ede8e1', marginBottom: 5, background: 'white', display: 'block' }}
+                   style={{ width: '100%', height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid #E8E4F0', marginBottom: 5, background: 'white', display: 'block' }}
                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
             ) : (
               <div onClick={() => logoFileRef.current?.click()}
-                   style={{ width: '100%', height: 60, borderRadius: 7, border: '2px dashed #ede8e1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 5, background: '#FAF7F2', color: '#8a7a67', fontSize: 11, cursor: 'pointer' }}>
+                   style={{ width: '100%', height: 60, borderRadius: 8, border: '2px dashed #E8E4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 5, background: '#F5F2FB', color: '#7A6F96', fontSize: 11, cursor: 'pointer' }}>
                 <span>🏢</span><span>Kein Logo – klicken zum Hochladen</span>
               </div>
             )}
@@ -813,7 +813,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                      value={logoUrl.startsWith('data:') ? '' : logoUrl}
                      onChange={e => handleLogoUrl(e.target.value)}
                      placeholder="https://… (auto befüllt)" />
-              <button style={{ background: '#ede8e1', border: '1px solid #ede8e1', borderRadius: 7, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+              <button style={{ background: '#E8E4F0', border: '1px solid #E8E4F0', borderRadius: 8, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}
                       onClick={() => logoFileRef.current?.click()}>
                 📁
               </button>
@@ -828,11 +828,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         <div style={sFg}>
           {bgImage && (
             <img src={proxyUrl(bgImage)} alt=""
-                 style={{ width: '100%', height: 56, objectFit: 'cover', borderRadius: 6, border: '1px solid #ede8e1', marginBottom: 5, display: 'block' }} />
+                 style={{ width: '100%', height: 56, objectFit: 'cover', borderRadius: 7, border: '1px solid #E8E4F0', marginBottom: 5, display: 'block' }} />
           )}
           <div style={{ display: 'flex', gap: 5, alignItems: 'stretch' }}>
             <input style={{ ...sInp, flex: 1 }} value={bgUrlInput} onChange={e => handleBgUrl(e.target.value)} placeholder="https://… (auto befüllt)" />
-            <label style={{ background: '#ede8e1', border: '1px solid #ede8e1', borderRadius: 7, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <label style={{ background: '#E8E4F0', border: '1px solid #E8E4F0', borderRadius: 8, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               📁
               <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }}
                      onChange={e => { const f = e.target.files?.[0]; if (f) handleBgFile(f); }} />
@@ -841,7 +841,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           {bgQual && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: qualColor, flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: '#8a7a67' }}>{qualText}</span>
+              <span style={{ fontSize: 10, color: '#7A6F96' }}>{qualText}</span>
             </div>
           )}
         </div>
@@ -866,21 +866,21 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               const active = focusFmt === fmt;
               return (
                 <button key={fmt}
-                        style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, border: `1.5px solid ${active ? '#C1666B' : '#ede8e1'}`, background: active ? '#C1666B' : 'white', color: active ? 'white' : '#8a7a67', fontWeight: active ? 600 : 400, cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all .15s' }}
+                        style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, border: `1.5px solid ${active ? '#6B4FBB' : '#E8E4F0'}`, background: active ? '#6B4FBB' : 'white', color: active ? 'white' : '#7A6F96', fontWeight: active ? 600 : 400, cursor: 'pointer', fontFamily: "'Jost',sans-serif", transition: 'all .15s' }}
                         onClick={() => setFocusFmt(fmt)}>
                   {fmt === 'wide' ? 'Billboard' : fmt === 'med' ? '300×250' : fmt === 'tall' ? '300×600' : fmt === 'quer' ? 'Quer' : 'Hoch'}
                 </button>
               );
             })}
           </div>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 7, overflow: 'hidden', border: '1.5px solid #ede8e1' }}>
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: bgImage ? `url(${proxyUrl(bgImage)})` : undefined, backgroundSize: 'cover', backgroundPosition: bgPosByFmt[focusFmt] || '50% 50%', backgroundColor: '#ede8e1' }} />
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', border: '1.5px solid #E8E4F0' }}>
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: bgImage ? `url(${proxyUrl(bgImage)})` : undefined, backgroundSize: 'cover', backgroundPosition: bgPosByFmt[focusFmt] || '50% 50%', backgroundColor: '#E8E4F0' }} />
             <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gridTemplateRows: 'repeat(3,1fr)' }}>
               {FP.flatMap((row, r) => row.map((cellPos, c) => {
                 const isActive = (bgPosByFmt[focusFmt] || '50% 50%') === cellPos;
                 return (
                   <div key={`${r}-${c}`}
-                       style={{ cursor: 'pointer', background: isActive ? 'rgba(193,102,107,.55)' : 'transparent', transition: 'background .1s' }}
+                       style={{ cursor: 'pointer', background: isActive ? 'rgba(107,79,187,.5)' : 'transparent', transition: 'background .1s' }}
                        onClick={() => handleFocusCell(cellPos)}
                        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,.2)'; }}
                        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }} />
@@ -888,7 +888,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
               }))}
             </div>
           </div>
-          <div style={{ fontSize: 10, color: '#8a7a67', textAlign: 'center', marginTop: 3 }}>
+          <div style={{ fontSize: 10, color: '#7A6F96', textAlign: 'center', marginTop: 3 }}>
             Klicke auf den wichtigsten Bereich für dieses Format
           </div>
         </div>
@@ -902,9 +902,9 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             <span style={{ fontSize: 11 }}>🌑</span>
             <input type="range" min={20} max={160} value={bgBright}
                    onChange={e => setBgBright(+e.target.value)}
-                   style={{ flex: 1, accentColor: '#C1666B' }} />
+                   style={{ flex: 1, accentColor: '#6B4FBB' }} />
             <span style={{ fontSize: 11 }}>☀️</span>
-            <span style={{ fontSize: 10, color: '#8a7a67', minWidth: 32, textAlign: 'right' }}>{bgBright}%</span>
+            <span style={{ fontSize: 10, color: '#7A6F96', minWidth: 32, textAlign: 'right' }}>{bgBright}%</span>
           </div>
         </div>
 
@@ -917,27 +917,27 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 6 }}>
           {fontOptions.map(f => (
             <button key={f.name}
-                    style={{ padding: '6px 4px', border: `1.5px solid ${adFont === f.name ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, background: adFont === f.name ? '#f9eeef' : 'white', cursor: 'pointer', textAlign: 'center', lineHeight: 1.2, transition: 'all .15s', fontFamily: fontStack(f.name), fontSize: 12, color: adFont === f.name ? '#C1666B' : '#5C4F3D' }}
+                    style={{ padding: '6px 4px', border: `1.5px solid ${adFont === f.name ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, background: adFont === f.name ? 'rgba(107,79,187,.07)' : 'white', cursor: 'pointer', textAlign: 'center', lineHeight: 1.2, transition: 'all .15s', fontFamily: fontStack(f.name), fontSize: 12, color: adFont === f.name ? '#6B4FBB' : '#2D1F52' }}
                     onClick={() => setAdFont(f.name)}>
               {f.label || f.name}
               <br />
-              <small style={{ fontSize: 9, fontWeight: 300, opacity: 0.7, fontFamily: "'Outfit',sans-serif" }}>{f.sub}</small>
+              <small style={{ fontSize: 9, fontWeight: 300, opacity: 0.7, fontFamily: "'Jost',sans-serif" }}>{f.sub}</small>
             </button>
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <button style={{ padding: '4px 12px', border: `1.5px solid ${adBold ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, background: adBold ? '#f9eeef' : 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: adBold ? '#C1666B' : '#8a7a67', transition: 'all .15s', fontFamily: 'inherit' }}
+          <button style={{ padding: '4px 12px', border: `1.5px solid ${adBold ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, background: adBold ? 'rgba(107,79,187,.07)' : 'white', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: adBold ? '#6B4FBB' : '#7A6F96', transition: 'all .15s', fontFamily: 'inherit' }}
                   onClick={() => setAdBold(b => !b)}>
             <b>B</b>
           </button>
-          <span style={{ fontSize: 11, color: '#8a7a67' }}>Fett für Headline &amp; Subline</span>
+          <span style={{ fontSize: 11, color: '#7A6F96' }}>Fett für Headline &amp; Subline</span>
         </div>
 
         <div style={sDivider} />
 
         {/* FARBEN */}
         <div style={{ ...sTitle, marginTop: 0 }}>Farben</div>
-        <div style={{ fontSize: 10, color: '#8a7a67', marginBottom: 8 }}>Jedes Element hat eine eigene Farbe</div>
+        <div style={{ fontSize: 10, color: '#7A6F96', marginBottom: 8 }}>Jedes Element hat eine eigene Farbe</div>
 
         {/* BG color – full width */}
         <div style={sFg}>
@@ -945,8 +945,8 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <input type="color" value={colors.bg}
                    onChange={e => setColors(c => ({ ...c, bg: e.target.value }))}
-                   style={{ width: 28, height: 28, border: '1px solid #ede8e1', borderRadius: 5, padding: 2, cursor: 'pointer', background: 'none' }} />
-            <span style={{ fontSize: 9, color: '#8a7a67' }}>{colors.bg}</span>
+                   style={{ width: 28, height: 28, border: '1px solid #E8E4F0', borderRadius: 6, padding: 2, cursor: 'pointer', background: 'none' }} />
+            <span style={{ fontSize: 9, color: '#7A6F96' }}>{colors.bg}</span>
           </div>
         </div>
 
@@ -961,12 +961,12 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             ['domain', 'Domain'],
           ] as [keyof Colors, string][]).map(([k, lbl]) => (
             <div key={k}>
-              <label style={{ fontSize: 10, fontWeight: 500, color: '#8a7a67', display: 'block', marginBottom: 3 }}>{lbl}</label>
+              <label style={{ fontSize: 10, fontWeight: 500, color: '#7A6F96', display: 'block', marginBottom: 3 }}>{lbl}</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <input type="color" value={colors[k]}
                        onChange={e => setColors(c => ({ ...c, [k]: e.target.value }))}
-                       style={{ width: 28, height: 28, border: '1px solid #ede8e1', borderRadius: 5, padding: 2, cursor: 'pointer', background: 'none' }} />
-                <span style={{ fontSize: 9, color: '#8a7a67' }}>{colors[k]}</span>
+                       style={{ width: 28, height: 28, border: '1px solid #E8E4F0', borderRadius: 6, padding: 2, cursor: 'pointer', background: 'none' }} />
+                <span style={{ fontSize: 9, color: '#7A6F96' }}>{colors[k]}</span>
               </div>
             </div>
           ))}
@@ -986,14 +986,14 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             ['none', '⏸',  'Statisch'],
           ] as const).map(([v, icon, lbl]) => (
             <button key={v}
-                    style={{ padding: '7px 5px', border: `1.5px solid ${animation === v ? '#C1666B' : '#ede8e1'}`, borderRadius: 6, background: animation === v ? '#f9eeef' : 'white', cursor: 'pointer', textAlign: 'center', fontFamily: "'Outfit',sans-serif", fontSize: 11, fontWeight: 500, color: animation === v ? '#C1666B' : '#8a7a67', transition: 'all .15s', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}
+                    style={{ padding: '7px 5px', border: `1.5px solid ${animation === v ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, background: animation === v ? 'rgba(107,79,187,.07)' : 'white', cursor: 'pointer', textAlign: 'center', fontFamily: "'Jost',sans-serif", fontSize: 11, fontWeight: 500, color: animation === v ? '#6B4FBB' : '#7A6F96', transition: 'all .15s', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}
                     onClick={() => setAnimation(v)}>
               <span>{icon}</span>
               <span>{lbl}</span>
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 10, background: '#5C4F3D', color: 'white', padding: '4px 8px', borderRadius: 5, marginTop: 4 }}>
+        <div style={{ fontSize: 10, background: '#2D1F52', color: 'white', padding: '4px 9px', borderRadius: 6, marginTop: 4 }}>
           {ANIM_TIPS[animation] || '⏸ Statisch'}
         </div>
 
@@ -1002,7 +1002,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         {/* SUBMIT */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button onClick={handleNext}
-                  style={{ width: '100%', background: '#C1666B', color: 'white', fontFamily: "'Outfit',sans-serif", fontSize: 13, fontWeight: 600, padding: 11, borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'all .15s' }}>
+                  style={{ width: '100%', background: '#6B4FBB', color: 'white', fontFamily: "'Jost',sans-serif", fontSize: 13, fontWeight: 600, padding: 11, borderRadius: 9, border: 'none', cursor: 'pointer', transition: 'all .15s' }}>
             ✓ Werbemittel einreichen
           </button>
           {resumeSent ? (
@@ -1016,31 +1016,31 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                      placeholder="Ihre E-Mail"
                      onKeyDown={e => { if (e.key === 'Enter') handleSendResume(); }} />
               <button onClick={handleSendResume}
-                      style={{ background: '#5C4F3D', color: 'white', border: 'none', borderRadius: 7, padding: '0 10px', cursor: 'pointer', fontSize: 11, fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}>
+                      style={{ background: '#2D1F52', color: 'white', border: 'none', borderRadius: 8, padding: '0 10px', cursor: 'pointer', fontSize: 11, fontFamily: "'Jost',sans-serif", flexShrink: 0 }}>
                 Senden
               </button>
             </div>
           ) : (
             <button onClick={() => setShowResumeInput(true)}
-                    style={{ width: '100%', background: 'transparent', color: '#5C4F3D', border: '1.5px solid #ede8e1', borderRadius: 8, padding: 8, fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer' }}>
+                    style={{ width: '100%', background: 'transparent', color: '#2D1F52', border: '1.5px solid #E8E4F0', borderRadius: 9, padding: 8, fontFamily: "'Jost',sans-serif", fontSize: 12, cursor: 'pointer' }}>
               📎 Link zum Weiterarbeiten senden
             </button>
           )}
           <button onClick={() => { updateBriefing({ werbemittel: 'spaeter' }); nextStep(); }}
-                  style={{ width: '100%', background: 'transparent', color: '#5C4F3D', border: '1.5px solid #ede8e1', borderRadius: 8, padding: 8, fontFamily: "'Outfit',sans-serif", fontSize: 12, cursor: 'pointer' }}>
+                  style={{ width: '100%', background: 'transparent', color: '#2D1F52', border: '1.5px solid #E8E4F0', borderRadius: 9, padding: 8, fontFamily: "'Jost',sans-serif", fontSize: 12, cursor: 'pointer' }}>
             Später einschicken
           </button>
         </div>
       </div>
 
       {/* ═══════════════════════ CANVAS ═══════════════════════ */}
-      <div style={{ background: '#FAF7F2', padding: '22px 26px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ background: '#FDFCFF', padding: '22px 26px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 3, marginBottom: 20, background: 'white', borderRadius: 9, padding: 3, border: '1px solid #ede8e1', width: 'fit-content' }}>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 20, background: 'white', borderRadius: 10, padding: 3, border: '1px solid #E8E4F0', width: 'fit-content' }}>
           {(['dooh','display'] as const).map(t => (
             <button key={t}
-                    style={{ fontSize: 12, fontWeight: 500, padding: '6px 15px', borderRadius: 7, border: 'none', cursor: 'pointer', background: tab === t ? '#C1666B' : 'transparent', color: tab === t ? 'white' : '#8a7a67', fontFamily: "'Outfit',sans-serif", transition: 'all .15s' }}
+                    style={{ fontSize: 12, fontWeight: 500, padding: '6px 15px', borderRadius: 8, border: 'none', cursor: 'pointer', background: tab === t ? '#6B4FBB' : 'transparent', color: tab === t ? 'white' : '#7A6F96', fontFamily: "'Jost',sans-serif", transition: 'all .15s' }}
                     onClick={() => setTab(t)}>
               {t === 'dooh' ? 'DOOH' : 'Display'}
             </button>
@@ -1050,16 +1050,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         {/* ── DOOH ── */}
         {tab === 'dooh' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              DOOH Formate <span style={{ flex: 1, height: 1, background: '#ede8e1', display: 'block' }} />
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#7A6F96', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              DOOH Formate <span style={{ flex: 1, height: 1, background: '#E8E4F0', display: 'block' }} />
             </div>
 
             {/* Querformat */}
-            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #ede8e1`, ...cardStyle('quer') }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #E8E4F0`, ...cardStyle('quer') }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#5C4F3D' }}>Querformat</div>
-                  <div style={{ fontSize: 11, color: '#8a7a67' }}>1920 × 1080 px</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1F52' }}>Querformat</div>
+                  <div style={{ fontSize: 11, color: '#7A6F96' }}>1920 × 1080 px</div>
                 </div>
               </div>
               <div style={{ width: '100%', maxWidth: 845, overflow: 'hidden' }}>
@@ -1068,11 +1068,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             </div>
 
             {/* Hochformat */}
-            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #ede8e1`, ...cardStyle('hoch') }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #E8E4F0`, ...cardStyle('hoch') }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#5C4F3D' }}>Hochformat</div>
-                  <div style={{ fontSize: 11, color: '#8a7a67' }}>1080 × 1920 px</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1F52' }}>Hochformat</div>
+                  <div style={{ fontSize: 11, color: '#7A6F96' }}>1080 × 1920 px</div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
@@ -1085,16 +1085,16 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         {/* ── Display ── */}
         {tab === 'display' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#8a7a67', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              Display Formate <span style={{ flex: 1, height: 1, background: '#ede8e1', display: 'block' }} />
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: '#7A6F96', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              Display Formate <span style={{ flex: 1, height: 1, background: '#E8E4F0', display: 'block' }} />
             </div>
 
             {/* Billboard 970×250 */}
-            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #ede8e1`, ...cardStyle('wide') }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #E8E4F0`, ...cardStyle('wide') }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#5C4F3D' }}>Billboard</div>
-                  <div style={{ fontSize: 11, color: '#8a7a67' }}>970 × 250 px</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1F52' }}>Billboard</div>
+                  <div style={{ fontSize: 11, color: '#7A6F96' }}>970 × 250 px</div>
                 </div>
               </div>
               {/* Scale 970×250 → ~820×211 */}
@@ -1108,21 +1108,21 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             </div>
 
             {/* Rectangle + Half Page */}
-            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #ede8e1`, ...cardStyle('med') }}>
+            <div style={{ background: 'white', borderRadius: 12, padding: '16px 20px', border: `1px solid #E8E4F0`, ...cardStyle('med') }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#5C4F3D' }}>Rectangle &amp; Half Page</div>
-                  <div style={{ fontSize: 11, color: '#8a7a67' }}>300 × 250 / 300 × 600 px</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#2D1F52' }}>Rectangle &amp; Half Page</div>
+                  <div style={{ fontSize: 11, color: '#7A6F96' }}>300 × 250 / 300 × 600 px</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <AdPreview {...mkProps('med')} width={300} height={250} />
-                  <div style={{ fontSize: 10, color: '#8a7a67' }}>300 × 250 px</div>
+                  <div style={{ fontSize: 10, color: '#7A6F96' }}>300 × 250 px</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <AdPreview {...mkProps('tall')} width={300} height={600} />
-                  <div style={{ fontSize: 10, color: '#8a7a67' }}>300 × 600 px</div>
+                  <div style={{ fontSize: 10, color: '#7A6F96' }}>300 × 600 px</div>
                 </div>
               </div>
             </div>
