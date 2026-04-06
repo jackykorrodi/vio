@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { computeStartDateISO } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
+import ReichweiteKacheln from '@/components/ReichweiteKacheln';
+import doohScreensRaw from '@/lib/dooh-screens.json';
+
+type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
+const DOOH_DATA_POLITIK = doohScreensRaw as DoohEntry[];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
@@ -355,6 +360,24 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               );
             })}
           </div>
+
+          {/* ── Reichweite Kacheln ── */}
+          {(() => {
+            const regionName = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
+            const doohEntry = DOOH_DATA_POLITIK.find(d => d.name === regionName);
+            const doohScreenCount = doohEntry?.screens_politik ?? 18223;
+            return (
+              <ReichweiteKacheln
+                type="politik"
+                region={regionName}
+                doohScreens={doohScreenCount}
+                displayPersonen={Math.round(pkg.targetReachPeople * 0.3)}
+                reachVon={Math.round(pkg.targetReachPeople * 0.85)}
+                reachBis={pkg.targetReachPeople}
+                frequency={pkg.frequency}
+              />
+            );
+          })()}
 
           {/* ── Calendar + Budget ── */}
           <div className="s2-cal">

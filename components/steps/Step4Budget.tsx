@@ -7,6 +7,7 @@ import doohScreens from '@/lib/dooh-screens.json';
 import demonymsRaw from '@/lib/demonyms.json';
 import { getMitarbeitende } from '@/lib/b2b-data';
 import { buildB2BPackages } from '@/lib/b2b-paketlogik';
+import ReichweiteKacheln from '@/components/ReichweiteKacheln';
 const DEMONYMS = demonymsRaw as Record<string, string>;
 
 type DoohEntry = {
@@ -625,6 +626,20 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               );
             })}
           </div>
+
+          {/* ── Reichweite Kacheln (B2B only) ── */}
+          {isB2B && b2bPakete && (
+            <ReichweiteKacheln
+              type="b2b"
+              region={primaryRegionName}
+              doohScreens={reach.screens}
+              displayPersonen={Math.round(b2bMitarbeitende * 0.3)}
+              reachVon={Math.round((b2bPakete.packages[selectedPkg]?.targetReachPeople ?? 0) * 0.85)}
+              reachBis={b2bPakete.packages[selectedPkg]?.targetReachPeople ?? 0}
+              frequency={b2bPakete.packages[selectedPkg]?.frequency ?? 4}
+              branche={b2bBrancheLabel !== 'Alle Branchen' ? b2bBrancheLabel : undefined}
+            />
+          )}
 
           {/* ── PROPOSAL CARD ── */}
           <div className="proposal">
