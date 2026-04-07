@@ -119,6 +119,17 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
   const budgetPct  = Math.min(100, Math.max(0, ((budget - 2500) / (200000 - 2500)) * 100));
+
+  const selectedPkgBudget = vioData?.packages[selectedPkg].finalBudget ?? 0;
+  const isCustomBudget    = budget !== selectedPkgBudget;
+
+  const MIXED_CPM = 39.5;
+  const customReachPeople = isCustomBudget
+    ? Math.round((budget / MIXED_CPM) * 1000 / pkg.frequency)
+    : pkg.targetReachPeople;
+  const customReachPct = vioData
+    ? customReachPeople / vioData.eligibleVotersTotal
+    : pkg.uniqueReachPercent;
   const earliestStart = fmtLong(addDays(todayISO(), 10));
   const recommendedEnd = sharedEndISO ? fmtLong(sharedEndISO) : '';
 
@@ -129,9 +140,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       budget,
       laufzeit:    weeks,
       startDate:   startISO,
-      reach:       pkg.targetReachPeople,
-      reachVonPct: Math.round(pkg.uniqueReachPercent * 100),
-      reachBisPct: Math.round(pkg.uniqueReachPercent * 100),
+      reach:       customReachPeople,
+      reachVonPct: Math.round(customReachPct * 100),
+      reachBisPct: Math.round(customReachPct * 100),
       b2bReach:    null,
     });
     nextStep();
@@ -383,9 +394,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 type="politik"
                 region={regionName}
                 doohScreens={doohScreenCount}
-                displayPersonen={Math.round(pkg.targetReachPeople * 0.3)}
-                reachVon={Math.round(pkg.targetReachPeople * 0.85)}
-                reachBis={pkg.targetReachPeople}
+                displayPersonen={Math.round(customReachPeople * 0.3)}
+                reachVon={Math.round(customReachPeople * 0.85)}
+                reachBis={customReachPeople}
                 frequency={pkg.frequency}
               />
             );
@@ -457,8 +468,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           <div className="s2-sum">
             <div className="s2-si">
               <div className="s2-si-lbl">Paket</div>
-              <div className="s2-si-val">{pkg.name}</div>
-              <div className="s2-si-sub">{selectedPkg === 'praesenz' ? 'Empfohlen' : `${Math.round(pkg.uniqueReachPercent * 100)}% Reichweite`}</div>
+              <div className="s2-si-val">{isCustomBudget ? 'Custom' : pkg.name}</div>
+              <div className="s2-si-sub">
+                {isCustomBudget
+                  ? 'Angepasst'
+                  : selectedPkg === 'praesenz'
+                  ? 'Empfohlen'
+                  : `${Math.round(pkg.uniqueReachPercent * 100)}% Reichweite`}
+              </div>
             </div>
             <div className="s2-si">
               <div className="s2-si-lbl">Zeitraum</div>
@@ -471,8 +488,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             </div>
             <div className="s2-si">
               <div className="s2-si-lbl">Reichweite</div>
-              <div className="s2-si-val">~{pkg.targetReachPeople.toLocaleString('de-CH')}</div>
-              <div className="s2-si-sub">{Math.round(pkg.uniqueReachPercent * 100)}% der {inhabitants}</div>
+              <div className="s2-si-val">~{customReachPeople.toLocaleString('de-CH')}</div>
+              <div className="s2-si-sub">{Math.round(customReachPct * 100)}% der {inhabitants}</div>
             </div>
             <div className="s2-si">
               <div className="s2-si-lbl">Budget total</div>
