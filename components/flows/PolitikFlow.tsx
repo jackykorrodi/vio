@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step2Politik from '@/components/steps/Step2Politik';
-import Step2PolitikBudget from '@/components/steps/Step2PolitikBudget';
+import Step2PolitikBudget from '@/components/campaign/StepPackages';
 import Step5Creative from '@/components/steps/Step5Creative';
 import Step5AdCreator from '@/components/steps/Step5AdCreator';
 import Step6Contact from '@/components/steps/Step6Contact';
