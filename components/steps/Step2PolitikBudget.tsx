@@ -145,7 +145,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .s2 { font-family: 'Jost', sans-serif; background: #FDFCFF; min-height: 100vh; }
 
         /* Header */
-        .s2-hdr  { max-width: 900px; margin: 0 auto; padding: 32px 40px 0; }
+        .s2-hdr  { max-width: 1100px; margin: 0 auto; padding: 32px 40px 0; }
         .s2-step { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .s2-dash { width: 28px; height: 2px; background: #6B4FBB; border-radius: 2px; flex-shrink: 0; }
         .s2-etxt { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #6B4FBB; }
@@ -161,18 +161,18 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .s2-ctx-voters  { color: #5A4A7A; margin-left: 4px; }
 
         /* Main */
-        .s2-main { max-width: 900px; margin: 0 auto; padding: 0 40px; }
+        .s2-main { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
 
         /* Packet grid */
         .s2-pkts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 28px; }
-        .s2-pkt  { position: relative; background: white; border: 2px solid #EDE8F7; border-radius: 14px; padding: 24px 20px 20px; cursor: pointer; transition: border-color .18s, box-shadow .18s, transform .18s; display: flex; flex-direction: column; text-align: left; }
+        .s2-pkt  { position: relative; background: white; border: 2px solid #EDE8F7; border-radius: 14px; padding: 28px 24px 24px; cursor: pointer; transition: border-color .18s, box-shadow .18s, transform .18s; display: flex; flex-direction: column; text-align: left; }
         .s2-pkt:hover   { border-color: #8B6FDB; box-shadow: 0 4px 16px rgba(45,31,82,0.10); transform: translateY(-2px); }
         .s2-pkt.sel     { border-color: #6B4FBB; box-shadow: 0 0 0 3px rgba(107,79,187,0.12), 0 4px 16px rgba(45,31,82,0.10); }
         .s2-rec-badge   { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6B4FBB; color: white; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 14px; border-radius: 20px; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap; }
         .s2-check-ring  { position: absolute; top: 16px; right: 16px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #EDE8F7; display: flex; align-items: center; justify-content: center; transition: all .15s; }
         .s2-pkt.sel .s2-check-ring { background: #6B4FBB; border-color: #6B4FBB; }
         .s2-pkt-name    { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #5A4A7A; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 6px; }
-        .s2-pkt-price   { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; color: #2D1F52; line-height: 1; margin-bottom: 4px; }
+        .s2-pkt-price   { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(22px, 2vw, 30px); font-weight: 800; color: #2D1F52; line-height: 1; margin-bottom: 4px; }
         .s2-pkt.sel .s2-pkt-price { color: #6B4FBB; }
         .s2-pkt-dur     { font-size: 13px; color: #5A4A7A; }
         .s2-pkt-freq    { font-size: 12px; color: #6B4FBB; font-weight: 500; margin-top: 2px; margin-bottom: 14px; }
@@ -237,6 +237,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .s2-cta-sum strong { color: #2D1F52; font-weight: 600; }
 
         /* Responsive */
+        @media (min-width: 1024px) {
+          .s2-pkts { grid-template-columns: repeat(3, 1fr); }
+        }
         @media (max-width: 720px) {
           .s2-hdr, .s2-main { padding-left: 20px; padding-right: 20px; }
           .s2-pkts { grid-template-columns: 1fr; }
@@ -364,8 +367,17 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           {/* ── Reichweite Kacheln ── */}
           {(() => {
             const regionName = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
-            const doohEntry = DOOH_DATA_POLITIK.find(d => d.name === regionName);
-            const doohScreenCount = doohEntry?.screens_politik ?? 18223;
+            const regionType = briefing.politikRegionType ?? briefing.selectedRegions?.[0]?.type ?? 'schweiz';
+            const kantonCode = briefing.selectedRegions?.[0]?.kanton;
+            let doohEntry: DoohEntry | undefined;
+            if (regionType === 'schweiz') {
+              doohEntry = DOOH_DATA_POLITIK.find(d => d.type === 'schweiz');
+            } else if (regionType === 'stadt') {
+              doohEntry = DOOH_DATA_POLITIK.find(d => d.type === 'stadt' && d.name === regionName);
+            } else {
+              doohEntry = DOOH_DATA_POLITIK.find(d => d.type === 'kanton' && d.kanton === kantonCode);
+            }
+            const doohScreenCount = doohEntry?.screens_politik ?? 0;
             return (
               <ReichweiteKacheln
                 type="politik"
