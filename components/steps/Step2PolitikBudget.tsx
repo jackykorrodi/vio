@@ -120,13 +120,23 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
   const budgetPct  = Math.min(100, Math.max(0, ((budget - 2500) / (200000 - 2500)) * 100));
 
+  const MIXED_CPM = 39.5;
   const selectedPkgBudget = vioData?.packages[selectedPkg].finalBudget ?? 0;
   const isCustomBudget    = budget !== selectedPkgBudget;
 
-  const MIXED_CPM = 39.5;
-  const customReachPeople = isCustomBudget
-    ? Math.round((budget / MIXED_CPM) * 1000 / pkg.frequency)
+  const baseFreq = pkg.frequency;
+  const rawReachPeople = isCustomBudget
+    ? Math.round((budget / MIXED_CPM) * 1000 / baseFreq)
     : pkg.targetReachPeople;
+
+  const maxReachPeople = Math.round((vioData?.eligibleVotersTotal ?? 0) * 0.80);
+  const isCapped       = rawReachPeople > maxReachPeople;
+  const customReachPeople = isCapped ? maxReachPeople : rawReachPeople;
+
+  const effectiveFreq = isCapped
+    ? Math.round(((budget / MIXED_CPM) * 1000) / customReachPeople * 10) / 10
+    : baseFreq;
+
   const customReachPct = vioData
     ? customReachPeople / vioData.eligibleVotersTotal
     : pkg.uniqueReachPercent;
@@ -490,6 +500,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               <div className="s2-si-lbl">Reichweite</div>
               <div className="s2-si-val">~{customReachPeople.toLocaleString('de-CH')}</div>
               <div className="s2-si-sub">{Math.round(customReachPct * 100)}% der {inhabitants}</div>
+              {isCapped && (
+                <div style={{ fontSize: '11px', color: '#D4A843', marginTop: '4px', fontWeight: 600 }}>
+                  ⚠ Max. Reichweite – höheres Budget steigert Frequenz (Ø {effectiveFreq}×)
+                </div>
+              )}
             </div>
             <div className="s2-si">
               <div className="s2-si-lbl">Budget total</div>
