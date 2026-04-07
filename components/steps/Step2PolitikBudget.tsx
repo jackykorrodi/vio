@@ -89,9 +89,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     return addDays(briefing.votingDate, -28); // briefwahl offset – same for all pkgs
   };
 
-  const [startISO, setStartISO] = useState(() => computeStart('praesenz'));
-  const [endISO,   setEndISO]   = useState(() => computeEnd());
-  const [budget,   setBudget]   = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
+  const [startISO,   setStartISO]   = useState(() => computeStart('praesenz'));
+  const [endISO,     setEndISO]     = useState(() => computeEnd());
+  const [budget,     setBudget]     = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
+  const [dateError,  setDateError]  = useState<string | null>(null);
 
   // Per-card computed start dates (for display on cards)
   const cardStartISO = (key: PkgKey) => computeStart(key);
@@ -140,12 +141,51 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const customReachPct = vioData
     ? customReachPeople / vioData.eligibleVotersTotal
     : pkg.uniqueReachPercent;
-  const earliestStart = fmtLong(addDays(todayISO(), 10));
-  const recommendedEnd = sharedEndISO ? fmtLong(sharedEndISO) : '';
+
+  // ── Hard date boundaries ─────────────────────────────────────────────────────
+  const earliestStartISO = addDays(todayISO(), 10);
+  const campaignEndISO   = sharedEndISO; // votingDate − 28 days, HARD
+
+  const earliestStart  = fmtLong(earliestStartISO);
+  const recommendedEnd = campaignEndISO ? fmtLong(campaignEndISO) : '';
+
+  // Feasibility: available window must cover the package duration
+  const isPkgFeasible = (key: PkgKey): boolean => {
+    if (!campaignEndISO) return true;
+    const ms = new Date(campaignEndISO + 'T00:00:00').getTime()
+             - new Date(earliestStartISO + 'T00:00:00').getTime();
+    const available = Math.floor(ms / (24 * 3600 * 1000));
+    return available >= vioData.packages[key].durationDays;
+  };
 
   const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
 
   const handleNext = () => {
+    // ① start < end
+    if (!startISO || !endISO || startISO >= endISO) {
+      setDateError('Kampagnenstart muss vor dem Ende liegen.');
+      return;
+    }
+    // ② start ≥ earliestStart
+    if (startISO < earliestStartISO) {
+      setDateError(`Freigabe braucht 10 Tage – Frühestmöglicher Start: ${earliestStart}`);
+      return;
+    }
+    // ③ end ≤ campaignEnd
+    if (campaignEndISO && endISO > campaignEndISO) {
+      setDateError(`Ende muss vor dem Unterlagen-Versand (${recommendedEnd}) liegen.`);
+      return;
+    }
+    // ④ duration ≥ 7 days
+    const durDays = Math.round(
+      (new Date(endISO + 'T00:00:00').getTime() - new Date(startISO + 'T00:00:00').getTime())
+      / (24 * 3600 * 1000)
+    );
+    if (durDays < 7) {
+      setDateError('Mindestlaufzeit beträgt 7 Tage.');
+      return;
+    }
+    setDateError(null);
     updateBriefing({
       budget,
       laufzeit:    weeks,
@@ -314,11 +354,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               const cStart   = cardStartISO(key);
               const cEnd     = sharedEndISO;
 
+              const feasible = isPkgFeasible(key);
               return (
                 <div
                   key={key}
                   className={`s2-pkt${isSel ? ' sel' : ''}`}
-                  onClick={() => handleSelectPkg(key)}
+                  onClick={() => { if (feasible) handleSelectPkg(key); }}
+                  title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung'}
+                  style={feasible ? undefined : { opacity: 0.42, cursor: 'not-allowed', pointerEvents: 'none' }}
                 >
                   {/* Empfohlen badge – always on Präsenz */}
                   {key === 'praesenz' && (
@@ -430,7 +473,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <input
                   type="date"
                   value={startISO}
-                  onChange={e => setStartISO(e.target.value)}
+                  min={earliestStartISO}
+                  max={endISO ? addDays(endISO, -7) : undefined}
+                  onChange={e => { setStartISO(e.target.value); setDateError(null); }}
                 />
                 <div className="s2-cal-hint">
                   Frühestmöglich: <span>{earliestStart}</span> (nach Freigabe)
@@ -441,13 +486,28 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <input
                   type="date"
                   value={endISO}
-                  onChange={e => setEndISO(e.target.value)}
+                  min={startISO ? addDays(startISO, 7) : undefined}
+                  max={campaignEndISO || undefined}
+                  onChange={e => { setEndISO(e.target.value); setDateError(null); }}
                 />
                 <div className="s2-cal-hint">
                   Empfohlen: <span>{recommendedEnd}</span> (vor Unterlagen-Versand)
                 </div>
               </div>
             </div>
+
+            {/* Date validation error */}
+            {dateError && (
+              <div style={{
+                background: '#FFF5F5', border: '1px solid #FCA5A5', borderRadius: 8,
+                padding: '10px 14px', marginBottom: 20,
+                fontSize: 13, color: '#B91C1C', fontWeight: 500,
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+              }}>
+                <span style={{ flexShrink: 0 }}>⚠️</span>
+                {dateError}
+              </div>
+            )}
 
             {/* Budget slider */}
             <div>
@@ -536,8 +596,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </svg>
             </button>
             <div className="s2-cta-sum">
-              <strong>{pkg.name} · {fmtCHF(budget)}</strong><br />
-              <span>{weeks} Wochen · ~{pkg.targetReachPeople.toLocaleString('de-CH')} Personen erreicht</span>
+              <strong>{isCustomBudget ? 'Custom' : pkg.name} · {fmtCHF(budget)}</strong><br />
+              <span>{weeks} Wochen · ~{customReachPeople.toLocaleString('de-CH')} Personen erreicht</span>
             </div>
           </div>
 
