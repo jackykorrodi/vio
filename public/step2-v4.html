@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO – Budget & Reichweite v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #6B4FBB;
+    --primary-light: #8B6FDB;
+    --primary-faint: #F0ECFA;
+    --primary-border: #D5CCF0;
+    --ink: #2D1F52;
+    --ink-soft: #5A4A7A;
+    --off-white: #FDFCFF;
+    --grey-100: #F5F3FB;
+    --grey-200: #EDE8F7;
+    --grey-400: #B8ADDA;
+    --green: #059669;
+    --green-bg: #ECFDF5;
+    --green-border: #A7F3D0;
+    --amber: #D97706;
+    --amber-bg: #FFFBEB;
+    --amber-border: #FDE68A;
+    --radius: 14px;
+    --shadow-sm: 0 1px 3px rgba(45,31,82,0.08);
+    --shadow-md: 0 4px 16px rgba(45,31,82,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--off-white);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  /* ── HEADER ── */
+  .page-header { padding: 32px 40px 0; max-width: 900px; margin: 0 auto; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 500; color: var(--ink-soft);
+    text-decoration: none; margin-bottom: 28px; transition: color .15s;
+  }
+  .back-link:hover { color: var(--primary); }
+  .step-label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .step-dash { width: 28px; height: 2px; background: var(--primary); border-radius: 2px; }
+  .step-text {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  h1 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 32px; font-weight: 800; color: var(--ink);
+    line-height: 1.15; margin-bottom: 8px;
+  }
+  .subtitle { font-size: 15px; color: var(--ink-soft); margin-bottom: 28px; }
+
+  /* ── CONTEXT BAR ── */
+  .context-bar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: white; border: 1px solid var(--primary-border);
+    border-radius: 10px; padding: 10px 16px; margin-bottom: 36px;
+    font-size: 13px; font-weight: 500;
+  }
+  .ctx-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .ctx-chip.type { background: var(--primary); color: white; }
+  .ctx-chip.region { background: var(--primary-faint); color: var(--primary); }
+  .ctx-chip.date { background: #FFF8E7; color: #92400E; border: 1px solid #FDE68A; }
+  .ctx-voters { color: var(--ink-soft); margin-left: 4px; }
+  .ctx-change { margin-left: auto; font-size: 12px; color: var(--primary); cursor: pointer; font-weight: 600; }
+
+  /* ── MAIN ── */
+  .main { max-width: 900px; margin: 0 auto; padding: 0 40px; }
+
+  /* ── PACKET CARDS ── */
+  .packets-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px; margin-bottom: 28px;
+  }
+  .packet-card {
+    position: relative; background: white;
+    border: 2px solid var(--grey-200); border-radius: var(--radius);
+    padding: 24px 20px 20px; cursor: pointer;
+    transition: border-color .18s, box-shadow .18s, transform .18s;
+    display: flex; flex-direction: column;
+  }
+  .packet-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .packet-card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(107,79,187,0.12), var(--shadow-md);
+  }
+  .badge-recommended {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: var(--primary); color: white;
+    font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; padding: 4px 14px; border-radius: 20px;
+    font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap;
+  }
+  .select-circle {
+    position: absolute; top: 16px; right: 16px;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--grey-200);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .packet-card.selected .select-circle { background: var(--primary); border-color: var(--primary); }
+  .select-check { display: none; }
+  .packet-card.selected .select-check { display: block; }
+
+  .packet-name {
+    font-size: 10px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-soft);
+    font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 6px;
+  }
+  .packet-price {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 28px; font-weight: 800; color: var(--ink);
+    line-height: 1; margin-bottom: 4px;
+  }
+  .packet-card.selected .packet-price { color: var(--primary); }
+  .packet-meta { margin-bottom: 14px; }
+  .packet-meta span { display: block; font-size: 13px; color: var(--ink-soft); }
+  .packet-meta .freq { font-size: 12px; color: var(--primary); font-weight: 500; margin-top: 2px; }
+
+  .packet-divider { height: 1px; background: var(--grey-200); margin-bottom: 14px; }
+
+  .reach-box {
+    background: var(--grey-100); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 14px;
+  }
+  .reach-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-soft); margin-bottom: 4px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .reach-value { font-size: 17px; font-weight: 700; color: var(--ink); font-family: 'Plus Jakarta Sans', sans-serif; }
+  .reach-pct { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  /* ── COMPACT DATE ── */
+  .packet-date {
+    display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px;
+  }
+  .packet-date-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .packet-date-label {
+    font-size: 10px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-soft);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .packet-date-value {
+    font-size: 14px; font-weight: 700; color: var(--ink);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .packet-date-why {
+    font-size: 12px; color: var(--ink-soft); line-height: 1.4; margin-top: 4px;
+  }
+  .packet-date-why span { color: var(--primary); font-weight: 500; }
+
+  /* ── WHY BOX ── */
+  .why-box {
+    margin-top: 12px;
+    background: var(--green-bg);
+    border: 1px solid var(--green-border);
+    border-radius: 8px; padding: 8px 10px;
+    font-size: 12px; color: #065F46;
+    display: flex; gap: 6px; align-items: flex-start; line-height: 1.45;
+  }
+  .why-box.amber {
+    background: var(--amber-bg); border-color: var(--amber-border); color: #92400E;
+  }
+
+  /* ── CALENDAR SECTION ── */
+  .calendar-section {
+    background: white; border: 1px solid var(--grey-200);
+    border-radius: var(--radius); padding: 28px; margin-bottom: 24px;
+  }
+  .cal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+  .cal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .cal-subtitle { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+  .cal-reset {
+    font-size: 12px; color: var(--primary); cursor: pointer; font-weight: 600;
+    border: none; background: none; padding: 4px 10px; border-radius: 6px; transition: background .15s;
+  }
+  .cal-reset:hover { background: var(--primary-faint); }
+
+  .cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+  .cal-field label {
+    display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .cal-field input[type=date] {
+    width: 100%; padding: 12px 14px; border: 1.5px solid var(--grey-200);
+    border-radius: 8px; font-family: 'Jost', sans-serif; font-size: 15px;
+    font-weight: 600; color: var(--ink); background: white; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .cal-field input[type=date]:focus { outline: none; border-color: var(--primary); }
+  .cal-hint { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+  .cal-hint span { color: var(--primary); font-weight: 500; }
+
+  /* ── BUDGET SLIDER ── */
+  .slider-section {
+    background: white; border: 1px solid var(--grey-200);
+    border-radius: var(--radius); padding: 28px; margin-bottom: 24px;
+  }
+  .slider-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .slider-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .slider-subtitle { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+
+  .slider-group label {
+    display: flex; justify-content: space-between;
+    font-size: 13px; font-weight: 500; color: var(--ink-soft);
+    margin-bottom: 10px; font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .slider-group label strong { color: var(--primary); font-weight: 700; font-size: 15px; }
+  .slider-track { position: relative; height: 4px; background: var(--grey-200); border-radius: 4px; cursor: pointer; }
+  .slider-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--primary); border-radius: 4px; }
+  input[type=range] {
+    position: absolute; width: 100%; top: 50%; transform: translateY(-50%);
+    -webkit-appearance: none; background: transparent; cursor: pointer; margin: 0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: white; border: 2.5px solid var(--primary);
+    box-shadow: 0 1px 4px rgba(107,79,187,0.25); transition: transform .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  .slider-range { display: flex; justify-content: space-between; font-size: 11px; color: var(--grey-400); margin-top: 8px; }
+
+  /* ── SUMMARY BAR ── */
+  .summary-bar {
+    background: var(--primary-faint); border: 1px solid var(--primary-border);
+    border-radius: var(--radius); padding: 20px 24px;
+    display: flex; align-items: center; gap: 0;
+    margin-bottom: 24px;
+  }
+  .sb-item { flex: 1; padding: 0 20px; border-right: 1px solid var(--primary-border); }
+  .sb-item:first-child { padding-left: 0; }
+  .sb-item:last-child { border-right: none; }
+  .sb-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--primary);
+    font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 4px;
+  }
+  .sb-value { font-size: 17px; font-weight: 700; color: var(--ink); font-family: 'Plus Jakarta Sans', sans-serif; }
+  .sb-sub { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+
+  /* ── INFOBOX ── */
+  .infobox {
+    background: white; border: 1px solid var(--grey-200);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius); padding: 16px 20px;
+    margin-bottom: 32px; display: flex; gap: 12px;
+  }
+  .infobox-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .infobox-text { font-size: 13px; color: var(--ink-soft); line-height: 1.55; }
+
+  /* ── CTA ── */
+  .cta-row { display: flex; align-items: center; gap: 16px; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--primary); color: white;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px; font-weight: 700; padding: 16px 32px;
+    border-radius: 50px; border: none; cursor: pointer;
+    transition: background .15s, transform .15s, box-shadow .15s;
+  }
+  .btn-primary:hover { background: #5940A8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(107,79,187,0.3); }
+  .cta-summary { font-size: 13px; color: var(--ink-soft); line-height: 1.5; }
+  .cta-summary strong { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="#" class="back-link">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Zurück
+  </a>
+  <div class="step-label">
+    <div class="step-dash"></div>
+    <span class="step-text">Schritt 2 · Politische Kampagne</span>
+  </div>
+  <h1>Wie weit soll deine Kampagne strahlen?</h1>
+  <p class="subtitle">Alle Preise sind dynamisch auf deine Zielregion abgestimmt. Wähle die Intensität die zu deinem Ziel passt.</p>
+</div>
+
+<div class="main">
+
+  <!-- Context Bar -->
+  <div class="context-bar">
+    <span class="ctx-chip type">Politische Kampagne</span>
+    <span class="ctx-chip region">📍 Langenthal</span>
+    <span class="ctx-chip region">📍 Bellinzona</span>
+    <span class="ctx-chip region">📍 Zürich</span>
+    <span class="ctx-voters">1'212'000 Stimmberechtigte</span>
+    <span class="ctx-chip date">🗓 Abstimmung in 40 Tagen</span>
+    <span class="ctx-change">Region ändern →</span>
+  </div>
+
+  <!-- Packet Cards -->
+  <div class="packets-grid">
+
+    <!-- SICHTBAR -->
+    <div class="packet-card" id="card-sichtbar" onclick="selectPacket('sichtbar')">
+      <div class="select-circle">
+        <svg class="select-check" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="packet-name">Sichtbar</div>
+      <div class="packet-price">CHF 21'500</div>
+      <div class="packet-meta">
+        <span>2 Wochen Laufzeit</span>
+        <span class="freq">Ø 3 Kontakte pro Person</span>
+      </div>
+      <div class="packet-divider"></div>
+      <div class="reach-box">
+        <div class="reach-label">Reichweite</div>
+        <div class="reach-value">~181'800 Personen</div>
+        <div class="reach-pct">15% der Stimmberechtigten</div>
+      </div>
+      <div class="packet-date">
+        <div class="packet-date-row">
+          <span class="packet-date-label">Kampagnenstart</span>
+          <span class="packet-date-value">29. März 2026</span>
+        </div>
+        <div class="packet-date-row">
+          <span class="packet-date-label">Ende</span>
+          <span class="packet-date-value">12. April 2026</span>
+        </div>
+      </div>
+      <div class="why-box amber">💡 Läuft kurz vor Unterlagen-Versand – ideal für den Endspurt.</div>
+    </div>
+
+    <!-- PRÄSENZ (empfohlen) -->
+    <div class="packet-card selected" id="card-praesenz" onclick="selectPacket('praesenz')">
+      <div class="badge-recommended">Empfohlen</div>
+      <div class="select-circle">
+        <svg class="select-check" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="packet-name">Präsenz</div>
+      <div class="packet-price">CHF 57'000</div>
+      <div class="packet-meta">
+        <span>4 Wochen Laufzeit</span>
+        <span class="freq">Ø 4 Kontakte pro Person</span>
+      </div>
+      <div class="packet-divider"></div>
+      <div class="reach-box">
+        <div class="reach-label">Reichweite</div>
+        <div class="reach-value">~363'600 Personen</div>
+        <div class="reach-pct">30% der Stimmberechtigten</div>
+      </div>
+      <div class="packet-date">
+        <div class="packet-date-row">
+          <span class="packet-date-label">Kampagnenstart</span>
+          <span class="packet-date-value">15. März 2026</span>
+        </div>
+        <div class="packet-date-row">
+          <span class="packet-date-label">Ende</span>
+          <span class="packet-date-value">12. April 2026</span>
+        </div>
+      </div>
+      <div class="why-box">✓ Präsent während der gesamten Meinungsbildungsphase – vor Unterlagen-Versand.</div>
+    </div>
+
+    <!-- DOMINANZ -->
+    <div class="packet-card" id="card-dominanz" onclick="selectPacket('dominanz')">
+      <div class="select-circle">
+        <svg class="select-check" width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="packet-name">Dominanz</div>
+      <div class="packet-price">CHF 151'000</div>
+      <div class="packet-meta">
+        <span>5 Wochen Laufzeit</span>
+        <span class="freq">Ø 7 Kontakte pro Person</span>
+      </div>
+      <div class="packet-divider"></div>
+      <div class="reach-box">
+        <div class="reach-label">Reichweite</div>
+        <div class="reach-value">~545'400 Personen</div>
+        <div class="reach-pct">45% der Stimmberechtigten</div>
+      </div>
+      <div class="packet-date">
+        <div class="packet-date-row">
+          <span class="packet-date-label">Kampagnenstart</span>
+          <span class="packet-date-value">8. März 2026</span>
+        </div>
+        <div class="packet-date-row">
+          <span class="packet-date-label">Ende</span>
+          <span class="packet-date-value">12. April 2026</span>
+        </div>
+      </div>
+      <div class="why-box">✓ Maximale Präsenz über den gesamten Abstimmungszeitraum.</div>
+    </div>
+
+  </div>
+
+  <!-- Calendar + Budget Adjustment -->
+  <div class="calendar-section">
+    <div class="cal-header">
+      <div>
+        <div class="cal-title">Zeitraum & Budget anpassen</div>
+        <div class="cal-subtitle">Passe Start, Ende und Budget individuell an – die Reichweite wird live aktualisiert.</div>
+      </div>
+      <button class="cal-reset" onclick="resetAll()">↩ Zurücksetzen</button>
+    </div>
+
+    <div class="cal-grid">
+      <div class="cal-field">
+        <label>Kampagnenstart</label>
+        <input type="date" id="start-date" value="2026-03-15" onchange="updateDates()">
+        <div class="cal-hint">Frühestmöglich: <span id="earliest-start">22. März 2026</span> (nach Freigabe)</div>
+      </div>
+      <div class="cal-field">
+        <label>Kampagnenende</label>
+        <input type="date" id="end-date" value="2026-04-12" onchange="updateDates()">
+        <div class="cal-hint">Empfohlen: <span id="recommended-end">12. April 2026</span> (vor Unterlagen-Versand)</div>
+      </div>
+    </div>
+
+    <div class="slider-group">
+      <label>
+        Budget
+        <strong id="budget-display">CHF 57'000</strong>
+      </label>
+      <div class="slider-track">
+        <div class="slider-fill" id="budget-fill" style="width:37%"></div>
+        <input type="range" id="budget-slider" min="2500" max="200000" value="57000" step="500"
+          oninput="updateBudget(this.value)">
+      </div>
+      <div class="slider-range"><span>CHF 2'500</span><span>CHF 200'000</span></div>
+    </div>
+  </div>
+
+  <!-- Summary Bar -->
+  <div class="summary-bar">
+    <div class="sb-item">
+      <div class="sb-label">Paket</div>
+      <div class="sb-value" id="sb-packet">Präsenz</div>
+      <div class="sb-sub">Empfohlen</div>
+    </div>
+    <div class="sb-item">
+      <div class="sb-label">Zeitraum</div>
+      <div class="sb-value" id="sb-range">15. Mrz – 12. Apr</div>
+      <div class="sb-sub" id="sb-duration">4 Wochen</div>
+    </div>
+    <div class="sb-item">
+      <div class="sb-label">Reichweite</div>
+      <div class="sb-value" id="sb-reach">~363'600</div>
+      <div class="sb-sub">30% der Stimmber.</div>
+    </div>
+    <div class="sb-item">
+      <div class="sb-label">Budget total</div>
+      <div class="sb-value" id="sb-budget">CHF 57'000</div>
+      <div class="sb-sub">DOOH + Display inkl.</div>
+    </div>
+  </div>
+
+  <!-- Infobox -->
+  <div class="infobox">
+    <div style="font-size:16px;flex-shrink:0;margin-top:1px">ℹ️</div>
+    <div>
+      <div class="infobox-title">Warum so früh buchen? DOOH-Freigabe für politische Kampagnen</div>
+      <div class="infobox-text">Digitale Aussenwerbung für politische Kampagnen muss von jedem Standortbetreiber individuell freigegeben werden. Dieser Prozess dauert in der Regel 5–7 Werktage. Wir empfehlen deshalb frühzeitig zu buchen – damit deine Kampagne pünktlich live geht und du den wichtigsten Zeitraum vor der brieflichen Stimmabgabe optimal nutzt.</div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-row">
+    <button class="btn-primary">
+      Weiter zu den Werbemitteln
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="cta-summary">
+      <strong id="cta-summary-title">Präsenz · CHF 57'000</strong><br>
+      <span id="cta-summary-sub">4 Wochen · ~363'600 Personen erreicht</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let selected = 'praesenz';
+  const packets = {
+    sichtbar: { price: 21500, weeks: 2, reach: 181800, pct: 15, start: '2026-03-29', end: '2026-04-12', label: 'Sichtbar' },
+    praesenz: { price: 57000, weeks: 4, reach: 363600, pct: 30, start: '2026-03-15', end: '2026-04-12', label: 'Präsenz' },
+    dominanz: { price: 151000, weeks: 5, reach: 545400, pct: 45, start: '2026-03-08', end: '2026-04-12', label: 'Dominanz' },
+  };
+
+  function selectPacket(name) {
+    selected = name;
+    document.querySelectorAll('.packet-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-' + name).classList.add('selected');
+    const d = packets[name];
+    document.getElementById('start-date').value = d.start;
+    document.getElementById('end-date').value = d.end;
+    document.getElementById('budget-slider').value = d.price;
+    updateBudgetFill(d.price);
+    document.getElementById('budget-display').textContent = 'CHF ' + d.price.toLocaleString('de-CH');
+    updateSummary(d);
+  }
+
+  function updateSummary(d) {
+    document.getElementById('sb-packet').textContent = d.label;
+    document.getElementById('sb-reach').textContent = '~' + d.reach.toLocaleString('de-CH');
+    document.getElementById('sb-budget').textContent = 'CHF ' + d.price.toLocaleString('de-CH');
+    document.getElementById('sb-duration').textContent = d.weeks + ' Wochen';
+    const startFmt = new Date(d.start).toLocaleDateString('de-CH', { day:'numeric', month:'short' });
+    const endFmt = new Date(d.end).toLocaleDateString('de-CH', { day:'numeric', month:'short' });
+    document.getElementById('sb-range').textContent = startFmt + ' – ' + endFmt;
+    document.getElementById('cta-summary-title').textContent = d.label + ' · CHF ' + d.price.toLocaleString('de-CH');
+    document.getElementById('cta-summary-sub').textContent = d.weeks + ' Wochen · ~' + d.reach.toLocaleString('de-CH') + ' Personen erreicht';
+  }
+
+  function updateBudget(val) {
+    val = parseInt(val);
+    updateBudgetFill(val);
+    document.getElementById('budget-display').textContent = 'CHF ' + val.toLocaleString('de-CH');
+    document.getElementById('sb-budget').textContent = 'CHF ' + val.toLocaleString('de-CH');
+    const reach = Math.round(val / 39.5 * 1000 / 4);
+    document.getElementById('sb-reach').textContent = '~' + reach.toLocaleString('de-CH');
+    document.getElementById('cta-summary-title').textContent = packets[selected].label + ' · CHF ' + val.toLocaleString('de-CH');
+  }
+
+  function updateBudgetFill(val) {
+    const pct = (val - 2500) / (200000 - 2500) * 100;
+    document.getElementById('budget-fill').style.width = Math.min(100, pct) + '%';
+  }
+
+  function updateDates() {
+    const start = document.getElementById('start-date').value;
+    const end = document.getElementById('end-date').value;
+    if (!start || !end) return;
+    const startFmt = new Date(start).toLocaleDateString('de-CH', { day:'numeric', month:'short' });
+    const endFmt = new Date(end).toLocaleDateString('de-CH', { day:'numeric', month:'short' });
+    document.getElementById('sb-range').textContent = startFmt + ' – ' + endFmt;
+    const diff = Math.round((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24 * 7));
+    document.getElementById('sb-duration').textContent = diff + ' Wochen';
+    document.getElementById('cta-summary-sub').textContent = diff + ' Wochen · ' + document.getElementById('sb-reach').textContent + ' Personen erreicht';
+  }
+
+  function resetAll() {
+    selectPacket('praesenz');
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO Step 2 – Politische Kampagne</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --violet:#6B4FBB;--vl:#8B6FD4;--vp:#EDE8FF;--vxp:#F5F2FF;
+  --lav:#B8A9E8;--gold:#D4A843;--ink:#2D1F52;--slate:#7A7596;
+  --ow:#FDFCFF;--brd:rgba(107,79,187,0.12);
+}
+body{font-family:'Jost',sans-serif;background:var(--ow);color:var(--ink);min-height:100vh;padding:80px 24px 60px;}
+
+/* BLOBS */
+.blob{position:fixed;border-radius:50%;filter:blur(88px);pointer-events:none;z-index:0;}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(253,252,255,0.92);backdrop-filter:blur(14px);border-bottom:1px solid rgba(107,79,187,0.08);height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 48px;}
+.nav-logo{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-0.04em;}
+.nav-logo span{color:var(--violet);}
+.steps{display:flex;align-items:center;gap:4px;}
+.step-wrap{display:flex;flex-direction:column;align-items:center;}
+.step-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;background:rgba(107,79,187,0.08);color:var(--lav);}
+.step-dot.done{background:rgba(107,79,187,0.15);color:var(--violet);}
+.step-dot.active{width:28px;height:28px;background:var(--violet);color:white;box-shadow:0 0 0 3px var(--vxp);}
+.step-line{width:14px;height:2px;border-radius:2px;background:rgba(107,79,187,0.12);}
+.step-line.done{background:var(--violet);}
+.step-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:9px;font-weight:700;text-align:center;letter-spacing:.05em;margin-top:3px;color:var(--lav);}
+.step-lbl.active{color:var(--violet);}
+
+/* BACK */
+.back{max-width:760px;margin:0 auto 20px;position:relative;z-index:1;}
+.back a{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:var(--violet);text-decoration:none;display:inline-flex;align-items:center;gap:4px;opacity:.8;}
+.back a:hover{opacity:1;}
+
+/* MAIN CARD */
+.card-wrap{max-width:760px;margin:0 auto;position:relative;z-index:1;}
+.main-card{background:white;border:1px solid rgba(107,79,187,0.09);border-radius:24px;padding:40px;box-shadow:0 4px 24px rgba(107,79,187,0.06);}
+
+/* EYEBROW */
+.eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.eline{width:18px;height:2px;background:var(--violet);border-radius:2px;}
+.etxt{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+
+/* H1 */
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(26px,2.4vw,34px);font-weight:800;letter-spacing:-.025em;color:var(--ink);margin-bottom:6px;}
+.hero-sub{font-size:14px;color:var(--slate);font-weight:300;line-height:1.6;margin-bottom:32px;}
+
+/* SECTION LABEL */
+.slbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--lav);margin-bottom:10px;}
+
+/* REGION CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--vp);border:1px solid rgba(107,79,187,0.25);border-radius:100px;padding:5px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:var(--violet);}
+.chip-x{width:16px;height:16px;border-radius:50%;background:rgba(107,79,187,0.15);display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;color:var(--violet);}
+
+/* INPUT */
+input[type=text],input[type=date]{
+  width:100%;border:1.5px solid rgba(107,79,187,0.15);border-radius:12px;
+  padding:12px 16px;font-size:15px;font-family:'Jost',sans-serif;
+  color:var(--ink);background:var(--ow);outline:none;transition:all .2s;
+}
+input:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(107,79,187,0.10);}
+
+/* DATE ROW */
+.date-row{display:flex;align-items:center;gap:12px;}
+.date-row input{flex:1;}
+.countdown{background:var(--vp);color:var(--violet);border-radius:100px;padding:6px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:12px;white-space:nowrap;}
+
+/* DROPDOWN */
+.dropdown{background:white;border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 24px rgba(107,79,187,0.11);overflow:hidden;margin-top:4px;}
+.drop-item{padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink);transition:background .15s;}
+.drop-item:hover{background:var(--ow);}
+.drop-badge{font-size:11px;color:var(--violet);background:var(--vp);border-radius:100px;padding:2px 8px;margin-left:auto;}
+.drop-num{font-size:11px;color:var(--slate);}
+
+/* KAMPAGNENTYP CARDS */
+.ktype-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ktype-card{
+  background:white;border:1.5px solid rgba(107,79,187,0.10);
+  border-radius:16px;padding:18px 16px;
+  display:flex;align-items:center;gap:14px;
+  cursor:pointer;transition:all .2s;
+}
+.ktype-card:hover{border-color:rgba(107,79,187,0.28);transform:translateY(-2px);box-shadow:0 8px 20px rgba(107,79,187,0.09);}
+.ktype-card.active{border:2px solid var(--violet);background:var(--vxp);}
+.ktype-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ktype-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:14px;color:var(--ink);}
+
+/* POTENZIAL */
+.pot-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.pot-card{background:var(--vxp);border:1px solid rgba(107,79,187,0.12);border-radius:14px;padding:16px 18px;}
+.pot-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--lav);margin-bottom:6px;}
+.pot-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.02em;}
+
+/* WARNING */
+.warn{background:#FDF3DC;border:1px solid rgba(212,168,67,0.3);border-radius:12px;padding:12px 16px;color:#9B7120;font-size:13px;font-weight:300;display:flex;align-items:center;gap:10px;margin-bottom:14px;line-height:1.5;}
+
+/* CTA */
+.cta-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--violet);color:white;border:none;border-radius:100px;padding:16px 32px;font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(107,79,187,0.28);transition:all .2s;}
+.cta-btn:hover{background:var(--vl);transform:translateY(-2px);}
+
+/* DIVIDER */
+.sec{margin-bottom:24px;}
+.divider{height:1px;background:rgba(107,79,187,0.08);margin:24px 0;}
+</style>
+</head>
+<body>
+
+<!-- BLOBS -->
+<div class="blob" style="width:500px;height:500px;background:radial-gradient(circle,rgba(184,169,232,0.18),rgba(184,169,232,0.04) 65%,transparent);top:-100px;right:-80px;"></div>
+<div class="blob" style="width:440px;height:440px;background:radial-gradient(circle,rgba(200,223,248,0.16),rgba(200,223,248,0.04) 65%,transparent);top:300px;left:-100px;"></div>
+<div class="blob" style="width:320px;height:320px;background:radial-gradient(circle,rgba(212,168,67,0.08),transparent 65%);bottom:10%;right:10%;"></div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-logo">VIO<span>.</span></div>
+  <div class="steps">
+    <div class="step-wrap"><div class="step-dot done">✓</div><span class="step-lbl">Region</span></div>
+    <div class="step-line done"></div>
+    <div class="step-wrap"><div class="step-dot active">1</div><span class="step-lbl active">Region</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">2</div><span class="step-lbl">Budget</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">3</div><span class="step-lbl">Werbemittel</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">4</div><span class="step-lbl">Abschluss</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">5</div><span class="step-lbl">Bestätigung</span></div>
+  </div>
+</div>
+
+<!-- BACK -->
+<div class="back"><a href="#">← Zurück</a></div>
+
+<!-- MAIN -->
+<div class="card-wrap">
+  <div class="main-card">
+
+    <div class="eyebrow"><div class="eline"></div><span class="etxt">Schritt 1 · Politische Kampagne</span></div>
+    <h1>Wahlkreis & Kampagnenziel</h1>
+    <p class="hero-sub">Wähle deine Zielregion(en), das Abstimmungsdatum und den Kampagnentyp.</p>
+
+    <!-- REGION -->
+    <div class="sec">
+      <div class="slbl">Region / Wahlkreis</div>
+      <div class="chips">
+        <div class="chip">Waadt <div class="chip-x">×</div></div>
+        <div class="chip">Bern <div class="chip-x">×</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--slate);margin-bottom:10px;">Total: <strong style="color:var(--ink);">1'360'000</strong> Stimmberechtigte</div>
+      <input type="text" placeholder="Kanton oder Gemeinde suchen...">
+      <div class="dropdown" style="margin-top:8px;">
+        <div class="drop-item">
+          Zürich
+          <span class="drop-badge">Kanton</span>
+          <span class="drop-num">1'077'300</span>
+        </div>
+        <div class="drop-item" style="background:var(--ow);">
+          Stadt Zürich
+          <span style="font-size:11px;color:var(--violet);background:var(--vp);border-radius:100px;padding:2px 8px;margin-left:auto;">ZH</span>
+          <span class="drop-num">310'000</span>
+        </div>
+        <div class="drop-item">
+          Zug
+          <span class="drop-badge">Kanton</span>
+          <span class="drop-num">91'700</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- DATE -->
+    <div class="sec">
+      <div class="slbl">Abstimmungs- oder Wahltag</div>
+      <div class="date-row">
+        <input type="date" value="2026-03-29">
+        <div class="countdown">Noch 4 Tage</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- KAMPAGNENTYP -->
+    <div class="sec">
+      <div class="slbl">Kampagnentyp</div>
+      <div class="ktype-grid">
+
+        <div class="ktype-card active">
+          <div class="ktype-icon" style="background:#EDE8FF;">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="11" r="8" stroke="#6B4FBB" stroke-width="1.5"/>
+              <path d="M7.5 11l2.5 2.5 4.5-4.5" stroke="#6B4FBB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="ktype-title">JA-Kampagne</span>
+        </div>
+
+        <div class="ktype-card">
+          <div class="ktype-icon" style="background:#FEE2E2;">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="11" r="8" stroke="#E05252" stroke-width="1.5"/>
+              <path d="M8 8l6 6M14 8l-6 6" stroke="#E05252" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="ktype-title">NEIN-Kampagne</span>
+        </div>
+
+        <div class="ktype-card">
+          <div class="ktype-icon" style="background:#FDF3DC;">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="8" r="3.5" stroke="#D4A843" stroke-width="1.5"/>
+              <path d="M4 19c0-3.866 3.134-6 7-6s7 2.134 7 6" stroke="#D4A843" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="ktype-title">Kandidatenwahl</span>
+        </div>
+
+        <div class="ktype-card">
+          <div class="ktype-icon" style="background:#EEF5FF;">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M11 3v2M11 17v2M3 11h2M17 11h2" stroke="#4A78B0" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="11" cy="11" r="4" stroke="#4A78B0" stroke-width="1.5"/>
+              <path d="M5.5 5.5l1.5 1.5M15 15l1.5 1.5M15 5.5L13.5 7M7 15l-1.5 1.5" stroke="#4A78B0" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="ktype-title">Event & Mobilisierung</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- POTENZIAL -->
+    <div class="sec">
+      <div class="slbl">Potenzialberechnung</div>
+      <div class="warn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;">
+          <path d="M8 1.5L14.5 13H1.5L8 1.5Z" stroke="#D4A843" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 6v3.5" stroke="#D4A843" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="11" r=".75" fill="#D4A843"/>
+        </svg>
+        Weniger als 14 Tage bis zur Abstimmung — nur 1-Wochen-Kampagne möglich.
+      </div>
+      <div class="pot-grid">
+        <div class="pot-card">
+          <div class="pot-lbl">Stimmberechtigte</div>
+          <div class="pot-val">1'360'000</div>
+        </div>
+        <div class="pot-card">
+          <div class="pot-lbl">Erreichbare Personen</div>
+          <div class="pot-val">~190'400</div>
+        </div>
+        <div class="pot-card">
+          <div class="pot-lbl">Empf. Budget</div>
+          <div class="pot-val">CHF 23'000</div>
+        </div>
+        <div class="pot-card">
+          <div class="pot-lbl">Empf. Laufzeit</div>
+          <div class="pot-val">1 Woche</div>
+        </div>
+        <div class="pot-card">
+          <div class="pot-lbl">Kampagnenstart</div>
+          <div class="pot-val">25. März 2026</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--slate);line-height:1.6;font-weight:300;">Diese Werte werden als Voreinstellung für Budget und Laufzeit übernommen.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="cta-btn">Weiter zu Budget & Reichweite →</button>
+
+  </div>
+</div>
+
+</body>
+</html>

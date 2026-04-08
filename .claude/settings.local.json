@@ -3,7 +3,13 @@
     "allow": [
       "Bash(npm run:*)",
       "Bash(taskkill:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(copy:*)",
+      "Bash(\"/c/Users/JackyKorrodi/CascadeProjects/vio/lib/demonyms.json\":*)"
     ]
   }
 }

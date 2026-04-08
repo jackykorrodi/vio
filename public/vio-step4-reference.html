@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO Step 4 – Reichweite & Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --violet:#6B4FBB;--violet-light:#8B6FD4;--violet-pale:#EDE8FF;
+  --violet-xpale:#F5F2FF;--lavender:#B8A9E8;--gold:#D4A843;
+  --ink:#2D1F52;--slate:#7A7596;--off-white:#FDFCFF;
+  --border:rgba(107,79,187,0.10);
+}
+body{font-family:'Jost',sans-serif;background:var(--off-white);color:var(--ink);padding:0;min-height:100vh;}
+
+.nav{position:sticky;top:0;z-index:100;background:rgba(253,252,255,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 48px;}
+.nav-logo{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-0.04em;}
+.nav-logo span{color:var(--violet);}
+.steps{display:flex;align-items:center;gap:4px;}
+.step-wrap{display:flex;flex-direction:column;align-items:center;}
+.step-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;background:rgba(107,79,187,0.08);color:var(--lavender);}
+.step-dot.done{background:rgba(107,79,187,0.15);color:var(--violet);}
+.step-dot.active{width:28px;height:28px;background:var(--violet);color:white;box-shadow:0 0 0 3px var(--violet-xpale);}
+.step-line{width:14px;height:2px;border-radius:2px;background:rgba(107,79,187,0.12);}
+.step-line.done{background:var(--violet);}
+.step-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:9px;font-weight:700;text-align:center;letter-spacing:.05em;margin-top:3px;color:var(--lavender);display:block;}
+.step-label.active{color:var(--violet);}
+
+.back{max-width:1320px;margin:0 auto;padding:20px 48px 0;}
+.back a{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;color:var(--violet);text-decoration:none;}
+
+.wrap{max-width:1320px;margin:0 auto;padding:32px 48px 100px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:48px;align-items:start;}
+
+.eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.eline{width:20px;height:2px;background:var(--violet);border-radius:2px;flex-shrink:0;}
+.etxt{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(26px,2.4vw,34px);font-weight:800;letter-spacing:-.025em;line-height:1.15;color:var(--ink);margin-bottom:28px;}
+
+.ctx-bar{background:white;border:1px solid var(--border);border-radius:14px;padding:13px 18px;margin-bottom:32px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.badge-v{background:var(--violet);color:white;border-radius:100px;padding:3px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;}
+.badge-r{background:var(--violet-pale);color:var(--violet);border-radius:100px;padding:3px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;}
+.badge-d{background:#FDF3DC;color:#9B7120;border:1px solid rgba(212,168,67,0.3);border-radius:8px;padding:3px 10px;font-size:11px;}
+.ctx-change{margin-left:auto;font-size:12px;color:var(--violet);font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:none;}
+
+/* PACKAGES */
+.pkg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:32px;}
+.pkg{background:white;border:1.5px solid var(--border);border-radius:20px;padding:24px 20px;cursor:pointer;position:relative;transition:all .2s;}
+.pkg:hover{border-color:rgba(107,79,187,0.25);transform:translateY(-3px);box-shadow:0 10px 28px rgba(107,79,187,0.09);}
+.pkg.active{border:2px solid var(--violet);background:var(--violet-xpale);}
+.pkg-rec{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--violet);color:white;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;border-radius:100px;padding:3px 12px;white-space:nowrap;}
+.pkg-check{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;background:rgba(107,79,187,0.10);display:flex;align-items:center;justify-content:center;}
+.pkg.active .pkg-check{background:var(--violet);}
+.pkg-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--slate);margin-bottom:12px;}
+.pkg.active .pkg-lbl{color:var(--violet-light);}
+.pkg-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(20px,1.8vw,26px);font-weight:800;color:var(--ink);letter-spacing:-.025em;line-height:1;margin-bottom:6px;}
+.pkg.active .pkg-price{color:var(--violet);}
+.pkg-dur{font-size:12px;color:var(--slate);margin-bottom:5px;}
+.pkg-reach{font-size:11px;color:var(--slate);}
+.pkg.active .pkg-reach{color:var(--violet-light);}
+
+/* PROPOSAL */
+.proposal{background:white;border:1px solid var(--border);border-top:3px solid var(--violet);border-radius:20px;padding:28px;margin-bottom:28px;}
+.prop-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px;flex-wrap:wrap;}
+.prop-badge{background:var(--violet-pale);color:var(--violet);border:1px solid rgba(107,79,187,0.2);border-radius:100px;padding:3px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;display:inline-block;margin-bottom:10px;}
+.prop-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(32px,3vw,44px);font-weight:800;color:var(--ink);letter-spacing:-.03em;line-height:1;}
+.prop-sub{font-size:13px;color:var(--slate);margin-top:6px;font-weight:300;}
+.prop-right{text-align:right;flex-shrink:0;}
+.prop-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:var(--violet);letter-spacing:-.02em;}
+.prop-psub{font-size:12px;color:var(--slate);margin-top:3px;}
+
+/* STATS — 3 cols, no screen count */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-top:20px;border-top:1px solid rgba(107,79,187,0.08);}
+.stat{background:var(--violet-xpale);border-radius:14px;padding:16px 18px;}
+.stat-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--lavender);margin-bottom:8px;}
+.stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.02em;line-height:1.1;}
+.stat-sub{font-size:11px;color:var(--slate);margin-top:4px;font-weight:300;}
+
+/* SLIDERS */
+.sliders{background:white;border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+.sl-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:600;color:var(--ink);}
+.sl-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--violet);letter-spacing:-.02em;}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:linear-gradient(to right,var(--violet) 35%,rgba(107,79,187,0.12) 35%);}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:white;border:2.5px solid var(--violet);cursor:pointer;box-shadow:0 2px 8px rgba(107,79,187,0.25);margin-top:-9px;}
+.sl-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--lavender);margin-top:8px;}
+
+/* KANAL SPLIT — new clean section */
+.kanal{background:white;border:1px solid var(--border);border-radius:20px;padding:24px 28px;margin-bottom:28px;}
+.kanal-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:16px;}
+.kanal-row{display:flex;align-items:center;gap:16px;margin-bottom:12px;}
+.kanal-row:last-child{margin-bottom:0;}
+.kanal-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;color:var(--ink);width:140px;flex-shrink:0;}
+.kanal-bar-wrap{flex:1;height:8px;background:rgba(107,79,187,0.08);border-radius:100px;overflow:hidden;}
+.kanal-bar{height:100%;border-radius:100px;}
+.kanal-pct{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;color:var(--violet);width:36px;text-align:right;flex-shrink:0;}
+.kanal-note{font-size:11px;color:var(--slate);font-weight:300;margin-top:12px;padding-top:12px;border-top:1px solid rgba(107,79,187,0.08);}
+
+/* TIP */
+.tip{background:var(--violet-xpale);border-left:3px solid var(--violet);border-radius:0 14px 14px 0;padding:16px 20px;margin-bottom:28px;font-size:13px;color:var(--ink);line-height:1.7;font-weight:300;}
+.tip strong{font-weight:700;}
+
+.cta-btn{background:var(--violet);color:white;border:none;border-radius:100px;padding:17px 40px;font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(107,79,187,0.28);transition:all .2s;}
+.cta-btn:hover{background:var(--violet-light);transform:translateY(-2px);}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:80px;display:flex;flex-direction:column;gap:16px;}
+.sc{background:white;border:1px solid var(--border);border-radius:18px;padding:22px 20px;}
+.sc-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:12px;}
+.sc-note{font-size:12px;color:var(--slate);line-height:1.6;margin-bottom:12px;font-weight:300;}
+.sc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(107,79,187,0.06);font-size:13px;}
+.sc-row:last-of-type{border-bottom:none;}
+.sc-l{color:var(--slate);}
+.sc-r{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--ink);}
+.sc-r.v{color:var(--violet);}
+.rname{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:var(--violet);margin-bottom:3px;}
+.rpop{font-size:12px;color:var(--slate);font-weight:300;margin-bottom:12px;}
+.rsrc{font-size:10px;color:var(--lavender);margin-top:10px;padding-top:8px;border-top:1px solid rgba(107,79,187,0.07);}
+.fragen{background:var(--violet-xpale);border-radius:16px;padding:20px;}
+.fragen h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.fragen p{font-size:12px;color:var(--slate);line-height:1.6;margin-bottom:14px;font-weight:300;}
+.fragen-btn{background:var(--violet);color:white;border:none;border-radius:100px;padding:10px 22px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-logo">VIO<span>.</span></div>
+  <div class="steps">
+    <div class="step-wrap"><div class="step-dot done">✓</div><span class="step-label">Region</span></div>
+    <div class="step-line done"></div>
+    <div class="step-wrap"><div class="step-dot active">2</div><span class="step-label active">Budget</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">3</div><span class="step-label">Werbemittel</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">4</div><span class="step-label">Abschluss</span></div>
+    <div class="step-line"></div>
+    <div class="step-wrap"><div class="step-dot">5</div><span class="step-label">Bestätigung</span></div>
+  </div>
+</div>
+
+<div class="back"><a href="#">← Zurück</a></div>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow"><div class="eline"></div><span class="etxt">Schritt 2</span></div>
+    <h1>Wie weit soll deine Kampagne strahlen?</h1>
+
+    <div class="ctx-bar">
+      <span class="badge-v">Politische Kampagne</span>
+      <span class="badge-r">📍 Zürich</span>
+      <span style="font-size:13px;color:var(--slate)">1'170'000 Stimmberechtigte</span>
+      <span class="badge-d">🗳️ Abstimmung in 12 Tagen</span>
+      <button class="ctx-change">Region ändern</button>
+    </div>
+
+    <div class="pkg-grid">
+      <div class="pkg">
+        <div class="pkg-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="pkg-lbl">Sichtbar</div>
+        <div class="pkg-price">CHF 2'500</div>
+        <div class="pkg-dur">2 Wochen · 3× Kontakt</div>
+        <div class="pkg-reach">~9'900–12'800 Personen (1%)</div>
+      </div>
+      <div class="pkg active">
+        <div class="pkg-rec">Empfohlen</div>
+        <div class="pkg-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="pkg-lbl">Präsenz</div>
+        <div class="pkg-price">CHF 9'500</div>
+        <div class="pkg-dur">4 Wochen · 7× Kontakt</div>
+        <div class="pkg-reach">~16'150–20'900 Personen (2%)</div>
+      </div>
+      <div class="pkg">
+        <div class="pkg-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="pkg-lbl">Dominanz</div>
+        <div class="pkg-price">CHF 25'000</div>
+        <div class="pkg-dur">6 Wochen · 7× Kontakt</div>
+        <div class="pkg-reach">~42'500–55'000 Personen (5%)</div>
+      </div>
+    </div>
+
+    <div class="proposal">
+      <div class="prop-head">
+        <div>
+          <div class="prop-badge">Unser Vorschlag</div>
+          <div class="prop-num">16'150–20'900</div>
+          <div class="prop-sub">Stimmberechtigte sehen deine Kampagne · 2% von Zürich</div>
+        </div>
+        <div class="prop-right">
+          <div class="prop-price">CHF 9'500</div>
+          <div class="prop-psub">4 Wochen · 7× Kontakt</div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-lbl">Laufzeit</div>
+          <div class="stat-val">4 Wochen</div>
+          <div class="stat-sub">7× Kontakt / Person</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">Unique Reach</div>
+          <div class="stat-val">~18'500</div>
+          <div class="stat-sub">geschätzte Personen</div>
+        </div>
+        <div class="stat">
+          <div class="stat-lbl">Reichweite</div>
+          <div class="stat-val">2%</div>
+          <div class="stat-sub">der Stimmberechtigten</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sliders">
+      <div>
+        <div class="sl-top"><span class="sl-label">Budget</span><span class="sl-val">CHF 9'500</span></div>
+        <input type="range" min="2500" max="50000" step="500" value="9500">
+        <div class="sl-ends"><span>CHF 2'500</span><span>CHF 50'000</span></div>
+      </div>
+      <div>
+        <div class="sl-top"><span class="sl-label">Laufzeit</span><span class="sl-val">4 Wochen</span></div>
+        <input type="range" min="1" max="8" step="1" value="4">
+        <div class="sl-ends"><span>1 Woche</span><span>8 Wochen</span></div>
+      </div>
+    </div>
+
+    <div class="kanal">
+      <div class="kanal-title">So wirkt dein Budget</div>
+      <div class="kanal-row">
+        <div class="kanal-label">DOOH Screens</div>
+        <div class="kanal-bar-wrap"><div class="kanal-bar" style="width:70%;background:linear-gradient(90deg,#6B4FBB,#B8A9E8)"></div></div>
+        <div class="kanal-pct">70%</div>
+      </div>
+      <div class="kanal-row">
+        <div class="kanal-label">Online Display</div>
+        <div class="kanal-bar-wrap"><div class="kanal-bar" style="width:30%;background:linear-gradient(90deg,#7B8FD4,#C8DFF8)"></div></div>
+        <div class="kanal-pct">30%</div>
+      </div>
+      <div class="kanal-note">Digitale Plakatwände im öffentlichen Raum · Schweizer Newsportale & Apps</div>
+    </div>
+
+    <div class="tip">💡 <strong>Tipp:</strong> Mit etwas mehr Budget lässt sich die Reichweite deutlich steigern — ab CHF 5'000 steigt die Frequenz auf 5× pro Person.</div>
+
+    <button class="cta-btn">Weiter zu den Werbemitteln →</button>
+  </div>
+
+  <div class="sidebar">
+    <div class="sc">
+      <div class="sc-title">Wie berechnen wir das?</div>
+      <div class="sc-note">Dein Budget wird 70/30 auf DOOH-Screens und Online-Banner aufgeteilt.</div>
+      <div class="sc-row"><span class="sc-l">DOOH-Anteil (70%)</span><span class="sc-r">CHF 6'650</span></div>
+      <div class="sc-row"><span class="sc-l">Display-Anteil (30%)</span><span class="sc-r">CHF 2'850</span></div>
+      <div class="sc-row"><span class="sc-l">Ø Kontakte pro Person</span><span class="sc-r v">7×</span></div>
+    </div>
+    <div class="sc">
+      <div class="sc-title">Deine Zielregion</div>
+      <div class="rname">📍 Zürich</div>
+      <div class="rpop">1'170'000 Stimmberechtigte</div>
+      <div class="sc-row"><span class="sc-l">Erreichbar via DOOH</span><span class="sc-r">~85%</span></div>
+      <div class="sc-row"><span class="sc-l">Erreichbar via Display</span><span class="sc-r">~92%</span></div>
+      <div class="rsrc">Quelle: BFS Bevölkerungsstatistik 2023</div>
+    </div>
+    <div class="fragen">
+      <h3>Fragen?</h3>
+      <p>Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.</p>
+      <button class="fragen-btn">Gespräch buchen →</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
