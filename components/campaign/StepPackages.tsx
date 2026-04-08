@@ -497,33 +497,47 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
 
             {/* ── 2. Package cards ── */}
             <div className="sp-sec-label">Intensität wählen</div>
-            <div className="sp-pkts">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', alignItems: 'start', marginBottom: 32 }}>
               {PKG_ORDER.map(key => {
-                const p       = vioData.packages[key];
-                const isSel   = selectedPkg === key;
-                const feasible = isPkgFeasible(key);
-                const rn      = pkgReach(key);
-                const rp      = pkgReachPct(key);
-                const badge   = PKG_BADGE[key];
+                const p         = vioData.packages[key];
+                const isSel     = selectedPkg === key;
+                const feasible  = isPkgFeasible(key);
+                const rn        = pkgReach(key);
+                const rp        = pkgReachPct(key);
+                const badge     = PKG_BADGE[key];
                 const badgeText = p.hinweis || badge.fallback;
                 return (
                   <div
                     key={key}
                     onClick={() => handleSelectPkg(key)}
                     title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung – Daten anpassen'}
-                    style={{
-                      position: 'relative',
-                      borderRadius: 'var(--r)',
-                      padding: '22px 18px 18px',
+                    style={isSel ? {
+                      border: '2.5px solid #7F77DD',
+                      background: 'linear-gradient(145deg, #EEEDFE 0%, #F8F7FF 100%)',
+                      boxShadow: '0 8px 32px rgba(83,74,183,0.25)',
+                      transform: 'translateY(-2px)',
                       cursor: 'pointer',
-                      transition: 'all 0.15s',
+                      transition: 'all 0.2s',
+                      borderRadius: '14px',
+                      padding: '16px',
+                      position: 'relative',
                       display: 'flex',
                       flexDirection: 'column',
                       textAlign: 'left',
-                      border: isSel ? '2px solid #7F77DD' : '1px solid #E8E6F0',
-                      background: isSel ? '#F4F2FF' : 'white',
-                      boxShadow: isSel ? '0 4px 24px rgba(127,119,221,0.20)' : 'none',
-                      opacity: feasible ? 1 : 0.55,
+                    } : {
+                      border: '1px solid #E8E6F0',
+                      background: 'white',
+                      boxShadow: 'none',
+                      transform: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      borderRadius: '14px',
+                      padding: '16px',
+                      position: 'relative',
+                      opacity: 0.75,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      textAlign: 'left',
                     }}
                   >
                     {/* Empfohlen badge */}
@@ -536,17 +550,14 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                       }}>Empfohlen</div>
                     )}
 
-                    {/* Radio circle */}
-                    <div style={{
-                      position: 'absolute', top: 14, right: 14,
-                      width: 18, height: 18, borderRadius: '50%',
-                      background: isSel ? '#7F77DD' : 'white',
-                      border: isSel ? '2px solid #7F77DD' : '1.5px solid #D3D1C7',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      {isSel && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'white' }} />}
-                    </div>
+                    {/* Radio button */}
+                    {isSel ? (
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#7F77DD', border: '2px solid #7F77DD', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 14, right: 14 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', border: '1.5px solid #D3D1C7', position: 'absolute', top: 14, right: 14 }} />
+                    )}
 
                     {/* Tier name */}
                     <div style={{
@@ -556,13 +567,10 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                     }}>{p.name}</div>
 
                     {/* Price */}
-                    <div style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 'clamp(20px,1.8vw,26px)',
-                      fontWeight: isSel ? 700 : 500,
-                      color: isSel ? '#534AB7' : '#2C2C2A',
-                      lineHeight: 1, marginBottom: 4,
-                    }}>CHF {fmtN(p.finalBudget)}</div>
+                    <div style={isSel
+                      ? { fontSize: 22, fontWeight: 700, color: '#534AB7', fontFamily: 'var(--font-display)', lineHeight: 1, marginBottom: 4 }
+                      : { fontSize: 22, fontWeight: 500, color: '#2C2C2A', fontFamily: 'var(--font-display)', lineHeight: 1, marginBottom: 4 }
+                    }>CHF {fmtN(p.finalBudget)}</div>
 
                     {/* Duration + freq */}
                     <div style={{ fontSize: 12, color: 'var(--slate)', marginBottom: 14 }}>
@@ -578,20 +586,16 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                       textTransform: 'uppercase', color: 'var(--slate)',
                       fontFamily: 'var(--font-display)', marginBottom: 4,
                     }}>Stimmberechtigte erreichbar</div>
-                    <div style={{
-                      fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700,
-                      color: 'var(--ink)', marginBottom: 2,
-                    }}>~{fmtN(rn)}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
+                      ~{fmtN(rn)}
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--slate)', marginBottom: 10 }}>
                       {rp}% der Stimmberechtigten
                     </div>
 
                     {/* Progress bar */}
                     <div style={{ height: 5, background: '#EDE8FF', borderRadius: 3, marginBottom: 10, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 3, width: `${rp}%`,
-                        background: 'linear-gradient(90deg, #8B6FD4, #6B4FBB)',
-                      }} />
+                      <div style={{ height: '100%', borderRadius: 3, width: `${rp}%`, background: 'linear-gradient(90deg, #8B6FD4, #6B4FBB)' }} />
                     </div>
 
                     {/* Insight badge */}
