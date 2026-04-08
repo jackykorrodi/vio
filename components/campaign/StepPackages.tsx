@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { BriefingData } from '@/lib/types';
 import { computeStartDateISO } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
@@ -58,6 +59,108 @@ interface Props {
   stepNumber?: number;
 }
 
+// ─── Channel card with image background ──────────────────────────────────────
+function ChannelCard({
+  imgSrc, overlayColor, iconBg, icon,
+  label, headline, sub, bullets, bulletColor,
+}: {
+  imgSrc: string;
+  overlayColor: string;
+  iconBg: string;
+  icon: React.ReactNode;
+  label: string;
+  headline: string;
+  sub: string;
+  bullets: string[];
+  bulletColor: string;
+}) {
+  const [imgOk, setImgOk] = useState(true);
+
+  return (
+    <div style={{
+      position: 'relative', borderRadius: 'var(--r)', overflow: 'hidden',
+      minHeight: 230, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+    }}>
+      {/* Background */}
+      {imgOk ? (
+        <Image
+          src={imgSrc}
+          alt=""
+          fill
+          sizes="(max-width: 900px) 100vw, 50vw"
+          style={{ objectFit: 'cover' }}
+          onError={() => setImgOk(false)}
+        />
+      ) : (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: overlayColor,
+          filter: 'blur(0)',
+        }} />
+      )}
+
+      {/* Dark overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: overlayColor,
+        borderRadius: 'var(--r)',
+      }} />
+
+      {/* Content */}
+      <div style={{ position: 'relative', padding: '22px 20px 20px', zIndex: 1 }}>
+        {/* Frosted icon */}
+        <div style={{
+          width: 44, height: 44, borderRadius: 12,
+          background: iconBg,
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 14,
+        }}>
+          {icon}
+        </div>
+
+        {/* Label */}
+        <div style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
+          textTransform: 'uppercase', color: 'rgba(255,255,255,.55)',
+          fontFamily: 'var(--font-display)', marginBottom: 6,
+        }}>
+          {label}
+        </div>
+
+        {/* Headline */}
+        <div style={{
+          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800,
+          color: 'white', lineHeight: 1.15, marginBottom: 4,
+        }}>
+          {headline}
+        </div>
+
+        {/* Sub */}
+        <div style={{
+          fontSize: 13, color: 'rgba(255,255,255,.65)', marginBottom: 14,
+        }}>
+          {sub}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'rgba(255,255,255,.15)', marginBottom: 12 }} />
+
+        {/* Bullets */}
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {bullets.map(t => (
+            <li key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,.80)' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: bulletColor }} />
+              {t}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StepPackages({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
   const vioData = briefing.vioPackages;
@@ -86,7 +189,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
     setBudget(vioData?.packages[key].finalBudget ?? budget);
   };
 
-  // ── Guard ────────────────────────────────────────────────────────────────────
+  // ── Guard ─────────────────────────────────────────────────────────────────
   if (!vioData) {
     return (
       <section style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--slate)' }}>
@@ -109,7 +212,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
     return Math.floor(ms / 86400000) >= vioData.packages[key].durationDays;
   };
 
-  // ── Derived ──────────────────────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const weeks = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
   const voters = vioData.eligibleVotersTotal;
@@ -134,19 +237,30 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
     : freq;
 
   // DOOH screens
-  const rName    = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
-  const rType    = briefing.politikRegionType ?? briefing.selectedRegions?.[0]?.type ?? 'schweiz';
-  const rKanton  = briefing.selectedRegions?.[0]?.kanton;
+  const rName   = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
+  const rType   = briefing.politikRegionType ?? briefing.selectedRegions?.[0]?.type ?? 'schweiz';
+  const rKanton = briefing.selectedRegions?.[0]?.kanton;
   let doohEntry: DoohEntry | undefined;
   if (rType === 'schweiz') doohEntry = DOOH_DATA.find(d => d.type === 'schweiz');
   else if (rType === 'stadt') doohEntry = DOOH_DATA.find(d => d.type === 'stadt' && d.name === rName);
   else doohEntry = DOOH_DATA.find(d => d.type === 'kanton' && d.kanton === rKanton);
   const doohScreens = doohEntry?.screens_politik ?? 0;
 
+  // Per-card reach preview
+  const pkgReach = (key: PkgKey) => {
+    const p = vioData.packages[key];
+    return Math.min(p.targetReachPeople, maxReach);
+  };
+  const pkgReachPct = (key: PkgKey) =>
+    voters > 0 ? Math.min(80, Math.round(pkgReach(key) / voters * 100)) : 0;
+
   // Budget hint badge
   const budgetHint = budget >= 60000 ? 'Dominanz' : budget >= 20000 ? 'Präsenz' : 'Sichtbar';
 
-  // ── handleNext ───────────────────────────────────────────────────────────────
+  // Sidebar bar: 80 % of voters = full bar
+  const barW = Math.min(100, (reachPct / 80) * 100);
+
+  // handleNext
   const handleNext = () => {
     if (!startISO || !endISO || startISO >= endISO) {
       setDateError('Kampagnenstart muss vor dem Ende liegen.'); return;
@@ -172,17 +286,6 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
   const fmtN   = (n: number) => Math.round(n).toLocaleString('de-CH');
   const fmtCHF = (n: number) => `CHF ${fmtN(n)}`;
 
-  // ── Per-card reach preview (at each package's own base price) ─────────────
-  const pkgReach = (key: PkgKey) => {
-    const p = vioData.packages[key];
-    return Math.min(p.targetReachPeople, maxReach);
-  };
-  const pkgReachPct = (key: PkgKey) =>
-    voters > 0 ? Math.min(80, Math.round(pkgReach(key) / voters * 100)) : 0;
-
-  // Sidebar bar: scale so 80 % of voters = full bar
-  const barW = Math.min(100, (reachPct / 80) * 100);
-
   return (
     <section>
       <style>{`
@@ -192,7 +295,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
         .sp-main  { flex: 1; min-width: 0; }
         .sp-side  { width: 268px; flex-shrink: 0; position: sticky; top: 80px; }
 
-        /* ── Section titles ── */
+        /* ── Section label ── */
         .sp-sec-label {
           font-family: var(--font-display);
           font-size: 11px; font-weight: 700; letter-spacing: .12em;
@@ -201,32 +304,40 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
         }
 
         /* ── Context bar ── */
-        .sp-ctx { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        .sp-ctx {
+          display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
           background: white; border: 1px solid var(--border); border-radius: var(--rs);
-          padding: 10px 16px; margin-bottom: 32px; font-size: 13px; }
-        .sp-badge { display: inline-flex; align-items: center; gap: 5px;
+          padding: 10px 16px; margin-bottom: 32px; font-size: 13px;
+        }
+        .sp-badge {
+          display: inline-flex; align-items: center; gap: 5px;
           padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
-          font-family: var(--font-display); }
+          font-family: var(--font-display);
+        }
         .sp-badge-v  { background: var(--violet); color: white; }
         .sp-badge-pl { background: var(--violet-pale); color: var(--violet); }
-        .sp-badge-am { background: #FFF8E7; color: #92400E; border: 1px solid #FDE68A; }
+        .sp-badge-am { background: #FFF0EA; color: #C2410C; border: 1px solid #FDBA74; }
 
         /* ── Package cards ── */
         .sp-pkts { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 32px; }
-        .sp-pkt  { position: relative; background: white; border: 1.5px solid var(--border);
+        .sp-pkt  {
+          position: relative; background: white; border: 1.5px solid var(--border);
           border-radius: var(--r); padding: 22px 18px 18px; cursor: pointer;
           transition: border-color .18s, box-shadow .18s, transform .15s;
-          display: flex; flex-direction: column; text-align: left; }
+          display: flex; flex-direction: column; text-align: left;
+        }
         .sp-pkt:hover  { border-color: var(--violet-light); transform: translateY(-2px);
           box-shadow: 0 4px 18px rgba(107,79,187,.10); }
-        .sp-pkt.sel    { border: 2px solid #7F77DD;
-          box-shadow: 0 0 0 3px rgba(127,119,221,.14), 0 4px 18px rgba(107,79,187,.10); }
+        .sp-pkt.sel    { border: 2px solid var(--violet);
+          box-shadow: 0 0 0 3px rgba(107,79,187,.12), 0 4px 18px rgba(107,79,187,.10); }
         .sp-pkt.off    { opacity: .42; cursor: not-allowed; pointer-events: none; }
-        .sp-emp-badge  { position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+        .sp-emp-badge  {
+          position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
           background: var(--violet); color: white; font-size: 10px; font-weight: 700;
           letter-spacing: .06em; text-transform: uppercase; padding: 3px 12px;
-          border-radius: 20px; font-family: var(--font-display); white-space: nowrap; }
-        .sp-pkt-lbl  { font-size: 10px; font-weight: 700; letter-spacing: .12em;
+          border-radius: 20px; font-family: var(--font-display); white-space: nowrap;
+        }
+        .sp-pkt-lbl   { font-size: 10px; font-weight: 700; letter-spacing: .12em;
           text-transform: uppercase; color: var(--slate);
           font-family: var(--font-display); margin-bottom: 6px; }
         .sp-pkt-price { font-family: var(--font-display); font-size: clamp(20px,1.8vw,26px);
@@ -249,22 +360,6 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
 
         /* ── Channel cards ── */
         .sp-chs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
-        .sp-ch  { background: white; border: 1px solid var(--border); border-radius: var(--r);
-          padding: 22px 20px 20px; }
-        .sp-ch-icon { width: 44px; height: 44px; border-radius: 10px;
-          display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-        .sp-ch-lbl  { font-size: 10px; font-weight: 700; letter-spacing: .1em;
-          text-transform: uppercase; color: var(--slate);
-          font-family: var(--font-display); margin-bottom: 8px; }
-        .sp-ch-num  { font-family: var(--font-display); font-size: 24px; font-weight: 800;
-          line-height: 1; margin-bottom: 3px; }
-        .sp-ch-sub  { font-size: 12px; color: var(--slate); margin-bottom: 14px; }
-        .sp-ch-div  { height: 1px; background: var(--border); margin-bottom: 12px; }
-        .sp-ch-ul   { list-style: none; padding: 0; margin: 0;
-          display: flex; flex-direction: column; gap: 6px; }
-        .sp-ch-li   { display: flex; align-items: center; gap: 8px;
-          font-size: 13px; color: var(--slate); }
-        .sp-ch-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
         /* ── Budget & Laufzeit block ── */
         .sp-bl      { background: white; border: 1px solid var(--border); border-radius: var(--r);
@@ -298,7 +393,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
           border: 1.5px solid var(--border); border-radius: 8px;
           font-family: var(--font-sans); font-size: 14px; font-weight: 600;
           color: var(--ink); background: white; outline: none;
-          transition: border-color .15s; }
+          transition: border-color .15s; box-sizing: border-box; }
         .sp-date-fld input[type=date]:focus { border-color: var(--violet);
           box-shadow: 0 0 0 3px rgba(107,79,187,.10); }
         .sp-bl-footer { display: flex; align-items: center; gap: 10px;
@@ -307,7 +402,9 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
         .sp-laufzeit-badge { background: var(--violet-pale); color: var(--violet);
           border-radius: 20px; padding: 4px 12px;
           font-family: var(--font-display); font-size: 12px; font-weight: 700; }
-        .sp-bl-hint { font-size: 12px; color: var(--slate); }
+        .sp-pkg-hint-badge { background: var(--gold-pale); color: #92400E;
+          border: 1px solid #FDE68A; border-radius: 20px; padding: 4px 12px;
+          font-family: var(--font-display); font-size: 12px; font-weight: 700; }
         .sp-date-err { background: #FFF5F5; border: 1px solid #FCA5A5; border-radius: 8px;
           padding: 10px 14px; margin-top: 16px;
           font-size: 13px; color: #B91C1C; font-weight: 500;
@@ -396,14 +493,15 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               <span style={{ fontSize: 13, color: 'var(--slate)' }}>
                 {vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}
               </span>
-              {vioData.daysUntilVote != null && (
+              {/* Urgency badge: only if vote within 30 days */}
+              {vioData.daysUntilVote != null && vioData.daysUntilVote <= 30 && (
                 <span className="sp-badge sp-badge-am">
                   🗳️ Abstimmung in {vioData.daysUntilVote} Tagen
                 </span>
               )}
             </div>
 
-            {/* ── 2. Intensität ── */}
+            {/* ── 2. Package cards ── */}
             <div className="sp-sec-label">Intensität wählen</div>
             <div className="sp-pkts">
               {PKG_ORDER.map(key => {
@@ -461,60 +559,48 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               })}
             </div>
 
-            {/* ── 3. Wie deine Werbung ausgespielt wird ── */}
+            {/* ── 3. Channel cards ── */}
             <div className="sp-sec-label">Wie deine Werbung ausgespielt wird</div>
             <div className="sp-chs">
 
               {/* DOOH */}
-              <div className="sp-ch">
-                <div className="sp-ch-icon" style={{ background: '#F0ECFA' }}>
+              <ChannelCard
+                imgSrc="/images/vio-dooh-bahnhof.jpg"
+                overlayColor="linear-gradient(160deg, rgba(35,20,70,0.82) 0%, rgba(55,30,100,0.70) 100%)"
+                iconBg="rgba(255,255,255,0.15)"
+                icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
-                    <rect x="1" y="1" width="20" height="13" rx="2" stroke="var(--violet)" strokeWidth="1.6"/>
-                    <path d="M7 17H15" stroke="var(--violet)" strokeWidth="1.6" strokeLinecap="round"/>
-                    <path d="M11 14V17" stroke="var(--violet)" strokeWidth="1.6" strokeLinecap="round"/>
+                    <rect x="1" y="1" width="20" height="13" rx="2" stroke="white" strokeWidth="1.6"/>
+                    <path d="M7 17H15" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
+                    <path d="M11 14V17" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
                   </svg>
-                </div>
-                <div className="sp-ch-lbl">DOOH · Im öffentlichen Raum</div>
-                <div className="sp-ch-num" style={{ color: 'var(--violet)' }}>
-                  bis zu {fmtN(doohScreens)}
-                </div>
-                <div className="sp-ch-sub">digitale Screens</div>
-                <div className="sp-ch-div" />
-                <ul className="sp-ch-ul">
-                  {['Bahnhöfe & ÖV', 'Einkaufszentren', 'Tankstellen'].map(t => (
-                    <li key={t} className="sp-ch-li">
-                      <span className="sp-ch-dot" style={{ background: 'var(--violet)' }} />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                }
+                label="DOOH · Im öffentlichen Raum"
+                headline={`bis zu ${fmtN(doohScreens)}`}
+                sub="politisch zugelassene Screens"
+                bullets={['Bahnhöfe & ÖV', 'Einkaufszentren', 'Tankstellen']}
+                bulletColor="rgba(200,185,255,0.8)"
+              />
 
               {/* Display */}
-              <div className="sp-ch">
-                <div className="sp-ch-icon" style={{ background: '#EAF3DE' }}>
+              <ChannelCard
+                imgSrc="/images/vio-display-phone.jpg"
+                overlayColor="linear-gradient(160deg, rgba(15,50,55,0.82) 0%, rgba(20,70,75,0.70) 100%)"
+                iconBg="rgba(255,255,255,0.15)"
+                icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
-                    <rect x="1" y="1" width="20" height="13" rx="2" stroke="var(--green)" strokeWidth="1.6"/>
-                    <path d="M1 5H21" stroke="var(--green)" strokeWidth="1.6"/>
-                    <circle cx="4" cy="3" r="1" fill="var(--green)"/>
-                    <circle cx="7" cy="3" r="1" fill="var(--green)"/>
+                    <rect x="1" y="1" width="20" height="13" rx="2" stroke="white" strokeWidth="1.6"/>
+                    <path d="M1 5H21" stroke="white" strokeWidth="1.6"/>
+                    <circle cx="4" cy="3" r="1" fill="white"/>
+                    <circle cx="7" cy="3" r="1" fill="white"/>
                   </svg>
-                </div>
-                <div className="sp-ch-lbl">Display · Online</div>
-                <div className="sp-ch-num" style={{ color: 'var(--green)' }}>
-                  ~{fmtN(dispPersons)}
-                </div>
-                <div className="sp-ch-sub">Personen erreichbar</div>
-                <div className="sp-ch-div" style={{ background: '#D9EFE5' }} />
-                <ul className="sp-ch-ul">
-                  {['Schweizer Newsportale', 'Blogs & Magazine', 'Apps mit CH-Usern'].map(t => (
-                    <li key={t} className="sp-ch-li">
-                      <span className="sp-ch-dot" style={{ background: 'var(--green)' }} />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                }
+                label="Display · Online"
+                headline={`~${fmtN(dispPersons)}`}
+                sub="Personen erreichbar"
+                bullets={['Schweizer Newsportale', 'Blogs & Magazine', 'Apps mit CH-Usern']}
+                bulletColor="rgba(130,220,190,0.8)"
+              />
             </div>
 
             {/* ── 4. Budget & Laufzeit ── */}
@@ -581,9 +667,17 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               {/* Footer row */}
               <div className="sp-bl-footer">
                 <span className="sp-laufzeit-badge">{weeks} {weeks === 1 ? 'Woche' : 'Wochen'}</span>
-                <span className="sp-bl-hint">
-                  Empfohlenes Ende: <strong style={{ color: 'var(--ink)' }}>{campaignEndFmt}</strong> (vor Unterlagen-Versand)
-                </span>
+                <span className="sp-pkg-hint-badge">{budgetHint}</span>
+                {budget < 2500 && (
+                  <span style={{ fontSize: 12, color: '#B91C1C', fontWeight: 600 }}>
+                    ⚠ Mindestbudget CHF 2&apos;500
+                  </span>
+                )}
+                {campaignEndISO && (
+                  <span style={{ fontSize: 12, color: 'var(--slate)', marginLeft: 'auto' }}>
+                    Empf. Ende: <strong style={{ color: 'var(--ink)' }}>{fmtLong(campaignEndISO)}</strong>
+                  </span>
+                )}
               </div>
 
               {/* Date error */}
@@ -597,17 +691,16 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
 
           </div>{/* /sp-main */}
 
-          {/* ══════════════ RIGHT COLUMN ══════════════ */}
+          {/* ══════════════ RIGHT SIDEBAR ══════════════ */}
           <div className="sp-side">
             <div className="sp-scard">
 
-              {/* Dark header — Reichweite */}
+              {/* Reichweite — dark header */}
               <div className="sp-scard-hd">
                 <div className="sp-s-elbl">Stimmberechtigte erreichbar</div>
                 <div className="sp-s-big">~{fmtN(reach)}</div>
                 <div className="sp-s-sub">{reachPct}% der {inhabitants}</div>
 
-                {/* Bar */}
                 <div className="sp-s-bar-track">
                   <div className="sp-s-bar-fill" style={{ width: `${barW}%` }} />
                 </div>
@@ -629,11 +722,11 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
 
                 {/* Summary rows */}
                 {[
-                  { l: 'Paket',             v: pkg.name },
-                  { l: 'Region',            v: rName },
-                  { l: 'Kontakte/Person',   v: `Ø ${effectiveFreq}×` },
-                  { l: 'Start',             v: startISO ? fmtShort(startISO) : '—' },
-                  { l: 'Ende',              v: endISO   ? fmtShort(endISO)   : '—' },
+                  { l: 'Paket',           v: pkg.name },
+                  { l: 'Region',          v: rName },
+                  { l: 'Freq.',           v: `Ø ${effectiveFreq}×` },
+                  { l: 'Start',           v: startISO ? fmtShort(startISO) : '—' },
+                  { l: 'Ende',            v: endISO   ? fmtShort(endISO)   : '—' },
                 ].map(row => (
                   <div key={row.l} className="sp-s-row">
                     <span className="sp-s-rl">{row.l}</span>
@@ -648,10 +741,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                   onClick={handleNext}
                   disabled={budget < 2500}
                 >
-                  Weiter zu den Werbemitteln
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  Weiter zu den Werbemitteln →
                 </button>
 
                 <div className="sp-cta-note">
