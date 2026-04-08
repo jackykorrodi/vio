@@ -58,49 +58,46 @@ interface Props {
   stepNumber?: number;
 }
 
-// ─── Channel card with image background ──────────────────────────────────────
+// ─── Channel card with CSS background image ───────────────────────────────────
 function ChannelCard({
-  imgSrc, overlayColor, fallbackColor, iconBg, icon,
-  label, headline, sub, bullets, bulletColor,
+  imgSrc, bgPosition, overlayGradient, icon,
+  label, headline, sub, bullets,
 }: {
   imgSrc: string;
-  overlayColor: string;
-  fallbackColor: string;
-  iconBg: string;
+  bgPosition: string;
+  overlayGradient: string;
   icon: React.ReactNode;
   label: string;
   headline: string;
   sub: string;
   bullets: string[];
-  bulletColor: string;
 }) {
   return (
     <div style={{
       position: 'relative',
-      borderRadius: 'var(--r)',
+      backgroundImage: `url('${imgSrc}')`,
+      backgroundSize: 'cover',
+      backgroundPosition: bgPosition,
+      borderRadius: '14px',
       overflow: 'hidden',
-      minHeight: 230,
+      minHeight: '260px',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'flex-end',
-      /* CSS background-image — if file missing, fallbackColor shows instead */
-      backgroundImage: `url(${imgSrc})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundColor: fallbackColor,
     }}>
-      {/* Dark overlay — always on top of image */}
+      {/* Overlay — always rendered, z-index 0 */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: overlayColor,
+        background: overlayGradient,
+        zIndex: 0,
       }} />
 
-      {/* Content */}
-      <div style={{ position: 'relative', padding: '22px 20px 20px', zIndex: 1 }}>
+      {/* Content — z-index 2, sits above overlay */}
+      <div style={{ position: 'relative', zIndex: 2, padding: '22px 20px 20px' }}>
         {/* Frosted icon */}
         <div style={{
           width: 44, height: 44, borderRadius: 12,
-          background: iconBg,
+          background: 'rgba(255,255,255,0.15)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -112,7 +109,7 @@ function ChannelCard({
         {/* Label */}
         <div style={{
           fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
-          textTransform: 'uppercase', color: 'rgba(255,255,255,.55)',
+          textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)',
           fontFamily: 'var(--font-display)', marginBottom: 6,
         }}>
           {label}
@@ -127,18 +124,18 @@ function ChannelCard({
         </div>
 
         {/* Sub */}
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,.65)', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 14 }}>
           {sub}
         </div>
 
         {/* Divider */}
-        <div style={{ height: 1, background: 'rgba(255,255,255,.15)', marginBottom: 12 }} />
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
 
         {/* Bullets */}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {bullets.map(t => (
-            <li key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,.80)' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: bulletColor }} />
+            <li key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'white' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.55)' }} />
               {t}
             </li>
           ))}
@@ -556,9 +553,8 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               {/* DOOH */}
               <ChannelCard
                 imgSrc="/images/vio-dooh-bahnhof.jpg"
-                overlayColor="linear-gradient(160deg, rgba(35,20,70,0.82) 0%, rgba(55,30,100,0.70) 100%)"
-                fallbackColor="#2D1F52"
-                iconBg="rgba(255,255,255,0.15)"
+                bgPosition="center 30%"
+                overlayGradient="linear-gradient(165deg, rgba(22,14,60,0.72) 0%, rgba(83,74,183,0.50) 100%)"
                 icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
                     <rect x="1" y="1" width="20" height="13" rx="2" stroke="white" strokeWidth="1.6"/>
@@ -570,15 +566,13 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                 headline={`bis zu ${fmtN(doohScreens)}`}
                 sub="politisch zugelassene Screens"
                 bullets={['Bahnhöfe & ÖV', 'Einkaufszentren', 'Tankstellen']}
-                bulletColor="rgba(200,185,255,0.8)"
               />
 
               {/* Display */}
               <ChannelCard
                 imgSrc="/images/vio-display-phone.jpg"
-                overlayColor="linear-gradient(160deg, rgba(15,50,55,0.82) 0%, rgba(20,70,75,0.70) 100%)"
-                fallbackColor="#0F3237"
-                iconBg="rgba(255,255,255,0.15)"
+                bgPosition="center center"
+                overlayGradient="linear-gradient(165deg, rgba(8,50,41,0.76) 0%, rgba(29,158,117,0.50) 100%)"
                 icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
                     <rect x="1" y="1" width="20" height="13" rx="2" stroke="white" strokeWidth="1.6"/>
@@ -591,7 +585,6 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                 headline={`~${fmtN(dispPersons)}`}
                 sub="Personen erreichbar"
                 bullets={['Schweizer Newsportale', 'Blogs & Magazine', 'Apps mit CH-Usern']}
-                bulletColor="rgba(130,220,190,0.8)"
               />
             </div>
 
