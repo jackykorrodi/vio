@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { BriefingData } from '@/lib/types';
 import { computeStartDateISO } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
@@ -61,11 +60,12 @@ interface Props {
 
 // ─── Channel card with image background ──────────────────────────────────────
 function ChannelCard({
-  imgSrc, overlayColor, iconBg, icon,
+  imgSrc, overlayColor, fallbackColor, iconBg, icon,
   label, headline, sub, bullets, bulletColor,
 }: {
   imgSrc: string;
   overlayColor: string;
+  fallbackColor: string;
   iconBg: string;
   icon: React.ReactNode;
   label: string;
@@ -74,36 +74,25 @@ function ChannelCard({
   bullets: string[];
   bulletColor: string;
 }) {
-  const [imgOk, setImgOk] = useState(true);
-
   return (
     <div style={{
-      position: 'relative', borderRadius: 'var(--r)', overflow: 'hidden',
-      minHeight: 230, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      position: 'relative',
+      borderRadius: 'var(--r)',
+      overflow: 'hidden',
+      minHeight: 230,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-end',
+      /* CSS background-image — if file missing, fallbackColor shows instead */
+      backgroundImage: `url(${imgSrc})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundColor: fallbackColor,
     }}>
-      {/* Background */}
-      {imgOk ? (
-        <Image
-          src={imgSrc}
-          alt=""
-          fill
-          sizes="(max-width: 900px) 100vw, 50vw"
-          style={{ objectFit: 'cover' }}
-          onError={() => setImgOk(false)}
-        />
-      ) : (
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: overlayColor,
-          filter: 'blur(0)',
-        }} />
-      )}
-
-      {/* Dark overlay */}
+      {/* Dark overlay — always on top of image */}
       <div style={{
         position: 'absolute', inset: 0,
         background: overlayColor,
-        borderRadius: 'var(--r)',
       }} />
 
       {/* Content */}
@@ -138,9 +127,7 @@ function ChannelCard({
         </div>
 
         {/* Sub */}
-        <div style={{
-          fontSize: 13, color: 'rgba(255,255,255,.65)', marginBottom: 14,
-        }}>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,.65)', marginBottom: 14 }}>
           {sub}
         </div>
 
@@ -174,11 +161,12 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
     return addDays(briefing.votingDate, -28);
   };
 
-  const [selectedPkg, setSelectedPkg] = useState<PkgKey>('praesenz');
-  const [startISO,    setStartISO]    = useState(() => computeStart('praesenz'));
-  const [endISO,      setEndISO]      = useState(() => computeEnd());
-  const [budget,      setBudget]      = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
-  const [dateError,   setDateError]   = useState<string | null>(null);
+  const [selectedPkg,  setSelectedPkg]  = useState<PkgKey>('praesenz');
+  const [startISO,     setStartISO]     = useState(() => computeStart('praesenz'));
+  const [endISO,       setEndISO]       = useState(() => computeEnd());
+  const [budget,       setBudget]       = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
+  const [dateError,    setDateError]    = useState<string | null>(null);
+  const [endDateWarn,  setEndDateWarn]  = useState<string | null>(null);
 
   const sharedEndISO = computeEnd();
 
@@ -187,6 +175,8 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
     setStartISO(computeStart(key));
     setEndISO(computeEnd());
     setBudget(vioData?.packages[key].finalBudget ?? budget);
+    setDateError(null);
+    setEndDateWarn(null);
   };
 
   // ── Guard ─────────────────────────────────────────────────────────────────
@@ -330,7 +320,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
           box-shadow: 0 4px 18px rgba(107,79,187,.10); }
         .sp-pkt.sel    { border: 2px solid var(--violet);
           box-shadow: 0 0 0 3px rgba(107,79,187,.12), 0 4px 18px rgba(107,79,187,.10); }
-        .sp-pkt.off    { opacity: .42; cursor: not-allowed; pointer-events: none; }
+        .sp-pkt.off    { opacity: .55; cursor: default; }
         .sp-emp-badge  {
           position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
           background: var(--violet); color: white; font-size: 10px; font-weight: 700;
@@ -515,8 +505,8 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                   <div
                     key={key}
                     className={`sp-pkt${isSel ? ' sel' : ''}${!feasible ? ' off' : ''}`}
-                    onClick={() => { if (feasible) handleSelectPkg(key); }}
-                    title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung'}
+                    onClick={() => handleSelectPkg(key)}
+                    title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung – Daten anpassen'}
                   >
                     {key === 'praesenz' && <div className="sp-emp-badge">Empfohlen</div>}
 
@@ -567,6 +557,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               <ChannelCard
                 imgSrc="/images/vio-dooh-bahnhof.jpg"
                 overlayColor="linear-gradient(160deg, rgba(35,20,70,0.82) 0%, rgba(55,30,100,0.70) 100%)"
+                fallbackColor="#2D1F52"
                 iconBg="rgba(255,255,255,0.15)"
                 icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
@@ -586,6 +577,7 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               <ChannelCard
                 imgSrc="/images/vio-display-phone.jpg"
                 overlayColor="linear-gradient(160deg, rgba(15,50,55,0.82) 0%, rgba(20,70,75,0.70) 100%)"
+                fallbackColor="#0F3237"
                 iconBg="rgba(255,255,255,0.15)"
                 icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
@@ -646,8 +638,20 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                         type="date"
                         value={startISO}
                         min={earliestStartISO}
-                        max={endISO ? addDays(endISO, -7) : undefined}
-                        onChange={e => { setStartISO(e.target.value); setDateError(null); }}
+                        max={campaignEndISO ? addDays(campaignEndISO, -7) : undefined}
+                        onChange={e => {
+                          const newStart = e.target.value;
+                          setStartISO(newStart);
+                          setDateError(null);
+                          // Auto-correct end if it falls before start + 7 days
+                          if (newStart && endISO && endISO <= newStart) {
+                            const corrected = addDays(newStart, 7);
+                            setEndISO(corrected);
+                            setEndDateWarn('Enddatum muss nach dem Startdatum liegen.');
+                          } else {
+                            setEndDateWarn(null);
+                          }
+                        }}
                       />
                     </div>
                     <div className="sp-date-fld">
@@ -655,10 +659,29 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
                       <input
                         type="date"
                         value={endISO}
-                        min={startISO ? addDays(startISO, 7) : undefined}
+                        min={startISO ? addDays(startISO, 1) : earliestStartISO}
                         max={campaignEndISO || undefined}
-                        onChange={e => { setEndISO(e.target.value); setDateError(null); }}
+                        onChange={e => {
+                          const newEnd = e.target.value;
+                          setDateError(null);
+                          if (newEnd && startISO && newEnd <= startISO) {
+                            // Auto-correct: set to start + 7 days, show warning
+                            const corrected = addDays(startISO, 7);
+                            setEndISO(corrected);
+                            setEndDateWarn('Enddatum muss nach dem Startdatum liegen.');
+                          } else {
+                            setEndISO(newEnd);
+                            setEndDateWarn(null);
+                          }
+                        }}
                       />
+                      {endDateWarn && (
+                        <div style={{ marginTop: 6, fontSize: 11, color: '#B91C1C',
+                          background: '#FFF5F5', border: '1px solid #FCA5A5',
+                          borderRadius: 6, padding: '4px 8px', fontWeight: 600 }}>
+                          ⚠ {endDateWarn}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
