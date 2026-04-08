@@ -198,6 +198,13 @@ function todayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function fmtDateDE(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   briefing: BriefingData;
@@ -400,6 +407,50 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const budgetPct   = ((budget   - 2500) / (50000 - 2500)) * 100;
   const durationPct = ((duration - 1)    / (8 - 1))        * 100;
 
+  // ── Politik-only derived ──
+  const daysToVote = (isPolitik && briefing.votingDate)
+    ? Math.round((new Date(briefing.votingDate).getTime() - new Date().setHours(0,0,0,0)) / 86400000)
+    : null;
+
+  const voteHintEndDate = briefing.votingDate
+    ? (() => { const d = new Date(briefing.votingDate + 'T00:00:00'); d.setDate(d.getDate() - 3); return d.toISOString().split('T')[0]; })()
+    : '';
+
+  const BADGE_STYLES = {
+    red:  { background: '#FCEBEB', color: '#791F1F' },
+    warn: { background: '#FAEEDA', color: '#633806' },
+    good: { background: '#EAF3DE', color: '#27500A' },
+    best: { background: '#EEEDFE', color: '#3C3489' },
+  } as const;
+
+  const getPolitikBadge = (pkgId: PaketId) => {
+    if (pkgId === 'sichtbar') {
+      const isUrgent = daysToVote != null && daysToVote <= 14;
+      return {
+        style: isUrgent ? BADGE_STYLES.red : BADGE_STYLES.warn,
+        icon:  '⚠',
+        text:  isUrgent
+          ? `Abstimmung in ${daysToVote} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.`
+          : 'Letzter Impuls — kurz vor Unterlagen-Versand.',
+      };
+    }
+    if (pkgId === 'praesenz') {
+      return {
+        style: BADGE_STYLES.good,
+        icon:  '✓',
+        text:  'Läuft bis 28 Tage vor Unterlagen-Versand — optimal für Meinungsbildungsphase.',
+      };
+    }
+    return {
+      style: BADGE_STYLES.best,
+      icon:  '★',
+      text:  'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.',
+    };
+  };
+
+  // Sidebar progress bar for politik
+  const reachBarW = Math.min(100, (reach.bisPct / 80) * 100);
+
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <section>
@@ -601,31 +652,121 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           )}
 
           {/* ── PACKAGE CARDS ── */}
-          <div className="pkg-grid">
-            {PAKETE.map((pkg, i) => {
-              const isActive = selectedPkg === pkg.id;
-              const r        = pkgReach[i];
-              return (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  onClick={() => handlePackageSelect(pkg)}
-                  className={`pkg${isActive ? ' active' : ''}`}
-                >
-                  {(isB2B ? pkg.id === 'praesenz' : pkg.recommended) && <div className="pkg-rec">Empfohlen</div>}
-                  <div className="pkg-check">
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 7L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+          {isPolitik ? (
+            /* Politik: div with full inline styles, insight badge, no Screens in dur line */
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginBottom: 32 }}>
+              {PAKETE.map((pkg, i) => {
+                const isActive = selectedPkg === pkg.id;
+                const r        = pkgReach[i];
+                const b        = getPolitikBadge(pkg.id);
+                return (
+                  <div
+                    key={pkg.id}
+                    onClick={() => handlePackageSelect(pkg)}
+                    style={isActive ? {
+                      border: '2px solid #7F77DD',
+                      background: 'linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%)',
+                      boxShadow: '0 8px 28px rgba(107,79,187,0.18)',
+                      transform: 'translateY(-2px)',
+                      opacity: 1,
+                      cursor: 'pointer',
+                      borderRadius: 14,
+                      padding: 16,
+                      position: 'relative',
+                      transition: 'all 0.18s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      textAlign: 'left',
+                    } : {
+                      border: '1px solid rgba(107,79,187,0.12)',
+                      background: 'white',
+                      boxShadow: 'none',
+                      transform: 'none',
+                      opacity: 0.72,
+                      cursor: 'pointer',
+                      borderRadius: 14,
+                      padding: 16,
+                      position: 'relative',
+                      transition: 'all 0.18s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {pkg.recommended && (
+                      <div style={{
+                        position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
+                        background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 700,
+                        letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 12px',
+                        borderRadius: 20, fontFamily: 'Plus Jakarta Sans,sans-serif', whiteSpace: 'nowrap',
+                      }}>Empfohlen</div>
+                    )}
+
+                    {/* Radio */}
+                    {isActive ? (
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#7F77DD', border: '2px solid #7F77DD', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 13, right: 13 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />
+                      </div>
+                    ) : (
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', border: '1.5px solid #D3D1C7', position: 'absolute', top: 13, right: 13 }} />
+                    )}
+
+                    {/* Tier name */}
+                    <div style={{ fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 10 }}>
+                      {pkg.label}
+                    </div>
+
+                    {/* Price */}
+                    <div style={isActive
+                      ? { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 22, fontWeight: 700, color: '#534AB7', lineHeight: 1, marginBottom: 4 }
+                      : { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 22, fontWeight: 700, color: '#2D1F52', lineHeight: 1, marginBottom: 4 }
+                    }>{fmtCHF(pkg.budget)}</div>
+
+                    {/* Duration only (no screens) */}
+                    <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 4 }}>
+                      {durLabel(pkg.weeks)}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>
+                      Erreicht ~{fmtN(r.von)}–{fmtN(r.bis)} {personLabel}
+                    </div>
+
+                    {/* Insight badge */}
+                    <div style={{ marginTop: 'auto', padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start', ...b.style }}>
+                      <span style={{ flexShrink: 0 }}>{b.icon}</span>
+                      {b.text}
+                    </div>
                   </div>
-                  <div className="pkg-lbl">{pkg.label}</div>
-                  <div className="pkg-price">{fmtCHF(isB2B ? (b2bPkgList[i]?.budget ?? pkg.budget) : pkg.budget)}</div>
-                  <div className="pkg-dur">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
-                  <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(isB2B ? b2bPkgList[i].von : r.von)} {einwohner}</div>
-                </button>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* B2C / B2B: original button/className approach */
+            <div className="pkg-grid">
+              {PAKETE.map((pkg, i) => {
+                const isActive = selectedPkg === pkg.id;
+                const r        = pkgReach[i];
+                return (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => handlePackageSelect(pkg)}
+                    className={`pkg${isActive ? ' active' : ''}`}
+                  >
+                    {(isB2B ? pkg.id === 'praesenz' : pkg.recommended) && <div className="pkg-rec">Empfohlen</div>}
+                    <div className="pkg-check">
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 7L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div className="pkg-lbl">{pkg.label}</div>
+                    <div className="pkg-price">{fmtCHF(isB2B ? (b2bPkgList[i]?.budget ?? pkg.budget) : pkg.budget)}</div>
+                    <div className="pkg-dur">{durLabel(pkg.weeks)} · {fmtN(r.screens)} Screens</div>
+                    <div className="pkg-reach">Deine Botschaft erreicht ~{fmtN(isB2B ? b2bPkgList[i].von : r.von)} {einwohner}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── Reichweite Kacheln (B2B only) ── */}
           {isB2B && b2bPakete && (
@@ -642,7 +783,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           )}
 
           {/* ── PROPOSAL CARD ── */}
-          <div className="proposal">
+          {!isPolitik && <div className="proposal">
             <div className="prop-head">
               <div>
                 <div className="prop-badge">Unser Vorschlag</div>
@@ -678,7 +819,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <div className="stat-sub">{isB2B ? 'Mitarbeitende' : 'der Stimmberechtigten'}</div>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* ── SLIDERS ── */}
           <div className="sliders">
@@ -712,6 +853,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             </div>
           </div>
 
+          {/* ── VOTE HINT (Politik only) ── */}
+          {isPolitik && briefing.votingDate && (
+            <div style={{ background: '#FAEEDA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <span style={{ flexShrink: 0 }}>📅</span>
+              <span>Rückwärts gerechnet vom Wahlsonntag {fmtDateDE(briefing.votingDate)}. Kampagnenstart: {fmtDateDE(startDate)} — Ende: {fmtDateDE(voteHintEndDate)}.</span>
+            </div>
+          )}
+
           {/* ── SMART TIP ── */}
           <div className="tip">💡 <strong>Tipp:</strong> {smartTip}</div>
 
@@ -736,25 +885,59 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         {/* ══════════════ SIDEBAR ══════════════ */}
         <div className="sidebar">
 
-          <div className="sc">
-            <div className="sc-title">Wie berechnen wir das?</div>
-            <div className="sc-note">{isB2B ? 'Deine Reichweite basiert auf DOOH-Screens und Branchendaten für Mitarbeitende in deiner Zielregion.' : 'Deine Reichweite wird anhand der DOOH-Screens und der Stimmberechtigten in deiner Zielregion berechnet.'}</div>
-            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{isB2B ? fmtN(b2bCurPkg.von) : `${fmtN(reach.von)} – ${fmtN(reach.bis)}`}</span></div>
-            <div className="sc-row"><span className="sc-l">Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
-            <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r sc-rv">{durLabel(currentPaket.weeks)}</span></div>
-          </div>
+          {isPolitik ? (
+            <>
+              {/* Politik Sidebar – Deine Kampagne */}
+              <div className="sc">
+                <div className="sc-title">Deine Kampagne</div>
+                {/* Big reach number */}
+                <div style={{ fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 32, fontWeight: 800, color: '#2D1F52', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>
+                  ~{fmtN(reach.bis)}
+                </div>
+                <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 12 }}>Stimmberechtigte erreicht</div>
+                {/* Progress bar */}
+                <div style={{ height: 8, background: 'rgba(107,79,187,0.10)', borderRadius: 100, overflow: 'hidden', marginBottom: 6 }}>
+                  <div style={{ height: '100%', width: `${reachBarW}%`, background: 'linear-gradient(to right,#7F77DD,#6B4FBB)', borderRadius: 100, transition: 'width .3s' }} />
+                </div>
+                <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 14 }}>{reach.vonPct}%–{reach.bisPct}% der Stimmberechtigten</div>
+                <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r sc-rv">{durLabel(currentPaket.weeks)}</span></div>
+                <div className="sc-row"><span className="sc-l">Budget</span><span className="sc-r">{fmtCHF(budget)}</span></div>
+                <div className="sc-row"><span className="sc-l">Pol. Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
+              </div>
 
-          <div className="sc">
-            <div className="sc-title">{isB2B ? 'Deine Zielgruppe' : 'Deine Zielregion'}</div>
-            <div className="rname">📍 {regionName}</div>
-            {isB2B && b2bBrancheCodes.length > 0 && (
-              <div className="rname" style={{ fontSize: '13px', marginBottom: '3px' }}>🏢 {b2bBrancheLabel}</div>
-            )}
-            <div className="rpop">{isB2B ? `~${fmtN(b2bMitarbeitende)} Mitarbeitende` : `${stimmber.toLocaleString('de-CH')} ${isPolitik ? 'Stimmberechtigte' : 'Einwohner'}`}</div>
-            <div className="sc-row"><span className="sc-l">DOOH Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
-            <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${reach.vonPct}%–${reach.bisPct}%`}</span></div>
-            <div className="rsrc">{isB2B ? 'Quelle: VIO B2B-Branchendaten & BFS 2022' : 'Quelle: VIO DOOH-Screendaten & BFS 2023'}</div>
-          </div>
+              {/* Politik Sidebar – Deine Zielregion */}
+              <div className="sc">
+                <div className="sc-title">Deine Zielregion</div>
+                <div className="rname">📍 {regionName}</div>
+                <div className="rpop">{stimmber.toLocaleString('de-CH')} Stimmberechtigte</div>
+                <div className="sc-row"><span className="sc-l">Pol. Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
+                <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{reach.vonPct}%–{reach.bisPct}%</span></div>
+                <div className="rsrc">Quelle: VIO DOOH-Screendaten & BFS 2023</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="sc">
+                <div className="sc-title">Wie berechnen wir das?</div>
+                <div className="sc-note">{isB2B ? 'Deine Reichweite basiert auf DOOH-Screens und Branchendaten für Mitarbeitende in deiner Zielregion.' : 'Deine Reichweite wird anhand der DOOH-Screens und der Stimmberechtigten in deiner Zielregion berechnet.'}</div>
+                <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{isB2B ? fmtN(b2bCurPkg.von) : `${fmtN(reach.von)} – ${fmtN(reach.bis)}`}</span></div>
+                <div className="sc-row"><span className="sc-l">Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
+                <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r sc-rv">{durLabel(currentPaket.weeks)}</span></div>
+              </div>
+
+              <div className="sc">
+                <div className="sc-title">{isB2B ? 'Deine Zielgruppe' : 'Deine Zielregion'}</div>
+                <div className="rname">📍 {regionName}</div>
+                {isB2B && b2bBrancheCodes.length > 0 && (
+                  <div className="rname" style={{ fontSize: '13px', marginBottom: '3px' }}>🏢 {b2bBrancheLabel}</div>
+                )}
+                <div className="rpop">{isB2B ? `~${fmtN(b2bMitarbeitende)} Mitarbeitende` : `${stimmber.toLocaleString('de-CH')} Einwohner`}</div>
+                <div className="sc-row"><span className="sc-l">DOOH Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
+                <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${reach.vonPct}%–${reach.bisPct}%`}</span></div>
+                <div className="rsrc">{isB2B ? 'Quelle: VIO B2B-Branchendaten & BFS 2022' : 'Quelle: VIO DOOH-Screendaten & BFS 2023'}</div>
+              </div>
+            </>
+          )}
 
           <div className="fragen">
             <h3>Fragen?</h3>
