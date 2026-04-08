@@ -17,10 +17,10 @@ const DOOH_DATA = doohScreensRaw as DoohEntry[];
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
 
-const PKG_INSIGHT: Record<PkgKey, { label: string; color: string; bg: string }> = {
-  sichtbar: { label: 'Letzter Impuls', color: '#92400E', bg: '#FFFBEB' },
-  praesenz: { label: 'Optimal',        color: '#065F46', bg: '#ECFDF5' },
-  dominanz: { label: 'Max. Wirkung',   color: '#3730A3', bg: '#EEF2FF' },
+const PKG_BADGE: Record<PkgKey, { bg: string; color: string; icon: string; fallback: string }> = {
+  sichtbar: { bg: '#FAEEDA', color: '#633806', icon: '⚠', fallback: 'Letzter Impuls vor dem Unterlagen-Versand.' },
+  praesenz: { bg: '#EAF3DE', color: '#27500A', icon: '✓', fallback: 'Optimal — präsent über die Meinungsbildungsphase.' },
+  dominanz: { bg: '#EEEDFE', color: '#3C3489', icon: '★', fallback: 'Max. Wirkung über den gesamten Abstimmungszeitraum.' },
 };
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -499,55 +499,112 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
             <div className="sp-sec-label">Intensität wählen</div>
             <div className="sp-pkts">
               {PKG_ORDER.map(key => {
-                const p        = vioData.packages[key];
-                const isSel    = selectedPkg === key;
+                const p       = vioData.packages[key];
+                const isSel   = selectedPkg === key;
                 const feasible = isPkgFeasible(key);
-                const rn       = pkgReach(key);
-                const rp       = pkgReachPct(key);
-                const ins      = PKG_INSIGHT[key];
+                const rn      = pkgReach(key);
+                const rp      = pkgReachPct(key);
+                const badge   = PKG_BADGE[key];
+                const badgeText = p.hinweis || badge.fallback;
                 return (
                   <div
                     key={key}
-                    className={`sp-pkt${isSel ? ' sel' : ''}${!feasible ? ' off' : ''}`}
                     onClick={() => handleSelectPkg(key)}
                     title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung – Daten anpassen'}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 'var(--r)',
+                      padding: '22px 18px 18px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      textAlign: 'left',
+                      border: isSel ? '2px solid #7F77DD' : '1px solid #E8E6F0',
+                      background: isSel ? '#F4F2FF' : 'white',
+                      boxShadow: isSel ? '0 4px 24px rgba(127,119,221,0.20)' : 'none',
+                      opacity: feasible ? 1 : 0.55,
+                    }}
                   >
-                    {key === 'praesenz' && <div className="sp-emp-badge">Empfohlen</div>}
+                    {/* Empfohlen badge */}
+                    {key === 'praesenz' && (
+                      <div style={{
+                        position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
+                        background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 700,
+                        letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 12px',
+                        borderRadius: 20, fontFamily: 'var(--font-display)', whiteSpace: 'nowrap',
+                      }}>Empfohlen</div>
+                    )}
 
-                    {/* Check ring */}
+                    {/* Radio circle */}
                     <div style={{
                       position: 'absolute', top: 14, right: 14,
-                      width: 20, height: 20, borderRadius: '50%',
-                      border: `2px solid ${isSel ? 'var(--violet)' : 'var(--border)'}`,
-                      background: isSel ? 'var(--violet)' : 'transparent',
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: isSel ? '#7F77DD' : 'white',
+                      border: isSel ? '2px solid #7F77DD' : '1.5px solid #D3D1C7',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
                     }}>
-                      {isSel && (
-                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      )}
+                      {isSel && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'white' }} />}
                     </div>
 
-                    <div className="sp-pkt-lbl">{p.name}</div>
-                    <div className="sp-pkt-price">CHF {fmtN(p.finalBudget)}</div>
-                    <div className="sp-pkt-meta">
+                    {/* Tier name */}
+                    <div style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
+                      textTransform: 'uppercase', color: 'var(--slate)',
+                      fontFamily: 'var(--font-display)', marginBottom: 6,
+                    }}>{p.name}</div>
+
+                    {/* Price */}
+                    <div style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 'clamp(20px,1.8vw,26px)',
+                      fontWeight: isSel ? 700 : 500,
+                      color: isSel ? '#534AB7' : '#2C2C2A',
+                      lineHeight: 1, marginBottom: 4,
+                    }}>CHF {fmtN(p.finalBudget)}</div>
+
+                    {/* Duration + freq */}
+                    <div style={{ fontSize: 12, color: 'var(--slate)', marginBottom: 14 }}>
                       {Math.round(p.durationDays / 7)} Wochen · Ø {p.frequency}× Kontakte/Person
                     </div>
 
-                    <div className="sp-pkt-div" />
+                    {/* Divider */}
+                    <div style={{ height: 1, background: '#EDE8FF', marginBottom: 12 }} />
 
-                    <div className="sp-pkt-rlbl">Stimmberechtigte erreichbar</div>
-                    <div className="sp-pkt-rnum">~{fmtN(rn)}</div>
-                    <div className="sp-pkt-rpct">{rp}% der Stimmberechtigten</div>
-
-                    <div className="sp-pkt-bar-track">
-                      <div className="sp-pkt-bar-fill" style={{ width: `${rp}%` }} />
+                    {/* Reach */}
+                    <div style={{
+                      fontSize: 10, fontWeight: 600, letterSpacing: '.07em',
+                      textTransform: 'uppercase', color: 'var(--slate)',
+                      fontFamily: 'var(--font-display)', marginBottom: 4,
+                    }}>Stimmberechtigte erreichbar</div>
+                    <div style={{
+                      fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700,
+                      color: 'var(--ink)', marginBottom: 2,
+                    }}>~{fmtN(rn)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--slate)', marginBottom: 10 }}>
+                      {rp}% der Stimmberechtigten
                     </div>
 
-                    <span className="sp-pkt-insight" style={{ color: ins.color, background: ins.bg }}>
-                      {ins.label}
-                    </span>
+                    {/* Progress bar */}
+                    <div style={{ height: 5, background: '#EDE8FF', borderRadius: 3, marginBottom: 10, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 3, width: `${rp}%`,
+                        background: 'linear-gradient(90deg, #8B6FD4, #6B4FBB)',
+                      }} />
+                    </div>
+
+                    {/* Insight badge */}
+                    <div style={{
+                      marginTop: 'auto',
+                      padding: '8px 10px', borderRadius: 8,
+                      fontSize: 11, lineHeight: 1.5,
+                      display: 'flex', gap: 6, alignItems: 'flex-start',
+                      background: badge.bg, color: badge.color,
+                    }}>
+                      <span style={{ flexShrink: 0 }}>{badge.icon}</span>
+                      {badgeText}
+                    </div>
                   </div>
                 );
               })}
