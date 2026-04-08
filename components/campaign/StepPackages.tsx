@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { BriefingData } from '@/lib/types';
 import { computeStartDateISO } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
@@ -58,13 +59,12 @@ interface Props {
   stepNumber?: number;
 }
 
-// ─── Channel card with CSS background image ───────────────────────────────────
+// ─── Channel card — next/image with priority + gradient overlay ───────────────
 function ChannelCard({
-  imgSrc, bgPosition, overlayGradient, icon,
+  imgSrc, overlayGradient, icon,
   label, headline, sub, bullets,
 }: {
   imgSrc: string;
-  bgPosition: string;
   overlayGradient: string;
   icon: React.ReactNode;
   label: string;
@@ -75,9 +75,6 @@ function ChannelCard({
   return (
     <div style={{
       position: 'relative',
-      backgroundImage: `url('${imgSrc}')`,
-      backgroundSize: 'cover',
-      backgroundPosition: bgPosition,
       borderRadius: '14px',
       overflow: 'hidden',
       minHeight: '260px',
@@ -85,14 +82,24 @@ function ChannelCard({
       flexDirection: 'column',
       justifyContent: 'flex-end',
     }}>
-      {/* Overlay — always rendered, z-index 0 */}
+      {/* Background image — fill + priority (no lazy load) */}
+      <Image
+        src={imgSrc}
+        alt=""
+        fill
+        priority
+        style={{ objectFit: 'cover' }}
+        sizes="(max-width: 900px) 100vw, 600px"
+      />
+
+      {/* Gradient overlay — sits above image */}
       <div style={{
         position: 'absolute', inset: 0,
         background: overlayGradient,
-        zIndex: 0,
+        zIndex: 1,
       }} />
 
-      {/* Content — z-index 2, sits above overlay */}
+      {/* Content — above overlay */}
       <div style={{ position: 'relative', zIndex: 2, padding: '22px 20px 20px' }}>
         {/* Frosted icon */}
         <div style={{
@@ -553,7 +560,6 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               {/* DOOH */}
               <ChannelCard
                 imgSrc="/images/vio-dooh-bahnhof.jpg"
-                bgPosition="center 30%"
                 overlayGradient="linear-gradient(165deg, rgba(22,14,60,0.72) 0%, rgba(83,74,183,0.50) 100%)"
                 icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
@@ -571,7 +577,6 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
               {/* Display */}
               <ChannelCard
                 imgSrc="/images/vio-display-phone.jpg"
-                bgPosition="center center"
                 overlayGradient="linear-gradient(165deg, rgba(8,50,41,0.76) 0%, rgba(29,158,117,0.50) 100%)"
                 icon={
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
