@@ -408,6 +408,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const durationPct = ((duration - 1)    / (8 - 1))        * 100;
 
   // ── Politik-only derived ──
+  const POLITIK_FREQ: Record<PaketId, number> = { sichtbar: 3, praesenz: 4, dominanz: 7 };
+
   const daysToVote = (isPolitik && briefing.votingDate)
     ? Math.round((new Date(briefing.votingDate).getTime() - new Date().setHours(0,0,0,0)) / 86400000)
     : null;
@@ -542,6 +544,24 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .region-actions{display:flex;gap:8px;margin-top:12px;}
         .region-confirm-btn{min-height:44px;padding:8px 20px;border-radius:100px;background:#6B4FBB;color:white;font-size:14px;font-weight:600;border:none;cursor:pointer;}
         .region-cancel-btn{min-height:44px;padding:8px 20px;border-radius:100px;background:transparent;color:#7A7596;border:1px solid rgba(107,79,187,0.10);font-size:14px;font-weight:600;cursor:pointer;}
+        .sec{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#7A7596;margin-bottom:12px;}
+        .ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+        .ch-card{border-radius:14px;overflow:hidden;position:relative;min-height:230px;}
+        .ch-body{position:relative;z-index:2;padding:20px;min-height:230px;display:flex;flex-direction:column;justify-content:space-between;}
+        .ch-icon{width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;}
+        .ch-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:4px;margin-top:20px;}
+        .ch-big{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:white;line-height:1.1;}
+        .ch-sub{font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px;margin-top:2px;}
+        .ch-bullets{list-style:none;display:flex;flex-direction:column;gap:5px;}
+        .ch-bullets li{font-size:12px;color:rgba(255,255,255,0.85);display:flex;align-items:center;gap:7px;}
+        .bdot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.5);flex-shrink:0;display:inline-block;}
+        .sb-reach-block{text-align:center;padding:14px 0 16px;border-bottom:1px solid rgba(107,79,187,0.08);margin-bottom:12px;}
+        .sb-reach-lbl{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#7A7596;margin-bottom:4px;}
+        .sb-reach-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:#534AB7;line-height:1.1;}
+        .sb-reach-sub{font-size:12px;color:#7A7596;margin-top:3px;}
+        .sb-bar-bg{height:4px;background:#F1EFE8;border-radius:2px;margin-top:10px;}
+        .sb-bar-fill{height:4px;background:#7F77DD;border-radius:2px;transition:width 0.3s;}
+        .sb-bar-ticks{display:flex;justify-content:space-between;margin-top:3px;font-size:10px;color:#7A7596;}
         .mobile-calc{display:none;margin-bottom:20px;}
         .mobile-calc-btn{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;background:white;border:1px solid rgba(107,79,187,0.10);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:600;color:#2D1F52;cursor:pointer;}
         .mobile-calc-body{background:white;border:1px solid rgba(107,79,187,0.10);border-top:none;border-radius:0 0 14px 14px;padding:12px 16px 16px;}
@@ -652,13 +672,15 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           )}
 
           {/* ── PACKAGE CARDS ── */}
+          {isPolitik && <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Intensität wählen</div>}
           {isPolitik ? (
-            /* Politik: div with full inline styles, insight badge, no Screens in dur line */
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginBottom: 32 }}>
+            /* Politik: full inline styles, reach breakdown, insight badge, no Screens in dur line */
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
               {PAKETE.map((pkg, i) => {
                 const isActive = selectedPkg === pkg.id;
                 const r        = pkgReach[i];
                 const b        = getPolitikBadge(pkg.id);
+                const barW     = Math.min(100, (r.bisPct / 80) * 100);
                 return (
                   <div
                     key={pkg.id}
@@ -696,38 +718,43 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                     {pkg.recommended && (
                       <div style={{
                         position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
-                        background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 700,
-                        letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 12px',
-                        borderRadius: 20, fontFamily: 'Plus Jakarta Sans,sans-serif', whiteSpace: 'nowrap',
+                        background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 600,
+                        padding: '2px 12px', borderRadius: 20, fontFamily: 'Plus Jakarta Sans,sans-serif', whiteSpace: 'nowrap',
                       }}>Empfohlen</div>
                     )}
 
                     {/* Radio */}
-                    {isActive ? (
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#7F77DD', border: '2px solid #7F77DD', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 13, right: 13 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />
-                      </div>
-                    ) : (
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', border: '1.5px solid #D3D1C7', position: 'absolute', top: 13, right: 13 }} />
-                    )}
+                    <div style={isActive
+                      ? { width: 18, height: 18, borderRadius: '50%', background: '#6B4FBB', border: '2px solid #6B4FBB', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 13, right: 13 }
+                      : { width: 18, height: 18, borderRadius: '50%', background: 'white', border: '1.5px solid #D3D1C7', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 13, right: 13 }
+                    }>
+                      {isActive && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
+                    </div>
 
                     {/* Tier name */}
-                    <div style={{ fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 3 }}>
                       {pkg.label}
                     </div>
 
                     {/* Price */}
-                    <div style={isActive
-                      ? { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 22, fontWeight: 700, color: '#534AB7', lineHeight: 1, marginBottom: 4 }
-                      : { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 22, fontWeight: 700, color: '#2D1F52', lineHeight: 1, marginBottom: 4 }
-                    }>{fmtCHF(pkg.budget)}</div>
-
-                    {/* Duration only (no screens) */}
-                    <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 4 }}>
-                      {durLabel(pkg.weeks)}
+                    <div style={{ fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 22, fontWeight: 700, color: isActive ? '#534AB7' : '#2D1F52', lineHeight: 1, marginBottom: 2 }}>
+                      {fmtCHF(pkg.budget)}
                     </div>
+
+                    {/* Duration + frequency */}
                     <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>
-                      Erreicht ~{fmtN(r.von)}–{fmtN(r.bis)} {personLabel}
+                      {durLabel(pkg.weeks)} · Ø {POLITIK_FREQ[pkg.id]}× Kontakte
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ height: '0.5px', background: 'rgba(107,79,187,0.10)', margin: '0 0 8px' }} />
+
+                    {/* Reach breakdown */}
+                    <div style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 2 }}>Stimmberechtigte erreichbar</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: isActive ? '#534AB7' : '#2D1F52' }}>~{fmtN(r.von)}–{fmtN(r.bis)}</div>
+                    <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{r.vonPct}% der Stimmberechtigten</div>
+                    <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2, marginBottom: 10, overflow: 'hidden' }}>
+                      <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${barW}%` }} />
                     </div>
 
                     {/* Insight badge */}
@@ -766,6 +793,62 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 );
               })}
             </div>
+          )}
+
+          {/* ── CHANNEL CARDS (Politik only) ── */}
+          {isPolitik && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Wie deine Werbung ausgespielt wird</div>
+              <div className="ch-grid">
+                {/* DOOH card */}
+                <div className="ch-card">
+                  <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/images/vio-dooh-bahnhof.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(165deg,rgba(22,14,60,0.72) 0%,rgba(83,74,183,0.50) 100%)' }} />
+                  <div className="ch-body">
+                    <div className="ch-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="4" width="20" height="13" rx="2" stroke="white" strokeWidth="1.5"/>
+                        <path d="M8 21h8M12 17v4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="ch-lbl">DOOH · Im öffentlichen Raum</div>
+                      <div className="ch-big">bis zu {fmtN(reach.screens)}</div>
+                      <div className="ch-sub">politisch zugelassene Screens</div>
+                      <ul className="ch-bullets">
+                        <li><span className="bdot" />Bahnhöfe &amp; ÖV</li>
+                        <li><span className="bdot" />Einkaufszentren</li>
+                        <li><span className="bdot" />Tankstellen</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Display card */}
+                <div className="ch-card">
+                  <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/images/vio-display-phone.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(165deg,rgba(8,50,41,0.76) 0%,rgba(29,158,117,0.50) 100%)' }} />
+                  <div className="ch-body">
+                    <div className="ch-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="6" width="18" height="12" rx="2" stroke="white" strokeWidth="1.5"/>
+                        <path d="M7 10h10M7 14h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="ch-lbl">Display · Online</div>
+                      <div className="ch-big">~{fmtN(reach.displayUnique)}</div>
+                      <div className="ch-sub">Personen erreichbar</div>
+                      <ul className="ch-bullets">
+                        <li><span className="bdot" />Schweizer Newsportale</li>
+                        <li><span className="bdot" />Blogs &amp; Magazine</li>
+                        <li><span className="bdot" />Apps mit CH-Usern</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {/* ── Reichweite Kacheln (B2B only) ── */}
@@ -890,19 +973,33 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               {/* Politik Sidebar – Deine Kampagne */}
               <div className="sc">
                 <div className="sc-title">Deine Kampagne</div>
-                {/* Big reach number */}
-                <div style={{ fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 32, fontWeight: 800, color: '#2D1F52', letterSpacing: '-.03em', lineHeight: 1, marginBottom: 2 }}>
-                  ~{fmtN(reach.bis)}
+
+                {/* Reichweite prominent block */}
+                <div className="sb-reach-block">
+                  <div className="sb-reach-lbl">Stimmberechtigte erreichbar</div>
+                  <div className="sb-reach-num">~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
+                  <div className="sb-reach-sub">{reach.vonPct}%–{reach.bisPct}% der {einwohner}</div>
+                  <div className="sb-bar-bg">
+                    <div className="sb-bar-fill" style={{ width: `${reachBarW}%` }} />
+                  </div>
+                  <div className="sb-bar-ticks"><span>0%</span><span>{reach.bisPct}%</span><span>80% (max)</span></div>
                 </div>
-                <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 12 }}>Stimmberechtigte erreicht</div>
-                {/* Progress bar */}
-                <div style={{ height: 8, background: 'rgba(107,79,187,0.10)', borderRadius: 100, overflow: 'hidden', marginBottom: 6 }}>
-                  <div style={{ height: '100%', width: `${reachBarW}%`, background: 'linear-gradient(to right,#7F77DD,#6B4FBB)', borderRadius: 100, transition: 'width .3s' }} />
+
+                <div className="sc-row"><span className="sc-l">Paket</span><span className="sc-r">{currentPaket.label}</span></div>
+                <div className="sc-row"><span className="sc-l">Budget</span><span className="sc-rv">{fmtCHF(budget)}</span></div>
+                <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r">{durLabel(currentPaket.weeks)}</span></div>
+                <div className="sc-row"><span className="sc-l">Kampagnenstart</span><span className="sc-r">{fmtDateDE(startDate)}</span></div>
+                {briefing.votingDate && (
+                  <div className="sc-row"><span className="sc-l">Wahlsonntag</span><span className="sc-r" style={{ color: '#BA7517' }}>{fmtDateDE(briefing.votingDate)}</span></div>
+                )}
+
+                {/* CTA in sidebar */}
+                <button type="button" onClick={handleNext} style={{ marginTop: 16, width: '100%', background: '#6B4FBB', color: 'white', border: 'none', borderRadius: 100, padding: '13px 20px', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all .2s' }}>
+                  Weiter zu den Werbemitteln →
+                </button>
+                <div style={{ marginTop: 8, fontSize: 11, color: '#7A7596', textAlign: 'center' }}>
+                  Keine Zahlung jetzt — du erhältst zuerst eine Offerte.
                 </div>
-                <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 14 }}>{reach.vonPct}%–{reach.bisPct}% der Stimmberechtigten</div>
-                <div className="sc-row"><span className="sc-l">Laufzeit</span><span className="sc-r sc-rv">{durLabel(currentPaket.weeks)}</span></div>
-                <div className="sc-row"><span className="sc-l">Budget</span><span className="sc-r">{fmtCHF(budget)}</span></div>
-                <div className="sc-row"><span className="sc-l">Pol. Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
               </div>
 
               {/* Politik Sidebar – Deine Zielregion */}
@@ -910,9 +1007,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <div className="sc-title">Deine Zielregion</div>
                 <div className="rname">📍 {regionName}</div>
                 <div className="rpop">{stimmber.toLocaleString('de-CH')} Stimmberechtigte</div>
-                <div className="sc-row"><span className="sc-l">Pol. Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
+                <div className="sc-row"><span className="sc-l">Polit. Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
                 <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{reach.vonPct}%–{reach.bisPct}%</span></div>
-                <div className="rsrc">Quelle: VIO DOOH-Screendaten & BFS 2023</div>
+                <div className="rsrc">Quelle: VIO DOOH-Screendaten &amp; BFS 2023</div>
               </div>
             </>
           ) : (
