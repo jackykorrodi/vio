@@ -16,7 +16,7 @@ type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 // ─── Dynamic why-box content per package (daysToVote-aware) ──────────────────
 function getWHY(key: PkgKey, daysToVote: number): { text: string; variant: 'green' | 'amber' | 'red' } {
   if (key === 'sichtbar') {
-    if (daysToVote <= 14) return { text: \`Abstimmung in \${daysToVote} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.\`, variant: 'red' };
+    if (daysToVote <= 14) return { text: 'Abstimmung in ' + daysToVote + ' Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.', variant: 'red' };
     return { text: 'Letzter Impuls — kurz vor Unterlagen-Versand.', variant: 'amber' };
   }
   if (key === 'praesenz') return { text: 'Läuft bis 3 Tage vor Unterlagen-Versand — optimal für die Meinungsbildungsphase.', variant: 'green' };
