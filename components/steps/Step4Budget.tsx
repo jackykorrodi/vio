@@ -468,32 +468,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .badge-d{background:#FDF3DC;color:#9B7120;border:1px solid rgba(212,168,67,0.3);border-radius:8px;padding:3px 10px;font-size:11px;}
         .ctx-change{margin-left:auto;font-size:12px;color:#6B4FBB;font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:none;}
         .pkg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:32px;}
-        .pkg{background:white;border:1.5px solid rgba(107,79,187,0.10);border-radius:20px;padding:24px 20px;cursor:pointer;position:relative;transition:all .2s;text-align:left;width:100%;}
-        .pkg:hover{border-color:rgba(107,79,187,0.25);transform:translateY(-3px);box-shadow:0 10px 28px rgba(107,79,187,0.09);}
-        .pkg.active{border:2px solid #6B4FBB;background:#F5F2FF;}
+        .pkg{background:white;border:1px solid rgba(107,79,187,0.12);border-radius:14px;padding:16px;cursor:pointer;position:relative;transition:all 0.18s;text-align:left;width:100%;opacity:0.72;}
+        .pkg:hover{opacity:0.88;}
+        .pkg.active{border:2px solid #7F77DD !important;background:linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%) !important;box-shadow:0 8px 28px rgba(107,79,187,0.18) !important;transform:translateY(-2px) !important;opacity:1 !important;}
         .pkg-rec{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#6B4FBB;color:white;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;border-radius:100px;padding:3px 12px;white-space:nowrap;}
-        .pkg-check{position:absolute;top:14px;right:14px;width:20px;height:20px;border-radius:50%;background:rgba(107,79,187,0.10);display:flex;align-items:center;justify-content:center;}
-        .pkg.active .pkg-check{background:#6B4FBB;}
+        .pkg-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700;color:#2D1F52;margin-bottom:2px;}
+        .pkg.active .pkg-price{color:#534AB7 !important;}
+        .pkg-check{position:absolute;top:13px;right:13px;width:18px;height:18px;border-radius:50%;background:white;border:1.5px solid #D3D1C7;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+        .pkg.active .pkg-check{background:#7F77DD !important;border-color:#7F77DD !important;}
+        .pkg-check-dot{width:7px;height:7px;border-radius:50%;background:white;display:none;}
+        .pkg.active .pkg-check-dot{display:block !important;}
         .pkg-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7A7596;margin-bottom:12px;}
         .pkg.active .pkg-lbl{color:#8B6FD4;}
-        .pkg-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(20px,1.8vw,26px);font-weight:800;color:#2D1F52;letter-spacing:-.025em;line-height:1;margin-bottom:6px;}
-        .pkg.active .pkg-price{color:#6B4FBB;}
         .pkg-dur{font-size:12px;color:#7A7596;margin-bottom:5px;}
         .pkg-reach{font-size:11px;color:#7A7596;}
         .pkg.active .pkg-reach{color:#8B6FD4;}
-        .proposal{background:white;border:1px solid rgba(107,79,187,0.10);border-top:3px solid #6B4FBB;border-radius:20px;padding:28px;margin-bottom:28px;}
-        .prop-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px;flex-wrap:wrap;}
-        .prop-badge{background:#EDE8FF;color:#6B4FBB;border:1px solid rgba(107,79,187,0.2);border-radius:100px;padding:3px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;display:inline-block;margin-bottom:10px;}
-        .prop-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(32px,3vw,44px);font-weight:800;color:#2D1F52;letter-spacing:-.03em;line-height:1;}
-        .prop-sub{font-size:13px;color:#7A7596;margin-top:6px;font-weight:300;}
-        .prop-right{text-align:right;flex-shrink:0;}
-        .prop-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:#6B4FBB;letter-spacing:-.02em;}
-        .prop-psub{font-size:12px;color:#7A7596;margin-top:3px;}
-        .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-top:20px;border-top:1px solid rgba(107,79,187,0.08);}
-        .stat{background:#F5F2FF;border-radius:14px;padding:16px 18px;}
-        .stat-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B8A9E8;margin-bottom:8px;}
-        .stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#2D1F52;letter-spacing:-.02em;line-height:1.1;}
-        .stat-sub{font-size:11px;color:#7A7596;margin-top:4px;font-weight:300;}
+        .pkg-badge{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:11px;line-height:1.5;display:flex;gap:6px;align-items:flex-start;}
         .sliders{background:white;border:1px solid rgba(107,79,187,0.10);border-radius:20px;padding:28px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr;gap:32px;}
         .sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
         .sl-label{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:600;color:#2D1F52;}
@@ -674,109 +664,34 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           {/* ── PACKAGE CARDS ── */}
           {isPolitik && <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Intensität wählen</div>}
           {isPolitik ? (
-            /* Politik: full inline styles, reach breakdown, insight badge, no Screens in dur line */
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 12, marginBottom: 16 }}>
+            /* Politik: className approach with insight badges */
+            <div className="pkg-grid">
               {PAKETE.map((pkg, i) => {
                 const isActive = selectedPkg === pkg.id;
-                const r        = pkgReach[i];
-                const b        = getPolitikBadge(pkg.id);
-                const barW     = Math.min(100, (r.bisPct / 80) * 100);
+                const r = pkgReach[i];
                 return (
-                  <div
-                    key={pkg.id}
-                    onClick={() => handlePackageSelect(pkg)}
-                    style={isActive ? {
-                      border: '2px solid #7F77DD',
-                      background: 'linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%)',
-                      boxShadow: '0 8px 28px rgba(107,79,187,0.18)',
-                      transform: 'translateY(-2px)',
-                      opacity: 1,
-                      cursor: 'pointer',
-                      borderRadius: 14,
-                      padding: 16,
-                      position: 'relative',
-                      transition: 'all 0.18s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      textAlign: 'left',
-                    } : {
-                      border: '1px solid rgba(107,79,187,0.12)',
-                      background: 'white',
-                      boxShadow: 'none',
-                      transform: 'none',
-                      opacity: 0.72,
-                      cursor: 'pointer',
-                      borderRadius: 14,
-                      padding: 16,
-                      position: 'relative',
-                      transition: 'all 0.18s',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      textAlign: 'left',
-                    }}
-                  >
-                    {pkg.recommended && (
-                      <div style={{
-                        position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
-                        background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 600,
-                        padding: '2px 12px', borderRadius: 20, fontFamily: 'Plus Jakarta Sans,sans-serif', whiteSpace: 'nowrap',
-                      }}>Empfohlen</div>
-                    )}
-
-                    {/* Radio */}
-                    <div style={isActive
-                      ? { width: 18, height: 18, borderRadius: '50%', background: '#6B4FBB', border: '2px solid #6B4FBB', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 13, right: 13 }
-                      : { width: 18, height: 18, borderRadius: '50%', background: 'white', border: '1.5px solid #D3D1C7', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 13, right: 13 }
-                    }>
-                      {isActive && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
-                    </div>
-
-                    {/* Tier name */}
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 3 }}>
-                      {pkg.label}
-                    </div>
-
-                    {/* Price */}
-                    <div style={{ fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 22, fontWeight: 700, color: isActive ? '#534AB7' : '#2D1F52', lineHeight: 1, marginBottom: 2 }}>
-                      {fmtCHF(pkg.budget)}
-                    </div>
-
-                    {/* Duration + frequency */}
-                    <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>
-                      {durLabel(pkg.weeks)} · Ø {POLITIK_FREQ[pkg.id]}× Kontakte
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{ height: '0.5px', background: 'rgba(107,79,187,0.10)', margin: '0 0 8px' }} />
-
-                    {/* Reach breakdown */}
-                    <div style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 2 }}>Stimmberechtigte erreichbar</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: isActive ? '#534AB7' : '#2D1F52' }}>~{fmtN(r.von)}–{fmtN(r.bis)}</div>
-                    <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{r.vonPct}% der Stimmberechtigten</div>
-                    <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2, marginBottom: 10, overflow: 'hidden' }}>
-                      <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${barW}%` }} />
-                    </div>
-
-                    {/* Insight badge (Politik only, context-aware) */}
-                    {isPolitik && (() => {
-                      const dtv = briefing.votingDate
+                  <button key={pkg.id} type="button" onClick={() => handlePackageSelect(pkg)} className={`pkg${isActive ? ' active' : ''}`}>
+                    {pkg.recommended && <div className="pkg-rec">Empfohlen</div>}
+                    <div className="pkg-check"><div className="pkg-check-dot" /></div>
+                    <div className="pkg-lbl">{pkg.label}</div>
+                    <div className="pkg-price">{fmtCHF(pkg.budget)}</div>
+                    <div className="pkg-dur">{durLabel(pkg.weeks)} · Ø {POLITIK_FREQ[pkg.id]}× Kontakte</div>
+                    <div className="pkg-reach">~{fmtN(r.von)}–{fmtN(r.bis)} {personLabel}</div>
+                    {(() => {
+                      const daysToVote = briefing.votingDate
                         ? Math.round((new Date(briefing.votingDate + 'T12:00:00').getTime() - Date.now()) / 86400000)
                         : 99;
                       const badges: Record<string, { bg: string; color: string; text: string }> = {
-                        sichtbar: dtv <= 14
-                          ? { bg: '#FCEBEB', color: '#791F1F', text: `Abstimmung in ${dtv} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.` }
+                        sichtbar: daysToVote <= 14
+                          ? { bg: '#FCEBEB', color: '#791F1F', text: `Abstimmung in ${daysToVote} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.` }
                           : { bg: '#FAEEDA', color: '#633806', text: 'Letzter Impuls — kurz vor Unterlagen-Versand.' },
                         praesenz: { bg: '#EAF3DE', color: '#27500A', text: 'Läuft bis 3 Tage vor Unterlagen-Versand — optimal für Meinungsbildungsphase.' },
                         dominanz: { bg: '#EEEDFE', color: '#3C3489', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' },
                       };
-                      const badge = badges[pkg.id];
-                      return badge ? (
-                        <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, background: badge.bg, color: badge.color }}>
-                          {badge.text}
-                        </div>
-                      ) : null;
+                      const b = badges[pkg.id];
+                      return b ? <div className="pkg-badge" style={{ background: b.bg, color: b.color }}>{b.text}</div> : null;
                     })()}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -879,44 +794,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             />
           )}
 
-          {/* ── PROPOSAL CARD ── */}
-          {!isPolitik && <div className="proposal">
-            <div className="prop-head">
-              <div>
-                <div className="prop-badge">Unser Vorschlag</div>
-                <div className="prop-num">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${fmtN(reach.von)} – ${fmtN(reach.bis)}`}</div>
-                <div className="prop-sub">
-                  Deine Botschaft erreicht ~{isB2B ? fmtN(b2bCurPkg.von) : `${fmtN(reach.von)}–${fmtN(reach.bis)}`} {einwohner}
-                </div>
-              </div>
-              <div className="prop-right">
-                <div className="prop-price">{fmtCHF(isB2B ? b2bCurPkg.budget : budget)}</div>
-                <div className="prop-psub">{durLabel(currentPaket.weeks)} · {fmtN(reach.screens)} Screens</div>
-              </div>
-            </div>
-            <div className="stats" style={{ gridTemplateColumns: 'repeat(4,minmax(0,1fr))' }}>
-              <div className="stat">
-                <div className="stat-lbl">Screens</div>
-                <div className="stat-val">{fmtN(reach.screens)}</div>
-                <div className="stat-sub">digitale Standorte</div>
-              </div>
-              <div className="stat">
-                <div className="stat-lbl">Laufzeit</div>
-                <div className="stat-val">{durLabel(currentPaket.weeks)}</div>
-                <div className="stat-sub">Kampagnendauer</div>
-              </div>
-              <div className="stat">
-                <div className="stat-lbl">Unique Reach</div>
-                <div className="stat-val" style={{ fontSize: 'clamp(13px,1.2vw,16px)' }}>{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${fmtN(reach.von)}–${fmtN(reach.bis)}`}</div>
-                <div className="stat-sub">{isB2B ? `in ${b2bBrancheDisplay}` : `${reach.vonPct}%–${reach.bisPct}% der Stimmber.`}</div>
-              </div>
-              <div className="stat">
-                <div className="stat-lbl">Reichweite</div>
-                <div className="stat-val">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `${reach.vonPct}%–${reach.bisPct}%`}</div>
-                <div className="stat-sub">{isB2B ? 'Mitarbeitende' : 'der Stimmberechtigten'}</div>
-              </div>
-            </div>
-          </div>}
 
           {/* ── SLIDERS ── */}
           <div className="sliders">
@@ -996,7 +873,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 {isPolitik && (
                   <div style={{ textAlign: 'center', paddingBottom: 16, marginBottom: 14, borderBottom: '1px solid rgba(107,79,187,0.08)' }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 4 }}>Stimmberechtigte erreichbar</div>
-                    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 32, fontWeight: 800, color: '#534AB7', letterSpacing: '-0.02em' }}>~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
+                    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 32, fontWeight: 800, color: '#534AB7', letterSpacing: '-0.02em', lineHeight: 1.1 }}>~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
                     <div style={{ fontSize: 12, color: '#7A7596', marginTop: 3 }}>{reach.vonPct}%–{reach.bisPct}% der {einwohner}</div>
                     <div style={{ marginTop: 10, height: 4, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
                       <div style={{ height: 4, background: '#7F77DD', borderRadius: 2, width: `${Math.min(100, reach.bisPct / 80 * 100)}%`, transition: 'width 0.3s' }} />
