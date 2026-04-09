@@ -8,6 +8,7 @@ import demonymsRaw from '@/lib/demonyms.json';
 import { getMitarbeitende } from '@/lib/b2b-data';
 import { buildB2BPackages } from '@/lib/b2b-paketlogik';
 import ReichweiteKacheln from '@/components/ReichweiteKacheln';
+import '@/app/step4budget.css';
 const DEMONYMS = demonymsRaw as Record<string, string>;
 
 type DoohEntry = {
@@ -414,22 +415,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .badge-r{background:#EDE8FF;color:#6B4FBB;border-radius:100px;padding:3px 12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:600;}
         .badge-d{background:#FDF3DC;color:#9B7120;border:1px solid rgba(212,168,67,0.3);border-radius:8px;padding:3px 10px;font-size:11px;}
         .ctx-change{margin-left:auto;font-size:12px;color:#6B4FBB;font-weight:600;text-decoration:underline;cursor:pointer;background:none;border:none;}
-        .pkg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:32px;}
-        .pkg{background:white;border:1px solid rgba(107,79,187,0.12);border-radius:14px;padding:16px;cursor:pointer;position:relative;transition:all 0.18s;text-align:left;width:100%;opacity:0.72;}
-        .pkg:hover{opacity:0.88;}
-        .pkg.active{border:2.5px solid #7F77DD !important;background:linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%) !important;box-shadow:0 8px 28px rgba(107,79,187,0.20) !important;transform:translateY(-2px) !important;opacity:1 !important;}
-        .pkg-rec{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#6B4FBB;color:white;font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;border-radius:100px;padding:3px 12px;white-space:nowrap;}
-        .pkg-check{position:absolute;top:13px;right:13px;width:18px;height:18px;border-radius:50%;background:white;border:1.5px solid #D3D1C7;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
-        .pkg.active .pkg-check{background:#7F77DD !important;border-color:#7F77DD !important;}
-        .pkg-check-dot{width:7px;height:7px;border-radius:50%;background:white;display:none;}
-        .pkg.active .pkg-check-dot{display:block !important;}
-        .pkg-lbl{font-family:'Plus Jakarta Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7A7596;margin-bottom:12px;}
-        .pkg.active .pkg-lbl{color:#8B6FD4;}
-        .pkg-price{font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(20px,1.8vw,26px);font-weight:800;color:#2D1F52;letter-spacing:-.025em;line-height:1;margin-bottom:6px;}
-        .pkg.active .pkg-price{color:#534AB7 !important;font-weight:800 !important;}
-        .pkg-dur{font-size:12px;color:#7A7596;margin-bottom:5px;}
-        .pkg-reach{font-size:11px;color:#7A7596;}
-        .pkg.active .pkg-reach{color:#8B6FD4;}
         .proposal{background:white;border:1px solid rgba(107,79,187,0.10);border-top:3px solid #6B4FBB;border-radius:20px;padding:28px;margin-bottom:28px;}
         .prop-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:24px;flex-wrap:wrap;}
         .prop-badge{background:#EDE8FF;color:#6B4FBB;border:1px solid rgba(107,79,187,0.2);border-radius:100px;padding:3px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;display:inline-block;margin-bottom:10px;}
