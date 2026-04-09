@@ -757,11 +757,25 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                       <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${barW}%` }} />
                     </div>
 
-                    {/* Insight badge */}
-                    <div style={{ marginTop: 'auto', padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, display: 'flex', gap: 6, alignItems: 'flex-start', ...b.style }}>
-                      <span style={{ flexShrink: 0 }}>{b.icon}</span>
-                      {b.text}
-                    </div>
+                    {/* Insight badge (Politik only, context-aware) */}
+                    {isPolitik && (() => {
+                      const dtv = briefing.votingDate
+                        ? Math.round((new Date(briefing.votingDate + 'T12:00:00').getTime() - Date.now()) / 86400000)
+                        : 99;
+                      const badges: Record<string, { bg: string; color: string; text: string }> = {
+                        sichtbar: dtv <= 14
+                          ? { bg: '#FCEBEB', color: '#791F1F', text: `Abstimmung in ${dtv} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.` }
+                          : { bg: '#FAEEDA', color: '#633806', text: 'Letzter Impuls — kurz vor Unterlagen-Versand.' },
+                        praesenz: { bg: '#EAF3DE', color: '#27500A', text: 'Läuft bis 3 Tage vor Unterlagen-Versand — optimal für Meinungsbildungsphase.' },
+                        dominanz: { bg: '#EEEDFE', color: '#3C3489', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' },
+                      };
+                      const badge = badges[pkg.id];
+                      return badge ? (
+                        <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, background: badge.bg, color: badge.color }}>
+                          {badge.text}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 );
               })}
@@ -937,12 +951,17 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           </div>
 
           {/* ── VOTE HINT (Politik only) ── */}
-          {isPolitik && briefing.votingDate && (
-            <div style={{ background: '#FAEEDA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <span style={{ flexShrink: 0 }}>📅</span>
-              <span>Rückwärts gerechnet vom Wahlsonntag {fmtDateDE(briefing.votingDate)}. Kampagnenstart: {fmtDateDE(startDate)} — Ende: {fmtDateDE(voteHintEndDate)}.</span>
-            </div>
-          )}
+          {isPolitik && briefing.votingDate && (() => {
+            const voteDate = new Date(briefing.votingDate + 'T12:00:00');
+            const endDate  = new Date(voteDate); endDate.setDate(voteDate.getDate() - 3);
+            const fmt = (d: Date) => d.toLocaleDateString('de-CH', { day: 'numeric', month: 'long', year: 'numeric' });
+            return (
+              <div style={{ background: '#FAEEDA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start', lineHeight: 1.5 }}>
+                <span>📅</span>
+                <span>Rückwärts gerechnet vom Wahlsonntag <strong>{fmt(voteDate)}</strong>. Kampagne endet <strong>{fmt(endDate)}</strong> — 3 Tage vor der Abstimmung.</span>
+              </div>
+            );
+          })()}
 
           {/* ── SMART TIP ── */}
           <div className="tip">💡 <strong>Tipp:</strong> {smartTip}</div>
@@ -972,18 +991,23 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             <>
               {/* Politik Sidebar – Deine Kampagne */}
               <div className="sc">
-                <div className="sc-title">Deine Kampagne</div>
 
-                {/* Reichweite prominent block */}
-                <div className="sb-reach-block">
-                  <div className="sb-reach-lbl">Stimmberechtigte erreichbar</div>
-                  <div className="sb-reach-num">~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
-                  <div className="sb-reach-sub">{reach.vonPct}%–{reach.bisPct}% der {einwohner}</div>
-                  <div className="sb-bar-bg">
-                    <div className="sb-bar-fill" style={{ width: `${reachBarW}%` }} />
+                {/* Reichweite prominent block — before sc-title */}
+                {isPolitik && (
+                  <div style={{ textAlign: 'center', paddingBottom: 16, marginBottom: 14, borderBottom: '1px solid rgba(107,79,187,0.08)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 4 }}>Stimmberechtigte erreichbar</div>
+                    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 32, fontWeight: 800, color: '#534AB7', letterSpacing: '-0.02em' }}>~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
+                    <div style={{ fontSize: 12, color: '#7A7596', marginTop: 3 }}>{reach.vonPct}%–{reach.bisPct}% der {einwohner}</div>
+                    <div style={{ marginTop: 10, height: 4, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
+                      <div style={{ height: 4, background: '#7F77DD', borderRadius: 2, width: `${Math.min(100, reach.bisPct / 80 * 100)}%`, transition: 'width 0.3s' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#B8A9E8', marginTop: 3 }}>
+                      <span>0%</span><span>{reach.bisPct}%</span><span>80% (max)</span>
+                    </div>
                   </div>
-                  <div className="sb-bar-ticks"><span>0%</span><span>{reach.bisPct}%</span><span>80% (max)</span></div>
-                </div>
+                )}
+
+                <div className="sc-title">Deine Kampagne</div>
 
                 <div className="sc-row"><span className="sc-l">Paket</span><span className="sc-r">{currentPaket.label}</span></div>
                 <div className="sc-row"><span className="sc-l">Budget</span><span className="sc-rv">{fmtCHF(budget)}</span></div>
