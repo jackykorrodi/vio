@@ -1,27 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { BriefingData } from '@/lib/types';
 import { computeStartDateISO } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
+import ReichweiteKacheln from '@/components/ReichweiteKacheln';
 import doohScreensRaw from '@/lib/dooh-screens.json';
 
+type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
+const DOOH_DATA_POLITIK = doohScreensRaw as DoohEntry[];
+
 // ─── Types ────────────────────────────────────────────────────────────────────
-type DoohEntry = {
-  type: string; name?: string; kanton: string;
-  screens: number; screens_politik: number; standorte: number; reach: number;
-};
-const DOOH_DATA = doohScreensRaw as DoohEntry[];
-
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
-const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
 
-const PKG_BADGE: Record<PkgKey, { bg: string; color: string; icon: string; fallback: string }> = {
-  sichtbar: { bg: '#FAEEDA', color: '#633806', icon: '⚠', fallback: 'Letzter Impuls vor dem Unterlagen-Versand.' },
-  praesenz: { bg: '#EAF3DE', color: '#27500A', icon: '✓', fallback: 'Optimal — präsent über die Meinungsbildungsphase.' },
-  dominanz: { bg: '#EEEDFE', color: '#3C3489', icon: '★', fallback: 'Max. Wirkung über den gesamten Abstimmungszeitraum.' },
-};
+// ─── Dynamic why-box content per package (daysToVote-aware) ──────────────────
+function getWHY(key: PkgKey, daysToVote: number): { text: string; variant: 'green' | 'amber' | 'red' } {
+  if (key === 'sichtbar') {
+    if (daysToVote <= 14) return { text: \`Abstimmung in \${daysToVote} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.\`, variant: 'red' };
+    return { text: 'Letzter Impuls — kurz vor Unterlagen-Versand.', variant: 'amber' };
+  }
+  if (key === 'praesenz') return { text: 'Läuft bis 3 Tage vor Unterlagen-Versand — optimal für die Meinungsbildungsphase.', variant: 'green' };
+  return { text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.', variant: 'green' };
+}
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 const MONTHS_SHORT = ['Jan','Feb','Mrz','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -32,20 +32,24 @@ function fmtShort(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
   return `${d.getDate()}. ${MONTHS_SHORT[d.getMonth()]}`;
 }
+
 function fmtLong(iso: string): string {
   if (!iso) return '';
   const d = new Date(iso + 'T00:00:00');
   return `${d.getDate()}. ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 }
+
 function addDays(iso: string, n: number): string {
   const d = new Date(iso + 'T00:00:00');
   d.setDate(d.getDate() + n);
   return d.toISOString().split('T')[0];
 }
-function diffWeeks(a: string, b: string): number {
-  const ms = new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime();
+
+function diffWeeks(startISO: string, endISO: string): number {
+  const ms = new Date(endISO + 'T00:00:00').getTime() - new Date(startISO + 'T00:00:00').getTime();
   return Math.max(1, Math.round(ms / (7 * 24 * 3600 * 1000)));
 }
+
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
@@ -59,119 +63,33 @@ interface Props {
   stepNumber?: number;
 }
 
-// ─── Channel card — next/image with priority + gradient overlay ───────────────
-function ChannelCard({
-  imgSrc, overlayGradient, icon,
-  label, headline, sub, bullets,
-}: {
-  imgSrc: string;
-  overlayGradient: string;
-  icon: React.ReactNode;
-  label: string;
-  headline: string;
-  sub: string;
-  bullets: string[];
-}) {
-  return (
-    <div style={{
-      position: 'relative',
-      borderRadius: '14px',
-      overflow: 'hidden',
-      minHeight: '260px',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'flex-end',
-    }}>
-      {/* Background image — fill + priority (no lazy load) */}
-      <Image
-        src={imgSrc}
-        alt=""
-        fill
-        priority
-        style={{ objectFit: 'cover' }}
-        sizes="(max-width: 900px) 100vw, 600px"
-      />
-
-      {/* Gradient overlay — sits above image */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: overlayGradient,
-        zIndex: 1,
-      }} />
-
-      {/* Content — above overlay */}
-      <div style={{ position: 'relative', zIndex: 2, padding: '22px 20px 20px' }}>
-        {/* Frosted icon */}
-        <div style={{
-          width: 44, height: 44, borderRadius: 12,
-          background: 'rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: 14,
-        }}>
-          {icon}
-        </div>
-
-        {/* Label */}
-        <div style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '.1em',
-          textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)',
-          fontFamily: 'var(--font-display)', marginBottom: 6,
-        }}>
-          {label}
-        </div>
-
-        {/* Headline */}
-        <div style={{
-          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800,
-          color: 'white', lineHeight: 1.15, marginBottom: 4,
-        }}>
-          {headline}
-        </div>
-
-        {/* Sub */}
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 14 }}>
-          {sub}
-        </div>
-
-        {/* Divider */}
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
-
-        {/* Bullets */}
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {bullets.map(t => (
-            <li key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'white' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.55)' }} />
-              {t}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function StepPackages({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
+export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
   const vioData = briefing.vioPackages;
 
+  // Per spec: Präsenz is always pre-selected
+  const [selectedPkg, setSelectedPkg] = useState<PkgKey>('praesenz');
+
+  // Derived: selected package data
+  const pkg = vioData?.packages[selectedPkg];
+
+  // Compute ISO dates for calendar
   const computeStart = (key: PkgKey) => {
     if (!briefing.votingDate || !vioData) return '';
     return computeStartDateISO(briefing.votingDate, vioData.packages[key].durationDays);
   };
   const computeEnd = () => {
     if (!briefing.votingDate) return '';
-    return addDays(briefing.votingDate, -28);
+    return addDays(briefing.votingDate, -28); // briefwahl offset – same for all pkgs
   };
 
-  const [selectedPkg,  setSelectedPkg]  = useState<PkgKey>('praesenz');
-  const [startISO,     setStartISO]     = useState(() => computeStart('praesenz'));
-  const [endISO,       setEndISO]       = useState(() => computeEnd());
-  const [budget,       setBudget]       = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
-  const [dateError,    setDateError]    = useState<string | null>(null);
-  const [endDateWarn,  setEndDateWarn]  = useState<string | null>(null);
+  const [startISO,   setStartISO]   = useState(() => computeStart('praesenz'));
+  const [endISO,     setEndISO]     = useState(() => computeEnd());
+  const [budget,     setBudget]     = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
+  const [dateError,  setDateError]  = useState<string | null>(null);
 
+  // Per-card computed start dates (for display on cards)
+  const cardStartISO = (key: PkgKey) => computeStart(key);
   const sharedEndISO = computeEnd();
 
   const handleSelectPkg = (key: PkgKey) => {
@@ -179,657 +97,503 @@ export default function StepPackages({ briefing, updateBriefing, nextStep, stepN
     setStartISO(computeStart(key));
     setEndISO(computeEnd());
     setBudget(vioData?.packages[key].finalBudget ?? budget);
-    setDateError(null);
-    setEndDateWarn(null);
   };
 
-  // ── Guard ─────────────────────────────────────────────────────────────────
-  if (!vioData) {
+  const handleReset = () => handleSelectPkg(selectedPkg);
+
+  // ── Missing data guard ───────────────────────────────────────────────────────
+  if (!vioData || !pkg) {
     return (
-      <section style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--slate)' }}>
+      <section style={{ padding: '80px 20px', textAlign: 'center', color: '#7A7596' }}>
         Keine Paketdaten vorhanden. Bitte gehe zu Schritt 1 zurück.
       </section>
     );
   }
-  const pkg = vioData.packages[selectedPkg];
 
-  // ── Hard date boundaries ──────────────────────────────────────────────────
+  // ── Derived display values ───────────────────────────────────────────────────
+  const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
+  const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
+  const budgetPct  = Math.min(100, Math.max(0, ((budget - 2500) / (200000 - 2500)) * 100));
+
+  const MIXED_CPM = 39.5;
+  const selectedPkgBudget = vioData?.packages[selectedPkg].finalBudget ?? 0;
+  const isCustomBudget    = budget !== selectedPkgBudget;
+
+  const baseFreq = pkg.frequency;
+  const rawReachPeople = isCustomBudget
+    ? Math.round((budget / MIXED_CPM) * 1000 / baseFreq)
+    : pkg.targetReachPeople;
+
+  const maxReachPeople = Math.round((vioData?.eligibleVotersTotal ?? 0) * 0.80);
+  const isCapped       = rawReachPeople > maxReachPeople;
+  const customReachPeople = isCapped ? maxReachPeople : rawReachPeople;
+
+  const effectiveFreq = isCapped
+    ? Math.round(((budget / MIXED_CPM) * 1000) / customReachPeople * 10) / 10
+    : baseFreq;
+
+  const customReachPct = vioData
+    ? customReachPeople / vioData.eligibleVotersTotal
+    : pkg.uniqueReachPercent;
+
+  // ── Hard date boundaries ─────────────────────────────────────────────────────
   const earliestStartISO = addDays(todayISO(), 10);
-  const campaignEndISO   = sharedEndISO;
-  const earliestStartFmt = fmtLong(earliestStartISO);
-  const campaignEndFmt   = campaignEndISO ? fmtLong(campaignEndISO) : '';
+  const campaignEndISO   = sharedEndISO; // votingDate − 28 days, HARD
 
+  const earliestStart  = fmtLong(earliestStartISO);
+  const recommendedEnd = campaignEndISO ? fmtLong(campaignEndISO) : '';
+
+  // Feasibility: available window must cover the package duration
   const isPkgFeasible = (key: PkgKey): boolean => {
     if (!campaignEndISO) return true;
     const ms = new Date(campaignEndISO + 'T00:00:00').getTime()
              - new Date(earliestStartISO + 'T00:00:00').getTime();
-    return Math.floor(ms / 86400000) >= vioData.packages[key].durationDays;
+    const available = Math.floor(ms / (24 * 3600 * 1000));
+    return available >= vioData.packages[key].durationDays;
   };
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
-  const weeks = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
-  const voters = vioData.eligibleVotersTotal;
+  const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
 
-  // Reach: sqrt-scaled from base, capped at 80 %
-  const baseReach = pkg.targetReachPeople;
-  const basePrice = pkg.finalBudget;
-  const rawReach  = basePrice > 0 ? Math.round(baseReach * Math.sqrt(budget / basePrice)) : baseReach;
-  const maxReach  = Math.round(voters * 0.80);
-  const reach     = Math.min(rawReach, maxReach);
-  const isCapped  = rawReach > maxReach;
-  const reachPct  = voters > 0 ? Math.min(80, Math.round(reach / voters * 100)) : 0;
-
-  // Display persons
-  const freq        = pkg.frequency;
-  const dispPersons = Math.round((budget * 0.3) / 15 * 1000 / freq);
-
-  // Effective frequency when capped
-  const MIXED_CPM    = 39.5;
-  const effectiveFreq = isCapped
-    ? Math.round(((budget / MIXED_CPM) * 1000) / reach * 10) / 10
-    : freq;
-
-  // DOOH screens
-  const rName   = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
-  const rType   = briefing.politikRegionType ?? briefing.selectedRegions?.[0]?.type ?? 'schweiz';
-  const rKanton = briefing.selectedRegions?.[0]?.kanton;
-  let doohEntry: DoohEntry | undefined;
-  if (rType === 'schweiz') doohEntry = DOOH_DATA.find(d => d.type === 'schweiz');
-  else if (rType === 'stadt') doohEntry = DOOH_DATA.find(d => d.type === 'stadt' && d.name === rName);
-  else doohEntry = DOOH_DATA.find(d => d.type === 'kanton' && d.kanton === rKanton);
-  const doohScreens = doohEntry?.screens_politik ?? 0;
-
-  // Per-card reach preview
-  const pkgReach = (key: PkgKey) => {
-    const p = vioData.packages[key];
-    return Math.min(p.targetReachPeople, maxReach);
-  };
-  const pkgReachPct = (key: PkgKey) =>
-    voters > 0 ? Math.min(80, Math.round(pkgReach(key) / voters * 100)) : 0;
-
-  // Budget hint badge
-  const budgetHint = budget >= 60000 ? 'Dominanz' : budget >= 20000 ? 'Präsenz' : 'Sichtbar';
-
-  // Sidebar bar: 80 % of voters = full bar
-  const barW = Math.min(100, (reachPct / 80) * 100);
-
-  // handleNext
   const handleNext = () => {
+    // ① start < end
     if (!startISO || !endISO || startISO >= endISO) {
-      setDateError('Kampagnenstart muss vor dem Ende liegen.'); return;
+      setDateError('Kampagnenstart muss vor dem Ende liegen.');
+      return;
     }
+    // ② start ≥ earliestStart
     if (startISO < earliestStartISO) {
-      setDateError(`Freigabe braucht 10 Tage – Frühestmöglicher Start: ${earliestStartFmt}`); return;
+      setDateError(`Freigabe braucht 10 Tage – Frühestmöglicher Start: ${earliestStart}`);
+      return;
     }
+    // ③ end ≤ campaignEnd
     if (campaignEndISO && endISO > campaignEndISO) {
-      setDateError(`Ende muss vor dem Unterlagen-Versand (${campaignEndFmt}) liegen.`); return;
+      setDateError(`Ende muss vor dem Unterlagen-Versand (${recommendedEnd}) liegen.`);
+      return;
     }
+    // ④ duration ≥ 7 days
     const durDays = Math.round(
-      (new Date(endISO + 'T00:00:00').getTime() - new Date(startISO + 'T00:00:00').getTime()) / 86400000
+      (new Date(endISO + 'T00:00:00').getTime() - new Date(startISO + 'T00:00:00').getTime())
+      / (24 * 3600 * 1000)
     );
-    if (durDays < 7) { setDateError('Mindestlaufzeit beträgt 7 Tage.'); return; }
+    if (durDays < 7) {
+      setDateError('Mindestlaufzeit beträgt 7 Tage.');
+      return;
+    }
     setDateError(null);
     updateBriefing({
-      budget, laufzeit: weeks, startDate: startISO,
-      reach, reachVonPct: Math.round(reachPct * 0.85), reachBisPct: reachPct, b2bReach: null,
+      budget,
+      laufzeit:    weeks,
+      startDate:   startISO,
+      reach:       customReachPeople,
+      reachVonPct: Math.round(customReachPct * 100),
+      reachBisPct: Math.round(customReachPct * 100),
+      b2bReach:    null,
     });
     nextStep();
   };
 
-  const fmtN   = (n: number) => Math.round(n).toLocaleString('de-CH');
-  const fmtCHF = (n: number) => `CHF ${fmtN(n)}`;
+  const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
 
   return (
     <section>
       <style>{`
-        /* ── Layout ── */
-        .sp-outer { max-width: 1180px; margin: 0 auto; padding: 32px 40px 80px; }
-        .sp-wrap  { display: flex; gap: 32px; align-items: flex-start; }
-        .sp-main  { flex: 1; min-width: 0; }
-        .sp-side  { width: 268px; flex-shrink: 0; position: sticky; top: 80px; }
+        .s2 { font-family: 'Jost', sans-serif; background: #FDFCFF; min-height: 100vh; }
 
-        /* ── Section label ── */
-        .sp-sec-label {
-          font-family: var(--font-display);
-          font-size: 11px; font-weight: 700; letter-spacing: .12em;
-          text-transform: uppercase; color: var(--slate);
-          margin-bottom: 14px;
-        }
+        /* Header */
+        .s2-hdr  { max-width: 1100px; margin: 0 auto; padding: 32px 40px 0; }
+        .s2-step { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .s2-dash { width: 28px; height: 2px; background: #6B4FBB; border-radius: 2px; flex-shrink: 0; }
+        .s2-etxt { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #6B4FBB; }
+        .s2-h1   { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(24px,2.4vw,32px); font-weight: 800; color: #2D1F52; line-height: 1.15; margin-bottom: 8px; }
+        .s2-sub  { font-size: 15px; color: #5A4A7A; margin-bottom: 28px; }
 
-        /* ── Context bar ── */
-        .sp-ctx {
-          display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-          background: white; border: 1px solid var(--border); border-radius: var(--rs);
-          padding: 10px 16px; margin-bottom: 32px; font-size: 13px;
-        }
-        .sp-badge {
-          display: inline-flex; align-items: center; gap: 5px;
-          padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
-          font-family: var(--font-display);
-        }
-        .sp-badge-v  { background: var(--violet); color: white; }
-        .sp-badge-pl { background: var(--violet-pale); color: var(--violet); }
-        .sp-badge-am { background: #FFF0EA; color: #C2410C; border: 1px solid #FDBA74; }
+        /* Context bar */
+        .s2-ctx  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: white; border: 1px solid #D5CCF0; border-radius: 10px; padding: 10px 16px; margin-bottom: 36px; font-size: 13px; font-weight: 500; }
+        .s2-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-chip-type   { background: #6B4FBB; color: white; }
+        .s2-chip-region { background: #F0ECFA; color: #6B4FBB; }
+        .s2-chip-date   { background: #FFF8E7; color: #92400E; border: 1px solid #FDE68A; }
+        .s2-ctx-voters  { color: #5A4A7A; margin-left: 4px; }
 
-        /* ── Package cards ── */
-        .sp-pkts { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 32px; }
-        .sp-pkt  {
-          position: relative; background: white; border: 1.5px solid var(--border);
-          border-radius: var(--r); padding: 22px 18px 18px; cursor: pointer;
-          transition: border-color .18s, box-shadow .18s, transform .15s;
-          display: flex; flex-direction: column; text-align: left;
-        }
-        .sp-pkt:hover  { border-color: var(--violet-light); transform: translateY(-2px);
-          box-shadow: 0 4px 18px rgba(107,79,187,.10); }
-        .sp-pkt.sel    { border: 2px solid var(--violet);
-          box-shadow: 0 0 0 3px rgba(107,79,187,.12), 0 4px 18px rgba(107,79,187,.10); }
-        .sp-pkt.off    { opacity: .55; cursor: default; }
-        .sp-emp-badge  {
-          position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
-          background: var(--violet); color: white; font-size: 10px; font-weight: 700;
-          letter-spacing: .06em; text-transform: uppercase; padding: 3px 12px;
-          border-radius: 20px; font-family: var(--font-display); white-space: nowrap;
-        }
-        .sp-pkt-lbl   { font-size: 10px; font-weight: 700; letter-spacing: .12em;
-          text-transform: uppercase; color: var(--slate);
-          font-family: var(--font-display); margin-bottom: 6px; }
-        .sp-pkt-price { font-family: var(--font-display); font-size: clamp(20px,1.8vw,26px);
-          font-weight: 800; color: var(--ink); line-height: 1; margin-bottom: 4px; }
-        .sp-pkt.sel .sp-pkt-price { color: var(--violet); }
-        .sp-pkt-meta  { font-size: 12px; color: var(--slate); margin-bottom: 14px; }
-        .sp-pkt-div   { height: 1px; background: var(--border); margin-bottom: 12px; }
-        .sp-pkt-rlbl  { font-size: 10px; font-weight: 600; letter-spacing: .07em;
-          text-transform: uppercase; color: var(--slate);
-          font-family: var(--font-display); margin-bottom: 4px; }
-        .sp-pkt-rnum  { font-family: var(--font-display); font-size: 16px; font-weight: 700;
-          color: var(--ink); margin-bottom: 2px; }
-        .sp-pkt-rpct  { font-size: 11px; color: var(--slate); margin-bottom: 10px; }
-        .sp-pkt-bar-track { height: 5px; background: var(--border); border-radius: 3px;
-          margin-bottom: 10px; overflow: hidden; }
-        .sp-pkt-bar-fill  { height: 100%; border-radius: 3px;
-          background: linear-gradient(90deg, var(--violet-light), var(--violet)); }
-        .sp-pkt-insight   { display: inline-block; font-size: 11px; font-weight: 600;
-          border-radius: 6px; padding: 2px 8px; }
+        /* Main */
+        .s2-main { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
 
-        /* ── Channel cards ── */
-        .sp-chs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 32px; }
+        /* Packet grid */
+        .s2-pkts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+        .s2-pkt  { position: relative; background: white; border: 2px solid #EDE8F7; border-radius: 14px; padding: 28px 24px 24px; cursor: pointer; transition: all .18s; display: flex; flex-direction: column; text-align: left; opacity: 0.72; }
+        .s2-pkt:hover   { border-color: #8B6FDB; box-shadow: 0 4px 16px rgba(45,31,82,0.10); transform: translateY(-2px); opacity: 0.88; }
+        .s2-pkt.sel     { border-color: #7F77DD; border-width: 2.5px; background: linear-gradient(145deg, #EEEDFE 0%, #F8F7FF 100%); box-shadow: 0 8px 28px rgba(107,79,187,0.20); transform: translateY(-2px); opacity: 1 !important; }
+        .s2-rec-badge   { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6B4FBB; color: white; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 14px; border-radius: 20px; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap; }
+        .s2-check-ring  { position: absolute; top: 16px; right: 16px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #EDE8F7; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+        .s2-pkt.sel .s2-check-ring { background: #6B4FBB; border-color: #6B4FBB; }
+        .s2-pkt-name    { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #5A4A7A; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 6px; }
+        .s2-pkt-price   { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(22px, 2vw, 30px); font-weight: 800; color: #2D1F52; line-height: 1; margin-bottom: 4px; }
+        .s2-pkt.sel .s2-pkt-price { color: #534AB7; }
+        .s2-pkt-dur     { font-size: 13px; color: #5A4A7A; }
+        .s2-pkt-freq    { font-size: 12px; color: #6B4FBB; font-weight: 500; margin-top: 2px; margin-bottom: 14px; }
+        .s2-divider     { height: 1px; background: #EDE8F7; margin-bottom: 14px; }
+        .s2-reach-box   { background: #F5F3FB; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+        .s2-reach-lbl   { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #5A4A7A; margin-bottom: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-reach-val   { font-size: 17px; font-weight: 700; color: #2D1F52; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-reach-pct   { font-size: 12px; color: #5A4A7A; margin-top: 2px; }
+        .s2-dates       { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+        .s2-date-row    { display: flex; justify-content: space-between; align-items: baseline; }
+        .s2-date-lbl    { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #5A4A7A; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-date-val    { font-size: 13px; font-weight: 700; color: #2D1F52; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-why         { margin-top: auto; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #065F46; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; }
+        .s2-why.amber   { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+        .s2-why.red     { background: #FCEBEB; border-color: #FCA5A5; color: #791F1F; }
+        .s2-why-hint    { margin-top: 8px; background: #FFF8E7; border: 1px solid #FDE68A; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #92400E; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; }
 
-        /* ── Budget & Laufzeit block ── */
-        .sp-bl      { background: white; border: 1px solid var(--border); border-radius: var(--r);
-          padding: 26px 24px; margin-bottom: 32px; }
-        .sp-bl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-        .sp-bl-lbl  { font-size: 11px; font-weight: 700; letter-spacing: .08em;
-          text-transform: uppercase; color: var(--slate);
-          font-family: var(--font-display); margin-bottom: 10px; }
-        .sp-budget-input-wrap { display: flex; align-items: center; gap: 0;
-          border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
-          transition: border-color .15s; }
-        .sp-budget-input-wrap:focus-within { border-color: var(--violet); }
-        .sp-budget-prefix { padding: 0 12px; font-size: 14px; font-weight: 600;
-          color: var(--slate); background: var(--violet-xpale);
-          border-right: 1px solid var(--border); line-height: 52px; white-space: nowrap; }
-        .sp-budget-input { flex: 1; border: none; outline: none; padding: 0 16px;
-          font-family: var(--font-display); font-size: 22px; font-weight: 800;
-          color: var(--violet); background: transparent; width: 100%;
-          -moz-appearance: textfield; }
-        .sp-budget-input::-webkit-outer-spin-button,
-        .sp-budget-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .sp-budget-hint { margin-top: 8px; font-size: 12px; color: var(--slate); }
-        .sp-budget-warn { margin-top: 8px; font-size: 11px; color: #B91C1C;
-          background: #FFF5F5; border: 1px solid #FCA5A5; border-radius: 6px;
-          padding: 4px 10px; font-weight: 600; }
-        .sp-date-stack  { display: flex; flex-direction: column; gap: 14px; }
-        .sp-date-fld label { display: block; font-size: 11px; font-weight: 700;
-          letter-spacing: .07em; text-transform: uppercase; color: var(--slate);
-          font-family: var(--font-display); margin-bottom: 6px; }
-        .sp-date-fld input[type=date] { width: 100%; padding: 11px 13px;
-          border: 1.5px solid var(--border); border-radius: 8px;
-          font-family: var(--font-sans); font-size: 14px; font-weight: 600;
-          color: var(--ink); background: white; outline: none;
-          transition: border-color .15s; box-sizing: border-box; }
-        .sp-date-fld input[type=date]:focus { border-color: var(--violet);
-          box-shadow: 0 0 0 3px rgba(107,79,187,.10); }
-        .sp-bl-footer { display: flex; align-items: center; gap: 10px;
-          margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
-          flex-wrap: wrap; }
-        .sp-laufzeit-badge { background: var(--violet-pale); color: var(--violet);
-          border-radius: 20px; padding: 4px 12px;
-          font-family: var(--font-display); font-size: 12px; font-weight: 700; }
-        .sp-pkg-hint-badge { background: var(--gold-pale); color: #92400E;
-          border: 1px solid #FDE68A; border-radius: 20px; padding: 4px 12px;
-          font-family: var(--font-display); font-size: 12px; font-weight: 700; }
-        .sp-date-err { background: #FFF5F5; border: 1px solid #FCA5A5; border-radius: 8px;
-          padding: 10px 14px; margin-top: 16px;
-          font-size: 13px; color: #B91C1C; font-weight: 500;
-          display: flex; gap: 8px; align-items: flex-start; }
+        /* Calendar section */
+        .s2-cal      { background: white; border: 1px solid #EDE8F7; border-radius: 14px; padding: 28px; margin-bottom: 24px; }
+        .s2-cal-hdr  { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+        .s2-cal-ttl  { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; color: #2D1F52; }
+        .s2-cal-sub  { font-size: 13px; color: #5A4A7A; margin-top: 3px; }
+        .s2-reset    { font-size: 12px; color: #6B4FBB; cursor: pointer; font-weight: 600; border: none; background: none; padding: 4px 10px; border-radius: 6px; transition: background .15s; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-reset:hover { background: #F0ECFA; }
+        .s2-cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        .s2-cal-fld label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #5A4A7A; margin-bottom: 8px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-cal-fld input[type=date] { width: 100%; padding: 12px 14px; border: 1.5px solid #EDE8F7; border-radius: 8px; font-family: 'Jost', sans-serif; font-size: 15px; font-weight: 600; color: #2D1F52; background: white; cursor: pointer; transition: border-color .15s; outline: none; }
+        .s2-cal-fld input[type=date]:focus { border-color: #6B4FBB; box-shadow: 0 0 0 3px rgba(107,79,187,0.10); }
+        .s2-cal-hint { font-size: 12px; color: #5A4A7A; margin-top: 6px; }
+        .s2-cal-hint span { color: #6B4FBB; font-weight: 500; }
 
-        /* ── Sidebar ── */
-        .sp-scard { background: white; border: 1px solid var(--border); border-radius: var(--r);
-          overflow: hidden; }
-        .sp-scard-hd { background: var(--ink); padding: 22px 20px 18px; }
-        .sp-s-elbl  { font-size: 10px; font-weight: 700; letter-spacing: .12em;
-          text-transform: uppercase; color: rgba(255,255,255,.45);
-          font-family: var(--font-display); margin-bottom: 6px; }
-        .sp-s-big   { font-family: var(--font-display); font-size: 30px; font-weight: 800;
-          color: white; line-height: 1; margin-bottom: 4px; }
-        .sp-s-sub   { font-size: 13px; color: rgba(255,255,255,.55);
-          font-family: var(--font-sans); margin-bottom: 14px; }
-        .sp-s-bar-track { height: 6px; background: rgba(255,255,255,.15);
-          border-radius: 4px; margin-bottom: 6px; overflow: hidden; }
-        .sp-s-bar-fill  { height: 100%; border-radius: 4px;
-          background: linear-gradient(90deg, #B8A9E8, #C4B5F4); transition: width .3s; }
-        .sp-s-ticks { display: flex; justify-content: space-between;
-          font-size: 10px; color: rgba(255,255,255,.35); }
-        .sp-scard-bd { padding: 18px 20px 20px; }
-        .sp-s-budget-lbl { font-size: 10px; font-weight: 700; letter-spacing: .1em;
-          text-transform: uppercase; color: var(--slate);
-          font-family: var(--font-display); margin-bottom: 4px; }
-        .sp-s-budget-num { font-family: var(--font-display); font-size: 22px; font-weight: 800;
-          color: var(--violet); margin-bottom: 18px; }
-        .sp-s-div   { height: 1px; background: var(--border); margin-bottom: 14px; }
-        .sp-s-row   { display: flex; justify-content: space-between; align-items: baseline;
-          margin-bottom: 8px; font-size: 13px; gap: 8px; }
-        .sp-s-rl    { color: var(--slate); flex-shrink: 0; }
-        .sp-s-rv    { font-weight: 600; color: var(--ink); text-align: right;
-          font-family: var(--font-display); }
-        .sp-cta     { width: 100%; margin-top: 18px; padding: 15px;
-          background: var(--violet); color: white; border: none; border-radius: 50px;
-          font-family: var(--font-display); font-size: 15px; font-weight: 700;
-          cursor: pointer; transition: background .15s, transform .15s, box-shadow .15s;
-          display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .sp-cta:hover:not(:disabled) { background: #5940A8; transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(107,79,187,.30); }
-        .sp-cta:disabled { opacity: .45; cursor: not-allowed; }
-        .sp-cta-note { margin-top: 10px; font-size: 11px; color: var(--slate);
-          text-align: center; line-height: 1.45; }
+        /* Budget slider */
+        .s2-sl-lbl-row  { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+        .s2-sl-lbl-txt  { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; color: #5A4A7A; }
+        .s2-sl-lbl-val  { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; color: #6B4FBB; }
+        .s2-sl-track    { position: relative; height: 4px; background: #EDE8F7; border-radius: 4px; margin-bottom: 8px; }
+        .s2-sl-fill     { position: absolute; left: 0; top: 0; bottom: 0; background: #6B4FBB; border-radius: 4px; pointer-events: none; }
+        .s2-sl-range    { display: flex; justify-content: space-between; font-size: 11px; color: #B8ADDA; }
+        .s2-range-input { position: absolute; width: 100%; top: 50%; transform: translateY(-50%); -webkit-appearance: none; background: transparent; cursor: pointer; margin: 0; }
+        .s2-range-input::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); transition: transform .15s; }
+        .s2-range-input::-webkit-slider-thumb:hover { transform: scale(1.15); }
+        .s2-range-input::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
 
-        /* ── Responsive ── */
-        @media (max-width: 900px) {
-          .sp-outer { padding: 24px 20px 60px; }
-          .sp-wrap  { flex-direction: column; }
-          .sp-side  { width: 100%; position: static; }
-          .sp-pkts  { grid-template-columns: 1fr; }
-          .sp-chs   { grid-template-columns: 1fr; }
-          .sp-bl-grid { grid-template-columns: 1fr; }
-        }
+        /* Summary bar */
+        .s2-sum  { background: #F0ECFA; border: 1px solid #D5CCF0; border-radius: 14px; padding: 20px 24px; display: flex; align-items: stretch; margin-bottom: 24px; }
+        .s2-si   { flex: 1; padding: 0 20px; border-right: 1px solid #D5CCF0; }
+        .s2-si:first-child { padding-left: 0; }
+        .s2-si:last-child  { border-right: none; }
+        .s2-si-lbl { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #6B4FBB; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 4px; }
+        .s2-si-val { font-size: 17px; font-weight: 700; color: #2D1F52; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-si-sub { font-size: 12px; color: #5A4A7A; margin-top: 2px; }
+
+        /* Infobox */
+        .s2-info  { background: white; border: 1px solid #EDE8F7; border-left: 3px solid #6B4FBB; border-radius: 14px; padding: 16px 20px; margin-bottom: 32px; display: flex; gap: 12px; align-items: flex-start; }
+        .s2-info-ttl { font-size: 13px; font-weight: 700; color: #2D1F52; margin-bottom: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .s2-info-txt { font-size: 13px; color: #5A4A7A; line-height: 1.55; }
+
+        /* CTA */
+        .s2-cta-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .s2-btn  { display: inline-flex; align-items: center; gap: 8px; background: #6B4FBB; color: white; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; padding: 16px 32px; border-radius: 50px; border: none; cursor: pointer; transition: background .15s, transform .15s, box-shadow .15s; }
+        .s2-btn:hover { background: #5940A8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(107,79,187,0.3); }
+        .s2-cta-sum { font-size: 13px; color: #5A4A7A; line-height: 1.55; }
+        .s2-cta-sum strong { color: #2D1F52; font-weight: 600; }
+
+        /* Responsive */
         @media (min-width: 1024px) {
-          .sp-pkts { grid-template-columns: repeat(3,1fr); }
+          .s2-pkts { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 720px) {
+          .s2-hdr, .s2-main { padding-left: 20px; padding-right: 20px; }
+          .s2-pkts { grid-template-columns: 1fr; }
+          .s2-cal-grid { grid-template-columns: 1fr; }
+          .s2-sum { flex-direction: column; gap: 16px; }
+          .s2-si { border-right: none; border-bottom: 1px solid #D5CCF0; padding: 0 0 16px; }
+          .s2-si:last-child { border-bottom: none; padding-bottom: 0; }
         }
       `}</style>
 
-      <div className="sp-outer">
-        <div className="sp-wrap">
+      <div className="s2">
 
-          {/* ══════════════ LEFT COLUMN ══════════════ */}
-          <div className="sp-main">
+        {/* ── Header ── */}
+        <div className="s2-hdr">
+          <div className="s2-step">
+            <div className="s2-dash" />
+            <span className="s2-etxt">
+              {stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 2'} · Politische Kampagne
+            </span>
+          </div>
+          <h1 className="s2-h1">Wie weit soll deine Kampagne strahlen?</h1>
+          <p className="s2-sub">
+            Alle Preise sind dynamisch auf deine Zielregion abgestimmt. Wähle die Intensität, die zu deinem Ziel passt.
+          </p>
 
-            {/* ── Eyebrow ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ width: 28, height: 2, background: 'var(--violet)', borderRadius: 2, flexShrink: 0 }} />
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--violet)' }}>
-                {stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 2'} · Politische Kampagne
+          {/* Context bar */}
+          <div className="s2-ctx">
+            <span className="s2-chip s2-chip-type">Politische Kampagne</span>
+            {briefing.selectedRegions?.map(r => (
+              <span key={r.name} className="s2-chip s2-chip-region">📍 {r.name}</span>
+            ))}
+            <span className="s2-ctx-voters">
+              {vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}
+            </span>
+            {vioData.daysUntilVote != null && (
+              <span className="s2-chip s2-chip-date">
+                🗓️ Abstimmung in {vioData.daysUntilVote} Tagen
               </span>
-            </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px,2.4vw,32px)', fontWeight: 800, color: 'var(--ink)', lineHeight: 1.15, marginBottom: 8 }}>
-              Wie weit soll deine Kampagne strahlen?
-            </h1>
-            <p style={{ fontSize: 15, color: 'var(--slate)', marginBottom: 28 }}>
-              Alle Preise sind dynamisch auf deine Zielregion abgestimmt.
-            </p>
+            )}
+          </div>
+        </div>
 
-            {/* ── 1. Context bar ── */}
-            <div className="sp-ctx">
-              <span className="sp-badge sp-badge-v">Politische Kampagne</span>
-              {briefing.selectedRegions?.map(r => (
-                <span key={r.name} className="sp-badge sp-badge-pl">📍 {r.name}</span>
-              ))}
-              <span style={{ fontSize: 13, color: 'var(--slate)' }}>
-                {vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}
-              </span>
-              {/* Urgency badge: only if vote within 30 days */}
-              {vioData.daysUntilVote != null && vioData.daysUntilVote <= 30 && (
-                <span className="sp-badge sp-badge-am">
-                  🗳️ Abstimmung in {vioData.daysUntilVote} Tagen
-                </span>
-              )}
-            </div>
+        <div className="s2-main">
 
-            {/* ── 2. Package cards ── */}
-            <div className="sp-sec-label">Intensität wählen</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', alignItems: 'start', marginBottom: 32 }}>
-              {PKG_ORDER.map(key => {
-                const p         = vioData.packages[key];
-                const isSel     = selectedPkg === key;
-                const feasible  = isPkgFeasible(key);
-                const rn        = pkgReach(key);
-                const rp        = pkgReachPct(key);
-                const badge     = PKG_BADGE[key];
-                const badgeText = p.hinweis || badge.fallback;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => handleSelectPkg(key)}
-                    title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung – Daten anpassen'}
-                    style={isSel ? {
-                      border: '2.5px solid #7F77DD',
-                      background: 'linear-gradient(145deg, #EEEDFE 0%, #F8F7FF 100%)',
-                      boxShadow: '0 8px 32px rgba(83,74,183,0.25)',
-                      transform: 'translateY(-2px)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      borderRadius: '14px',
-                      padding: '16px',
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      textAlign: 'left',
-                    } : {
-                      border: '1px solid #E8E6F0',
-                      background: 'white',
-                      boxShadow: 'none',
-                      transform: 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      borderRadius: '14px',
-                      padding: '16px',
-                      position: 'relative',
-                      opacity: 0.75,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      textAlign: 'left',
-                    }}
-                  >
-                    {/* Empfohlen badge */}
-                    {key === 'praesenz' && (
-                      <div style={{
-                        position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
-                        background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 700,
-                        letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 12px',
-                        borderRadius: 20, fontFamily: 'var(--font-display)', whiteSpace: 'nowrap',
-                      }}>Empfohlen</div>
-                    )}
+          {/* ── Packet cards ── */}
+          <div className="s2-pkts">
+            {PKG_ORDER.map(key => {
+              const p        = vioData.packages[key];
+              const isSel    = selectedPkg === key;
+              const daysToVote = vioData?.daysUntilVote ?? 99;
+              const why      = getWHY(key, daysToVote);
+              const cStart   = cardStartISO(key);
+              const cEnd     = sharedEndISO;
 
-                    {/* Radio button */}
-                    {isSel ? (
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#7F77DD', border: '2px solid #7F77DD', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 14, right: 14 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />
-                      </div>
-                    ) : (
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', border: '1.5px solid #D3D1C7', position: 'absolute', top: 14, right: 14 }} />
-                    )}
-
-                    {/* Tier name */}
-                    <div style={{
-                      fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
-                      textTransform: 'uppercase', color: 'var(--slate)',
-                      fontFamily: 'var(--font-display)', marginBottom: 6,
-                    }}>{p.name}</div>
-
-                    {/* Price */}
-                    <div style={isSel
-                      ? { fontSize: 22, fontWeight: 700, color: '#534AB7', fontFamily: 'var(--font-display)', lineHeight: 1, marginBottom: 4 }
-                      : { fontSize: 22, fontWeight: 500, color: '#2C2C2A', fontFamily: 'var(--font-display)', lineHeight: 1, marginBottom: 4 }
-                    }>CHF {fmtN(p.finalBudget)}</div>
-
-                    {/* Duration + freq */}
-                    <div style={{ fontSize: 12, color: 'var(--slate)', marginBottom: 14 }}>
-                      {Math.round(p.durationDays / 7)} Wochen · Ø {p.frequency}× Kontakte/Person
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{ height: 1, background: '#EDE8FF', marginBottom: 12 }} />
-
-                    {/* Reach */}
-                    <div style={{
-                      fontSize: 10, fontWeight: 600, letterSpacing: '.07em',
-                      textTransform: 'uppercase', color: 'var(--slate)',
-                      fontFamily: 'var(--font-display)', marginBottom: 4,
-                    }}>Stimmberechtigte erreichbar</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
-                      ~{fmtN(rn)}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--slate)', marginBottom: 10 }}>
-                      {rp}% der Stimmberechtigten
-                    </div>
-
-                    {/* Progress bar */}
-                    <div style={{ height: 5, background: '#EDE8FF', borderRadius: 3, marginBottom: 10, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 3, width: `${rp}%`, background: 'linear-gradient(90deg, #8B6FD4, #6B4FBB)' }} />
-                    </div>
-
-                    {/* Insight badge */}
-                    <div style={{
-                      marginTop: 'auto',
-                      padding: '8px 10px', borderRadius: 8,
-                      fontSize: 11, lineHeight: 1.5,
-                      display: 'flex', gap: 6, alignItems: 'flex-start',
-                      background: badge.bg, color: badge.color,
-                    }}>
-                      <span style={{ flexShrink: 0 }}>{badge.icon}</span>
-                      {badgeText}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ── 3. Channel cards ── */}
-            <div className="sp-sec-label">Wie deine Werbung ausgespielt wird</div>
-            <div className="sp-chs">
-
-              {/* DOOH */}
-              <ChannelCard
-                imgSrc="/images/vio-dooh-bahnhof.jpg"
-                overlayGradient="linear-gradient(165deg, rgba(22,14,60,0.72) 0%, rgba(83,74,183,0.50) 100%)"
-                icon={
-                  <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
-                    <rect x="1" y="1" width="20" height="13" rx="2" stroke="white" strokeWidth="1.6"/>
-                    <path d="M7 17H15" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
-                    <path d="M11 14V17" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
-                  </svg>
-                }
-                label="DOOH · Im öffentlichen Raum"
-                headline={`bis zu ${fmtN(doohScreens)}`}
-                sub="politisch zugelassene Screens"
-                bullets={['Bahnhöfe & ÖV', 'Einkaufszentren', 'Tankstellen']}
-              />
-
-              {/* Display */}
-              <ChannelCard
-                imgSrc="/images/vio-display-phone.jpg"
-                overlayGradient="linear-gradient(165deg, rgba(8,50,41,0.76) 0%, rgba(29,158,117,0.50) 100%)"
-                icon={
-                  <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
-                    <rect x="1" y="1" width="20" height="13" rx="2" stroke="white" strokeWidth="1.6"/>
-                    <path d="M1 5H21" stroke="white" strokeWidth="1.6"/>
-                    <circle cx="4" cy="3" r="1" fill="white"/>
-                    <circle cx="7" cy="3" r="1" fill="white"/>
-                  </svg>
-                }
-                label="Display · Online"
-                headline={`~${fmtN(dispPersons)}`}
-                sub="Personen erreichbar"
-                bullets={['Schweizer Newsportale', 'Blogs & Magazine', 'Apps mit CH-Usern']}
-              />
-            </div>
-
-            {/* ── 4. Budget & Laufzeit ── */}
-            <div className="sp-sec-label">Budget & Laufzeit anpassen</div>
-            <div className="sp-bl">
-              <div className="sp-bl-grid">
-
-                {/* Budget input */}
-                <div>
-                  <div className="sp-bl-lbl">Gesamtbudget</div>
-                  <div className="sp-budget-input-wrap">
-                    <span className="sp-budget-prefix">CHF</span>
-                    <input
-                      type="number"
-                      className="sp-budget-input"
-                      value={budget}
-                      min={2500}
-                      onChange={e => setBudget(Math.max(0, Number(e.target.value)))}
-                    />
-                  </div>
-                  {budget >= 2500 ? (
-                    <div className="sp-budget-hint">
-                      entspricht etwa{' '}
-                      <span style={{ fontWeight: 700, color: 'var(--violet)' }}>{budgetHint}</span>
-                    </div>
-                  ) : (
-                    <div className="sp-budget-warn">⚠ Mindestbudget: CHF 2&apos;500</div>
-                  )}
-                  {isCapped && (
-                    <div style={{ marginTop: 8, fontSize: 11, color: 'var(--gold)', fontWeight: 600 }}>
-                      ⚠ Max. Reichweite – höheres Budget steigert Frequenz (Ø {effectiveFreq}×)
-                    </div>
-                  )}
-                </div>
-
-                {/* Date inputs */}
-                <div>
-                  <div className="sp-bl-lbl">Kampagnenzeitraum</div>
-                  <div className="sp-date-stack">
-                    <div className="sp-date-fld">
-                      <label>Kampagnenstart</label>
-                      <input
-                        type="date"
-                        value={startISO}
-                        min={earliestStartISO}
-                        max={campaignEndISO ? addDays(campaignEndISO, -7) : undefined}
-                        onChange={e => {
-                          const newStart = e.target.value;
-                          setStartISO(newStart);
-                          setDateError(null);
-                          // Auto-correct end if it falls before start + 7 days
-                          if (newStart && endISO && endISO <= newStart) {
-                            const corrected = addDays(newStart, 7);
-                            setEndISO(corrected);
-                            setEndDateWarn('Enddatum muss nach dem Startdatum liegen.');
-                          } else {
-                            setEndDateWarn(null);
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="sp-date-fld">
-                      <label>Kampagnenende</label>
-                      <input
-                        type="date"
-                        value={endISO}
-                        min={startISO ? addDays(startISO, 1) : earliestStartISO}
-                        max={campaignEndISO || undefined}
-                        onChange={e => {
-                          const newEnd = e.target.value;
-                          setDateError(null);
-                          if (newEnd && startISO && newEnd <= startISO) {
-                            // Auto-correct: set to start + 7 days, show warning
-                            const corrected = addDays(startISO, 7);
-                            setEndISO(corrected);
-                            setEndDateWarn('Enddatum muss nach dem Startdatum liegen.');
-                          } else {
-                            setEndISO(newEnd);
-                            setEndDateWarn(null);
-                          }
-                        }}
-                      />
-                      {endDateWarn && (
-                        <div style={{ marginTop: 6, fontSize: 11, color: '#B91C1C',
-                          background: '#FFF5F5', border: '1px solid #FCA5A5',
-                          borderRadius: 6, padding: '4px 8px', fontWeight: 600 }}>
-                          ⚠ {endDateWarn}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer row */}
-              <div className="sp-bl-footer">
-                <span className="sp-laufzeit-badge">{weeks} {weeks === 1 ? 'Woche' : 'Wochen'}</span>
-                <span className="sp-pkg-hint-badge">{budgetHint}</span>
-                {budget < 2500 && (
-                  <span style={{ fontSize: 12, color: '#B91C1C', fontWeight: 600 }}>
-                    ⚠ Mindestbudget CHF 2&apos;500
-                  </span>
-                )}
-                {campaignEndISO && (
-                  <span style={{ fontSize: 12, color: 'var(--slate)', marginLeft: 'auto' }}>
-                    Empf. Ende: <strong style={{ color: 'var(--ink)' }}>{fmtLong(campaignEndISO)}</strong>
-                  </span>
-                )}
-              </div>
-
-              {/* Date error */}
-              {dateError && (
-                <div className="sp-date-err">
-                  <span style={{ flexShrink: 0 }}>⚠️</span>
-                  {dateError}
-                </div>
-              )}
-            </div>
-
-          </div>{/* /sp-main */}
-
-          {/* ══════════════ RIGHT SIDEBAR ══════════════ */}
-          <div className="sp-side">
-            <div className="sp-scard">
-
-              {/* Reichweite — dark header */}
-              <div className="sp-scard-hd">
-                <div className="sp-s-elbl">Stimmberechtigte erreichbar</div>
-                <div className="sp-s-big">~{fmtN(reach)}</div>
-                <div className="sp-s-sub">{reachPct}% der {inhabitants}</div>
-
-                <div className="sp-s-bar-track">
-                  <div className="sp-s-bar-fill" style={{ width: `${barW}%` }} />
-                </div>
-                <div className="sp-s-ticks">
-                  <span>0%</span>
-                  <span style={{ color: 'rgba(255,255,255,.65)', fontWeight: 700 }}>{reachPct}%</span>
-                  <span>80% (max)</span>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="sp-scard-bd">
-
-                {/* Budget */}
-                <div className="sp-s-budget-lbl">Gesamtbudget</div>
-                <div className="sp-s-budget-num">{fmtCHF(budget)}</div>
-
-                <div className="sp-s-div" />
-
-                {/* Summary rows */}
-                {[
-                  { l: 'Paket',           v: pkg.name },
-                  { l: 'Region',          v: rName },
-                  { l: 'Freq.',           v: `Ø ${effectiveFreq}×` },
-                  { l: 'Start',           v: startISO ? fmtShort(startISO) : '—' },
-                  { l: 'Ende',            v: endISO   ? fmtShort(endISO)   : '—' },
-                ].map(row => (
-                  <div key={row.l} className="sp-s-row">
-                    <span className="sp-s-rl">{row.l}</span>
-                    <span className="sp-s-rv">{row.v}</span>
-                  </div>
-                ))}
-
-                {/* CTA */}
-                <button
-                  type="button"
-                  className="sp-cta"
-                  onClick={handleNext}
-                  disabled={budget < 2500}
+              const feasible = isPkgFeasible(key);
+              return (
+                <div
+                  key={key}
+                  className={`s2-pkt${isSel ? ' sel' : ''}`}
+                  onClick={() => { if (feasible) handleSelectPkg(key); }}
+                  title={feasible ? undefined : 'Zu wenig Zeit bis Abstimmung'}
+                  style={feasible ? undefined : { opacity: 0.42, cursor: 'not-allowed', pointerEvents: 'none' }}
                 >
-                  Weiter zu den Werbemitteln →
-                </button>
+                  {/* Empfohlen badge – always on Präsenz */}
+                  {key === 'praesenz' && (
+                    <div className="s2-rec-badge">Empfohlen</div>
+                  )}
 
-                <div className="sp-cta-note">
-                  Keine Zahlung jetzt — du erhältst zuerst eine Offerte.
+                  {/* Check circle */}
+                  <div className="s2-check-ring">
+                    {isSel && (
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+
+                  {/* Name */}
+                  <div className="s2-pkt-name">{p.name}</div>
+
+                  {/* Price */}
+                  <div className="s2-pkt-price">{fmtCHF(p.finalBudget)}</div>
+
+                  {/* Meta */}
+                  <div className="s2-pkt-dur">{Math.round(p.durationDays / 7)} Wochen Laufzeit</div>
+                  <div className="s2-pkt-freq">Ø {p.frequency} Kontakte pro Person</div>
+
+                  <div className="s2-divider" />
+
+                  {/* Reach box */}
+                  <div className="s2-reach-box">
+                    <div className="s2-reach-lbl">Reichweite</div>
+                    <div className="s2-reach-val">~{p.targetReachPeople.toLocaleString('de-CH')} Personen</div>
+                    <div className="s2-reach-pct">{Math.round(p.uniqueReachPercent * 100)}% der {inhabitants}</div>
+                  </div>
+
+                  {/* Dates */}
+                  {cStart && cEnd && (
+                    <div className="s2-dates">
+                      <div className="s2-date-row">
+                        <span className="s2-date-lbl">Kampagnenstart</span>
+                        <span className="s2-date-val">{fmtLong(cStart)}</span>
+                      </div>
+                      <div className="s2-date-row">
+                        <span className="s2-date-lbl">Ende</span>
+                        <span className="s2-date-val">{fmtLong(cEnd)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Why box */}
+                  <div className={`s2-why${why.variant === 'amber' ? ' amber' : why.variant === 'red' ? ' red' : ''}`}>
+                    <span style={{ flexShrink: 0 }}>{why.variant === 'green' ? '✅' : why.variant === 'red' ? '🚫' : '⚡'}</span>
+                    {why.text}
+                  </div>
+
+                  {/* Dynamic hinweis (timing warning from vioData, if set) */}
+                  {p.hinweis && (
+                    <div className="s2-why-hint">
+                      <span style={{ flexShrink: 0 }}>⚠️</span>
+                      {p.hinweis}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── Reichweite Kacheln ── */}
+          {(() => {
+            const regionName = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
+            const regionType = briefing.politikRegionType ?? briefing.selectedRegions?.[0]?.type ?? 'schweiz';
+            const kantonCode = briefing.selectedRegions?.[0]?.kanton;
+            let doohEntry: DoohEntry | undefined;
+            if (regionType === 'schweiz') {
+              doohEntry = DOOH_DATA_POLITIK.find(d => d.type === 'schweiz');
+            } else if (regionType === 'stadt') {
+              doohEntry = DOOH_DATA_POLITIK.find(d => d.type === 'stadt' && d.name === regionName);
+            } else {
+              doohEntry = DOOH_DATA_POLITIK.find(d => d.type === 'kanton' && d.kanton === kantonCode);
+            }
+            const doohScreenCount = doohEntry?.screens_politik ?? 0;
+            return (
+              <ReichweiteKacheln
+                type="politik"
+                region={regionName}
+                doohScreens={doohScreenCount}
+                displayPersonen={Math.round(customReachPeople * 0.3)}
+                reachVon={Math.round(customReachPeople * 0.85)}
+                reachBis={customReachPeople}
+                frequency={pkg.frequency}
+              />
+            );
+          })()}
+
+          {/* ── Calendar + Budget ── */}
+          <div className="s2-cal">
+            <div className="s2-cal-hdr">
+              <div>
+                <div className="s2-cal-ttl">Zeitraum & Budget anpassen</div>
+                <div className="s2-cal-sub">Passe Start, Ende und Budget individuell an.</div>
+              </div>
+              <button type="button" className="s2-reset" onClick={handleReset}>
+                ↺ Zurücksetzen
+              </button>
+            </div>
+
+            <div className="s2-cal-grid">
+              <div className="s2-cal-fld">
+                <label>Kampagnenstart</label>
+                <input
+                  type="date"
+                  value={startISO}
+                  min={earliestStartISO}
+                  max={endISO ? addDays(endISO, -7) : undefined}
+                  onChange={e => { setStartISO(e.target.value); setDateError(null); }}
+                />
+                <div className="s2-cal-hint">
+                  Frühestmöglich: <span>{earliestStart}</span> (nach Freigabe)
                 </div>
               </div>
+              <div className="s2-cal-fld">
+                <label>Kampagnenende</label>
+                <input
+                  type="date"
+                  value={endISO}
+                  min={startISO ? addDays(startISO, 7) : undefined}
+                  max={campaignEndISO || undefined}
+                  onChange={e => { setEndISO(e.target.value); setDateError(null); }}
+                />
+                <div className="s2-cal-hint">
+                  Empfohlen: <span>{recommendedEnd}</span> (vor Unterlagen-Versand)
+                </div>
+              </div>
+            </div>
+
+            {/* Date validation error */}
+            {dateError && (
+              <div style={{
+                background: '#FFF5F5', border: '1px solid #FCA5A5', borderRadius: 8,
+                padding: '10px 14px', marginBottom: 20,
+                fontSize: 13, color: '#B91C1C', fontWeight: 500,
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+              }}>
+                <span style={{ flexShrink: 0 }}>⚠️</span>
+                {dateError}
+              </div>
+            )}
+
+            {/* Budget slider */}
+            <div>
+              <div className="s2-sl-lbl-row">
+                <span className="s2-sl-lbl-txt">Budget</span>
+                <span className="s2-sl-lbl-val">{fmtCHF(budget)}</span>
+              </div>
+              <div className="s2-sl-track">
+                <div className="s2-sl-fill" style={{ width: `${budgetPct}%` }} />
+                <input
+                  type="range"
+                  className="s2-range-input"
+                  min={2500}
+                  max={200000}
+                  step={500}
+                  value={budget}
+                  onChange={e => setBudget(Number(e.target.value))}
+                />
+              </div>
+              <div className="s2-sl-range">
+                <span>CHF 2&apos;500</span>
+                <span>CHF 200&apos;000</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Summary bar ── */}
+          <div className="s2-sum">
+            <div className="s2-si">
+              <div className="s2-si-lbl">Paket</div>
+              <div className="s2-si-val">{isCustomBudget ? 'Custom' : pkg.name}</div>
+              <div className="s2-si-sub">
+                {isCustomBudget
+                  ? 'Angepasst'
+                  : selectedPkg === 'praesenz'
+                  ? 'Empfohlen'
+                  : `${Math.round(pkg.uniqueReachPercent * 100)}% Reichweite`}
+              </div>
+            </div>
+            <div className="s2-si">
+              <div className="s2-si-lbl">Zeitraum</div>
+              <div className="s2-si-val">
+                {startISO && endISO
+                  ? `${fmtShort(startISO)} – ${fmtShort(endISO)}`
+                  : '—'}
+              </div>
+              <div className="s2-si-sub">{weeks} Wochen</div>
+            </div>
+            <div className="s2-si">
+              <div className="s2-si-lbl">Reichweite</div>
+              <div className="s2-si-val">~{customReachPeople.toLocaleString('de-CH')}</div>
+              <div className="s2-si-sub">{Math.round(customReachPct * 100)}% der {inhabitants}</div>
+              {isCapped && (
+                <div style={{ fontSize: '11px', color: '#D4A843', marginTop: '4px', fontWeight: 600 }}>
+                  ⚠ Max. Reichweite – höheres Budget steigert Frequenz (Ø {effectiveFreq}×)
+                </div>
+              )}
+            </div>
+            <div className="s2-si">
+              <div className="s2-si-lbl">Budget total</div>
+              <div className="s2-si-val">{fmtCHF(budget)}</div>
+              <div className="s2-si-sub">DOOH + Display inkl.</div>
+            </div>
+          </div>
+
+          {/* ── DOOH Infobox (immer sichtbar) ── */}
+          <div className="s2-info">
+            <div style={{ fontSize: '18px', flexShrink: 0, marginTop: '1px' }}>📋</div>
+            <div>
+              <div className="s2-info-ttl">Warum so früh buchen? DOOH-Freigabe für politische Kampagnen</div>
+              <div className="s2-info-txt">
+                Digitale Aussenwerbung für politische Kampagnen muss von jedem Standortbetreiber individuell
+                freigegeben werden. Dieser Prozess dauert in der Regel 5–7 Werktage. Wir empfehlen deshalb
+                frühzeitig zu buchen – damit deine Kampagne pünktlich live geht und du den wichtigsten Zeitraum
+                vor der brieflichen Stimmabgabe optimal nutzt.
+              </div>
+            </div>
+          </div>
+
+          {/* ── CTA ── */}
+          <div className="s2-cta-row">
+            <button type="button" className="s2-btn" onClick={handleNext}>
+              Weiter zu den Werbemitteln
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div className="s2-cta-sum">
+              <strong>{isCustomBudget ? 'Custom' : pkg.name} · {fmtCHF(budget)}</strong><br />
+              <span>{weeks} Wochen · ~{customReachPeople.toLocaleString('de-CH')} Personen erreicht</span>
             </div>
           </div>
 
