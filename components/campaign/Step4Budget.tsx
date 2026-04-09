@@ -393,6 +393,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         return "Tipp: Mit etwas mehr Budget lässt sich die Reichweite deutlich steigern.";
       })();
 
+  const POLITIK_FREQ: Record<PaketId, number> = { sichtbar: 3, praesenz: 4, dominanz: 7 };
   const personLabel  = isPolitik ? 'Stimmberechtigte' : isB2B ? 'Mitarbeitende' : 'Personen';
   const einwohner    = isB2B ? `Mitarbeitende in ${b2bBrancheDisplay}` : getEinwohner(primaryRegionName);
   const ctBadgeLabel = briefing.campaignType === 'b2c' ? 'B2C' : briefing.campaignType === 'b2b' ? 'B2B' : 'Politische Kampagne';
@@ -478,6 +479,22 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         .region-actions{display:flex;gap:8px;margin-top:12px;}
         .region-confirm-btn{min-height:44px;padding:8px 20px;border-radius:100px;background:#6B4FBB;color:white;font-size:14px;font-weight:600;border:none;cursor:pointer;}
         .region-cancel-btn{min-height:44px;padding:8px 20px;border-radius:100px;background:transparent;color:#7A7596;border:1px solid rgba(107,79,187,0.10);font-size:14px;font-weight:600;cursor:pointer;}
+        .ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+        .ch-card{border-radius:14px;overflow:hidden;position:relative;min-height:200px;}
+        .ch-body{position:relative;z-index:2;padding:20px;min-height:200px;display:flex;flex-direction:column;justify-content:space-between;}
+        .ch-icon{width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;}
+        .ch-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:4px;margin-top:20px;}
+        .ch-big{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;color:white;line-height:1.1;}
+        .ch-sub{font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px;margin-top:2px;}
+        .ch-bullets{list-style:none;display:flex;flex-direction:column;gap:5px;padding:0;}
+        .ch-bullets li{font-size:12px;color:rgba(255,255,255,0.85);display:flex;align-items:center;gap:7px;}
+        .bdot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.5);flex-shrink:0;display:inline-block;}
+        .wdb{background:#2D1F52;border-radius:16px;padding:24px 28px;margin-bottom:16px;}
+        .wdb-lbl{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:8px;}
+        .wdb-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:36px;font-weight:800;color:white;letter-spacing:-.025em;line-height:1.1;margin-bottom:6px;}
+        .wdb-sub{font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:16px;}
+        .wdb-chips{display:flex;gap:8px;flex-wrap:wrap;}
+        .wdb-chip{border-radius:100px;padding:4px 12px;font-size:11px;font-weight:600;}
         .mobile-calc{display:none;margin-bottom:20px;}
         .mobile-calc-btn{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;background:white;border:1px solid rgba(107,79,187,0.10);border-radius:14px;padding:12px 16px;font-size:14px;font-weight:600;color:#2D1F52;cursor:pointer;}
         .mobile-calc-body{background:white;border:1px solid rgba(107,79,187,0.10);border-top:none;border-radius:0 0 14px 14px;padding:12px 16px 16px;}
@@ -485,6 +502,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         @media (max-width:900px){
           .wrap{grid-template-columns:1fr;padding:20px 16px 80px;gap:24px;}
           .pkg-grid{grid-template-columns:1fr;}
+          .ch-grid{grid-template-columns:1fr;}
           .sidebar{display:none;}
           .sliders{grid-template-columns:1fr;gap:20px;}
           .mobile-calc{display:block;}
@@ -622,6 +640,73 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               );
             })}
           </div>
+
+          {/* ── CHANNEL CARDS (Politik only) ── */}
+          {isPolitik && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Wie deine Werbung ausgespielt wird</div>
+              <div className="ch-grid">
+                <div className="ch-card">
+                  <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/images/vio-dooh-bahnhof.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(165deg,rgba(22,14,60,0.72) 0%,rgba(83,74,183,0.50) 100%)' }} />
+                  <div className="ch-body">
+                    <div className="ch-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="4" width="20" height="13" rx="2" stroke="white" strokeWidth="1.5"/>
+                        <path d="M8 21h8M12 17v4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="ch-lbl">DOOH · Im öffentlichen Raum</div>
+                      <div className="ch-big">bis zu {fmtN(reach.screens)}</div>
+                      <div className="ch-sub">politisch zugelassene Screens</div>
+                      <ul className="ch-bullets">
+                        <li><span className="bdot" />Bahnhöfe &amp; ÖV</li>
+                        <li><span className="bdot" />Einkaufszentren</li>
+                        <li><span className="bdot" />Tankstellen</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="ch-card">
+                  <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/images/vio-display-phone.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(165deg,rgba(8,50,41,0.76) 0%,rgba(29,158,117,0.50) 100%)' }} />
+                  <div className="ch-body">
+                    <div className="ch-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="6" width="18" height="12" rx="2" stroke="white" strokeWidth="1.5"/>
+                        <path d="M7 10h10M7 14h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="ch-lbl">Display · Online</div>
+                      <div className="ch-big">~{fmtN(reach.displayUnique)}</div>
+                      <div className="ch-sub">Personen erreichbar</div>
+                      <ul className="ch-bullets">
+                        <li><span className="bdot" />Schweizer Newsportale</li>
+                        <li><span className="bdot" />Blogs &amp; Magazine</li>
+                        <li><span className="bdot" />Apps mit CH-Usern</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── WAS DAS BEDEUTET (Politik only) ── */}
+          {isPolitik && (
+            <div className="wdb">
+              <div className="wdb-lbl">Was das bedeutet</div>
+              <div className="wdb-num">~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
+              <div className="wdb-sub">{einwohner} sehen deine Botschaft durchschnittlich Ø{POLITIK_FREQ[selectedPkg]}× — auf dem Weg zur Abstimmung, im Alltag und online.</div>
+              <div className="wdb-chips">
+                <span className="wdb-chip" style={{ background: 'rgba(107,79,187,0.30)', color: '#C4B8F8' }}>70% DOOH</span>
+                <span className="wdb-chip" style={{ background: 'rgba(29,158,117,0.25)', color: '#6DD9BA' }}>30% Display</span>
+                <span className="wdb-chip" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.70)' }}>Ø {POLITIK_FREQ[selectedPkg]}× Kontakte</span>
+              </div>
+            </div>
+          )}
 
           {/* ── Reichweite Kacheln (B2B only) ── */}
           {isB2B && b2bPakete && (
