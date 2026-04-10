@@ -645,48 +645,48 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
           {isPolitik && (
             <>
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Wie deine Werbung ausgespielt wird</div>
-              <div className="ch-grid">
-                <div className="ch-card">
-                  <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/images/vio-dooh-bahnhof.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(165deg,rgba(22,14,60,0.72) 0%,rgba(83,74,183,0.50) 100%)' }} />
-                  <div className="ch-body">
-                    <div className="ch-icon">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                        <rect x="2" y="4" width="20" height="13" rx="2" stroke="white" strokeWidth="1.5"/>
-                        <path d="M8 21h8M12 17v4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="ch-lbl">DOOH · Im öffentlichen Raum</div>
-                      <div className="ch-big">bis zu {fmtN(reach.screens)}</div>
-                      <div className="ch-sub">politisch zugelassene Screens</div>
-                      <ul className="ch-bullets">
-                        <li><span className="bdot" />Bahnhöfe &amp; ÖV</li>
-                        <li><span className="bdot" />Einkaufszentren</li>
-                        <li><span className="bdot" />Tankstellen</li>
-                      </ul>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {/* DOOH */}
+                <div style={{ background: 'linear-gradient(135deg, #3B2980 0%, #2D1F52 100%)', borderRadius: 16, minHeight: 210, padding: 24, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="4" width="20" height="13" rx="2" stroke="white" strokeWidth="1.5"/>
+                      <path d="M8 21h8M12 17v4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>DOOH · Im öffentlichen Raum</div>
+                    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 28, fontWeight: 800, color: 'white', lineHeight: 1.1, marginBottom: 4 }}>bis zu {fmtN(reach.screens)}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 14 }}>digitale Screens</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {['Bahnhöfe & ÖV', 'Einkaufszentren', 'Tankstellen'].map(b => (
+                        <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.5)', flexShrink: 0, display: 'inline-block' }} />
+                          {b}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <div className="ch-card">
-                  <div style={{ position: 'absolute', inset: 0, backgroundImage: "url('/images/vio-display-phone.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(165deg,rgba(8,50,41,0.76) 0%,rgba(29,158,117,0.50) 100%)' }} />
-                  <div className="ch-body">
-                    <div className="ch-icon">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="6" width="18" height="12" rx="2" stroke="white" strokeWidth="1.5"/>
-                        <path d="M7 10h10M7 14h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="ch-lbl">Display · Online</div>
-                      <div className="ch-big">~{fmtN(reach.displayUnique)}</div>
-                      <div className="ch-sub">Personen erreichbar</div>
-                      <ul className="ch-bullets">
-                        <li><span className="bdot" />Schweizer Newsportale</li>
-                        <li><span className="bdot" />Blogs &amp; Magazine</li>
-                        <li><span className="bdot" />Apps mit CH-Usern</li>
-                      </ul>
+                {/* Display */}
+                <div style={{ background: 'linear-gradient(135deg, #1A4A2E 0%, #0F2E1C 100%)', borderRadius: 16, minHeight: 210, padding: 24, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="6" width="18" height="12" rx="2" stroke="white" strokeWidth="1.5"/>
+                      <path d="M7 10h10M7 14h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', marginBottom: 6 }}>Display · Online</div>
+                    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 28, fontWeight: 800, color: 'white', lineHeight: 1.1, marginBottom: 4 }}>~{fmtN(reach.displayUnique)}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 14 }}>Personen erreichbar</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {['Schweizer Newsportale', 'Blogs & Magazine', 'Apps mit CH-Usern'].map(b => (
+                        <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.5)', flexShrink: 0, display: 'inline-block' }} />
+                          {b}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
