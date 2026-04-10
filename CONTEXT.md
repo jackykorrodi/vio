@@ -15,6 +15,48 @@
 - **B2B** (5 Steps): Zielgruppe → Budget → Werbemittel → Abschluss → Bestätigung
 - **B2C** (7 Steps, deprioritisiert): URL → Analyse → Zielgruppe → Budget → Werbemittel → Abschluss → Bestätigung
 
+## Flow-Details
+
+### Gemeinsame Logik (alle Flows)
+- State lebt im BriefingData-Objekt im React-State — kein Backend bis zum Abschluss-Step
+- SessionId (UUID) wird generiert wenn User Werbemittel-Step erreicht
+- Abschluss → POST /api/submit-briefing → HubSpot Contact + Deal + Resend E-Mail an User + intern
+- Budget > CHF 15k: Calendly-Link wird automatisch in E-Mail eingefügt
+
+### Politik Flow — Komponenten
+1. Step2Politik → Region, Abstimmungstyp, Wahldatum
+2. StepPackages (campaign/) → Pakete Sichtbar/Präsenz/Dominanz
+3. Step5Creative → Step5AdCreator → Werbemittel
+4. Step6Contact → Kontaktdaten + Abschluss
+5. Step7Confirmation → Bestätigung
+
+### B2B Flow — Komponenten
+1. Step1B2B → Branche, Region, Unternehmensgrösse
+2. Step4Budget (steps/) → Budget + Reichweite in Firmen/Mitarbeiter
+3. Step5Creative → Step5AdCreator → Werbemittel
+4. Step6Contact → Kontaktdaten + Abschluss
+5. Step7Confirmation → Bestätigung
+
+### B2C Flow — Komponenten
+1. Inline URL-Input in B2CFlow.tsx (Tech-Debt: sollte eigene Komponente sein)
+2. Step2Analysis → Firecrawl + Gemini Analyse (POST /api/analyze-url)
+3. Step3Audience → Zielgruppe prüfen/anpassen
+4. Step4Budget (steps/) → Budget + Reichweite
+5. Step5Creative → Step5AdCreator → Werbemittel
+6. Step6Contact → Kontaktdaten + Abschluss
+7. Step7Confirmation → Bestätigung
+
+### Step8Dashboard
+- Ist ein Feedback-Formular nach Buchung (POST /api/feedback)
+- In B2B + B2C als Step 6/8 vorhanden aber nicht im Stepper sichtbar
+- Nutzt altes Farb-System (Terracotta) — vor Aktivierung auf VIO Design-System updaten
+- Status: Vorhanden, nicht aktiv promoted, kein Go-Live Blocker
+
+## Tech-Debt (nach Go-Live angehen)
+- B2C Step 1 URL-Input ist inline in B2CFlow.tsx — in eigene Step1B2C.tsx Komponente auslagern
+- Step5AdCreator (1134 Zeilen) + Step4Budget/steps (951 Zeilen) sind zu gross — aufteilen
+- Step8Dashboard Farben auf VIO Design-System updaten wenn aktiviert
+
 ## Wichtige Dateien
 - `lib/dooh-screens.json` — 146 Einträge, Feld screens_politik für ~78% politikfähige Screens
 - `lib/vio-inhabitants-map.ts` — 26 Kantone + ~120 Gemeinden mit Demonymen
@@ -92,5 +134,5 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: constants.ts Farben korrigiert, Step4Budget Duplikat markiert
+- Was wurde geändert: Flow-Details, Step8Dashboard-Status und Tech-Debt in CONTEXT.md dokumentiert
 - Datum: 2026-04-10
