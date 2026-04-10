@@ -47,11 +47,28 @@
 - Prototyp aus /public/prototypes/ als Referenz mitgeben bei visuellen Änderungen
 - Endet immer mit: git add . && git commit -m 'feat: [beschreibung]' && git push
 
+## Definition of Done
+Ein Task gilt als abgeschlossen wenn:
+1. Vercel Build grün (kein Deploy-Fehler)
+2. Screenshot in Vercel gemacht und mit Prototyp/Ziel verglichen
+3. Abnahme erfolgt (visuell oder funktional bestätigt)
+4. CONTEXT.md ## Letzter Stand aktualisiert
+
+## Commit-Konvention
+Format: `feat: [was] — [wo] — getestet: ja/nein`
+Beispiele:
+- `feat: channel cards inline-styled — Step4Budget.tsx — getestet: ja ✓`
+- `fix: paketauswahl klickbar — StepPackages.tsx — getestet: nein (Vercel pending)`
+
+## Stabile Versionen (Git Tags)
+Bei jedem funktionierenden Meilenstein: `git tag v0.x-stable`
+Rollback: `git checkout v0.x-stable`
+
 ## Offene Go-Live Blocker
 🔴 KRITISCH: HubSpot Properties anlegen / Resend Domain verifizieren / Vercel ENV prüfen / Firecrawl Rate Limiting
 🟡 WICHTIG: Mobile Steps 1-4+6-7 / Session Timeout / Firecrawl Fallback / Offerte PDF / Duplicate Submission
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: Prototypen in /public/prototypes/ organisiert, Komponenten-Pfade in CONTEXT.md dokumentiert
+- Was wurde geändert: Definition of Done + Commit-Konvention + Git Tags in CONTEXT.md
 - Datum: 2026-04-10
