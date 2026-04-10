@@ -23,6 +23,18 @@
 - `public/vio-adcreator-v16.html` — Ad Creator Referenz
 - `public/prototypes/` — Abgenommene HTML-Prototypen als Ground Truth
 
+### Step-Komponenten (immer exakte Pfade verwenden)
+- `components/steps/Step1Entry.tsx` — Einstieg B2C
+- `components/steps/Step1B2B.tsx` — Einstieg B2B
+- `components/steps/Step2Politik.tsx` — Politik Region
+- `components/steps/Step2PolitikBudget.tsx` — Politik Budget
+- `components/steps/Step4Budget.tsx` — B2C Budget
+- `components/campaign/Step4Budget.tsx` — Campaign Budget (ACHTUNG: andere Datei als steps/Step4Budget.tsx)
+- `components/campaign/StepPackages.tsx` — Paketauswahl
+
+### Prototypen (Ground Truth für visuelle Implementierung)
+- `public/prototypes/` — alle abgenommenen HTML-Referenzen
+
 ## Bekannte Fallstricke
 - Umlaut-Encoding: Immer gegen Schweizer Schreibweise validieren (Bülach, nicht Bulach)
 - CSS + Turbopack: Bei visuellen Komponenten inline style={{}} bevorzugen, keine externen CSS-Klassen
@@ -41,5 +53,5 @@
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: CONTEXT.md als Claude Code Referenzdatei erstellt (Single Source of Truth für alle Tasks)
+- Was wurde geändert: Prototypen in /public/prototypes/ organisiert, Komponenten-Pfade in CONTEXT.md dokumentiert
 - Datum: 2026-04-10
