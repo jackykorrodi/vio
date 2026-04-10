@@ -43,6 +43,18 @@
 - Nie CPM oder Kanalaufteilung dem User zeigen — nur Von-Bis Reichweite
 
 ## Prompt-Regeln
+
+### Pre-Prompt Checkliste (vor jedem Task abhaken)
+☐ HTML-Prototyp abgenommen und in /public/prototypes/?
+☐ Exakter Dateipfad bekannt?
+☐ Task auf eine einzige Sache reduziert?
+→ Nur wenn alle drei ✓: Prompt ausführen
+
+### Prompt-Abschluss (immer in dieser Reihenfolge)
+1. npx tsc --noEmit ausführen — bei Fehlern zuerst fixen, dann weiter
+2. CONTEXT.md ## Letzter Stand updaten
+3. git add . && git commit -m 'feat: [was] — [wo] — getestet: ja/nein' && git push
+
 - Struktur: ZIEL / DATEI / ZEILEN / REFERENZ / ÄNDERUNG / NICHT ANFASSEN
 - Immer Dateipfade angeben, nie ohne Kontext bauen
 - Prototyp aus /public/prototypes/ als Referenz mitgeben bei visuellen Änderungen
@@ -80,5 +92,5 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: Decision Log + DESIGN.md erstellt
+- Was wurde geändert: Pre-Prompt Checkliste + TypeScript-Check in CONTEXT.md
 - Datum: 2026-04-10
