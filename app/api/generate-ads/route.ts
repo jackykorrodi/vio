@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/rate-limit';
 
 const DEAL_ID_RE = /^\d{1,20}$/;
 
@@ -7,6 +8,11 @@ function safeStr(val: unknown, maxLen: number): string {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = rateLimit(request, { limit: 20, windowMs: 60_000 });
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Zu viele Anfragen.' }, { status: 429 });
+  }
+
   try {
     let body: unknown;
     try {

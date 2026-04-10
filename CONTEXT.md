@@ -92,5 +92,5 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: Pre-Prompt Checkliste + TypeScript-Check in CONTEXT.md
+- Was wurde geändert: Security Ebene 1 — Rate Limiting, CORS, Security Headers, Duplicate Submission Schutz
 - Datum: 2026-04-10

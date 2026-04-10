@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@hubspot/api-client';
 import { AssociationSpecAssociationCategoryEnum } from '@hubspot/api-client/lib/codegen/crm/deals';
 import { BriefingData } from '@/lib/types';
+import { rateLimit } from '@/lib/rate-limit';
+import { checkDuplicate } from '@/lib/submission-guard';
 
 export async function POST(request: NextRequest) {
   console.log('[submit-briefing] route hit');
+
+  const rl = rateLimit(request, { limit: 5, windowMs: 60_000 });
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Zu viele Anfragen. Bitte warte eine Minute.' }, { status: 429 });
+  }
 
   try {
     let briefing: Record<string, unknown>;
@@ -33,6 +40,12 @@ export async function POST(request: NextRequest) {
     }
     if (briefing.abschluss !== 'offerte' && briefing.abschluss !== 'buchen') {
       return NextResponse.json({ error: 'Ungültiger Abschluss-Wert' }, { status: 400 });
+    }
+
+    // Duplicate submission guard
+    const dupKey = `${briefing.email}-${briefing.kampagnentyp}`;
+    if (checkDuplicate(dupKey)) {
+      return NextResponse.json({ error: 'Diese Kampagne wurde bereits eingereicht.' }, { status: 409 });
     }
 
     // All required fields validated — safe to treat as BriefingData

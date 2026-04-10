@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import FirecrawlApp from '@mendable/firecrawl-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { rateLimit } from '@/lib/rate-limit';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -214,6 +215,11 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleRequest(request: NextRequest): Promise<NextResponse> {
+  const rl = rateLimit(request, { limit: 10, windowMs: 60_000 });
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Zu viele Anfragen.' }, { status: 429 });
+  }
+
   // ── FATAL wrapper — nothing should escape silently ─────────────────────────
   let rawUrl = '';
   try {
