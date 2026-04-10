@@ -29,8 +29,8 @@
 - `components/steps/Step1B2B.tsx` — Einstieg B2B
 - `components/steps/Step2Politik.tsx` — Politik Region
 - `components/steps/Step2PolitikBudget.tsx` — Politik Budget
-- `components/steps/Step4Budget.tsx` — B2C Budget
-- `components/campaign/Step4Budget.tsx` — Campaign Budget (ACHTUNG: andere Datei als steps/Step4Budget.tsx)
+- `components/steps/Step4Budget.tsx` — B2C + B2B Budget (AKTIV, wird von B2BFlow + B2CFlow importiert)
+- `components/campaign/Step4Budget.DEPRECATED.tsx` — NICHT VERWENDEN (ungenutzt, deprecated)
 - `components/campaign/StepPackages.tsx` — Paketauswahl
 
 ### Prototypen (Ground Truth für visuelle Implementierung)
@@ -92,5 +92,5 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: Security Ebene 1 — Rate Limiting, CORS, Security Headers, Duplicate Submission Schutz
+- Was wurde geändert: constants.ts Farben korrigiert, Step4Budget Duplikat markiert
 - Datum: 2026-04-10

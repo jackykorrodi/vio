@@ -1,3 +1,4 @@
+// DEPRECATED — nicht verwenden, siehe components/steps/Step4Budget.tsx
 'use client';
 
 import { useState, useMemo } from 'react';

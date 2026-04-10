@@ -1,11 +1,14 @@
 export const COLORS = {
-  navy: '#0A0A23',
-  red: '#FF3B30',
-  success: '#34C759',
-  background: '#F8F8F8',
+  violet: '#6B4FBB',
+  ink: '#2D1F52',
+  inkLight: '#3d2d6e',
+  background: '#F7F5FF',
+  backgroundSecondary: '#EDE8FA',
+  green: '#2BB67A',
+  amber: '#E8A838',
+  red: '#E05252',
   white: '#FFFFFF',
-  gray: '#6B7280',
-  lightGray: '#E5E7EB',
+  border: '#D4CCF0',
 };
 
 export const CANTONS = [
