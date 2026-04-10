@@ -39,3 +39,7 @@
 🔴 KRITISCH: HubSpot Properties anlegen / Resend Domain verifizieren / Vercel ENV prüfen / Firecrawl Rate Limiting
 🟡 WICHTIG: Mobile Steps 1-4+6-7 / Session Timeout / Firecrawl Fallback / Offerte PDF / Duplicate Submission
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
+
+## Letzter Stand
+- Was wurde geändert: CONTEXT.md als Claude Code Referenzdatei erstellt (Single Source of Truth für alle Tasks)
+- Datum: 2026-04-10
