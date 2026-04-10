@@ -20,6 +20,7 @@
 - `lib/vio-inhabitants-map.ts` — 26 Kantone + ~120 Gemeinden mit Demonymen
 - `lib/vio-paketlogik.ts` — Dynamische Paketlogik Politik (Sichtbar/Präsenz/Dominanz)
 - `lib/b2b-paketlogik.ts` — Paketlogik B2B
+- `DESIGN.md` — Design System, vor visuellen Änderungen lesen
 - `public/vio-adcreator-v16.html` — Ad Creator Referenz
 - `public/prototypes/` — Abgenommene HTML-Prototypen als Ground Truth
 
@@ -64,11 +65,20 @@ Beispiele:
 Bei jedem funktionierenden Meilenstein: `git tag v0.x-stable`
 Rollback: `git checkout v0.x-stable`
 
+## Decision Log
+| Datum | Entscheid | Begründung |
+|---|---|---|
+| 2026-04-10 | Inline styles statt CSS-Klassen für Komponenten | Turbopack cached CSS aggressiv, inline ist zuverlässiger |
+| 2026-04-10 | HubSpot Deal Properties statt Supabase | MVP-tauglich, kein extra Service nötig |
+| 2026-04-10 | Gemini 2.5 Flash statt Claude für Analyse | Kosteneffizienter für URL-Crawling |
+| 2026-04-10 | 70% DOOH / 30% Display fix | Bewusste Mediaplanung-Entscheidung, nicht ändern |
+| 2026-04-10 | Keine CPM-Anzeige für User | Vereinfachung, nur Von-Bis Reichweite zeigen |
+
 ## Offene Go-Live Blocker
 🔴 KRITISCH: HubSpot Properties anlegen / Resend Domain verifizieren / Vercel ENV prüfen / Firecrawl Rate Limiting
 🟡 WICHTIG: Mobile Steps 1-4+6-7 / Session Timeout / Firecrawl Fallback / Offerte PDF / Duplicate Submission
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: Definition of Done + Commit-Konvention + Git Tags in CONTEXT.md
+- Was wurde geändert: Decision Log + DESIGN.md erstellt
 - Datum: 2026-04-10
