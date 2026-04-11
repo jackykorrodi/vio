@@ -176,12 +176,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   return (
     <section style={{ background: '#F5F3FF', minHeight: '100vh', fontFamily: "'Jost', sans-serif", paddingBottom: 60 }}>
       <style>{`
-        .sp-pkt { position: relative; background: white; border: 1px solid rgba(107,79,187,0.12); border-radius: 14px; padding: 16px; cursor: pointer; text-align: left; transition: all 0.18s; opacity: 0.72; }
-        .sp-pkt:hover { opacity: 0.88; }
-        .sp-pkt.active { border: 2px solid #7F77DD; background: linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%); box-shadow: 0 8px 28px rgba(107,79,187,0.18); transform: translateY(-2px); opacity: 1; }
-        .sp-pkt.infeasible { opacity: 0.42; cursor: not-allowed; pointer-events: none; }
-        .sp-check { position: absolute; top: 13px; right: 13px; width: 18px; height: 18px; border-radius: 50%; background: white; border: 1.5px solid #D3D1C7; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-        .sp-pkt.active .sp-check { background: #6B4FBB; border-color: #6B4FBB; }
         .sp-range { width: 100%; height: 4px; border-radius: 2px; outline: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; background: transparent; position: absolute; top: 50%; transform: translateY(-50%); margin: 0; }
         .sp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
         .sp-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
@@ -241,8 +235,21 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               return (
                 <div
                   key={key}
-                  className={`sp-pkt${isSel ? ' active' : ''}${!feasible ? ' infeasible' : ''}`}
                   onClick={() => feasible && handleSelectPkg(key)}
+                  style={{
+                    position: 'relative',
+                    background: isSel ? 'linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%)' : 'white',
+                    border: isSel ? '2px solid #7F77DD' : '1px solid rgba(107,79,187,0.12)',
+                    borderRadius: 14,
+                    padding: 16,
+                    cursor: feasible ? 'pointer' : 'not-allowed',
+                    textAlign: 'left' as const,
+                    transition: 'all 0.18s',
+                    opacity: !feasible ? 0.42 : isSel ? 1 : 0.72,
+                    boxShadow: isSel ? '0 8px 28px rgba(107,79,187,0.18)' : 'none',
+                    transform: isSel ? 'translateY(-2px)' : 'none',
+                    pointerEvents: !feasible ? 'none' as const : 'auto' as const,
+                  }}
                 >
                   {/* Empfohlen pill */}
                   {isRec && (
@@ -252,7 +259,20 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   )}
 
                   {/* Check circle */}
-                  <div className="sp-check">
+                  <div style={{
+                    position: 'absolute',
+                    top: 13,
+                    right: 13,
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    background: isSel ? '#6B4FBB' : 'white',
+                    border: isSel ? '1.5px solid #6B4FBB' : '1.5px solid #D3D1C7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s',
+                  }}>
                     {isSel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
                   </div>
 
@@ -291,7 +311,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           {/* Channel Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
             {/* DOOH Card */}
-            <div style={{ borderRadius: 14, overflow: 'hidden', position: 'relative', minHeight: 230, background: 'linear-gradient(135deg, #3B2980, #2D1F52)' }}>
+            <div style={{ borderRadius: 14, overflow: 'hidden', position: 'relative', minHeight: 230 }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(165deg,rgba(45,31,82,0.88) 0%,rgba(107,79,187,0.65) 100%)' }} />
               <div style={{ position: 'relative', zIndex: 2, padding: 20, minHeight: 230, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" stroke="white" strokeWidth="1.8"/><path d="M8 21h8M12 17v4" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>
@@ -313,7 +335,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             </div>
 
             {/* Display Card */}
-            <div style={{ borderRadius: 14, overflow: 'hidden', position: 'relative', minHeight: 230, background: 'linear-gradient(135deg, #1A4A2E, #0F2E1C)' }}>
+            <div style={{ borderRadius: 14, overflow: 'hidden', position: 'relative', minHeight: 230 }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(165deg,rgba(8,50,41,0.88) 0%,rgba(29,158,117,0.65) 100%)' }} />
               <div style={{ position: 'relative', zIndex: 2, padding: 20, minHeight: 230, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" stroke="white" strokeWidth="1.8"/><path d="M8 10h8M8 14h5" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>
