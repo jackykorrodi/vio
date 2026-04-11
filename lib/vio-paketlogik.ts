@@ -31,8 +31,7 @@ export type Step1Output = {
 
 const MIXED_CPM = 39.5
 const MIN_SICHTBAR_BUDGET = 2500
-const BRIEFWAHL_OFFSET_DAYS = 28
-const FREIGABE_CALENDAR_DAYS = 10
+const CAMPAIGN_END_OFFSET_DAYS = 3  // campaignEnd = voteDate − 3 days
 
 const PACKAGES = {
   sichtbar: { name: 'Sichtbar', reach: 0.15, freq: 3, days: 14 },
@@ -69,11 +68,16 @@ function calcDates(
   durationDays: number,
 ): { startDate: string; bookingDate: string } {
   const vote = new Date(voteDate + 'T12:00:00')
-  const start = new Date(vote)
-  start.setDate(vote.getDate() - BRIEFWAHL_OFFSET_DAYS - durationDays)
-  const booking = new Date(start)
-  booking.setDate(start.getDate() - FREIGABE_CALENDAR_DAYS)
-  return { startDate: fmtDate(start), bookingDate: fmtDate(booking) }
+  const end = new Date(vote)
+  end.setDate(vote.getDate() - CAMPAIGN_END_OFFSET_DAYS)
+  const start = new Date(end)
+  start.setDate(end.getDate() - durationDays)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  if (start < today) {
+    start.setTime(today.getTime())
+    end.setTime(today.getTime() + durationDays * 24 * 3600 * 1000)
+  }
+  return { startDate: fmtDate(start), bookingDate: fmtDate(end) }
 }
 
 function roundBudget(v: number): number {
@@ -144,8 +148,10 @@ export function buildVioPackages({
 
 export function computeStartDateISO(voteDate: string, durationDays: number): string {
   const vote = new Date(voteDate + 'T12:00:00')
-  const start = new Date(vote)
-  start.setDate(vote.getDate() - BRIEFWAHL_OFFSET_DAYS - durationDays)
+  const end = new Date(vote)
+  end.setDate(vote.getDate() - CAMPAIGN_END_OFFSET_DAYS)
+  const start = new Date(end)
+  start.setDate(end.getDate() - durationDays)
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const actual = start < today ? today : start
   return actual.toISOString().split('T')[0]

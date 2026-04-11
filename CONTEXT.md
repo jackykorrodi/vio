@@ -134,5 +134,5 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: Flow-Details, Step8Dashboard-Status und Tech-Debt in CONTEXT.md dokumentiert
+- Was wurde geändert: budget-step-redesign-v2 — StepPackages.tsx komplett neu auf vio-politik-budget-v2.html Prototype, vio-paketlogik.ts Datumslogik auf campaignEnd = voteDate - 3 days
 - Datum: 2026-04-10
