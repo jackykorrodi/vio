@@ -161,7 +161,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       };
     }
     if (key === 'dominanz') return { bg: '#EEEDFE', color: '#3C3489', icon: '⭐', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' };
-    if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '✓', text: 'Läuft bis 3 Tage vor Unterlagen-Versand — präsent über die gesamte Meinungsbildungsphase.' };
+    if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '✓', text: 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.' };
     return { bg: '#FAEEDA', color: '#633806', icon: '⚡', text: 'Letzter Impuls — kurz vor Unterlagen-Versand.' };
   };
 
