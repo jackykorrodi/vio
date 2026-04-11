@@ -147,11 +147,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     nextStep();
   };
 
-  // Insight badge — only on recommendedPackage
+  // Insight badge — alle 3 Pakete
   const getInsightBadge = (key: PkgKey) => {
     const p = vioData.packages[key];
-    if (key !== vioData.recommendedPackage) return null;
-    if (p.hinweis) {
+    // If it's the recommended package AND has a hinweis (time pressure), show that
+    if (key === vioData.recommendedPackage && p.hinweis) {
       const isRed = (vioData.daysUntilVote ?? 99) < 35;
       return {
         bg: isRed ? '#FCEBEB' : '#FAEEDA',
@@ -162,7 +162,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     }
     if (key === 'dominanz') return { bg: '#EEEDFE', color: '#3C3489', icon: '⭐', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' };
     if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '✓', text: 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.' };
-    return { bg: '#FAEEDA', color: '#633806', icon: '⚡', text: 'Letzter Impuls — kurz vor Unterlagen-Versand.' };
+    return { bg: '#FAEEDA', color: '#633806', icon: '⚡', text: 'Letzter Impuls vor dem Unterlagen-Versand.' };
   };
 
   // Sidebar row helper
@@ -235,20 +235,19 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               return (
                 <div
                   key={key}
-                  onClick={() => feasible && handleSelectPkg(key)}
+                  onClick={() => handleSelectPkg(key)}
                   style={{
                     position: 'relative',
                     background: isSel ? 'linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%)' : 'white',
-                    border: isSel ? '2px solid #7F77DD' : '1px solid rgba(107,79,187,0.12)',
+                    border: isSel ? '2.5px solid #7F77DD' : '1px solid rgba(107,79,187,0.12)',
                     borderRadius: 14,
                     padding: 16,
-                    cursor: feasible ? 'pointer' : 'not-allowed',
+                    cursor: 'pointer',
                     textAlign: 'left' as const,
                     transition: 'all 0.18s',
-                    opacity: !feasible ? 0.42 : isSel ? 1 : 0.72,
-                    boxShadow: isSel ? '0 8px 28px rgba(107,79,187,0.18)' : 'none',
+                    opacity: !feasible ? 0.55 : isSel ? 1 : 0.72,
+                    boxShadow: isSel ? '0 8px 28px rgba(107,79,187,0.20)' : 'none',
                     transform: isSel ? 'translateY(-2px)' : 'none',
-                    pointerEvents: !feasible ? 'none' as const : 'auto' as const,
                   }}
                 >
                   {/* Empfohlen pill */}
