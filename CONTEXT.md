@@ -134,5 +134,11 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Was wurde geändert: budget-step-redesign-v2 — StepPackages.tsx komplett neu auf vio-politik-budget-v2.html Prototype, vio-paketlogik.ts Datumslogik auf campaignEnd = voteDate - 3 days
-- Datum: 2026-04-10
+- Datum: 2026-04-11
+- Politik Budget-Step: Design auf v2 Prototype angeglichen (Sidebar, Channel Cards mit vio-Bildern, Sliders, Vote-Hint)
+- Paket-Karten: onClick-Selektion gefixt, selectedPackage State korrekt verdrahtet (inline styles, kein className wegen Turbopack)
+- Channel Cards: Hintergrundbilder /images/vio-dooh-bahnhof.jpg + /images/vio-display-phone.jpg eingebunden
+- Insight-Badges: alle 3 Pakete haben kontextabhängige Badges (red/good/best)
+- Präsenz Badge-Text: "Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase."
+- Datumslogik: campaignEnd = voteDate − 3 Tage, campaignStart = campaignEnd − durationDays, Fallback auf heute
+- Empfehlungslogik: daysUntilVote-basiert (< 49 → sichtbar, 49–62 → praesenz, ≥ 63 → dominanz)
