@@ -312,7 +312,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
             {/* DOOH Card */}
             <div style={{ borderRadius: 14, overflow: 'hidden', position: 'relative', minHeight: 230 }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "url('/images/vio-dooh-bahnhof.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(165deg,rgba(45,31,82,0.88) 0%,rgba(107,79,187,0.65) 100%)' }} />
               <div style={{ position: 'relative', zIndex: 2, padding: 20, minHeight: 230, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -336,7 +336,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
             {/* Display Card */}
             <div style={{ borderRadius: 14, overflow: 'hidden', position: 'relative', minHeight: 230 }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "url('/images/vio-display-phone.jpg')", backgroundSize: 'cover', backgroundPosition: 'center' }} />
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(165deg,rgba(8,50,41,0.88) 0%,rgba(29,158,117,0.65) 100%)' }} />
               <div style={{ position: 'relative', zIndex: 2, padding: 20, minHeight: 230, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
