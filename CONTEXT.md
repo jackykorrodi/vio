@@ -134,7 +134,7 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Datum: 2026-04-11
+- Datum: 2026-04-13
 - Politik Budget-Step: Design auf v2 Prototype angeglichen (Sidebar, Channel Cards mit vio-Bildern, Sliders, Vote-Hint)
 - Paket-Karten: onClick-Selektion gefixt, selectedPackage State korrekt verdrahtet (inline styles, kein className wegen Turbopack)
 - Channel Cards: Hintergrundbilder /images/vio-dooh-bahnhof.jpg + /images/vio-display-phone.jpg eingebunden
@@ -142,3 +142,5 @@ Rollback: `git checkout v0.x-stable`
 - Präsenz Badge-Text: "Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase."
 - Datumslogik: campaignEnd = voteDate − 3 Tage, campaignStart = campaignEnd − durationDays, Fallback auf heute
 - Empfehlungslogik: daysUntilVote-basiert (< 49 → sichtbar, 49–62 → praesenz, ≥ 63 → dominanz)
+- Politik Step 1: neuer 4-Fragen-Flow (Step1Politik.tsx) — Q1 Typ+Subtyp, Q2 Datum, Q3 Region, Q4 Budget — Slide-Animationen, Progress Dots, Sidebar, Summary Pills
+- PolitikFlow: importiert jetzt Step1Politik statt Step2Politik für Step 1
