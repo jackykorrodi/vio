@@ -2,100 +2,11 @@
 
 import { useEffect, useRef } from 'react';
 
-/* Accurate Swiss border points (800×460 canvas space) */
 const PTS: [number, number][] = [[446.5,20.0],[445.0,22.5],[438.9,26.9],[428.6,35.5],[425.5,40.5],[426.7,49.8],[437.3,56.1],[444.1,54.9],[448.1,53.4],[451.5,52.4],[453.7,52.6],[452.7,54.0],[449.3,58.4],[448.3,62.9],[446.7,60.7],[438.0,59.1],[430.9,63.2],[434.2,67.7],[432.0,70.5],[429.3,71.9],[428.3,70.5],[422.2,69.6],[417.8,70.7],[412.5,66.8],[407.4,62.7],[397.3,60.7],[394.1,62.0],[387.0,66.5],[379.6,71.1],[370.1,73.6],[359.9,75.6],[356.6,75.4],[355.9,73.3],[352.4,66.6],[349.2,66.3],[344.1,67.1],[337.0,72.1],[330.8,76.2],[319.4,77.6],[321.0,74.5],[320.7,67.2],[311.7,69.3],[305.7,72.8],[296.3,77.0],[295.7,82.2],[295.8,85.4],[293.5,87.2],[284.9,87.5],[285.1,92.1],[286.5,94.2],[283.5,97.6],[280.4,100.6],[276.9,99.4],[266.1,99.8],[261.2,101.5],[258.5,99.6],[255.2,97.6],[252.9,97.0],[251.9,91.2],[251.3,85.6],[248.8,85.9],[245.1,86.0],[240.6,86.7],[232.0,86.7],[228.2,85.3],[222.5,88.2],[222.4,95.3],[222.2,96.5],[215.2,105.0],[213.2,106.8],[207.7,114.7],[208.0,119.8],[218.0,120.0],[225.9,119.0],[230.8,120.0],[231.7,121.7],[228.2,123.3],[222.2,127.5],[220.6,129.2],[217.2,130.7],[216.4,138.6],[215.0,141.5],[212.1,144.4],[201.2,155.7],[187.5,169.0],[183.7,173.0],[179.8,180.1],[181.0,181.0],[179.4,182.7],[174.5,186.6],[171.3,189.4],[165.5,192.5],[159.9,195.0],[153.1,197.2],[147.1,200.0],[144.2,204.1],[143.6,212.8],[144.5,218.1],[143.6,222.1],[141.8,226.8],[142.0,234.7],[141.4,238.1],[137.5,242.9],[119.2,256.1],[112.4,262.0],[106.8,267.8],[100.4,272.4],[95.8,277.0],[97.4,282.9],[99.1,287.5],[97.2,289.5],[88.6,303.6],[93.7,319.7],[96.9,329.6],[91.8,342.4],[87.5,351.0],[79.9,352.2],[70.9,356.4],[72.3,362.9],[73.4,366.4],[75.7,372.0],[80.1,373.3],[90.3,372.1],[99.2,370.6],[106.6,364.8],[117.0,356.9],[123.7,348.5],[118.3,345.0],[115.6,345.2],[115.3,341.1],[114.1,336.4],[114.2,332.9],[121.5,323.1],[129.9,318.9],[145.9,313.1],[150.8,309.7],[153.5,307.4],[162.8,307.4],[175.5,308.5],[188.4,311.9],[193.9,314.3],[194.4,318.6],[193.1,323.2],[190.9,326.1],[191.9,331.0],[193.9,335.5],[195.7,338.0],[200.6,343.4],[198.6,348.6],[192.7,362.2],[191.0,367.0],[194.6,375.2],[201.4,377.5],[206.0,381.1],[204.2,385.8],[207.8,394.5],[211.6,393.1],[217.4,398.3],[222.1,405.4],[223.9,410.0],[227.0,417.6],[230.9,423.5],[238.8,433.3],[241.8,431.3],[245.1,431.9],[254.6,429.8],[259.6,425.5],[264.6,422.0],[266.5,420.4],[269.4,421.9],[279.7,424.9],[289.8,420.2],[293.2,418.4],[295.9,414.9],[298.3,412.7],[302.4,412.0],[305.0,409.8],[305.6,408.1],[308.1,409.5],[311.5,411.2],[316.0,410.6],[321.1,411.7],[324.1,412.9],[325.3,415.8],[332.0,418.6],[333.6,417.5],[336.6,419.0],[340.9,420.4],[345.3,421.3],[352.6,417.6],[355.7,410.0],[357.6,406.7],[359.5,405.9],[368.8,402.5],[374.8,397.6],[374.9,388.0],[375.8,384.8],[378.5,383.5],[388.4,375.9],[390.5,374.0],[395.1,367.3],[393.8,362.2],[390.2,355.5],[386.3,348.8],[385.1,345.8],[389.1,342.4],[396.5,339.7],[403.1,335.9],[403.7,332.7],[405.7,330.5],[411.8,325.8],[416.3,319.8],[415.5,316.4],[414.7,314.6],[418.6,312.1],[422.5,309.7],[423.9,307.7],[426.1,306.8],[432.7,306.5],[434.2,306.2],[434.2,313.1],[434.5,325.9],[433.2,334.9],[432.5,345.1],[433.3,349.0],[434.9,352.3],[443.6,355.9],[446.5,358.6],[452.1,367.8],[457.1,373.0],[462.8,376.8],[468.1,379.7],[476.4,380.1],[479.2,378.0],[480.9,380.8],[485.9,383.5],[488.4,382.9],[491.1,385.1],[489.9,393.7],[483.6,404.6],[486.3,405.3],[497.7,409.6],[499.1,413.5],[501.6,418.7],[503.8,432.2],[502.4,434.9],[503.6,436.6],[508.7,437.5],[511.1,438.1],[514.0,439.2],[516.1,440.0],[522.1,438.9],[526.5,428.5],[528.8,424.1],[527.3,416.1],[522.4,410.1],[519.1,405.9],[517.6,404.1],[519.2,401.8],[520.5,394.2],[519.3,390.7],[525.0,388.5],[529.9,378.6],[528.8,376.1],[532.2,373.1],[536.4,369.4],[541.6,364.8],[547.3,360.6],[547.8,356.7],[550.9,350.3],[552.3,346.6],[556.0,338.2],[558.5,326.0],[557.2,320.8],[555.1,312.6],[553.5,307.3],[555.1,305.9],[556.8,302.4],[558.6,297.1],[562.0,296.3],[564.8,295.6],[567.2,298.1],[575.2,301.7],[578.0,298.8],[579.5,296.4],[579.1,299.6],[579.6,314.2],[584.8,323.5],[588.8,327.2],[595.8,334.8],[601.6,335.9],[607.8,338.0],[610.0,339.3],[612.7,337.2],[615.8,335.8],[622.0,331.9],[623.1,324.9],[626.4,326.4],[635.7,325.2],[638.3,323.6],[645.4,319.9],[646.3,318.5],[648.0,320.0],[652.2,321.4],[658.0,324.5],[657.8,327.8],[657.9,332.6],[660.0,336.3],[663.3,339.9],[666.6,342.1],[667.8,347.1],[670.5,352.7],[680.1,350.1],[685.9,345.8],[685.5,332.7],[682.0,324.7],[680.2,321.3],[682.0,317.7],[683.6,308.2],[675.2,300.9],[671.5,300.9],[669.2,301.8],[669.0,292.1],[669.3,282.5],[671.1,280.7],[674.0,275.6],[676.2,271.8],[683.6,268.4],[693.4,266.0],[692.7,268.6],[697.5,275.1],[702.1,278.3],[708.6,282.2],[711.6,281.2],[715.7,280.2],[719.3,279.8],[721.8,281.6],[728.2,283.1],[729.1,272.3],[727.9,261.2],[720.7,256.5],[718.7,255.4],[718.1,250.2],[721.3,238.4],[722.8,230.1],[721.4,227.5],[723.6,225.4],[725.7,218.2],[725.1,212.1],[727.5,204.5],[724.3,193.8],[715.8,185.8],[707.9,186.4],[701.1,195.7],[700.8,199.1],[694.7,199.1],[688.5,199.1],[688.4,205.0],[688.3,211.6],[687.4,212.3],[676.6,216.3],[673.1,215.4],[669.7,212.1],[667.8,210.7],[657.6,205.1],[647.7,202.4],[640.5,189.4],[639.3,183.9],[635.5,181.5],[625.0,177.6],[617.7,176.5],[613.9,175.6],[602.7,175.1],[598.1,174.8],[593.9,174.3],[583.2,174.6],[585.2,173.2],[590.3,166.4],[587.2,160.3],[583.4,147.4],[585.9,137.7],[590.9,129.2],[594.6,124.1],[596.3,119.9],[597.6,115.5],[604.4,111.3],[609.1,106.4],[605.5,100.1],[603.8,95.2],[600.9,91.2],[596.9,87.6],[590.8,82.5],[586.6,84.2],[578.0,83.1],[568.5,71.6],[565.3,66.5],[546.4,55.6],[533.0,49.7],[518.5,44.7],[508.2,44.7],[495.9,50.6],[493.4,49.6],[491.3,43.6],[484.1,37.1],[475.9,37.5],[475.1,42.5],[476.1,44.8],[474.1,44.7],[472.7,43.2],[471.6,40.0],[471.1,35.8],[471.0,31.4],[467.9,29.3],[463.6,25.7],[459.9,22.1],[456.1,25.9],[454.6,24.3],[446.5,20.0]];
 
-const VIOLET_COLORS = [
-  'rgba(180,160,232,',
-  'rgba(160,138,218,',
-  'rgba(196,182,242,',
-  'rgba(145,120,205,',
-  'rgba(210,200,248,',
-  'rgba(168,148,224,',
-];
-
-const PAINT_DURATION = 14000;
-const HOLD_DURATION  = 2500;
-const FADE_DURATION  = 1200;
-
-interface Stroke {
-  pts:    [number, number][];
-  color:  string;
-  alpha:  number;
-  width:  number;
-  scanT:  number;
-}
-
-function buildStrokes(scaled: [number, number][]): Stroke[] {
-  const strokes: Stroke[] = [];
-  const angle = -35 * Math.PI / 180;
-  const cos   = Math.cos(angle);
-  const sin   = Math.sin(angle);
-
-  const projections = scaled.map(p => p[0] * cos + p[1] * sin);
-  const minProj = Math.min(...projections);
-  const maxProj = Math.max(...projections);
-
-  const numLines = 120;
-  for (let li = 0; li < numLines; li++) {
-    const t    = li / (numLines - 1);
-    const proj = minProj + t * (maxProj - minProj);
-
-    const intersections: [number, number][] = [];
-    for (let i = 0; i < scaled.length - 1; i++) {
-      const p0 = scaled[i], p1 = scaled[i + 1];
-      const r0 = p0[0] * cos + p0[1] * sin;
-      const r1 = p1[0] * cos + p1[1] * sin;
-      if ((r0 <= proj && r1 >= proj) || (r1 <= proj && r0 >= proj)) {
-        const frac = (proj - r0) / (r1 - r0 + 0.001);
-        intersections.push([
-          p0[0] + frac * (p1[0] - p0[0]),
-          p0[1] + frac * (p1[1] - p0[1]),
-        ]);
-      }
-    }
-    if (intersections.length < 2) continue;
-
-    const perp  = Math.cos(angle + Math.PI / 2);
-    const perp2 = Math.sin(angle + Math.PI / 2);
-    intersections.sort((a, b) => (a[0]*perp + a[1]*perp2) - (b[0]*perp + b[1]*perp2));
-
-    const i0 = intersections[0];
-    const i1 = intersections[intersections.length - 1];
-    const jit = () => (Math.random() - 0.5) * 4;
-
-    strokes.push({
-      pts:   [[i0[0]+jit(), i0[1]+jit()], [i1[0]+jit(), i1[1]+jit()]],
-      color: VIOLET_COLORS[Math.floor(Math.random() * VIOLET_COLORS.length)],
-      alpha: 0.10 + Math.random() * 0.1375,
-      width: 6 + Math.random() * 16,
-      scanT: t,
-    });
-  }
-  return strokes;
-}
-
-function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
-  if (s.pts.length < 2) return;
-  ctx.save();
-  ctx.strokeStyle = s.color + s.alpha + ')';
-  ctx.lineWidth   = s.width;
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
-  ctx.beginPath();
-  ctx.moveTo(s.pts[0][0], s.pts[0][1]);
-  for (let i = 1; i < s.pts.length; i++) {
-    if (i < s.pts.length - 1) {
-      const mx = (s.pts[i][0] + s.pts[i+1][0]) / 2;
-      const my = (s.pts[i][1] + s.pts[i+1][1]) / 2;
-      ctx.quadraticCurveTo(s.pts[i][0], s.pts[i][1], mx, my);
-    } else {
-      ctx.lineTo(s.pts[i][0], s.pts[i][1]);
-    }
-  }
-  ctx.stroke();
-  ctx.restore();
-}
+const DRAW_DURATION = 9000;
+const HOLD_DURATION = 3200;
+const FADE_DURATION = 1000;
 
 export default function SwissAquarelle({ style }: { style?: React.CSSProperties } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -108,92 +19,153 @@ export default function SwissAquarelle({ style }: { style?: React.CSSProperties 
 
     const W = 800, H = 460;
 
-    // Scale points to fill canvas with padding
-    const px = PTS.map(p => p[0]);
-    const py = PTS.map(p => p[1]);
-    const minX = Math.min(...px), maxX = Math.max(...px);
-    const minY = Math.min(...py), maxY = Math.max(...py);
-    const pad    = 30;
-    const scaleX = (W - pad*2) / (maxX - minX);
-    const scaleY = (H - pad*2) / (maxY - minY);
-    const scale  = Math.min(scaleX, scaleY);
-    const offX   = pad + (W - pad*2 - (maxX-minX)*scale) / 2;
-    const offY   = pad + (H - pad*2 - (maxY-minY)*scale) / 2;
+    // Scale Swiss border
+    const pxs = PTS.map(p => p[0]), pys = PTS.map(p => p[1]);
+    const minX = Math.min(...pxs), maxX = Math.max(...pxs);
+    const minY = Math.min(...pys), maxY = Math.max(...pys);
+    const pad = 30;
+    const sc = Math.min((W - pad * 2) / (maxX - minX), (H - pad * 2) / (maxY - minY));
+    const offX = pad + (W - pad * 2 - (maxX - minX) * sc) / 2;
+    const offY = pad + (H - pad * 2 - (maxY - minY) * sc) / 2;
+    const scaled: [number, number][] = PTS.map(p => [offX + (p[0] - minX) * sc, offY + (p[1] - minY) * sc]);
 
-    const scaled: [number, number][] = PTS.map(p => [
-      offX + (p[0] - minX) * scale,
-      offY + (p[1] - minY) * scale,
-    ]);
+    const segs: number[] = [];
+    let totLen = 0;
+    for (let i = 0; i < scaled.length - 1; i++) {
+      const d = Math.hypot(scaled[i+1][0] - scaled[i][0], scaled[i+1][1] - scaled[i][1]);
+      segs.push(d); totLen += d;
+    }
 
-    let ordered = buildStrokes(scaled).sort((a, b) => a.scanT - b.scanT);
-    let idx        = 0;
-    let phaseStart = -1;              // -1 = not yet initialised
-    let phase: 'painting' | 'holding' | 'fading' = 'painting';
-    let raf        = 0;
+    function inPoly(x: number, y: number): boolean {
+      let inside = false;
+      for (let i = 0, j = scaled.length - 1; i < scaled.length; j = i++) {
+        const xi = scaled[i][0], yi = scaled[i][1], xj = scaled[j][0], yj = scaled[j][1];
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Render VIO to offscreen canvas for pixel-precise exclusion mask
+    const offC = document.createElement('canvas');
+    offC.width = W; offC.height = H;
+    const offCtx = offC.getContext('2d')!;
+    offCtx.fillStyle = '#000';
+    offCtx.font = `900 90px Arial Black, Arial, sans-serif`;
+    offCtx.textAlign = 'center';
+    offCtx.textBaseline = 'middle';
+    offCtx.fillText('VIO', W / 2, H / 2 + 10);
+    const imgData = offCtx.getImageData(0, 0, W, H).data;
+
+    const PAD = 3;
+    function isVioZone(x: number, y: number): boolean {
+      const xi = Math.round(x), yi = Math.round(y);
+      for (let dy = -PAD; dy <= PAD; dy++) {
+        for (let dx = -PAD; dx <= PAD; dx++) {
+          const px = xi + dx, py = yi + dy;
+          if (px < 0 || px >= W || py < 0 || py >= H) continue;
+          if (imgData[(py * W + px) * 4 + 3] > 20) return true;
+        }
+      }
+      return false;
+    }
+
+    // Dense dot grid — 6px step, skip VIO zone
+    const STEP = 6, DOT_R = 1.6;
+    interface Dot { x: number; y: number; delay: number; dur: number; }
+    const allDots: Dot[] = [];
+
+    for (let x = offX + 2; x < offX + (maxX - minX) * sc; x += STEP) {
+      for (let y = offY + 2; y < offY + (maxY - minY) * sc; y += STEP) {
+        if (!inPoly(x, y)) continue;
+        if (isVioZone(x, y)) continue;
+        allDots.push({ x, y, delay: 0, dur: 180 });
+      }
+    }
+
+    // Reveal from outside → inside (VIO appears last via contrast)
+    allDots.sort((a, b) => Math.hypot(b.x - W/2, b.y - H/2) - Math.hypot(a.x - W/2, a.y - H/2));
+    const DOTS_START = 9200, REVEAL = 3400;
+    allDots.forEach((d, i) => { d.delay = DOTS_START + (i / allDots.length) * REVEAL; });
+
+    const last = allDots[allDots.length - 1];
+    const HOLD_START = last.delay + last.dur + 500;
+    const TOTAL = HOLD_START + HOLD_DURATION + FADE_DURATION;
+
+    function eio(t: number) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2; }
+
+    function drawOutline(frac: number, alpha: number) {
+      const target = frac * totLen;
+      ctx!.save();
+      ctx!.beginPath();
+      ctx!.moveTo(scaled[0][0], scaled[0][1]);
+      let drawn = 0;
+      for (let i = 0; i < scaled.length - 1; i++) {
+        const sl = segs[i];
+        if (drawn + sl <= target) {
+          ctx!.lineTo(scaled[i+1][0], scaled[i+1][1]);
+          drawn += sl;
+        } else {
+          const f = (target - drawn) / sl;
+          ctx!.lineTo(scaled[i][0] + f*(scaled[i+1][0]-scaled[i][0]), scaled[i][1] + f*(scaled[i+1][1]-scaled[i][1]));
+          break;
+        }
+      }
+      ctx!.strokeStyle = `rgba(107,79,187,${alpha})`;
+      ctx!.lineWidth = 2.5;
+      ctx!.lineCap = 'round';
+      ctx!.lineJoin = 'round';
+      ctx!.stroke();
+      ctx!.restore();
+    }
+
+    let phaseStart = -1;
+    let raf = 0;
 
     function animate(now: number) {
       if (!canvas || !ctx) return;
       if (phaseStart < 0) phaseStart = now;
+      const el = now - phaseStart;
+      ctx.clearRect(0, 0, W, H);
 
-      if (phase === 'painting') {
-        const elapsed  = now - phaseStart;
-        const progress = Math.min(elapsed / PAINT_DURATION, 1);
-        const eased    = progress < 0.5
-          ? 2 * progress * progress
-          : 1 - Math.pow(-2*progress + 2, 2) / 2;
+      let ma = 1;
+      if (el >= HOLD_START + HOLD_DURATION) ma = Math.max(0, 1 - (el - (HOLD_START + HOLD_DURATION)) / FADE_DURATION);
 
-        const target = Math.floor(eased * ordered.length);
-        while (idx < target) { drawStroke(ctx, ordered[idx]); idx++; }
-
-        if (progress >= 1) { phase = 'holding'; phaseStart = now; }
-
-      } else if (phase === 'holding') {
-        if (now - phaseStart >= HOLD_DURATION) { phase = 'fading'; phaseStart = now; }
-
+      if (el < DRAW_DURATION) {
+        drawOutline(eio(el / DRAW_DURATION), 0.85);
       } else {
-        // fading
-        const t = Math.min((now - phaseStart) / FADE_DURATION, 1);
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.globalAlpha = 0.06;
-        ctx.fillStyle   = 'rgba(0,0,0,1)';
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-
-        if (t >= 1) {
-          ctx.clearRect(0, 0, W, H);
-          ordered    = buildStrokes(scaled).sort((a, b) => a.scanT - b.scanT);
-          idx        = 0;
-          phase      = 'painting';
-          phaseStart = now + 400;
-        }
+        drawOutline(1, 0.85 * ma);
+        allDots.forEach(d => {
+          const t = Math.min(Math.max((el - d.delay) / d.dur, 0), 1);
+          if (t <= 0) return;
+          const e = eio(t);
+          ctx!.beginPath();
+          ctx!.arc(d.x, d.y, DOT_R * e, 0, Math.PI * 2);
+          ctx!.fillStyle = `rgba(107,79,187,${0.82 * e * ma})`;
+          ctx!.fill();
+        });
       }
 
-      raf = requestAnimationFrame(animate);
+      if (el < TOTAL || ma > 0) {
+        raf = requestAnimationFrame(animate);
+      } else {
+        ctx.clearRect(0, 0, W, H);
+        phaseStart = now + 700;
+        raf = requestAnimationFrame(animate);
+      }
     }
 
-    const timer = setTimeout(() => { raf = requestAnimationFrame(animate); }, 800);
+    const timer = setTimeout(() => { raf = requestAnimationFrame(animate); }, 400);
     return () => { clearTimeout(timer); cancelAnimationFrame(raf); };
   }, []);
 
   return (
     <div style={{
-      position:      'absolute',
-      left:          '50%',
-      top:           0,
-      transform:     'translateX(-50%)',
-      zIndex:        1,
-      pointerEvents: 'none',
-      width:         '480px',
-      height:        '280px',
+      position: 'absolute', left: '50%', top: 0,
+      transform: 'translateX(-50%)', zIndex: 1,
+      pointerEvents: 'none', width: '480px', height: '280px',
       ...style,
     }}>
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={460}
-        style={{ width: '100%', height: '100%', opacity: 1 }}
-      />
+      <canvas ref={canvasRef} width={800} height={460} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
