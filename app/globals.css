@@ -17,6 +17,7 @@
 @keyframes floatA   { 0%,100%{transform:translateX(-46%) translateY(0)} 50%{transform:translateX(-46%) translateY(-12px)} }
 @keyframes floatB   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
 @keyframes floatC   { 0%,100%{transform:translateY(-6px)} 50%{transform:translateY(6px)} }
+@keyframes floatD   { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-7px)} }
 @keyframes morphPool{ 0%{border-radius:55% 45% 60% 40%/48% 56% 44% 52%} 50%{border-radius:42% 58% 44% 56%/58% 42% 56% 44%} 100%{border-radius:60% 40% 50% 50%/44% 58% 42% 56%} }
 @keyframes blink    { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
 @keyframes growBar  { to{width:72%} }

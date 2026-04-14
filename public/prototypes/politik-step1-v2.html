@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO – Politische Kampagne</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&family=Jost:wght@300;400;500;600&display=swap');
+
+:root {
+  --v: #6B4FBB;
+  --v2: #8B6FDB;
+  --v-dim: rgba(107,79,187,0.09);
+  --v-dim2: rgba(107,79,187,0.16);
+  --ink: #1E1535;
+  --ink2: #4A3A72;
+  --muted: rgba(30,21,53,0.42);
+  --bg: #F6F5F9;
+  --white: #FFFFFF;
+  --border: rgba(107,79,187,0.13);
+  --border2: rgba(107,79,187,0.38);
+  --green: #1E9E6A;
+  --green-bg: rgba(30,158,106,0.08);
+  --amber: #C96A00;
+  --amber-bg: rgba(201,106,0,0.07);
+  --card-shadow: 0 1px 3px rgba(30,21,53,0.06), 0 4px 16px rgba(30,21,53,0.04);
+  --card-hover: 0 2px 8px rgba(107,79,187,0.12), 0 8px 32px rgba(107,79,187,0.1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Jost', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* NAV */
+.nav {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+.logo {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--v);
+  letter-spacing: -0.5px;
+}
+
+.steps-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.snav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.snav-item.active { color: var(--v); }
+.snav-item.done { color: var(--green); }
+
+.snav-circle {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.25s;
+}
+
+.snav-item.active .snav-circle { background: var(--v); color: white; border-color: var(--v); }
+.snav-item.done .snav-circle { background: var(--green); color: white; border-color: var(--green); }
+
+.snav-label { display: none; }
+@media (min-width: 700px) { .snav-label { display: block; } }
+
+.snav-sep { width: 20px; height: 1px; background: var(--border); flex-shrink: 0; }
+
+/* LAYOUT */
+.page {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 44px 24px 80px;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 44px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .page { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* FLOW */
+.flow-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--v);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.flow-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.flow-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+  margin-bottom: 28px;
+  line-height: 1.2;
+}
+
+/* PROGRESS DOTS */
+.progress-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 32px;
+}
+
+.pdot {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  flex: 1;
+}
+
+.pdot.done { background: var(--green); }
+.pdot.active { background: var(--v); flex: 2.5; }
+
+/* SUMMARY PILLS */
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  min-height: 4px;
+}
+
+.s-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 99px;
+  background: var(--green-bg);
+  border: 1px solid rgba(30,158,106,0.2);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+  animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.75); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* SLIDE ENGINE */
+.track {
+  position: relative;
+  overflow: hidden;
+}
+
+.slide {
+  display: none;
+  will-change: transform, opacity;
+}
+
+.slide.active {
+  display: block;
+  animation: slideRight 0.38s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.slide.active.back {
+  animation: slideLeft 0.38s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(40px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(-40px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* QUESTION */
+.q-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.q-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+  margin-bottom: 5px;
+  line-height: 1.25;
+}
+
+.q-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 22px;
+  line-height: 1.55;
+}
+
+/* CHOICE CARDS */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.cards.tri { grid-template-columns: 1fr 1fr 1fr; }
+.cards.col { grid-template-columns: 1fr; }
+
+.card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  text-align: left;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+  box-shadow: var(--card-shadow);
+  position: relative;
+  user-select: none;
+}
+
+.card:hover {
+  border-color: var(--border2);
+  box-shadow: var(--card-hover);
+  transform: translateY(-2px);
+}
+
+.card.sel {
+  border-color: var(--v);
+  background: var(--v-dim);
+  box-shadow: var(--card-hover);
+}
+
+.card.sel::after {
+  content: '✓';
+  position: absolute;
+  top: 8px; right: 10px;
+  font-size: 10px; font-weight: 800;
+  color: var(--v);
+  background: white;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--v);
+  line-height: 1;
+  padding-top: 1px;
+}
+
+.card-icon {
+  font-size: 20px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.card-name {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* SUBTYPE APPEAR */
+.subtype-wrap {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease;
+  margin-bottom: 0;
+}
+
+.subtype-wrap.open {
+  max-height: 300px;
+  opacity: 1;
+  margin-bottom: 24px;
+}
+
+.subtype-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+/* DATE */
+.date-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.date-field {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  box-shadow: var(--card-shadow);
+}
+
+.date-field:focus-within {
+  border-color: var(--v);
+  box-shadow: 0 0 0 3px var(--v-dim);
+}
+
+.date-field label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.date-field label span { font-size: 14px; }
+
+.date-field input[type="date"] {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.date-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.45;
+}
+
+/* TIMELINE PILL */
+.timeline-pill {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--v-dim2);
+  border: 1.5px solid var(--border2);
+  border-radius: 99px;
+  padding: 10px 20px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--v);
+  margin-bottom: 24px;
+  animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.timeline-pill.show { display: flex; }
+
+/* REGION */
+.region-search-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.region-search {
+  width: 100%;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 16px 13px 42px;
+  font-family: 'Jost', sans-serif;
+  font-size: 15px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  box-shadow: var(--card-shadow);
+}
+
+.region-search:focus {
+  border-color: var(--v);
+  box-shadow: 0 0 0 3px var(--v-dim);
+}
+
+.region-search::placeholder { color: var(--muted); }
+
+.search-icon {
+  position: absolute;
+  left: 14px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.region-dd {
+  background: var(--white);
+  border: 1.5px solid var(--border2);
+  border-radius: 12px;
+  box-shadow: var(--card-hover);
+  overflow: hidden;
+  max-height: 210px;
+  overflow-y: auto;
+  display: none;
+  margin-bottom: 14px;
+}
+
+.region-dd.open { display: block; }
+
+.region-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+
+.region-opt:last-child { border-bottom: none; }
+.region-opt:hover { background: var(--v-dim); }
+
+.region-type {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--v-dim2);
+  color: var(--v);
+  flex-shrink: 0;
+}
+
+.region-type.nat { background: rgba(30,158,106,0.12); color: var(--green); }
+
+.region-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 24px;
+}
+
+.region-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--v-dim2);
+  border: 1.5px solid var(--border2);
+  border-radius: 99px;
+  padding: 5px 14px 5px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--v);
+  animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.rm-tag {
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.rm-tag:hover { opacity: 1; }
+
+/* BUDGET */
+.budget-header {
+  margin-bottom: 20px;
+}
+
+.budget-num {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--v);
+  letter-spacing: -2px;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.budget-cur {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.budget-unknown {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: -2px;
+  line-height: 1;
+  display: none;
+}
+
+.budget-hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(to right, var(--v) var(--pct,5%), var(--border) var(--pct,5%));
+  margin: 18px 0 8px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--v);
+  border: 3px solid white;
+  box-shadow: 0 2px 10px rgba(107,79,187,0.35);
+  cursor: grab;
+  transition: transform 0.15s;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.18);
+  cursor: grabbing;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.no-budget-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 99px;
+  border: 1.5px dashed var(--border2);
+  background: transparent;
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  margin-bottom: 24px;
+}
+
+.no-budget-btn:hover, .no-budget-btn.active {
+  border-color: var(--v);
+  color: var(--v);
+  background: var(--v-dim);
+}
+
+.no-budget-btn.active { background: var(--v-dim2); }
+
+.slider-wrap {
+  transition: opacity 0.3s, max-height 0.3s;
+  max-height: 200px;
+  overflow: hidden;
+}
+
+.slider-wrap.hidden {
+  opacity: 0.3;
+  pointer-events: none;
+  max-height: 0;
+}
+
+/* ACTIONS */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.btn-back {
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+
+.btn-back:hover { border-color: var(--border2); color: var(--ink); }
+
+.btn-next {
+  flex: 1;
+  padding: 13px 24px;
+  border-radius: 10px;
+  border: none;
+  background: var(--v);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 18px rgba(107,79,187,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-next:hover {
+  background: var(--ink);
+  box-shadow: 0 4px 22px rgba(30,21,53,0.28);
+  transform: translateY(-1px);
+}
+
+.btn-next:disabled {
+  background: var(--border);
+  color: var(--muted);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: sticky;
+  top: 76px;
+}
+
+.sidebar-card {
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: var(--card-shadow);
+}
+
+.sb-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--v);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sb-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--v);
+}
+
+.sb-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 8px;
+  line-height: 1.3;
+  transition: opacity 0.2s;
+}
+
+.sb-text {
+  font-size: 13px;
+  color: var(--ink2);
+  line-height: 1.65;
+  margin-bottom: 14px;
+  transition: opacity 0.2s;
+}
+
+.sb-tip {
+  background: var(--amber-bg);
+  border-left: 3px solid var(--amber);
+  border-radius: 0 8px 8px 0;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: var(--ink2);
+  line-height: 1.5;
+  transition: opacity 0.2s;
+}
+
+.sb-tip strong { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="logo">VIO</div>
+  <div class="steps-nav">
+    <div class="snav-item active">
+      <div class="snav-circle">1</div>
+      <span class="snav-label">Kampagne</span>
+    </div>
+    <div class="snav-sep"></div>
+    <div class="snav-item">
+      <div class="snav-circle">2</div>
+      <span class="snav-label">Budget</span>
+    </div>
+    <div class="snav-sep"></div>
+    <div class="snav-item">
+      <div class="snav-circle">3</div>
+      <span class="snav-label">Werbemittel</span>
+    </div>
+    <div class="snav-sep"></div>
+    <div class="snav-item">
+      <div class="snav-circle">4</div>
+      <span class="snav-label">Abschluss</span>
+    </div>
+    <div class="snav-sep"></div>
+    <div class="snav-item">
+      <div class="snav-circle">5</div>
+      <span class="snav-label">Bestätigung</span>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="flow-area">
+    <div class="flow-label">Schritt 1 · Politische Kampagne</div>
+    <h1 class="flow-title">Lass uns deine<br><em style="font-style:italic;color:var(--v);">Kampagne einrichten.</em></h1>
+
+    <!-- Progress dots -->
+    <div class="progress-dots" id="pdots">
+      <div class="pdot active" id="pd1"></div>
+      <div class="pdot" id="pd2"></div>
+      <div class="pdot" id="pd3"></div>
+      <div class="pdot" id="pd4"></div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-row" id="summary"></div>
+
+    <!-- TRACK -->
+    <div class="track" id="track">
+
+      <!-- Q1: Was -->
+      <div class="slide active" data-q="1">
+        <div class="q-num">Frage 1 von 4</div>
+        <div class="q-title">Worum geht es?</div>
+        <div class="q-sub">Abstimmung oder Wahl – das gibt uns die Grundlage für alles weitere.</div>
+
+        <div class="cards" id="q1-type-cards">
+          <div class="card" data-val="abstimmung" onclick="pickType(this)">
+            <div class="card-icon">🗳️</div>
+            <div>
+              <div class="card-name">Abstimmung</div>
+              <div class="card-desc">Volksinitiative, Referendum oder kommunale Vorlage.</div>
+            </div>
+          </div>
+          <div class="card" data-val="wahl" onclick="pickType(this)">
+            <div class="card-icon">🏛️</div>
+            <div>
+              <div class="card-name">Wahl</div>
+              <div class="card-desc">National-, Kantons-, Gemeinderat oder Regierungsrat.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="subtype-wrap" id="subtype-wrap">
+          <div class="subtype-label">Genauer –</div>
+          <div class="cards tri" id="q1-sub-cards"></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-next" id="btn1" disabled onclick="next(1)">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- Q2: Wann -->
+      <div class="slide" data-q="2">
+        <div class="q-num">Frage 2 von 4</div>
+        <div class="q-title">Wann findet das statt?</div>
+        <div class="q-sub">Erst der Abstimmungssonntag – dann der Kampagnenstart. So haben wir den Vorlauf im Blick.</div>
+
+        <div class="date-group">
+          <div class="date-field">
+            <label><span>🗓️</span> Abstimmungs- / Wahltag</label>
+            <input type="date" id="d-event" onchange="checkDates()">
+            <div class="date-hint">Bundesabstimmungen finden immer an einem Sonntag statt.</div>
+          </div>
+          <div class="date-field">
+            <label><span>🚀</span> Kampagnenstart</label>
+            <input type="date" id="d-start" onchange="checkDates()">
+            <div class="date-hint">Wir empfehlen 4–6 Wochen Vorlauf für maximale Wirkung.</div>
+          </div>
+        </div>
+
+        <div class="timeline-pill" id="tl-pill">
+          <span>📊</span>
+          <span id="tl-text">–</span>
+        </div>
+
+        <div class="actions">
+          <button class="btn-back" onclick="back(2)">← Zurück</button>
+          <button class="btn-next" id="btn2" disabled onclick="next(2)">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- Q3: Wo -->
+      <div class="slide" data-q="3">
+        <div class="q-num">Frage 3 von 4</div>
+        <div class="q-title">Wo ist deine Zielregion?</div>
+        <div class="q-sub">Wähle Kantone oder Gemeinden. Mehrere Gebiete lassen sich kombinieren.</div>
+
+        <div class="region-search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="region-search" type="text" id="r-input"
+            placeholder="Kanton oder Gemeinde suchen…"
+            oninput="filterR()" onfocus="openDd()" onblur="closeDdDelay()">
+        </div>
+        <div class="region-dd" id="r-dd"></div>
+        <div class="region-tags" id="r-tags"></div>
+
+        <div class="actions">
+          <button class="btn-back" onclick="back(3)">← Zurück</button>
+          <button class="btn-next" id="btn3" disabled onclick="next(3)">Weiter →</button>
+        </div>
+      </div>
+
+      <!-- Q4: Budget -->
+      <div class="slide" data-q="4">
+        <div class="q-num">Frage 4 von 4</div>
+        <div class="q-title">Hast du schon ein Budget?</div>
+        <div class="q-sub">Wenn ja, gib uns einen Richtwert. Wenn nicht, kein Problem – du legst das im nächsten Schritt fest.</div>
+
+        <div class="budget-header">
+          <div class="budget-num" id="b-num">
+            <span class="budget-cur">CHF</span>
+            <span id="b-val">5'000</span>
+          </div>
+          <div class="budget-unknown" id="b-unknown">Noch offen</div>
+          <div class="budget-hint" id="b-hint">Mindestbudget: CHF 4'000</div>
+        </div>
+
+        <div class="slider-wrap" id="slider-wrap">
+          <input type="range" id="b-slider" min="4000" max="50000" step="500" value="5000"
+            oninput="updBudget(this.value)" style="--pct:5%">
+          <div class="range-labels">
+            <span>CHF 4'000</span>
+            <span>CHF 50'000+</span>
+          </div>
+        </div>
+
+        <button class="no-budget-btn" id="no-budget-btn" onclick="toggleNoBudget()">
+          <span id="nb-icon">○</span> Ich weiss es noch nicht
+        </button>
+
+        <div class="actions">
+          <button class="btn-back" onclick="back(4)">← Zurück</button>
+          <button class="btn-next" onclick="finish()">Zum Budget & Reichweite →</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <div class="sb-eyebrow"><div class="sb-dot"></div>Warum fragen wir das?</div>
+      <div class="sb-title" id="sb-title">–</div>
+      <div class="sb-text" id="sb-text">–</div>
+      <div class="sb-tip" id="sb-tip">–</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────
+
+const SUBTYPES = {
+  abstimmung: [
+    { val:'ja',   icon:'✅', name:'JA-Kampagne',   desc:'Für eine Initiative oder einen Gegenvorschlag.' },
+    { val:'nein', icon:'❌', name:'NEIN-Kampagne',  desc:'Gegen eine Initiative oder ein Referendum.' },
+    { val:'mob',  icon:'📣', name:'Mobilisierung',  desc:'Stimmberechtigte zur Urne bewegen.' },
+  ],
+  wahl: [
+    { val:'kand', icon:'👤', name:'Kandidatur',    desc:'Persönlichkeitskampagne für eine Person.' },
+    { val:'liste',icon:'📋', name:'Listenwahl',    desc:'Mehrere Kandidierende auf einer Parteiliste.' },
+    { val:'mob',  icon:'🎯', name:'Mobilisierung', desc:'Wählerschaft aktivieren.' },
+  ]
+};
+
+// Real VIO DOOH locations (from dooh-screens.json – Kantone + Gemeinden)
+const REGIONS = [
+  // National
+  { name:'Ganze Schweiz', type:'National', key:'ch' },
+  // Kantone
+  { name:'Zürich',         type:'Kanton', key:'ZH' },
+  { name:'Bern',           type:'Kanton', key:'BE' },
+  { name:'Luzern',         type:'Kanton', key:'LU' },
+  { name:'Uri',            type:'Kanton', key:'UR' },
+  { name:'Schwyz',         type:'Kanton', key:'SZ' },
+  { name:'Obwalden',       type:'Kanton', key:'OW' },
+  { name:'Nidwalden',      type:'Kanton', key:'NW' },
+  { name:'Glarus',         type:'Kanton', key:'GL' },
+  { name:'Zug',            type:'Kanton', key:'ZG' },
+  { name:'Freiburg',       type:'Kanton', key:'FR' },
+  { name:'Solothurn',      type:'Kanton', key:'SO' },
+  { name:'Basel-Stadt',    type:'Kanton', key:'BS' },
+  { name:'Basel-Landschaft',type:'Kanton',key:'BL' },
+  { name:'Schaffhausen',   type:'Kanton', key:'SH' },
+  { name:'Appenzell AR',   type:'Kanton', key:'AR' },
+  { name:'Appenzell AI',   type:'Kanton', key:'AI' },
+  { name:'St. Gallen',     type:'Kanton', key:'SG' },
+  { name:'Graubünden',     type:'Kanton', key:'GR' },
+  { name:'Aargau',         type:'Kanton', key:'AG' },
+  { name:'Thurgau',        type:'Kanton', key:'TG' },
+  { name:'Ticino',         type:'Kanton', key:'TI' },
+  { name:'Vaud',           type:'Kanton', key:'VD' },
+  { name:'Valais / Wallis',type:'Kanton', key:'VS' },
+  { name:'Neuchâtel',      type:'Kanton', key:'NE' },
+  { name:'Genève',         type:'Kanton', key:'GE' },
+  { name:'Jura',           type:'Kanton', key:'JU' },
+  // Gemeinden (aus dooh-screens.json)
+  { name:'Aarau',          type:'Gemeinde', key:'aarau' },
+  { name:'Arbon',          type:'Gemeinde', key:'arbon' },
+  { name:'Arlesheim',      type:'Gemeinde', key:'arlesheim' },
+  { name:'Arth',           type:'Gemeinde', key:'arth' },
+  { name:'Arth-Goldau',    type:'Gemeinde', key:'arth-goldau' },
+  { name:'Arlesheim',      type:'Gemeinde', key:'arlesheim2' },
+  { name:'Baar',           type:'Gemeinde', key:'baar' },
+  { name:'Baden',          type:'Gemeinde', key:'baden' },
+  { name:'Basel',          type:'Gemeinde', key:'basel' },
+  { name:'Bellinzona',     type:'Gemeinde', key:'bellinzona' },
+  { name:'Bern',           type:'Gemeinde', key:'bern-g' },
+  { name:'Bettlach',       type:'Gemeinde', key:'bettlach' },
+  { name:'Biel/Bienne',    type:'Gemeinde', key:'biel' },
+  { name:'Binningen',      type:'Gemeinde', key:'binningen' },
+  { name:'Birsfelden',     type:'Gemeinde', key:'birsfelden' },
+  { name:'Brig-Glis',      type:'Gemeinde', key:'brig' },
+  { name:'Brugg',          type:'Gemeinde', key:'brugg' },
+  { name:'Buchs',          type:'Gemeinde', key:'buchs' },
+  { name:'Bulach',         type:'Gemeinde', key:'bulach' },
+  { name:'Burgdorf',       type:'Gemeinde', key:'burgdorf' },
+  { name:'Carouge',        type:'Gemeinde', key:'carouge' },
+  { name:'Chur',           type:'Gemeinde', key:'chur' },
+  { name:'Davos',          type:'Gemeinde', key:'davos' },
+  { name:'Delémont',       type:'Gemeinde', key:'delemont' },
+  { name:'Dietikon',       type:'Gemeinde', key:'dietikon' },
+  { name:'Dübendorf',      type:'Gemeinde', key:'duebendorf' },
+  { name:'Emmen',          type:'Gemeinde', key:'emmen' },
+  { name:'Flawil',         type:'Gemeinde', key:'flawil' },
+  { name:'Frauenfeld',     type:'Gemeinde', key:'frauenfeld' },
+  { name:'Frenkendorf',    type:'Gemeinde', key:'frenkendorf' },
+  { name:'Freienbach',     type:'Gemeinde', key:'freienbach' },
+  { name:'Fribourg',       type:'Gemeinde', key:'fribourg' },
+  { name:'Genf',           type:'Gemeinde', key:'genf-g' },
+  { name:'Gossau',         type:'Gemeinde', key:'gossau' },
+  { name:'Grenchen',       type:'Gemeinde', key:'grenchen' },
+  { name:'Horgen',         type:'Gemeinde', key:'horgen' },
+  { name:'Horw',           type:'Gemeinde', key:'horw' },
+  { name:'Illnau-Effretikon',type:'Gemeinde',key:'illnau' },
+  { name:'Ittigen',        type:'Gemeinde', key:'ittigen' },
+  { name:'Kloten',         type:'Gemeinde', key:'kloten' },
+  { name:'Kreuzlingen',    type:'Gemeinde', key:'kreuzlingen' },
+  { name:'Küsnacht',       type:'Gemeinde', key:'kuesnacht', note:'eingeschränkt' },
+  { name:'Küssnacht',      type:'Gemeinde', key:'kuesssnacht' },
+  { name:'Küsnacht am Rigi',type:'Gemeinde',key:'kuesnacht-rigi' },
+  { name:'Langenthal',     type:'Gemeinde', key:'langenthal' },
+  { name:'Lausanne',       type:'Gemeinde', key:'lausanne' },
+  { name:'Lancy',          type:'Gemeinde', key:'lancy' },
+  { name:'Liestal',        type:'Gemeinde', key:'liestal' },
+  { name:'Locarno',        type:'Gemeinde', key:'locarno' },
+  { name:'Lugano',         type:'Gemeinde', key:'lugano' },
+  { name:'Luzern',         type:'Gemeinde', key:'luzern-g' },
+  { name:'Männedorf',      type:'Gemeinde', key:'maennedorf' },
+  { name:'Meyrin',         type:'Gemeinde', key:'meyrin' },
+  { name:'Monthey',        type:'Gemeinde', key:'monthey' },
+  { name:'Morges',         type:'Gemeinde', key:'morges' },
+  { name:'Münsingen',      type:'Gemeinde', key:'muensingen' },
+  { name:'Muri bei Bern',  type:'Gemeinde', key:'muri' },
+  { name:'Münchenbuchsee', type:'Gemeinde', key:'muenchenbuchsee' },
+  { name:'Münchenbuchsee', type:'Gemeinde', key:'muenchenbuchsee2' },
+  { name:'Naters',         type:'Gemeinde', key:'naters' },
+  { name:'Nyon',           type:'Gemeinde', key:'nyon' },
+  { name:'Oberwil',        type:'Gemeinde', key:'oberwil' },
+  { name:'Oftringen',      type:'Gemeinde', key:'oftringen' },
+  { name:'Olten',          type:'Gemeinde', key:'olten' },
+  { name:'Pratteln',       type:'Gemeinde', key:'pratteln' },
+  { name:'Rapperswil-Jona',type:'Gemeinde', key:'rapperswil' },
+  { name:'Regensdorf',     type:'Gemeinde', key:'regensdorf' },
+  { name:'Reinach',        type:'Gemeinde', key:'reinach' },
+  { name:'Rheinfelden',    type:'Gemeinde', key:'rheinfelden' },
+  { name:'Riehen',         type:'Gemeinde', key:'riehen' },
+  { name:'Romanshorn',     type:'Gemeinde', key:'romanshorn' },
+  { name:'Rorschach',      type:'Gemeinde', key:'rorschach' },
+  { name:'Rüti',           type:'Gemeinde', key:'rueti' },
+  { name:'Schaffhausen',   type:'Gemeinde', key:'schaffhausen-g' },
+  { name:'Schlieren',      type:'Gemeinde', key:'schlieren' },
+  { name:'Sierre/Siders',  type:'Gemeinde', key:'sierre' },
+  { name:'Sion/Sitten',    type:'Gemeinde', key:'sion' },
+  { name:'Spiez',          type:'Gemeinde', key:'spiez' },
+  { name:'Spreitenbach',   type:'Gemeinde', key:'spreitenbach' },
+  { name:'St. Gallen',     type:'Gemeinde', key:'sg-g' },
+  { name:'Steffisburg',    type:'Gemeinde', key:'steffisburg' },
+  { name:'Thalwil',        type:'Gemeinde', key:'thalwil' },
+  { name:'Thun',           type:'Gemeinde', key:'thun' },
+  { name:'Thônex',         type:'Gemeinde', key:'thonex' },
+  { name:'Uster',          type:'Gemeinde', key:'uster' },
+  { name:'Vernier',        type:'Gemeinde', key:'vernier' },
+  { name:'Visp',           type:'Gemeinde', key:'visp' },
+  { name:'Volketswil',     type:'Gemeinde', key:'volketswil' },
+  { name:'Volketswil',     type:'Gemeinde', key:'volketswil2' },
+  { name:'Volketswil',     type:'Gemeinde', key:'volketswil3' },
+  { name:'Wädenswil',      type:'Gemeinde', key:'waedenswil' },
+  { name:'Weinfelden',     type:'Gemeinde', key:'weinfelden' },
+  { name:'Wettingen',      type:'Gemeinde', key:'wettingen' },
+  { name:'Widnau',         type:'Gemeinde', key:'widnau' },
+  { name:'Wil',            type:'Gemeinde', key:'wil' },
+  { name:'Winterthur',     type:'Gemeinde', key:'winterthur' },
+  { name:'Wohlen',         type:'Gemeinde', key:'wohlen' },
+  { name:'Wollerau',       type:'Gemeinde', key:'wollerau' },
+  { name:'Worb',           type:'Gemeinde', key:'worb' },
+  { name:'Wünnewil-Flamatt',type:'Gemeinde',key:'wuennewil' },
+  { name:'Wettingen',      type:'Gemeinde', key:'wettingen2' },
+  { name:'Zürich',         type:'Gemeinde', key:'zuerich-g' },
+  { name:'Zug',            type:'Gemeinde', key:'zug-g' },
+  { name:'Zollikon',       type:'Gemeinde', key:'zollikon' },
+  { name:'Zollikofen',     type:'Gemeinde', key:'zollikofen' },
+];
+
+const SIDEBAR = {
+  1: {
+    title:'Abstimmung oder Wahl – macht das einen Unterschied?',
+    text:'Ja. Abstimmungen brauchen klare Botschaften (Ja/Nein), kurze Kampagnenfenster und hohe Frequenz. Bei Wahlen geht es stärker um Bekanntheit und Gesichtspräsenz – das verändert wie wir aussteuern.',
+    tip:'<strong>Gut zu wissen:</strong> Abstimmungskampagnen profitieren davon, früh zu starten. Die letzten 10 Tage sind am wirkungsvollsten.'
+  },
+  2: {
+    title:'Warum zuerst das Enddatum?',
+    text:'Weil der Abstimmungs- oder Wahltag fix ist. Von dort aus rechnen wir rückwärts – so siehst du sofort, wie viel Vorlauf du noch hast und ob das Budget reicht.',
+    tip:'<strong>Empfehlung:</strong> 4–6 Wochen Vorlauf sind ideal. Unter 2 Wochen wird es knapp – aber auch das ist möglich.'
+  },
+  3: {
+    title:'Lokal wirkt stärker.',
+    text:'Wer in einer Region lebt und dort Werbung sieht, nimmt sie als relevanter wahr. Deshalb spielen wir ausschliesslich in deinen Zielgebieten aus – keine Streuverluste ausserhalb deines Wahlkreises.',
+    tip:'<strong>Tipp:</strong> Du kannst Kantone und Gemeinden kombinieren. Wir fassen alles zu einer einzigen Kampagne zusammen.'
+  },
+  4: {
+    title:'Kein fixes Budget? Kein Problem.',
+    text:'Viele starten ohne genaue Zahl. Du kannst einen Richtwert angeben – oder das Budget im nächsten Schritt mit dem Reichweiten-Tool bestimmen.',
+    tip:'<strong>Mindestbudget:</strong> CHF 4\'000 für DOOH + Display. Empfohlen: CHF 7\'500–15\'000 für spürbare Wirkung.'
+  }
+};
+
+// ─── STATE ──────────────────────────────────────────────────────
+
+const S = {
+  type: null, subtype: null,
+  dateEvent: null, dateStart: null,
+  regions: [],
+  budget: 5000, budgetKnown: true
+};
+
+let curQ = 1;
+let goBack = false;
+
+// ─── NAVIGATION ─────────────────────────────────────────────────
+
+function next(from) {
+  if (from === 1) updateSummary();
+  if (from === 2) updateSummary();
+  if (from === 3) updateSummary();
+  goBack = false;
+  curQ = from + 1;
+  showSlide(curQ, false);
+  updSidebar(curQ);
+  updDots(curQ);
+}
+
+function back(from) {
+  goBack = true;
+  curQ = from - 1;
+  showSlide(curQ, true);
+  updSidebar(curQ);
+  updDots(curQ);
+}
+
+function showSlide(q, backwards) {
+  document.querySelectorAll('.slide').forEach(s => {
+    s.classList.remove('active','back');
+  });
+  const s = document.querySelector(`[data-q="${q}"]`);
+  if (backwards) s.classList.add('back');
+  s.classList.add('active');
+  window.scrollTo({top: 0, behavior:'smooth'});
+}
+
+function updDots(q) {
+  for(let i=1;i<=4;i++){
+    const d = document.getElementById('pd'+i);
+    d.classList.remove('active','done');
+    if(i < q) d.classList.add('done');
+    else if(i === q) d.classList.add('active');
+  }
+}
+
+function updSidebar(q) {
+  const c = SIDEBAR[q];
+  document.getElementById('sb-title').textContent = c.title;
+  document.getElementById('sb-text').textContent = c.text;
+  document.getElementById('sb-tip').innerHTML = c.tip;
+}
+
+// ─── Q1 ─────────────────────────────────────────────────────────
+
+function pickType(el) {
+  document.querySelectorAll('#q1-type-cards .card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  S.type = el.dataset.val;
+  S.subtype = null;
+
+  const wrap = document.getElementById('subtype-wrap');
+  const grid = document.getElementById('q1-sub-cards');
+  grid.innerHTML = '';
+  SUBTYPES[S.type].forEach(st => {
+    const c = document.createElement('div');
+    c.className = 'card';
+    c.dataset.val = st.val;
+    c.innerHTML = `<div class="card-icon">${st.icon}</div><div><div class="card-name">${st.name}</div><div class="card-desc">${st.desc}</div></div>`;
+    c.onclick = () => {
+      grid.querySelectorAll('.card').forEach(x=>x.classList.remove('sel'));
+      c.classList.add('sel');
+      S.subtype = st.val;
+      document.getElementById('btn1').disabled = false;
+    };
+    grid.appendChild(c);
+  });
+
+  wrap.classList.add('open');
+  document.getElementById('btn1').disabled = true;
+}
+
+// ─── Q2 ─────────────────────────────────────────────────────────
+
+function checkDates() {
+  const ev = document.getElementById('d-event').value;
+  const st = document.getElementById('d-start').value;
+  S.dateEvent = ev; S.dateStart = st;
+  const pill = document.getElementById('tl-pill');
+  if (ev && st) {
+    const evD = new Date(ev), stD = new Date(st);
+    const diff = Math.round((evD - stD) / 86400000);
+    if (diff > 0) {
+      const weeks = Math.round(diff/7);
+      document.getElementById('tl-text').textContent = `${diff} Tage Kampagnendauer · ${weeks} Wochen`;
+      pill.classList.add('show');
+      document.getElementById('btn2').disabled = false;
+    } else {
+      pill.classList.remove('show');
+      document.getElementById('btn2').disabled = true;
+    }
+  } else {
+    pill.classList.remove('show');
+    document.getElementById('btn2').disabled = !(ev && st);
+  }
+}
+
+// ─── Q3 ─────────────────────────────────────────────────────────
+
+function filterR() {
+  const q = document.getElementById('r-input').value.toLowerCase().trim();
+  const dd = document.getElementById('r-dd');
+  if (!q) { dd.classList.remove('open'); return; }
+  const matches = REGIONS.filter(r =>
+    r.name.toLowerCase().includes(q) && !S.regions.find(x=>x.key===r.key)
+  ).slice(0,10);
+  dd.innerHTML = '';
+  if (!matches.length) {
+    dd.innerHTML = '<div class="region-opt" style="color:var(--muted);font-style:italic;">Keine Treffer</div>';
+  } else {
+    matches.forEach(r => {
+      const o = document.createElement('div');
+      o.className = 'region-opt';
+      const cls = r.type==='National' ? 'region-type nat' : 'region-type';
+      o.innerHTML = `<span class="${cls}">${r.type}</span>${r.name}`;
+      o.onmousedown = () => addR(r);
+      dd.appendChild(o);
+    });
+  }
+  dd.classList.add('open');
+}
+
+function openDd() { filterR(); }
+function closeDdDelay() { setTimeout(()=>document.getElementById('r-dd').classList.remove('open'),160); }
+
+function addR(r) {
+  if (S.regions.find(x=>x.key===r.key)) return;
+  S.regions.push(r);
+  renderTags();
+  document.getElementById('r-input').value = '';
+  document.getElementById('r-dd').classList.remove('open');
+}
+
+function removeR(key) {
+  S.regions = S.regions.filter(r=>r.key!==key);
+  renderTags();
+}
+
+function renderTags() {
+  const wrap = document.getElementById('r-tags');
+  wrap.innerHTML = '';
+  S.regions.forEach(r => {
+    const t = document.createElement('div');
+    t.className = 'region-tag';
+    t.innerHTML = `${r.name}<span class="rm-tag" onclick="removeR('${r.key}')">✕</span>`;
+    wrap.appendChild(t);
+  });
+  document.getElementById('btn3').disabled = S.regions.length === 0;
+}
+
+// ─── Q4 ─────────────────────────────────────────────────────────
+
+let noBudget = false;
+
+function updBudget(val) {
+  val = parseInt(val);
+  S.budget = val;
+  const pct = ((val-4000)/(50000-4000))*100;
+  document.getElementById('b-slider').style.setProperty('--pct', pct+'%');
+  document.getElementById('b-val').textContent = val.toLocaleString('de-CH').replace(/\./g,"'").replace(/,/g,"'");
+}
+
+function toggleNoBudget() {
+  noBudget = !noBudget;
+  S.budgetKnown = !noBudget;
+  const btn = document.getElementById('no-budget-btn');
+  const sliderWrap = document.getElementById('slider-wrap');
+  const bNum = document.getElementById('b-num');
+  const bUnknown = document.getElementById('b-unknown');
+  const hint = document.getElementById('b-hint');
+
+  btn.classList.toggle('active', noBudget);
+  document.getElementById('nb-icon').textContent = noBudget ? '✕' : '○';
+  btn.childNodes[1].textContent = noBudget ? ' Budget doch eingeben' : ' Ich weiss es noch nicht';
+
+  sliderWrap.classList.toggle('hidden', noBudget);
+  bNum.style.display = noBudget ? 'none' : 'flex';
+  bUnknown.style.display = noBudget ? 'block' : 'none';
+  hint.style.opacity = noBudget ? '0.4' : '1';
+}
+
+function finish() {
+  updateSummary();
+  alert('✅ Schritt 1 abgeschlossen!\n\nWeiter zu Schritt 2: Budget & Reichweite.');
+}
+
+// ─── SUMMARY ────────────────────────────────────────────────────
+
+function updateSummary() {
+  const row = document.getElementById('summary');
+  row.innerHTML = '';
+  if (S.type && S.subtype) {
+    const st = SUBTYPES[S.type].find(x=>x.val===S.subtype);
+    pill(row, st.icon+' '+st.name);
+  }
+  if (S.dateEvent && S.dateStart) {
+    const d = new Date(S.dateStart);
+    pill(row, '🚀 Start '+d.toLocaleDateString('de-CH',{day:'2-digit',month:'short'}));
+  }
+  if (S.regions.length) {
+    pill(row, '📍 '+S.regions.map(r=>r.name).join(' · '));
+  }
+}
+
+function pill(row, text) {
+  const p = document.createElement('div');
+  p.className = 's-pill';
+  p.textContent = text;
+  row.appendChild(p);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+updSidebar(1);
+updBudget(5000);
+</script>
+</body>
+</html>

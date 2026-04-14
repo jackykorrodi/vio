@@ -194,57 +194,32 @@ export default function HomePage() {
             {/* Aqua pool */}
             <div style={{ position: 'absolute', width: '420px', height: '420px', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', borderRadius: '55% 45% 60% 40% / 48% 56% 44% 52%', background: 'radial-gradient(ellipse at 30% 35%,rgba(184,169,232,.45) 0%,transparent 55%),radial-gradient(ellipse at 68% 65%,rgba(200,223,248,.4) 0%,transparent 55%),radial-gradient(ellipse at 55% 25%,rgba(242,196,206,.28) 0%,transparent 45%),radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.55) 0%,transparent 55%)', filter: 'blur(4px)', animation: 'morphPool 14s ease-in-out infinite alternate', pointerEvents: 'none', zIndex: 0 }} />
 
-            {/* Card 1 — card-main */}
-            <div style={{ position: 'absolute', width: '290px', top: '40px', left: '50%', transform: 'translateX(-46%)', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatA 7s ease-in-out infinite' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--violet-pale)', borderRadius: '100px', padding: '4px 12px', fontSize: '10px', color: 'var(--violet)', fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--violet)', animation: 'blink 2s ease-in-out infinite', flexShrink: 0, display: 'block' }} />
-                Kampagne · Live
-              </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '30px', fontWeight: 800, color: 'var(--ink)', lineHeight: 1, marginBottom: '4px', letterSpacing: '-.02em' }}>124&apos;800</div>
-              <div style={{ fontSize: '12px', color: 'var(--slate)', marginBottom: '16px' }}>Personen im Kanton Zürich</div>
-              <div style={{ height: '7px', background: 'var(--violet-pale)', borderRadius: '100px', overflow: 'hidden', marginBottom: '10px' }}>
-                <div style={{ height: '100%', width: '0%', background: 'linear-gradient(90deg,var(--violet),var(--lavender))', borderRadius: '100px', animation: 'growBar 2.2s cubic-bezier(.4,0,.2,1) .8s forwards' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                <span style={{ color: 'var(--slate)' }}>CHF 3&apos;200 · 14 Tage</span>
-                <span style={{ color: 'var(--violet)', fontWeight: 600 }}>72% Potenzial</span>
-              </div>
+            {/* Card 1 — 4 Schritte */}
+            <div style={{ position: 'absolute', width: '275px', top: '40px', left: '50%', transform: 'translateX(-46%)', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatA 7s ease-in-out infinite' }}>
+              <div style={{ width: '28px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg,#6B4FBB,#B8A9E8)', marginBottom: '14px' }} />
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px', lineHeight: 1.3 }}>In 4 Schritten zur fertigen Kampagne</div>
+              <div style={{ fontSize: '12px', color: 'var(--slate)', fontWeight: 300, lineHeight: 1.6 }}>Zielgruppe, Budget, Werbemittel, buchen — kein Vorwissen nötig.</div>
             </div>
 
-            {/* Card 2 — card-stat */}
+            {/* Card 2 — Reichweite */}
             <div style={{ position: 'absolute', width: '200px', bottom: '160px', left: '60px', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatB 7s ease-in-out infinite' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '9.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: '#B8A9E8', marginBottom: '8px' }}>26 Kantone · 124 Gemeinden</div>
-              <div style={{ lineHeight: 1, marginBottom: '4px' }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.02em' }}>5.4</span>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 400, color: '#7A7596', marginLeft: '4px' }}>Mio</span>
-              </div>
-              <div style={{ fontFamily: 'var(--font-sans)', fontSize: '10px', fontWeight: 300, color: '#7A7596', marginBottom: '10px' }}>Stimmbevölkerung erreichbar</div>
-              <div style={{ borderTop: '1px solid rgba(107,79,187,0.08)', margin: '8px 0' }} />
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, color: 'var(--ink)' }}>600k+</span>
-                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', fontWeight: 300, color: '#7A7596' }}>Unternehmen CH</span>
-              </div>
+              <div style={{ width: '28px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg,#1D9E75,#9FE1CB)', marginBottom: '14px' }} />
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px', lineHeight: 1.3 }}>Alle Schweizer Anbieter, eine Buchung</div>
+              <div style={{ fontSize: '12px', color: 'var(--slate)', fontWeight: 300, lineHeight: 1.6 }}>DOOH und Display schweizweit aktiviert — ohne Einzelbuchungen.</div>
             </div>
 
-            {/* Card 3 — card-reach */}
-            <div style={{ position: 'absolute', width: '208px', top: '200px', right: '8px', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatC 7s ease-in-out infinite' }}>
-              <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--lavender)', fontFamily: 'var(--font-display)', fontWeight: 700, marginBottom: '12px' }}>Kanäle</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--violet-pale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--violet)', flexShrink: 0 }}>▦</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink)' }}>DOOH Screens</div>
-                    <div style={{ fontSize: '10px', color: 'var(--slate)' }}>70%</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--sky-pale)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#7B8FD4', flexShrink: 0 }}>◻</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink)' }}>Online Display</div>
-                    <div style={{ fontSize: '10px', color: 'var(--slate)' }}>30%</div>
-                  </div>
-                </div>
-              </div>
+            {/* Card 3 — Budget */}
+            <div style={{ position: 'absolute', width: '200px', top: '200px', right: '8px', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatC 7s ease-in-out infinite' }}>
+              <div style={{ width: '28px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg,#D4A843,rgba(212,168,67,.4))', marginBottom: '14px' }} />
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px', lineHeight: 1.3 }}>Start ab CHF 4&apos;000</div>
+              <div style={{ fontSize: '12px', color: 'var(--slate)', fontWeight: 300, lineHeight: 1.6 }}>Professionelle Reichweite auch für kleinere Budgets. Keine Jahresverträge.</div>
+            </div>
+
+            {/* Card 4 — Begleitung */}
+            <div style={{ position: 'absolute', width: '235px', bottom: '20px', right: '8px', zIndex: 3, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,1)', borderRadius: '22px', padding: '24px 26px', boxShadow: '0 2px 0 rgba(107,79,187,.05),0 14px 44px rgba(107,79,187,.08),0 2px 8px rgba(0,0,0,.04)', animation: 'floatD 7s ease-in-out infinite' }}>
+              <div style={{ width: '28px', height: '3px', borderRadius: '2px', background: 'linear-gradient(90deg,#C8DFF8,#6B4FBB)', marginBottom: '14px' }} />
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px', lineHeight: 1.3 }}>Keine Agentur. Kein Mediaplan. Wir begleiten dich.</div>
+              <div style={{ fontSize: '12px', color: 'var(--slate)', fontWeight: 300, lineHeight: 1.6 }}>Region und Potenzial wählen, Werbemittel direkt erstellen und buchen — wir sind da wenn du Fragen hast.</div>
             </div>
           </div>
 
