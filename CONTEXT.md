@@ -4,11 +4,23 @@
 > Vor jedem grösseren Task lesen. Nach jedem abgeschlossenen Task updaten.
 
 ## Stack
-- Next.js + Tailwind v4, Vercel (Auto-Deploy via GitHub: jackykorrodi/vio)
-- HubSpot Deal Properties (State-Speicher, dealId via URL Params)
-- Firecrawl + Gemini 2.5 Flash (URL-Analyse, Ad Creator)
-- Resend (E-Mail, Domain: vio.ch)
+
+### Frontend & Hosting
+- Next.js + Tailwind v4, Vercel (Auto-Deploy via GitHub: jackykorrodi/vio) — auch für Live
 - Design: Violet #6B4FBB, Ink #2D1F52, Plus Jakarta Sans + Jost
+
+### Self-Hosted Services (Coolify auf Hetzner Zürich)
+- Umami (Analytics, DSGVO-konform)
+- n8n (Workflow Engine / Automationen)
+
+### APIs & Services
+- Pipedrive (CRM — ersetzt HubSpot, noch nicht integriert)
+- Resend (E-Mail, Domain: vio.ch — auch für Abandon-Flow Emails)
+- Firecrawl + Gemini 2.5 Flash (URL-Analyse)
+- AWS S3 Zürich (Werbemittel-Uploads + Offerte PDFs, Presigned URLs) — post Go-Live
+- Splicky/Adform (DSP — Dashboard-Daten per Email-Drop oder API)
+- Templated.io (Ad Creator V2 — ersetzt custom Ad Creator langfristig)
+- Bexio (Buchhaltung CH — post Go-Live)
 
 ## Drei Flows
 - **Politik** (5 Steps): Region → Budget/Pakete → Werbemittel → Abschluss → Bestätigung
@@ -123,10 +135,15 @@ Rollback: `git checkout v0.x-stable`
 | Datum | Entscheid | Begründung |
 |---|---|---|
 | 2026-04-10 | Inline styles statt CSS-Klassen für Komponenten | Turbopack cached CSS aggressiv, inline ist zuverlässiger |
-| 2026-04-10 | HubSpot Deal Properties statt Supabase | MVP-tauglich, kein extra Service nötig |
+| 2026-04-10 | HubSpot → Pipedrive | HubSpot zu teuer/komplex, Integration noch nicht abgeschlossen, Pipedrive schlanker für 2-Mann-Team |
 | 2026-04-10 | Gemini 2.5 Flash statt Claude für Analyse | Kosteneffizienter für URL-Crawling |
 | 2026-04-10 | 70% DOOH / 30% Display fix | Bewusste Mediaplanung-Entscheidung, nicht ändern |
 | 2026-04-10 | Keine CPM-Anzeige für User | Vereinfachung, nur Von-Bis Reichweite zeigen |
+| 2026-04-14 | Vercel bleibt auch für Live | Next.js-optimiert, Zero-Ops, kein Grund für Hostpoint/Coolify für Frontend |
+| 2026-04-14 | Coolify auf Hetzner Zürich für self-hosted Services | Umami + n8n brauchen eigenen Server, Coolify nimmt Docker-Overhead ab |
+| 2026-04-14 | AWS S3 Zürich für File-Storage | Werbemittel-Uploads + Offerte PDFs, Presigned URLs, post Go-Live |
+| 2026-04-14 | Templated.io als Ad Creator V2 | Flexibler, wartungsarm, günstiger als custom-built langfristig |
+| 2026-04-14 | Bexio für Buchhaltung | CH-native, Treuhänder-Anbindung, post Go-Live |
 
 ## Offene Go-Live Blocker
 🔴 KRITISCH: HubSpot Properties anlegen / Resend Domain verifizieren / Vercel ENV prüfen / Firecrawl Rate Limiting
@@ -134,13 +151,12 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Datum: 2026-04-13
+- Datum: 2026-04-14
+- Media-Marquee ersetzt Stats-Strip auf Homepage — Zeilen 229-247 app/page.tsx — getestet: nein
+- Hero floating Cards: 4 VIO-Vorteile ersetzen alte KPI-Cards (4 Schritten / Anbieter / CHF 4'000 / Keine Agentur) — app/page.tsx Zeilen 197–248 — getestet: nein
+- Why-Grid: Prompt für 4 neue Kacheln mit VIO-Vorteilen bereit, noch nicht ausgeführt
+- Tech Stack aktualisiert: HubSpot → Pipedrive, Coolify/Hetzner für self-hosted Services, AWS S3, Templated.io, Bexio, Umami, n8n dokumentiert
 - Politik Budget-Step: Design auf v2 Prototype angeglichen (Sidebar, Channel Cards mit vio-Bildern, Sliders, Vote-Hint)
-- Paket-Karten: onClick-Selektion gefixt, selectedPackage State korrekt verdrahtet (inline styles, kein className wegen Turbopack)
+- Paket-Karten: onClick-Selektion gefixt, selectedPackage State korrekt verdrahtet
 - Channel Cards: Hintergrundbilder /images/vio-dooh-bahnhof.jpg + /images/vio-display-phone.jpg eingebunden
-- Insight-Badges: alle 3 Pakete haben kontextabhängige Badges (red/good/best)
-- Präsenz Badge-Text: "Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase."
-- Datumslogik: campaignEnd = voteDate − 3 Tage, campaignStart = campaignEnd − durationDays, Fallback auf heute
-- Empfehlungslogik: daysUntilVote-basiert (< 49 → sichtbar, 49–62 → praesenz, ≥ 63 → dominanz)
-- Politik Step 1: neuer 4-Fragen-Flow (Step1Politik.tsx) — Q1 Typ+Subtyp, Q2 Datum, Q3 Region, Q4 Budget — Slide-Animationen, Progress Dots, Sidebar, Summary Pills
-- PolitikFlow: importiert jetzt Step1Politik statt Step2Politik für Step 1
+- Politik Step 1: neuer 4-Fragen-Flow (Step1Politik.tsx) — Q1 Typ+Subtyp, Q2 Datum, Q3 Region, Q4 Budget

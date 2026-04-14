@@ -226,23 +226,52 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── TRUST STRIP ──────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(107,79,187,0.08)', borderBottom: '1px solid rgba(107,79,187,0.08)', background: 'rgba(237,232,255,0.18)', padding: '18px 64px' }}>
-        <div id="strip-inner" style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center' }}>
-          {([
-            { num: '26',        label: 'Kantone buchbar',    sub: '124 Gemeinden verfügbar' },
-            { num: '5.4 Mio',   label: 'Stimmbevölkerung',   sub: 'via DOOH & Display erreichbar' },
-            { num: '600k+',     label: 'Unternehmen CH',     sub: 'via B2B Display erreichbar' },
-            { num: "CHF 2'500", label: 'Einstiegsbudget',    sub: '100% Schweizer Medien' },
-          ] as const).map((item, i, arr) => (
-            <div key={item.num} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: i === 0 ? '0 28px 0 0' : '0 28px', borderRight: i < arr.length - 1 ? '1px solid rgba(107,79,187,0.10)' : 'none', flex: 1 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 800, color: C.primary, letterSpacing: '-.02em', flexShrink: 0 }}>{item.num}</div>
-              <div style={{ fontSize: '12px', color: C.slate, fontWeight: 300, lineHeight: 1.4 }}>
-                <strong style={{ display: 'block', color: C.ink, fontWeight: 600, fontSize: '13px', fontFamily: 'var(--font-display)' }}>{item.label}</strong>
-                {item.sub}
+      {/* ── MEDIA MARQUEE ────────────────────────────────────────────────── */}
+      <div style={{ position: 'relative', zIndex: 1, borderTop: '1px solid rgba(107,79,187,0.08)', borderBottom: '1px solid rgba(107,79,187,0.08)', background: 'rgba(237,232,255,0.18)', padding: '22px 0', overflow: 'hidden' }}>
+        <div style={{ textAlign: 'center', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase', color: C.slate, marginBottom: '16px', fontFamily: 'var(--font-display)', fontWeight: 600, opacity: 0.7 }}>
+          Reichweite auf den führenden Schweizer Medien & Netzwerken
+        </div>
+        <div style={{ overflow: 'hidden', maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+          <div className="vio-marquee-track">
+            {([
+              { name: 'APG|SGA',         badge: 'DOOH',    badgeType: 'dooh' },
+              { name: 'Goldbach Neo',     badge: 'DOOH',    badgeType: 'dooh' },
+              { name: 'Livesystems',      badge: 'DOOH',    badgeType: 'dooh' },
+              { name: '20 Minuten',       badge: 'Display', badgeType: 'display' },
+              { name: 'Blick',            badge: 'Display', badgeType: 'display' },
+              { name: 'SRF',             badge: 'Display', badgeType: 'display' },
+              { name: 'NZZ',             badge: 'Display', badgeType: 'display' },
+              { name: 'Watson',          badge: 'Display', badgeType: 'display' },
+              { name: 'Tages-Anzeiger',  badge: 'Display', badgeType: 'display' },
+              { name: 'Ringier Digital', badge: 'Display', badgeType: 'display' },
+              { name: 'APG|SGA',         badge: 'DOOH',    badgeType: 'dooh' },
+              { name: 'Goldbach Neo',     badge: 'DOOH',    badgeType: 'dooh' },
+              { name: 'Livesystems',      badge: 'DOOH',    badgeType: 'dooh' },
+              { name: '20 Minuten',       badge: 'Display', badgeType: 'display' },
+              { name: 'Blick',            badge: 'Display', badgeType: 'display' },
+              { name: 'SRF',             badge: 'Display', badgeType: 'display' },
+              { name: 'NZZ',             badge: 'Display', badgeType: 'display' },
+              { name: 'Watson',          badge: 'Display', badgeType: 'display' },
+              { name: 'Tages-Anzeiger',  badge: 'Display', badgeType: 'display' },
+              { name: 'Ringier Digital', badge: 'Display', badgeType: 'display' },
+            ] as const).map((item, i) => (
+              <div key={i} style={{ display: 'inline-flex', alignItems: 'center', padding: '0 2.5rem', height: '44px', flexShrink: 0 }}>
+                <span style={{ fontSize: '16px', fontWeight: 600, color: C.ink, letterSpacing: '-0.01em', fontFamily: 'var(--font-display)', opacity: 0.6 }}>
+                  {item.name}
+                </span>
+                <span style={{
+                  fontSize: '9px', letterSpacing: '0.07em', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600, fontFamily: 'var(--font-display)',
+                  background: item.badgeType === 'dooh' ? 'rgba(107,79,187,0.10)' : 'rgba(30,100,180,0.08)',
+                  color: item.badgeType === 'dooh' ? C.primary : '#1A5F8A',
+                }}>
+                  {item.badge}
+                </span>
+                {i % 10 !== 9 && (
+                  <span style={{ display: 'inline-block', width: '1px', height: '20px', background: 'rgba(107,79,187,0.12)', marginLeft: '2.5rem', flexShrink: 0 }} />
+                )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -595,6 +624,21 @@ export default function HomePage() {
         .ti-title-sec { font-size: 14px; color: #7A7596; }
         .ti-sub { font-size: 12px; color: #7A7596; font-weight: 300; }
         .ti-arr { font-size: 16px; color: #B8A9E8; transition: all .22s; flex-shrink: 0; }
+
+        /* Media Marquee */
+        .vio-marquee-track {
+          display: inline-flex;
+          align-items: center;
+          white-space: nowrap;
+          animation: vio-marquee 35s linear infinite;
+        }
+        .vio-marquee-track:hover {
+          animation-play-state: paused;
+        }
+        @keyframes vio-marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
 
         /* Responsive */
         @media (max-width: 900px) {
