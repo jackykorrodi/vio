@@ -136,51 +136,42 @@ export default function HomePage() {
             </p>
 
             {/* Target selector */}
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: C.ink, marginBottom: '14px' }}>
-              Wen möchtest du erreichen?
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: '16px', fontWeight: 400, color: C.slate, marginBottom: '16px' }}>
+              Wen möchtest du mit deiner Kampagne erreichen?
             </div>
             <div className="target-list">
               {/* Politik */}
-              <a href="/campaign?type=politik" className="ti primary">
-                <div className="ti-icon">
-                  <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-                    <circle cx="11" cy="11" r="8" stroke="#6B4FBB" strokeWidth="1.5"/>
-                    <path d="M11 7v4l3 2" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+              <a href="/campaign?type=politik" style={{ display:'flex', alignItems:'center', gap:'20px', padding:'22px 24px', borderRadius:'18px', border:`1.5px solid ${C.primary}`, background:'#EEEDFE', cursor:'pointer', textDecoration:'none', transition:'all .22s', userSelect:'none' as const }}>
+                <div style={{ width:'18px', height:'18px', borderRadius:'50%', border:`1.5px solid ${C.primary}`, background:C.primary, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'white' }} />
                 </div>
-                <div className="ti-body">
-                  <div className="ti-title">Stimmbevölkerung</div>
-                  <div className="ti-sub">Abstimmungen, Kandidaturen &amp; politische Botschaften</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'22px', fontWeight:700, color:'#3C3489', marginBottom:'3px', letterSpacing:'-.01em' }}>Stimmbevölkerung</div>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'15px', fontWeight:400, color:'#534AB7', lineHeight:1.4 }}>Abstimmungen, Kandidaturen &amp; politische Botschaften</div>
                 </div>
-                <div className="ti-arr">→</div>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:'11px', fontWeight:500, letterSpacing:'.07em', padding:'5px 13px', borderRadius:'20px', background:C.primary, color:'white', whiteSpace:'nowrap', flexShrink:0, textTransform:'uppercase' }}>Politik</div>
               </a>
               {/* B2B */}
-              <a href="/campaign?type=b2b" className="ti primary">
-                <div className="ti-icon">
-                  <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-                    <rect x="2" y="8" width="18" height="11" rx="2" stroke="#6B4FBB" strokeWidth="1.5"/>
-                    <path d="M7 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#6B4FBB" strokeWidth="1.5"/>
-                  </svg>
+              <a href="/campaign?type=b2b" style={{ display:'flex', alignItems:'center', gap:'20px', padding:'22px 24px', borderRadius:'18px', border:'1.5px solid rgba(107,79,187,0.15)', background:'white', cursor:'pointer', textDecoration:'none', transition:'all .22s', userSelect:'none' as const }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = C.primary; (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAFE'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(107,79,187,0.15)'; (e.currentTarget as HTMLAnchorElement).style.background = 'white'; (e.currentTarget as HTMLAnchorElement).style.transform = 'none'; }}>
+                <div style={{ width:'18px', height:'18px', borderRadius:'50%', border:'1.5px solid rgba(107,79,187,0.3)', flexShrink:0 }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'22px', fontWeight:700, color:C.ink, marginBottom:'3px', letterSpacing:'-.01em' }}>Unternehmen &amp; Fachleute</div>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'15px', fontWeight:400, color:C.slate, lineHeight:1.4 }}>Firmen, Entscheider &amp; B2B-Zielgruppen in der Schweiz</div>
                 </div>
-                <div className="ti-body">
-                  <div className="ti-title">Unternehmen &amp; Fachleute</div>
-                  <div className="ti-sub">Firmen, Entscheider &amp; B2B-Zielgruppen in der Schweiz</div>
-                </div>
-                <div className="ti-arr">→</div>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:'11px', fontWeight:500, letterSpacing:'.07em', padding:'5px 13px', borderRadius:'20px', background:'rgba(107,79,187,0.08)', color:C.slate, whiteSpace:'nowrap', flexShrink:0, textTransform:'uppercase' }}>B2B</div>
               </a>
               {/* B2C */}
-              <a href="/campaign?type=b2c" className="ti sec">
-                <div className="ti-icon ti-icon-sec">
-                  <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-                    <circle cx="11" cy="8" r="3" stroke="#B8A9E8" strokeWidth="1.5"/>
-                    <path d="M5 19c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="#B8A9E8" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
+              <a href="/campaign?type=b2c" style={{ display:'flex', alignItems:'center', gap:'20px', padding:'22px 24px', borderRadius:'18px', border:'1.5px solid rgba(107,79,187,0.08)', background:'rgba(253,252,255,0.5)', cursor:'pointer', textDecoration:'none', transition:'all .22s', userSelect:'none' as const }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(107,79,187,0.2)'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(107,79,187,0.08)'; (e.currentTarget as HTMLAnchorElement).style.transform = 'none'; }}>
+                <div style={{ width:'18px', height:'18px', borderRadius:'50%', border:'1.5px solid rgba(184,169,232,0.4)', flexShrink:0 }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'22px', fontWeight:700, color:C.slate, marginBottom:'3px', letterSpacing:'-.01em' }}>Privatkunden &amp; Konsumenten</div>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'15px', fontWeight:400, color:C.slate, lineHeight:1.4, opacity:0.7 }}>Lokale Kunden, Haushalte &amp; Endverbraucher</div>
                 </div>
-                <div className="ti-body">
-                  <div className="ti-title ti-title-sec">Privatkunden &amp; Konsumenten</div>
-                  <div className="ti-sub">Lokale Kunden, Haushalte &amp; Endverbraucher</div>
-                </div>
-                <div className="ti-arr" style={{ color: C.lavender }}>→</div>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:'11px', fontWeight:500, letterSpacing:'.07em', padding:'5px 13px', borderRadius:'20px', background:'rgba(184,169,232,0.12)', color:C.lavender, whiteSpace:'nowrap', flexShrink:0, textTransform:'uppercase' }}>B2C</div>
               </a>
             </div>
           </div>
@@ -579,51 +570,7 @@ export default function HomePage() {
       {/* ── PAGE STYLES ──────────────────────────────────────────────────── */}
       <style>{`
         /* Target selector list */
-        .target-list { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
-        .ti {
-          display: flex; align-items: center; gap: 16px;
-          border-radius: 16px; padding: 16px 20px;
-          cursor: pointer; text-decoration: none; color: inherit;
-          transition: all .22s; position: relative; overflow: hidden;
-          border: 1.5px solid rgba(107,79,187,0.10); background: white;
-        }
-        .ti::before {
-          content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-          width: 3px; background: #6B4FBB; border-radius: 16px 0 0 16px;
-          opacity: 0; transition: opacity .22s;
-        }
-        .ti.primary::before { opacity: 1; }
-        .ti.primary {
-          background: linear-gradient(90deg, #F5F2FF 0%, white 60%);
-          border-left: 3px solid #6B4FBB;
-          border-top: 1px solid rgba(107,79,187,0.10);
-          border-right: 1px solid rgba(107,79,187,0.10);
-          border-bottom: 1px solid rgba(107,79,187,0.10);
-          box-shadow: 0 4px 20px rgba(107,79,187,0.09);
-        }
-        .ti.sec {
-          background: rgba(253,252,255,0.5);
-          border: 1px solid rgba(107,79,187,0.07);
-          padding: 13px 20px;
-        }
-        .ti:hover { transform: translateX(5px); border-left-color: #6B4FBB; }
-        .ti:hover::before { opacity: 1; }
-        .ti:hover .ti-arr { color: #6B4FBB; transform: translateX(3px); }
-        .ti-icon {
-          width: 40px; height: 40px; border-radius: 12px;
-          background: #EDE8FF; display: flex; align-items: center;
-          justify-content: center; flex-shrink: 0;
-        }
-        .ti-icon-sec { background: rgba(107,79,187,0.05); }
-        .ti-body { flex: 1; }
-        .ti-title {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 15px; font-weight: 700; color: #2D1F52;
-          margin-bottom: 2px; letter-spacing: -.01em;
-        }
-        .ti-title-sec { font-size: 14px; color: #7A7596; }
-        .ti-sub { font-size: 12px; color: #7A7596; font-weight: 300; }
-        .ti-arr { font-size: 16px; color: #B8A9E8; transition: all .22s; flex-shrink: 0; }
+        .target-list { display: flex; flex-direction: column; gap: 10px; max-width: 500px; }
 
         /* Media Marquee */
         .vio-marquee-track {
