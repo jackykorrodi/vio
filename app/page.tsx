@@ -118,12 +118,6 @@ export default function HomePage() {
             transform: heroVisible ? 'none' : 'translateY(20px)',
             transition: 'opacity .7s ease, transform .7s ease',
           }}>
-            {/* Eyebrow */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: C.primaryXpale, border: '1px solid rgba(107,79,187,0.15)', borderRadius: '100px', padding: '7px 18px', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.primary, marginBottom: '28px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: C.gold, flexShrink: 0, display: 'block' }} />
-              Schweizer Werbeplattform
-            </div>
-
             {/* H1 */}
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(52px,5.5vw,82px)', fontWeight: 800, lineHeight: 1.04, letterSpacing: '-.025em', color: C.ink, marginBottom: '20px' }}>
               Deine Botschaft.<br />
