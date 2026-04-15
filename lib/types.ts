@@ -65,6 +65,7 @@ export interface BriefingData {
   selectedRegions?: Array<{ name: string; type: string; stimm: number; kanton?: string }>;
   totalStimmber?: number;
   vioPackages?: Step1Output;
+  selectedPackage?: 'sichtbar' | 'praesenz' | 'dominanz';
   // Step 3
   analysis: AnalysisResult | null;
   // Step 4

@@ -4,20 +4,22 @@ import { useState, useCallback, useEffect } from 'react';
 import { initialBriefing, BriefingData } from '@/lib/types';
 import Step2Politik from '@/components/steps/Step1Politik';
 import Step2PolitikBudget from '@/components/campaign/StepPackages';
+import StepSummaryPolitik from '@/components/campaign/StepSummaryPolitik';
 import Step5Creative from '@/components/steps/Step5Creative';
 import Step5AdCreator from '@/components/steps/Step5AdCreator';
 import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
 
-// Politik flow: 5 display steps
+// Politik flow: 6 display steps
 // 1 = Region / Wahlkreis / Kampagnentyp (Step2Politik)
-// 2 = Reichweite & Budget (Step4Budget)
-// 3 = Werbemittel (Step5Creative / Step5AdCreator)
-// 4 = Abschluss (Step6Contact)
-// 5 = Bestätigung (Step7Confirmation)
+// 2 = Paket wählen (StepPackages)
+// 3 = Übersicht / Budget anpassen (StepSummaryPolitik)
+// 4 = Werbemittel (Step5Creative / Step5AdCreator)
+// 5 = Abschluss (Step6Contact)
+// 6 = Bestätigung (Step7Confirmation)
 
-const TOTAL_STEPS = 5;
-const STEP_LABELS = ['Region', 'Budget', 'Werbemittel', 'Abschluss', 'Bestätigung'];
+const TOTAL_STEPS = 6;
+const STEP_LABELS = ['Region', 'Paket', 'Übersicht', 'Werbemittel', 'Abschluss', 'Bestätigung'];
 
 const C = {
   primary: '#6B4FBB',
@@ -33,7 +35,7 @@ export default function PolitikFlow({ resumeData }: Props) {
   const { _targetStep, ...resumeRest } = resumeData ?? {};
 
   const [currentStep, setCurrentStep] = useState(_targetStep ?? 1);
-  const [step3Phase, setStep3Phase] = useState<'creative' | 'adcreator'>('creative');
+  const [step4Phase, setStep4Phase] = useState<'creative' | 'adcreator'>('creative');
   const [resumeLoaded] = useState(!!resumeData);
   const [showLabels, setShowLabels] = useState(false);
 
@@ -54,7 +56,7 @@ export default function PolitikFlow({ resumeData }: Props) {
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
   const prevStep = () => {
-    if (currentStep === 3 && step3Phase === 'adcreator') { setStep3Phase('creative'); return; }
+    if (currentStep === 4 && step4Phase === 'adcreator') { setStep4Phase('creative'); return; }
     setCurrentStep(prev => Math.max(1, prev - 1));
   };
 
@@ -74,7 +76,7 @@ export default function PolitikFlow({ resumeData }: Props) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (currentStep === 3 && !briefing.sessionId) {
+    if (currentStep === 4 && !briefing.sessionId) {
       updateBriefing({ sessionId: crypto.randomUUID() });
     }
   }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -155,27 +157,32 @@ export default function PolitikFlow({ resumeData }: Props) {
         <Step2Politik briefing={briefing} updateBriefing={updateBriefing} onComplete={nextStep} isActive />
       )}
 
-      {/* ── Step 2: Reichweite & Budget ── */}
+      {/* ── Step 2: Paket wählen ── */}
       {currentStep === 2 && (
         <Step2PolitikBudget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={2} />
       )}
 
-      {/* ── Step 3: Werbemittel ── */}
-      {currentStep === 3 && step3Phase === 'creative' && (
-        <Step5Creative briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} onUploadSelected={() => setStep3Phase('adcreator')} isActive stepNumber={3} />
+      {/* ── Step 3: Übersicht & Budget anpassen ── */}
+      {currentStep === 3 && (
+        <StepSummaryPolitik briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={3} />
       )}
-      {currentStep === 3 && step3Phase === 'adcreator' && (
+
+      {/* ── Step 4: Werbemittel ── */}
+      {currentStep === 4 && step4Phase === 'creative' && (
+        <Step5Creative briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} onUploadSelected={() => setStep4Phase('adcreator')} isActive stepNumber={4} />
+      )}
+      {currentStep === 4 && step4Phase === 'adcreator' && (
         <Step5AdCreator briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive />
       )}
 
-      {/* ── Step 4: Abschluss ── */}
-      {currentStep === 4 && (
+      {/* ── Step 5: Abschluss ── */}
+      {currentStep === 5 && (
         <Step6Contact briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} goToStep={setCurrentStep} isActive />
       )}
 
-      {/* ── Step 5: Bestätigung ── */}
-      {currentStep === 5 && (
-        <Step7Confirmation briefing={briefing} stepNumber={5} />
+      {/* ── Step 6: Bestätigung ── */}
+      {currentStep === 6 && (
+        <Step7Confirmation briefing={briefing} stepNumber={6} />
       )}
 
     </main>
