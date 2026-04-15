@@ -30,7 +30,7 @@ export type Step1Output = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MIXED_CPM = 39.5
-const MIN_SICHTBAR_BUDGET = 2500
+const MIN_SICHTBAR_BUDGET = 4000
 const CAMPAIGN_END_OFFSET_DAYS = 3  // campaignEnd = voteDate − 3 days
 
 const PACKAGES = {

@@ -13,21 +13,6 @@ const DOOH_DATA_POLITIK = doohScreensRaw as DoohEntry[];
 // ─── Types ────────────────────────────────────────────────────────────────────
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 
-// ─── Static why-box content per package ───────────────────────────────────────
-const WHY: Record<PkgKey, { text: string; variant: 'green' | 'amber' }> = {
-  sichtbar: {
-    text: 'Läuft kurz vor Unterlagen-Versand – ideal für den letzten Impuls vor der Abstimmung.',
-    variant: 'amber',
-  },
-  praesenz: {
-    text: 'Präsent während der gesamten Meinungsbildungsphase – vor dem Unterlagen-Versand.',
-    variant: 'green',
-  },
-  dominanz: {
-    text: 'Maximale Präsenz über den gesamten Abstimmungszeitraum – stärkste Wirkung.',
-    variant: 'green',
-  },
-};
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 const MONTHS_SHORT = ['Jan','Feb','Mrz','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -93,6 +78,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [endISO,     setEndISO]     = useState(() => computeEnd());
   const [budget,     setBudget]     = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
   const [dateError,  setDateError]  = useState<string | null>(null);
+  const [frequency,  setFrequency]  = useState<number>(() => pkg?.frequency ?? 4);
 
   // Per-card computed start dates (for display on cards)
   const cardStartISO = (key: PkgKey) => computeStart(key);
@@ -103,6 +89,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     setStartISO(computeStart(key));
     setEndISO(computeEnd());
     setBudget(vioData?.packages[key].finalBudget ?? budget);
+    setFrequency(vioData?.packages[key].frequency ?? 4);
   };
 
   const handleReset = () => handleSelectPkg(selectedPkg);
@@ -119,7 +106,20 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // ── Derived display values ───────────────────────────────────────────────────
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
-  const budgetPct  = Math.min(100, Math.max(0, ((budget - 2500) / (200000 - 2500)) * 100));
+  const budgetPct  = Math.min(100, Math.max(0, ((budget - 4000) / (200000 - 4000)) * 100));
+
+  const freqDescMap: Record<number, string> = {
+    1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
+    2: 'Breite Streuung – hohe Unique Reach mit leichter Wiederholung.',
+    3: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
+    4: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
+    5: 'Impact – intensivere Bespielung.',
+    6: 'High Impact – starke Wiederholung für maximale Wirkung.',
+    7: 'Maximum Impact – höchste Frequenz.',
+  };
+  const freqDesc = freqDescMap[frequency] ?? '';
+  const freqFactor = frequency / (pkg?.frequency ?? 4);
+  const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
 
   const MIXED_CPM = 39.5;
   const selectedPkgBudget = vioData?.packages[selectedPkg].finalBudget ?? 0;
@@ -187,7 +187,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     }
     setDateError(null);
     updateBriefing({
-      budget,
+      budget:      adjustedBudget,
       laufzeit:    weeks,
       startDate:   startISO,
       reach:       customReachPeople,
@@ -246,9 +246,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .s2-date-row    { display: flex; justify-content: space-between; align-items: baseline; }
         .s2-date-lbl    { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #5A4A7A; font-family: 'Plus Jakarta Sans', sans-serif; }
         .s2-date-val    { font-size: 13px; font-weight: 700; color: #2D1F52; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .s2-why         { margin-top: auto; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #065F46; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; }
-        .s2-why.amber   { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
-        .s2-why-hint    { margin-top: 8px; background: #FFF8E7; border: 1px solid #FDE68A; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #92400E; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; }
+        .s2-ctx-tag      { border-radius: 10px; padding: 9px 11px; font-size: 12px; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; margin-top: auto; }
+        .s2-ctx-tag.warn { background: #FCEBEB; color: #791F1F; }
+        .s2-ctx-tag.ok   { background: #EAF3DE; color: #27500A; }
+        .s2-ctx-tag.star { background: #FAEEDA; color: #633806; }
 
         /* Calendar section */
         .s2-cal      { background: white; border: 1px solid #EDE8F7; border-radius: 14px; padding: 28px; margin-bottom: 24px; }
@@ -350,7 +351,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {PKG_ORDER.map(key => {
               const p        = vioData.packages[key];
               const isSel    = selectedPkg === key;
-              const why      = WHY[key];
               const cStart   = cardStartISO(key);
               const cEnd     = sharedEndISO;
 
@@ -410,19 +410,25 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     </div>
                   )}
 
-                  {/* Why box */}
-                  <div className={`s2-why${why.variant === 'amber' ? ' amber' : ''}`}>
-                    <span style={{ flexShrink: 0 }}>{why.variant === 'green' ? '✅' : '⚡'}</span>
-                    {why.text}
-                  </div>
-
-                  {/* Dynamic hinweis (timing warning from vioData, if set) */}
-                  {p.hinweis && (
-                    <div className="s2-why-hint">
-                      <span style={{ flexShrink: 0 }}>⚠️</span>
-                      {p.hinweis}
-                    </div>
-                  )}
+                  {/* Context tag */}
+                  {(() => {
+                    const ctxType: 'warn' | 'ok' | 'star' =
+                      p.hinweis ? 'warn'
+                      : key === 'dominanz' ? 'star'
+                      : 'ok';
+                    const ctxText =
+                      p.hinweis ? p.hinweis
+                      : key === 'sichtbar' ? 'Läuft kurz vor dem Unterlagen-Versand – ideal für den letzten Impuls.'
+                      : key === 'praesenz' ? 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.'
+                      : 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.';
+                    const ctxIcon = ctxType === 'warn' ? '⚠' : ctxType === 'star' ? '★' : '✓';
+                    return (
+                      <div className={`s2-ctx-tag ${ctxType}`}>
+                        <span style={{ flexShrink: 0, fontSize: '12px' }}>{ctxIcon}</span>
+                        <span>{ctxText}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -520,7 +526,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <input
                   type="range"
                   className="s2-range-input"
-                  min={2500}
+                  min={4000}
                   max={200000}
                   step={500}
                   value={budget}
@@ -528,8 +534,40 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 />
               </div>
               <div className="s2-sl-range">
-                <span>CHF 2&apos;500</span>
+                <span>CHF 4&apos;000</span>
                 <span>CHF 200&apos;000</span>
+              </div>
+            </div>
+
+            {/* ── Frequenz-Slider ── */}
+            <div style={{ marginTop: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '13px', fontWeight: 600, color: '#5A4A7A' }}>
+                  Medienintensität
+                </span>
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  <div
+                    style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
+                    onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
+                    onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
+                  >i</div>
+                  <div style={{ display: 'none', position: 'absolute', left: '22px', top: '-6px', width: '220px', background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
+                    Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
+                  </div>
+                </div>
+              </div>
+              <input
+                type="range"
+                min={1} max={7} step={1}
+                value={frequency}
+                onChange={e => setFrequency(Number(e.target.value))}
+                style={{ width: '100%' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#B8ADDA', marginTop: '4px', marginBottom: '6px' }}>
+                <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#7A7596', minHeight: '16px' }}>
+                {freqDesc}
               </div>
             </div>
           </div>
@@ -568,7 +606,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             </div>
             <div className="s2-si">
               <div className="s2-si-lbl">Budget total</div>
-              <div className="s2-si-val">{fmtCHF(budget)}</div>
+              <div className="s2-si-val">{fmtCHF(adjustedBudget)}</div>
               <div className="s2-si-sub">DOOH + Display inkl.</div>
             </div>
           </div>
@@ -596,7 +634,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </svg>
             </button>
             <div className="s2-cta-sum">
-              <strong>{isCustomBudget ? 'Custom' : pkg.name} · {fmtCHF(budget)}</strong><br />
+              <strong>{isCustomBudget ? 'Custom' : pkg.name} · {fmtCHF(adjustedBudget)}</strong><br />
               <span>{weeks} Wochen · ~{customReachPeople.toLocaleString('de-CH')} Personen erreicht</span>
             </div>
           </div>
