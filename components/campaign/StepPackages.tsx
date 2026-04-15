@@ -67,6 +67,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [laufzeitWeeks, setLaufzeitWeeks] = useState(() =>
     Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7)
   );
+  const [frequency, setFrequency] = useState<number>(() => vioData?.packages[initPkg].frequency ?? 4);
 
   if (!vioData) {
     return (
@@ -112,8 +113,22 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
 
+  // Frequency derived values
+  const freqDescMap: Record<number, string> = {
+    1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
+    2: 'Breite Streuung – hohe Unique Reach mit leichter Wiederholung.',
+    3: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
+    4: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
+    5: 'Impact – intensivere Bespielung.',
+    6: 'High Impact – starke Wiederholung für maximale Wirkung.',
+    7: 'Maximum Impact – höchste Frequenz.',
+  };
+  const freqDesc = freqDescMap[frequency] ?? '';
+  const freqFactor = frequency / (pkg.frequency ?? 4);
+  const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
+
   // Slider fill percentages
-  const budgetPct = Math.min(100, Math.max(0, ((budget - 2500) / (150000 - 2500)) * 100));
+  const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
   const durPct    = Math.min(100, ((laufzeitWeeks - 1) / 7) * 100);
   const barPct    = Math.min(100, (customReachPct / 0.8) * 100);
 
@@ -132,11 +147,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     setSelectedPkg(key);
     setBudget(vioData.packages[key].finalBudget);
     setLaufzeitWeeks(Math.round(vioData.packages[key].durationDays / 7));
+    setFrequency(vioData.packages[key].frequency ?? 4);
   };
 
   const handleNext = () => {
     updateBriefing({
-      budget,
+      budget: adjustedBudget,
       laufzeit:    laufzeitWeeks,
       startDate:   campaignStartISO || todayISO(),
       reach:       customReachPeople,
@@ -147,23 +163,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     nextStep();
   };
 
-  // Insight badge — alle 3 Pakete
-  const getInsightBadge = (key: PkgKey) => {
-    const p = vioData.packages[key];
-    // If it's the recommended package AND has a hinweis (time pressure), show that
-    if (key === vioData.recommendedPackage && p.hinweis) {
-      const isRed = (vioData.daysUntilVote ?? 99) < 35;
-      return {
-        bg: isRed ? '#FCEBEB' : '#FAEEDA',
-        color: isRed ? '#791F1F' : '#633806',
-        icon: isRed ? '⚠' : '⏰',
-        text: p.hinweis,
-      };
-    }
-    if (key === 'dominanz') return { bg: '#EEEDFE', color: '#3C3489', icon: '⭐', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' };
-    if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '✓', text: 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.' };
-    return { bg: '#FAEEDA', color: '#633806', icon: '⚡', text: 'Letzter Impuls vor dem Unterlagen-Versand.' };
-  };
 
   // Sidebar row helper
   const SbRow = ({ label, value, valueColor = '#2D1F52', last = false }: { label: string; value: string; valueColor?: string; last?: boolean }) => (
@@ -179,6 +178,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .sp-range { width: 100%; height: 4px; border-radius: 2px; outline: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; background: transparent; position: absolute; top: 50%; transform: translateY(-50%); margin: 0; }
         .sp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
         .sp-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
+        .sp-ctx-tag { border-radius: 10px; padding: 9px 11px; font-size: 11px; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; margin-top: 10px; }
+        .sp-ctx-tag.warn { background: #FCEBEB; color: #791F1F; }
+        .sp-ctx-tag.ok   { background: #EAF3DE; color: #27500A; }
+        .sp-ctx-tag.star { background: #FAEEDA; color: #633806; }
       `}</style>
 
       {/* ── Full-width header ── */}
@@ -229,8 +232,18 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               const isSel   = selectedPkg === key;
               const isRec   = key === vioData.recommendedPackage;
               const feasible = isPkgFeasible(key);
-              const badge   = getInsightBadge(key);
               const barW    = Math.round(p.reachPercent * 100);
+
+              const ctxType: 'warn' | 'ok' | 'star' =
+                p.hinweis ? 'warn'
+                : key === 'dominanz' ? 'star'
+                : 'ok';
+              const ctxText =
+                p.hinweis ? p.hinweis
+                : key === 'sichtbar' ? 'Läuft kurz vor dem Unterlagen-Versand – ideal für den letzten Impuls.'
+                : key === 'praesenz' ? 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.'
+                : 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.';
+              const ctxIcon = ctxType === 'warn' ? '⚠' : ctxType === 'star' ? '★' : '✓';
 
               return (
                 <div
@@ -288,17 +301,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   <div style={{ fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#7A7596' }}>Stimmberechtigte erreichbar</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', marginTop: 2 }}>~{p.targetReachPeople.toLocaleString('de-CH')}</div>
                   <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{barW}% der {inhabitants}</div>
-                  <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2, marginBottom: badge ? 0 : 0 }}>
+                  <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
                     <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${barW}%` }} />
                   </div>
 
-                  {/* Insight badge — only on recommended */}
-                  {badge && (
-                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, display: 'flex', gap: 7, alignItems: 'flex-start', background: badge.bg, color: badge.color }}>
-                      <span style={{ flexShrink: 0, marginTop: 1 }}>{badge.icon}</span>
-                      {badge.text}
-                    </div>
-                  )}
+                  {/* Context tag */}
+                  <div className={`sp-ctx-tag ${ctxType}`}>
+                    <span style={{ flexShrink: 0, fontSize: '12px' }}>{ctxIcon}</span>
+                    <span>{ctxText}</span>
+                  </div>
                 </div>
               );
             })}
@@ -371,10 +382,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </div>
               <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
-                <input type="range" className="sp-range" min={2500} max={150000} step={500} value={budget} onChange={e => setBudget(Number(e.target.value))} />
+                <input type="range" className="sp-range" min={4000} max={150000} step={500} value={budget} onChange={e => setBudget(Number(e.target.value))} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                <span>CHF 2&apos;500</span><span>CHF 150&apos;000</span>
+                <span>CHF 4&apos;000</span><span>CHF 150&apos;000</span>
               </div>
             </div>
 
@@ -392,6 +403,28 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <span>1 Woche</span><span>8 Wochen</span>
               </div>
             </div>
+          </div>
+
+          {/* ── Frequenz-Slider ── */}
+          <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '13px', fontWeight: 600, color: '#5A4A7A' }}>Medienintensität</span>
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                <div
+                  style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
+                  onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
+                  onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
+                >i</div>
+                <div style={{ display: 'none', position: 'absolute', left: '22px', top: '-6px', width: '220px', background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
+                  Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
+                </div>
+              </div>
+            </div>
+            <input type="range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} style={{ width: '100%' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#B8ADDA', marginTop: '4px', marginBottom: '6px' }}>
+              <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#7A7596', minHeight: '16px' }}>{freqDesc}</div>
           </div>
 
           {/* Vote hint */}
@@ -449,7 +482,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             </div>
 
             <SbRow label="Paket" value={pkg.name} />
-            <SbRow label="Budget" value={fmtCHF(budget)} valueColor="#6B4FBB" />
+            <SbRow label="Budget" value={fmtCHF(adjustedBudget)} valueColor="#6B4FBB" />
             <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} />
             <SbRow label="Kampagnenstart" value={campaignStartISO ? fmtMed(campaignStartISO) : '—'} />
             <SbRow label="Wahlsonntag" value={briefing.votingDate ? fmtMed(briefing.votingDate) : '—'} valueColor="#BA7517" last />
