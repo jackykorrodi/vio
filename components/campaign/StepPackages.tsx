@@ -403,28 +403,32 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <span>1 Woche</span><span>8 Wochen</span>
               </div>
             </div>
-          </div>
 
-          {/* ── Frequenz-Slider ── */}
-          <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '13px', fontWeight: 600, color: '#5A4A7A' }}>Medienintensität</span>
-              <div style={{ position: 'relative', display: 'inline-flex' }}>
-                <div
-                  style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
-                  onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
-                  onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
-                >i</div>
-                <div style={{ display: 'none', position: 'absolute', left: '22px', top: '-6px', width: '220px', background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
-                  Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
+            {/* Frequenz-Slider */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 13, color: '#7A7596' }}>Medienintensität</span>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <div
+                    style={{ width: 16, height: 16, borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
+                    onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
+                    onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
+                  >i</div>
+                  <div style={{ display: 'none', position: 'absolute', left: 22, top: -6, width: 220, background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
+                    Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
+                  </div>
                 </div>
+                <span style={{ marginLeft: 'auto', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{frequency}×</span>
               </div>
+              <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${((frequency - 1) / 6) * 100}%`, pointerEvents: 'none' }} />
+                <input type="range" className="sp-range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6, marginBottom: 4 }}>
+                <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#7A7596', minHeight: 16 }}>{freqDesc}</div>
             </div>
-            <input type="range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} style={{ width: '100%' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#B8ADDA', marginTop: '4px', marginBottom: '6px' }}>
-              <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
-            </div>
-            <div style={{ fontSize: '12px', color: '#7A7596', minHeight: '16px' }}>{freqDesc}</div>
           </div>
 
           {/* Vote hint */}
