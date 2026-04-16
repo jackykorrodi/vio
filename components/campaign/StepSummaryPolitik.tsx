@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
+import { buildVioPackages } from '@/lib/vio-paketlogik';
 import doohScreensRaw from '@/lib/dooh-screens.json';
 
 type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
@@ -58,7 +59,15 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
-  const vioData = briefing.vioPackages;
+  const vioData = (() => {
+    const regions = briefing.selectedRegions?.map(r => ({ eligibleVoters: r.stimm })) ?? [];
+    if (regions.length === 0) return briefing.vioPackages ?? null;
+    return buildVioPackages({
+      regions,
+      voteDate: briefing.votingDate ?? null,
+      campaignType: briefing.politikType ?? undefined,
+    });
+  })();
   const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
 
   if (!vioData) {
