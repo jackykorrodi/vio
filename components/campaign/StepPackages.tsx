@@ -117,17 +117,25 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     const isSelected = key === selectedPkg;
     const pkgFreq = p.frequency ?? 4;
     const pkgDurWeeks = Math.round(p.durationDays / 7);
-    const effectiveFreq = isSelected ? frequency : pkgFreq;
-    const effectiveBudget = isSelected
-      ? Math.round(budget * (effectiveFreq / pkgFreq) * (laufzeitWeeks / pkgDurWeeks) / 500) * 500
-      : p.finalBudget;
-    const rawReach = Math.round((effectiveBudget / MIXED_CPM) * 1000 / effectiveFreq / 100) * 100;
+    // Für nicht-selektierte Pakete: Paket-Werte direkt verwenden
+    if (!isSelected) {
+      return {
+        budget: p.finalBudget,
+        reach: p.targetReachPeople,
+        pct: Math.round(p.reachPercent * 100),
+      };
+    }
+    // Für selektiertes Paket: Frequenz und Laufzeit-Faktor anwenden
+    const freqFactor = frequency / pkgFreq;
+    const durFactor = laufzeitWeeks / pkgDurWeeks;
+    const adjBudget = Math.max(4000, Math.round(p.finalBudget * freqFactor * durFactor / 500) * 500);
+    // Reach skaliert umgekehrt zur Frequenz (mehr Frequenz = weniger unique reach bei gleichem Budget)
+    const adjReach = Math.round(p.targetReachPeople / freqFactor / 100) * 100;
     const maxReach = Math.round(vioData.eligibleVotersTotal * 0.8);
-    const reach = Math.min(rawReach, maxReach);
     return {
-      budget: Math.max(4000, effectiveBudget),
-      reach,
-      pct: Math.round((reach / vioData.eligibleVotersTotal) * 100),
+      budget: adjBudget,
+      reach: Math.min(adjReach, maxReach),
+      pct: Math.round((Math.min(adjReach, maxReach) / vioData.eligibleVotersTotal) * 100),
     };
   };
   const adjustedBudget = getAdjustedValues(selectedPkg).budget;
