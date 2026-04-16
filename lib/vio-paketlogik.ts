@@ -86,6 +86,18 @@ function roundBudget(v: number): number {
   return Math.round(v / 1000) * 1000
 }
 
+function getReachPercents(voters: number): { sichtbar: number; praesenz: number; dominanz: number } {
+  if (voters < 50000) {
+    return { sichtbar: 0.15, praesenz: 0.30, dominanz: 0.45 }
+  } else if (voters < 200000) {
+    return { sichtbar: 0.08, praesenz: 0.15, dominanz: 0.25 }
+  } else if (voters < 500000) {
+    return { sichtbar: 0.04, praesenz: 0.08, dominanz: 0.14 }
+  } else {
+    return { sichtbar: 0.02, praesenz: 0.04, dominanz: 0.08 }
+  }
+}
+
 function buildPackage(
   pkg: { name: string; reach: number; freq: number; days: number },
   voters: number,
@@ -97,7 +109,7 @@ function buildPackage(
   const impressions = reach * pkg.freq
   const raw         = (impressions / 1000) * MIXED_CPM
   const rounded     = roundBudget(raw)
-  const final       = pkg.name === 'Sichtbar' ? Math.max(MIN_SICHTBAR_BUDGET, rounded) : rounded
+  const final       = Math.max(MIN_SICHTBAR_BUDGET, rounded)
   const dates       = voteDate ? calcDates(voteDate, pkg.days) : null
   return {
     name:                 pkg.name,
@@ -136,11 +148,14 @@ export function buildVioPackages({
     eligibleVotersTotal: voters,
     daysUntilVote:       days,
     recommendedPackage:  recommended,
-    packages: {
-      sichtbar: buildPackage(PACKAGES.sichtbar, voters, recommended === 'sichtbar', voteDate, hinweis),
-      praesenz: buildPackage(PACKAGES.praesenz, voters, recommended === 'praesenz', voteDate, hinweis),
-      dominanz: buildPackage(PACKAGES.dominanz, voters, recommended === 'dominanz', voteDate, hinweis),
-    },
+    packages: (() => {
+      const rp = getReachPercents(voters)
+      return {
+        sichtbar: buildPackage({ ...PACKAGES.sichtbar, reach: rp.sichtbar }, voters, recommended === 'sichtbar', voteDate, hinweis),
+        praesenz: buildPackage({ ...PACKAGES.praesenz, reach: rp.praesenz }, voters, recommended === 'praesenz', voteDate, hinweis),
+        dominanz: buildPackage({ ...PACKAGES.dominanz, reach: rp.dominanz }, voters, recommended === 'dominanz', voteDate, hinweis),
+      }
+    })(),
   }
 }
 
