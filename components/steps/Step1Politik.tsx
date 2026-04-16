@@ -214,7 +214,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
       politikRegion:     regions[0]?.name ?? '',
       politikRegionType: (regions[0]?.type as 'kanton' | 'stadt' | 'schweiz') ?? 'kanton',
       vioPackages:       vioData,
-      recommendedBudget:    rec.finalBudget,
+      recommendedBudget:    budgetKnown ? budget : 0,
       recommendedLaufzeit:  Math.round(rec.durationDays / 7),
       ...(budgetKnown ? { budget } : {}),
     });

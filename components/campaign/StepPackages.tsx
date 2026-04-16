@@ -66,11 +66,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [showAllPackets, setShowAllPackets] = useState<boolean>(!hasBudget);
 
   // FIX 2: Budget/Laufzeit/Frequenz slider state
-  const [budget, setBudget] = useState(() => vioData?.packages[initPkg].finalBudget ?? 9500);
+  const initBudget = userBudget >= 4000 ? userBudget : (vioData?.packages[initPkg]?.finalBudget ?? 9500);
+  const [budget, setBudget] = useState<number>(initBudget);
   const [laufzeitWeeks, setLaufzeitWeeks] = useState(() =>
     Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7)
   );
   const [frequency, setFrequency] = useState<number>(() => vioData?.packages[initPkg].frequency ?? 4);
+  const [adjOpen, setAdjOpen] = useState<boolean>(false);
 
   if (!vioData) {
     return (
@@ -114,7 +116,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   };
   const freqDesc = freqDescMap[frequency] ?? '';
   const freqFactor = frequency / (pkg.frequency ?? 4);
-  const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
+  const durFactor = laufzeitWeeks / Math.round(vioData.packages[selectedPkg].durationDays / 7);
+  const adjustedBudget = Math.round(budget * freqFactor * durFactor / 500) * 500;
 
   // Slider fill percentages
   const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
@@ -313,83 +316,82 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             </button>
           )}
 
-          {/* FIX 2: Budget & Laufzeit sliders */}
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Budget & Laufzeit</div>
+          {/* ── Budget & Laufzeit (eingeklappt) ── */}
+          <div style={{ marginTop: 20 }}>
+            <button
+              type="button"
+              onClick={() => setAdjOpen(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#7A7596', fontFamily: "'Jost', sans-serif", padding: '6px 0', width: '100%' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              Budget &amp; Laufzeit manuell anpassen
+              <svg style={{ marginLeft: 'auto', transform: adjOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
 
-          <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginBottom: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-            {/* Budget slider */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, color: '#7A7596' }}>Budget</span>
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{fmtCHF(budget)}</span>
-              </div>
-              <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
-                <input type="range" className="sp-range" min={4000} max={150000} step={500} value={budget} onChange={e => setBudget(Number(e.target.value))} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                <span>CHF 4&apos;000</span><span>CHF 150&apos;000</span>
-              </div>
-            </div>
-
-            {/* Laufzeit slider */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                <span style={{ fontSize: 13, color: '#7A7596' }}>Laufzeit</span>
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{laufzeitWeeks} Woche{laufzeitWeeks !== 1 ? 'n' : ''}</span>
-              </div>
-              <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
-                <input type="range" className="sp-range" min={1} max={8} step={1} value={laufzeitWeeks} onChange={e => setLaufzeitWeeks(Number(e.target.value))} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                <span>1 Woche</span><span>8 Wochen</span>
-              </div>
-            </div>
-
-            {/* Frequenz-Slider */}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 13, color: '#7A7596' }}>Medienintensität</span>
-                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                  <div
-                    style={{ width: 16, height: 16, borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
-                    onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
-                    onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
-                  >i</div>
-                  <div style={{ display: 'none', position: 'absolute', left: 22, top: -6, width: 220, background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
-                    Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
+            {adjOpen && (
+              <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                {/* Budget slider */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, color: '#7A7596' }}>Budget</span>
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{fmtCHF(budget)}</span>
+                  </div>
+                  <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
+                    <input type="range" className="sp-range" min={4000} max={150000} step={500} value={budget} onChange={e => setBudget(Number(e.target.value))} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
+                    <span>CHF 4&apos;000</span><span>CHF 150&apos;000</span>
                   </div>
                 </div>
-                <span style={{ marginLeft: 'auto', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{frequency}×</span>
+                {/* Laufzeit slider */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, color: '#7A7596' }}>Laufzeit</span>
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{laufzeitWeeks} Woche{laufzeitWeeks !== 1 ? 'n' : ''}</span>
+                  </div>
+                  <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
+                    <input type="range" className="sp-range" min={1} max={8} step={1} value={laufzeitWeeks} onChange={e => setLaufzeitWeeks(Number(e.target.value))} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
+                    <span>1 Woche</span><span>8 Wochen</span>
+                  </div>
+                </div>
               </div>
-              <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${((frequency - 1) / 6) * 100}%`, pointerEvents: 'none' }} />
-                <input type="range" className="sp-range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6, marginBottom: 4 }}>
-                <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#7A7596', minHeight: 16 }}>{freqDesc}</div>
-            </div>
+            )}
           </div>
 
-          {/* Vote hint */}
-          {briefing.votingDate && campaignStartISO && (
-            <div style={{ background: '#FAEEDA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start', lineHeight: 1.5 }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
-                <rect x="2" y="3" width="12" height="11" rx="2" stroke="#BA7517" strokeWidth="1.4"/>
-                <path d="M5 1v3M11 1v3M2 7h12" stroke="#BA7517" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-              <span>
-                Rückwärts gerechnet vom Wahlsonntag <strong>{fmtLong(briefing.votingDate)}</strong>: Kampagnenstart <strong>{fmtLong(campaignStartISO)}</strong> — <strong>{fmtLong(campaignEndISO)}</strong> (3 Tage vor Abstimmung).
-              </span>
+          {/* ── Medienintensität (immer sichtbar, separat) ── */}
+          <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: '#7A7596' }}>Medienintensität</span>
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <div
+                  style={{ width: 16, height: 16, borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
+                  onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
+                  onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
+                >i</div>
+                <div style={{ display: 'none', position: 'absolute', left: 22, top: -6, width: 220, background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
+                  Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
+                </div>
+              </div>
+              <span style={{ marginLeft: 'auto', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{frequency}×</span>
             </div>
-          )}
+            <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${((frequency - 1) / 6) * 100}%`, pointerEvents: 'none' }} />
+              <input type="range" className="sp-range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6, marginBottom: 4 }}>
+              <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
+            </div>
+            <div style={{ fontSize: 12, color: '#7A7596', minHeight: 16 }}>{freqDesc}</div>
+          </div>
 
-          {/* Tipp box */}
-          <div style={{ background: 'rgba(107,79,187,0.06)', borderLeft: '3px solid #6B4FBB', borderRadius: '0 8px 8px 0', padding: '10px 14px', fontSize: 13, color: '#7A7596', marginBottom: 20 }}>
-            💡 <strong style={{ color: '#2D1F52' }}>Tipp:</strong> Mit etwas mehr Budget lässt sich die Reichweite deutlich steigern.
+          {/* ── Paketbudget live (angepasst) ── */}
+          <div style={{ background: '#EEEDFE', borderRadius: 12, padding: '12px 16px', marginTop: 12, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: '#3C3489' }}>Paketbudget (angepasst)</span>
+            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 800, color: '#6B4FBB' }}>{fmtCHF(adjustedBudget)}</span>
           </div>
 
           {/* CTA */}
@@ -411,8 +413,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             <SbRow label="Kampagnentyp" value="Politisch" />
             {briefing.politikType && <SbRow label="Art" value={briefing.politikType} />}
             <SbRow label="Region" value={regionName} />
-            <SbRow label="Stimmberechtigte" value={vioData.eligibleVotersTotal.toLocaleString('de-CH')} />
             {briefing.votingDate && <SbRow label="Abstimmung" value={fmtShort(briefing.votingDate)} valueColor="#BA7517" />}
+            <SbRow label="Paket" value={vioData.packages[selectedPkg].name} />
+            <SbRow label="Erreichbare Personen" value={`~${vioData.packages[selectedPkg].targetReachPeople.toLocaleString('de-CH')}`} />
             <SbRow label="Budget" value={fmtCHF(adjustedBudget)} valueColor="#6B4FBB" />
             <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} last />
           </div>
