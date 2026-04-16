@@ -61,7 +61,18 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const userBudget = briefing.recommendedBudget ?? 0;
   const hasBudget = userBudget >= 4000;
 
-  const initPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
+  const initPkg = (() => {
+    if (!hasBudget) return (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
+    // Wähle das Paket dessen finalBudget am nächsten zum userBudget liegt (von unten)
+    const budgets: [PkgKey, number][] = [
+      ['sichtbar', vioData?.packages.sichtbar.finalBudget ?? 0],
+      ['praesenz', vioData?.packages.praesenz.finalBudget ?? 0],
+      ['dominanz', vioData?.packages.dominanz.finalBudget ?? 0],
+    ];
+    // Nimm das grösste Paket das <= userBudget ist, sonst sichtbar
+    const fit = budgets.filter(([, b]) => b <= userBudget);
+    return (fit.length > 0 ? fit[fit.length - 1][0] : 'sichtbar') as PkgKey;
+  })();
   const [selectedPkg, setSelectedPkg] = useState<PkgKey>(initPkg);
   const [showAllPackets, setShowAllPackets] = useState<boolean>(!hasBudget);
 
