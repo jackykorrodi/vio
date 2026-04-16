@@ -90,11 +90,11 @@ function getReachPercents(voters: number): { sichtbar: number; praesenz: number;
   if (voters < 50000) {
     return { sichtbar: 0.15, praesenz: 0.30, dominanz: 0.45 }
   } else if (voters < 200000) {
-    return { sichtbar: 0.08, praesenz: 0.15, dominanz: 0.25 }
+    return { sichtbar: 0.10, praesenz: 0.20, dominanz: 0.35 }
   } else if (voters < 500000) {
-    return { sichtbar: 0.04, praesenz: 0.08, dominanz: 0.14 }
+    return { sichtbar: 0.05, praesenz: 0.10, dominanz: 0.18 }
   } else {
-    return { sichtbar: 0.02, praesenz: 0.04, dominanz: 0.08 }
+    return { sichtbar: 0.02, praesenz: 0.05, dominanz: 0.09 }
   }
 }
 
