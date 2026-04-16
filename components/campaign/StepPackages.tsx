@@ -106,16 +106,19 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const getAdjustedValues = (key: PkgKey) => {
     const p = vioData.packages[key];
     const isSelected = key === selectedPkg;
-    const effectiveFreq = isSelected ? frequency : (p.frequency ?? 4);
+    const pkgFreq = p.frequency ?? 4;
+    const pkgDurWeeks = Math.round(p.durationDays / 7);
+    const effectiveFreq = isSelected ? frequency : pkgFreq;
     const effectiveBudget = isSelected
-      ? Math.round(budget * (effectiveFreq / (p.frequency ?? 4)) * (laufzeitWeeks / Math.round(p.durationDays / 7)) / 500) * 500
+      ? Math.round(budget * (effectiveFreq / pkgFreq) * (laufzeitWeeks / pkgDurWeeks) / 500) * 500
       : p.finalBudget;
-    const reach = Math.round((effectiveBudget / MIXED_CPM) * 1000 / effectiveFreq / 100) * 100;
+    const rawReach = Math.round((effectiveBudget / MIXED_CPM) * 1000 / effectiveFreq / 100) * 100;
     const maxReach = Math.round(vioData.eligibleVotersTotal * 0.8);
+    const reach = Math.min(rawReach, maxReach);
     return {
-      budget: effectiveBudget,
-      reach: Math.min(reach, maxReach),
-      pct: Math.round((Math.min(reach, maxReach) / vioData.eligibleVotersTotal) * 100),
+      budget: Math.max(4000, effectiveBudget),
+      reach,
+      pct: Math.round((reach / vioData.eligibleVotersTotal) * 100),
     };
   };
   const adjustedBudget = getAdjustedValues(selectedPkg).budget;
