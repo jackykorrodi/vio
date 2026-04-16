@@ -140,15 +140,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
   const durPct    = Math.min(100, ((laufzeitWeeks - 1) / 7) * 100);
 
-  // Feasibility
-  const isPkgFeasible = (key: PkgKey): boolean => {
-    if (!campaignEndISO) return true;
-    const earliestStart = addDays(todayISO(), 10);
-    const ms = new Date(campaignEndISO + 'T00:00:00').getTime()
-             - new Date(earliestStart + 'T00:00:00').getTime();
-    const available = Math.floor(ms / (24 * 3600 * 1000));
-    return available >= vioData.packages[key].durationDays;
-  };
+  // Feasibility — immer true, Datums-Validierung passiert in StepSummaryPolitik
+  const isPkgFeasible = (_key: PkgKey): boolean => true;
 
   const handleSelectPkg = (key: PkgKey) => {
     setSelectedPkg(key);
@@ -275,24 +268,23 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               const p = vioData.packages[key];
               const isSel = selectedPkg === key;
               const isRec = key === vioData.recommendedPackage;
-              const feasible = isPkgFeasible(key);
               const adj = getAdjustedValues(key);
               const badge = getInsightBadge(key);
 
               return (
                 <div
                   key={key}
-                  onClick={() => { if (feasible) handleSelectPkg(key); }}
+                  onClick={() => handleSelectPkg(key)}
                   style={{
                     position: 'relative',
                     background: isSel ? '#F0ECFA' : 'white',
                     border: isSel ? '2.5px solid #6B4FBB' : '1px solid rgba(107,79,187,0.12)',
                     borderRadius: 14,
                     padding: 16,
-                    cursor: feasible ? 'pointer' : 'not-allowed',
+                    cursor: 'pointer',
                     textAlign: 'left' as const,
                     transition: 'all 0.18s',
-                    opacity: !feasible ? 0.4 : 1,
+                    opacity: 1,
                     boxShadow: isSel ? '0 4px 20px rgba(107,79,187,0.18)' : 'none',
                     transform: isSel ? 'translateY(-3px)' : 'none',
                   }}
