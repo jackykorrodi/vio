@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
+import { buildVioPackages } from '@/lib/vio-paketlogik';
 
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
@@ -55,7 +56,15 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
-  const vioData = briefing.vioPackages;
+  const vioData = (() => {
+    const regions = briefing.selectedRegions?.map(r => ({ eligibleVoters: r.stimm })) ?? [];
+    if (regions.length === 0) return briefing.vioPackages ?? null;
+    return buildVioPackages({
+      regions,
+      voteDate: briefing.votingDate ?? null,
+      campaignType: briefing.politikType ?? undefined,
+    });
+  })();
 
   // FIX 1: hasBudget only when budget >= 4000
   const userBudget = briefing.recommendedBudget ?? 0;
