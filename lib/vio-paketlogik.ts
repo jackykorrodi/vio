@@ -144,18 +144,16 @@ export function buildVioPackages({
     : null
   const recommended = getRecommended(days)
   const hinweis     = getHinweis(days)
+  const rp          = getReachPercents(voters)
   return {
     eligibleVotersTotal: voters,
     daysUntilVote:       days,
     recommendedPackage:  recommended,
-    packages: (() => {
-      const rp = getReachPercents(voters)
-      return {
-        sichtbar: buildPackage({ ...PACKAGES.sichtbar, reach: rp.sichtbar }, voters, recommended === 'sichtbar', voteDate, hinweis),
-        praesenz: buildPackage({ ...PACKAGES.praesenz, reach: rp.praesenz }, voters, recommended === 'praesenz', voteDate, hinweis),
-        dominanz: buildPackage({ ...PACKAGES.dominanz, reach: rp.dominanz }, voters, recommended === 'dominanz', voteDate, hinweis),
-      }
-    })(),
+    packages: {
+      sichtbar: buildPackage({ ...PACKAGES.sichtbar, reach: rp.sichtbar }, voters, recommended === 'sichtbar', voteDate, hinweis),
+      praesenz: buildPackage({ ...PACKAGES.praesenz, reach: rp.praesenz }, voters, recommended === 'praesenz', voteDate, hinweis),
+      dominanz: buildPackage({ ...PACKAGES.dominanz, reach: rp.dominanz }, voters, recommended === 'dominanz', voteDate, hinweis),
+    },
   }
 }
 
