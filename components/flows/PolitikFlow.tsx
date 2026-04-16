@@ -159,7 +159,14 @@ export default function PolitikFlow({ resumeData }: Props) {
 
       {/* ── Step 2: Paket wählen ── */}
       {currentStep === 2 && (
-        <Step2PolitikBudget briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} isActive stepNumber={2} />
+        <Step2PolitikBudget
+          key={briefing.selectedRegions?.map(r => r.name).join(',') + (briefing.votingDate ?? '')}
+          briefing={briefing}
+          updateBriefing={updateBriefing}
+          nextStep={nextStep}
+          isActive
+          stepNumber={2}
+        />
       )}
 
       {/* ── Step 3: Übersicht & Budget anpassen ── */}
