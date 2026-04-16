@@ -93,29 +93,35 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     );
   }
 
-  const pkg = vioData.packages[selectedPkg];
-
   // Campaign dates
   const { startISO: campaignStartISO, endISO: campaignEndISO } = briefing.votingDate
     ? calcCampaignDates(briefing.votingDate, laufzeitWeeks)
     : { startISO: '', endISO: '' };
 
-  // Reach
-  const selectedPkgBudget = vioData.packages[selectedPkg].finalBudget;
-  const isCustomBudget = budget !== selectedPkgBudget;
-  const rawReach = isCustomBudget
-    ? Math.round((budget / MIXED_CPM) * 1000 / pkg.frequency)
-    : pkg.targetReachPeople;
-  const maxReach = Math.round(vioData.eligibleVotersTotal * 0.8);
-  const isCapped = rawReach > maxReach;
-  const customReachPeople = isCapped ? maxReach : rawReach;
-  const customReachPct = customReachPeople / vioData.eligibleVotersTotal;
-
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const regionName = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
 
-  // Frequency derived values
+  // Live-Berechnung per Paket
+  const getAdjustedValues = (key: PkgKey) => {
+    const p = vioData.packages[key];
+    const isSelected = key === selectedPkg;
+    const effectiveFreq = isSelected ? frequency : (p.frequency ?? 4);
+    const effectiveBudget = isSelected
+      ? Math.round(budget * (effectiveFreq / (p.frequency ?? 4)) * (laufzeitWeeks / Math.round(p.durationDays / 7)) / 500) * 500
+      : p.finalBudget;
+    const reach = Math.round((effectiveBudget / MIXED_CPM) * 1000 / effectiveFreq / 100) * 100;
+    const maxReach = Math.round(vioData.eligibleVotersTotal * 0.8);
+    return {
+      budget: effectiveBudget,
+      reach: Math.min(reach, maxReach),
+      pct: Math.round((Math.min(reach, maxReach) / vioData.eligibleVotersTotal) * 100),
+    };
+  };
+  const adjustedBudget = getAdjustedValues(selectedPkg).budget;
+  const adjustedReach  = getAdjustedValues(selectedPkg).reach;
+
+  // Frequency description
   const freqDescMap: Record<number, string> = {
     1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
     2: 'Breite Streuung – hohe Unique Reach mit leichter Wiederholung.',
@@ -126,9 +132,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     7: 'Maximum Impact – höchste Frequenz.',
   };
   const freqDesc = freqDescMap[frequency] ?? '';
-  const freqFactor = frequency / (pkg.frequency ?? 4);
-  const durFactor = laufzeitWeeks / Math.round(vioData.packages[selectedPkg].durationDays / 7);
-  const adjustedBudget = Math.round(budget * freqFactor * durFactor / 500) * 500;
 
   // Slider fill percentages
   const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
@@ -152,14 +155,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   };
 
   const handleNext = () => {
+    const adj = getAdjustedValues(selectedPkg);
     updateBriefing({
       selectedPackage: selectedPkg,
-      budget:      adjustedBudget,
+      budget:      adj.budget,
       laufzeit:    laufzeitWeeks,
       startDate:   campaignStartISO || todayISO(),
-      reach:       customReachPeople,
-      reachVonPct: Math.round(customReachPct * 100),
-      reachBisPct: Math.round(customReachPct * 100),
+      reach:       adj.reach,
+      reachVonPct: adj.pct,
+      reachBisPct: adj.pct,
       b2bReach:    null,
     });
     nextStep();
@@ -269,8 +273,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               const isSel = selectedPkg === key;
               const isRec = key === vioData.recommendedPackage;
               const feasible = isPkgFeasible(key);
-              const barW = Math.round(p.reachPercent * 100);
-              // FIX 3: badge on all packages
+              const adj = getAdjustedValues(key);
               const badge = getInsightBadge(key);
 
               return (
@@ -279,16 +282,16 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   onClick={() => { if (feasible) handleSelectPkg(key); }}
                   style={{
                     position: 'relative',
-                    background: isSel ? 'linear-gradient(145deg,#EEEDFE 0%,#F8F7FF 100%)' : 'white',
-                    border: isSel ? '2.5px solid #7F77DD' : '1px solid rgba(107,79,187,0.12)',
+                    background: isSel ? '#F0ECFA' : 'white',
+                    border: isSel ? '2.5px solid #6B4FBB' : '1px solid rgba(107,79,187,0.12)',
                     borderRadius: 14,
                     padding: 16,
                     cursor: feasible ? 'pointer' : 'not-allowed',
                     textAlign: 'left' as const,
                     transition: 'all 0.18s',
-                    opacity: !feasible ? 0.55 : isSel ? 1 : 0.72,
-                    boxShadow: isSel ? '0 8px 28px rgba(107,79,187,0.20)' : 'none',
-                    transform: isSel ? 'translateY(-2px)' : 'none',
+                    opacity: !feasible ? 0.4 : 1,
+                    boxShadow: isSel ? '0 4px 20px rgba(107,79,187,0.18)' : 'none',
+                    transform: isSel ? 'translateY(-3px)' : 'none',
                   }}
                 >
                   {isRec && (
@@ -300,16 +303,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     {isSel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
                   </div>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A7596' }}>{p.name}</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: isSel ? '#534AB7' : '#2D1F52', margin: '2px 0' }}>{fmtCHF(p.finalBudget)}</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: isSel ? '#534AB7' : '#2D1F52', margin: '2px 0' }}>{fmtCHF(adj.budget)}</div>
                   <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>{Math.round(p.durationDays / 7)} Wochen Laufzeit</div>
                   <div style={{ height: 0.5, background: 'rgba(107,79,187,0.10)', margin: '8px 0' }} />
                   <div style={{ fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#7A7596' }}>Stimmberechtigte erreichbar</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', marginTop: 2 }}>~{p.targetReachPeople.toLocaleString('de-CH')}</div>
-                  <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{barW}% der {inhabitants}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', marginTop: 2 }}>~{adj.reach.toLocaleString('de-CH')}</div>
+                  <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{adj.pct}% der {inhabitants}</div>
                   <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
-                    <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${barW}%` }} />
+                    <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${adj.pct}%` }} />
                   </div>
-                  {/* FIX 3: badge on all packages (removed isRec guard) */}
                   {badge && (
                     <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, display: 'flex', gap: 7, alignItems: 'flex-start', background: badge.bg, color: badge.color }}>
                       <span style={{ flexShrink: 0, marginTop: 1 }}>{badge.icon}</span>
@@ -328,16 +330,17 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           )}
 
           {/* ── Budget & Laufzeit (eingeklappt) ── */}
-          <div style={{ marginTop: 20 }}>
-            <button
-              type="button"
+          <div style={{ marginTop: 16 }}>
+            <div
               onClick={() => setAdjOpen(o => !o)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#7A7596', fontFamily: "'Jost', sans-serif", padding: '6px 0', width: '100%' }}
+              style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'background .15s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#F5F3FF'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'white'; }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-              Budget &amp; Laufzeit manuell anpassen
-              <svg style={{ marginLeft: 'auto', transform: adjOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 5h12M5 8h6M7 11h2" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', flex: 1 }}>Budget &amp; Laufzeit anpassen</span>
+              <svg style={{ transform: adjOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#7A7596" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
 
             {adjOpen && (
               <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -426,7 +429,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             <SbRow label="Region" value={regionName} />
             {briefing.votingDate && <SbRow label="Abstimmung" value={fmtShort(briefing.votingDate)} valueColor="#BA7517" />}
             <SbRow label="Paket" value={vioData.packages[selectedPkg].name} />
-            <SbRow label="Erreichbare Personen" value={`~${vioData.packages[selectedPkg].targetReachPeople.toLocaleString('de-CH')}`} />
+            <SbRow label="Erreichbare Personen" value={`~${adjustedReach.toLocaleString('de-CH')}`} />
             <SbRow label="Budget" value={fmtCHF(adjustedBudget)} valueColor="#6B4FBB" />
             <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} last />
           </div>
