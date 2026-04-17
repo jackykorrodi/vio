@@ -42,10 +42,10 @@ const clabel: React.CSSProperties = {
 // ── Analysis steps ────────────────────────────────────────────────────────────
 
 const ANALYSIS_STEPS = [
-  { icon: '🔍', label: 'Website gelesen', getSub: (domain: string) => domain },
-  { icon: '🧠', label: 'Thema & Kontext erkannt', getSub: () => 'KI analysiert Inhalte...' },
-  { icon: '🎯', label: 'Zielgruppe bestimmt', getSub: () => 'KI gleicht mit Schweizer Daten ab...' },
-  { icon: '📊', label: 'Potenzial berechnet', getSub: () => 'BFS-Bevölkerungsdaten werden geladen' },
+  { icon: '', label: 'Website gelesen', getSub: (domain: string) => domain },
+  { icon: '', label: 'Thema & Kontext erkannt', getSub: () => 'KI analysiert Inhalte...' },
+  { icon: '', label: 'Zielgruppe bestimmt', getSub: () => 'KI gleicht mit Schweizer Daten ab...' },
+  { icon: '', label: 'Potenzial berechnet', getSub: () => 'BFS-Bevölkerungsdaten werden geladen' },
 ];
 
 // ── Politik helpers ───────────────────────────────────────────────────────────
@@ -273,9 +273,9 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
         <div style={card}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             {[
-              { value: 'b2c' as const, ico: '👥', name: 'Privatkunden (B2C)', desc: 'Menschen, Haushalte, Bevölkerung' },
-              { value: 'b2b' as const, ico: '🏢', name: 'Geschäftskunden (B2B)', desc: 'Firmen, Entscheider, Fachleute' },
-              { value: 'politik' as const, ico: '🗳️', name: 'Politische Kampagne', desc: 'Abstimmungen, Wahlen, Mobilisierung' },
+              { value: 'b2c' as const, ico: '', name: 'Privatkunden (B2C)', desc: 'Menschen, Haushalte, Bevölkerung' },
+              { value: 'b2b' as const, ico: '', name: 'Geschäftskunden (B2B)', desc: 'Firmen, Entscheider, Fachleute' },
+              { value: 'politik' as const, ico: '', name: 'Politische Kampagne', desc: 'Abstimmungen, Wahlen, Mobilisierung' },
             ].map(opt => {
               const active = campaignType === opt.value;
               return (
@@ -291,8 +291,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                     transition: 'all .2s',
                   }}
                 >
-                  <div style={{ fontSize: '22px', marginBottom: '8px' }}>{opt.ico}</div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', color: C.taupe }}>{opt.name}</div>
+                    <div style={{ fontWeight: 700, fontSize: '15px', color: C.taupe }}>{opt.name}</div>
                   <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>{opt.desc}</div>
                 </div>
               );
@@ -570,10 +569,10 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                   <div style={clabel}>Kampagnentyp</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     {([
-                      { value: 'ja' as const, ico: '✅', name: 'JA-Kampagne' },
-                      { value: 'nein' as const, ico: '❌', name: 'NEIN-Kampagne' },
-                      { value: 'kandidat' as const, ico: '🙋', name: 'Kandidatenwahl' },
-                      { value: 'event' as const, ico: '📣', name: 'Event & Mobilisierung' },
+                      { value: 'ja' as const, ico: '', name: 'JA-Kampagne' },
+                      { value: 'nein' as const, ico: '', name: 'NEIN-Kampagne' },
+                      { value: 'kandidat' as const, ico: '', name: 'Kandidatenwahl' },
+                      { value: 'event' as const, ico: '', name: 'Event & Mobilisierung' },
                     ]).map(opt => {
                       const active = politikType === opt.value;
                       return (
@@ -582,7 +581,6 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
                           onClick={() => setPolitikType(opt.value)}
                           style={{ padding: '14px 16px', borderRadius: '10px', border: `2px solid ${active ? C.primary : C.border}`, background: active ? C.pl : C.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all .2s' }}
                         >
-                          <span style={{ fontSize: '18px' }}>{opt.ico}</span>
                           <span style={{ fontWeight: 600, fontSize: '14px', color: C.taupe }}>{opt.name}</span>
                         </div>
                       );
@@ -614,7 +612,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
 
         {/* Trust row */}
         <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', marginTop: '18px', paddingTop: '16px', borderTop: `1px solid ${C.border}` }}>
-          {['🔒 Deine Daten bleiben bei uns', '⚡ Bereit in 15 Sekunden', '🇨🇭 Nur Schweizer Medien'].map(t => (
+          {['Deine Daten bleiben bei uns', 'Bereit in 15 Sekunden', 'Nur Schweizer Medien'].map(t => (
             <span key={t} style={{ fontSize: '12px', color: C.muted, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px' }}>
               {t}
             </span>

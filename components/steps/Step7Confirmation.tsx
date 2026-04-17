@@ -37,9 +37,9 @@ interface Props {
 }
 
 const nextSteps = [
-  { ico: '📧', title: 'Offerte per E-Mail', sub: 'In wenigen Minuten in deinem Postfach' },
-  { ico: '🤝', title: 'Briefing geht raus', sub: 'Unser Partner-Team wird informiert' },
-  { ico: '🚀', title: 'Kampagne startet', sub: 'Nach deiner Freigabe innerhalb von 48h' },
+  { ico: '', title: 'Offerte per E-Mail', sub: 'In wenigen Minuten in deinem Postfach' },
+  { ico: '', title: 'Briefing geht raus', sub: 'Unser Partner-Team wird informiert' },
+  { ico: '', title: 'Kampagne startet', sub: 'Nach deiner Freigabe innerhalb von 48h' },
 ];
 
 const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL;
@@ -68,8 +68,7 @@ function FeedbackCard({ briefing }: { briefing: BriefingData }) {
   if (status === 'done') {
     return (
       <div style={{ background: '#FDFCFF', border: `1px solid ${C.border}`, borderRadius: '14px', padding: '20px 22px', marginTop: '20px', textAlign: 'center' }}>
-        <span style={{ fontSize: '24px' }}>🙏</span>
-        <p style={{ fontSize: '14px', fontWeight: 600, color: C.taupe, marginTop: '8px' }}>Danke für dein Feedback!</p>
+        <p style={{ fontSize: '14px', fontWeight: 600, color: C.taupe }}>Danke für dein Feedback!</p>
       </div>
     );
   }
@@ -136,7 +135,6 @@ export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Pr
 
         {/* Confirmation box */}
         <div style={{ background: C.pl, border: `1.5px solid ${C.primary}`, borderRadius: '14px', padding: '28px', textAlign: 'center', marginBottom: '20px' }}>
-          <span style={{ fontSize: '44px', marginBottom: '12px', display: 'block', animation: 'bi .6s ease-out' }}>🎉</span>
           <h2 style={{ fontFamily: 'var(--font-display), Georgia, serif', fontSize: '24px', color: C.pd, fontWeight: 400, marginBottom: '6px' }}>
             Perfekt. Alles eingegangen.
           </h2>
@@ -163,9 +161,7 @@ export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Pr
                 borderBottom: i < nextSteps.length - 1 ? `1px solid ${C.border}` : 'none',
               }}
             >
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: C.pl, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>
-                {step.ico}
-              </div>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: C.pl, flexShrink: 0 }} />
               <div>
                 <strong style={{ fontSize: '14px', fontWeight: 600, color: C.taupe }}>{step.title}</strong>
                 <p style={{ fontSize: '12px', color: C.muted, marginTop: '1px' }}>{step.sub}</p>

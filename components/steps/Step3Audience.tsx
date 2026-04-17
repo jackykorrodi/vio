@@ -63,9 +63,9 @@ const LIFECYCLE_LABELS: Record<LifecycleOption, string> = {
   eltern_erwachsene_kinder: 'Eltern (erw. Kinder)',
 };
 const SPRACHE_LABELS: Record<SpracheOption, string> = {
-  de: '🇩🇪 Deutsch',
-  fr: '🇫🇷 Französisch',
-  it: '🇮🇹 Italienisch',
+  de: 'Deutsch',
+  fr: 'Französisch',
+  it: 'Italienisch',
 };
 const GROESSE_LABELS: Record<UnternehmensgroesseOption, string> = {
   micro: 'Micro (1–9)',
@@ -358,8 +358,7 @@ export default function Step3Audience({ briefing, updateBriefing, nextStep }: Pr
 
         {/* Notice */}
         {showNotice && (
-          <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: '10px', padding: '11px 15px', fontSize: '13px', color: '#7A5500', marginBottom: '14px', display: 'flex', gap: '9px', lineHeight: 1.5 }}>
-            <span>💡</span>
+          <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: '10px', padding: '11px 15px', fontSize: '13px', color: '#7A5500', marginBottom: '14px', lineHeight: 1.5 }}>
             <span>
               {!analysis
                 ? 'Wir konnten keine Angaben von deiner Website lesen. Bitte füll die Felder manuell aus.'

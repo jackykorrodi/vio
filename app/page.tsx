@@ -522,7 +522,7 @@ export default function HomePage() {
       <section style={{ position: 'relative', zIndex: 1, maxWidth: '1400px', margin: '0 auto', padding: '60px 64px 100px', textAlign: 'center' }}>
         <Reveal>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--violet-xpale)', border: '1px solid rgba(107,79,187,0.15)', borderRadius: '100px', padding: '6px 16px', fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.primary, marginBottom: '20px' }}>
-            🇨🇭 Gemacht für die Schweiz
+            Gemacht für die Schweiz
           </div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px,3.2vw,44px)', fontWeight: 800, letterSpacing: '-.025em', color: C.ink, marginBottom: '12px', lineHeight: 1.1 }}>
             Bereit für deine<br />

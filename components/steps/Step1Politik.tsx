@@ -12,7 +12,6 @@ type SubtypeVal = 'ja' | 'nein' | 'mob' | 'kand' | 'liste';
 
 interface SubtypeOption {
   val: SubtypeVal;
-  icon: string;
   name: string;
   desc: string;
 }
@@ -21,14 +20,14 @@ interface SubtypeOption {
 
 const SUBTYPES: Record<CampaignType, SubtypeOption[]> = {
   abstimmung: [
-    { val: 'ja',   icon: '✅', name: 'JA-Kampagne',  desc: 'Für eine Initiative oder einen Gegenvorschlag.' },
-    { val: 'nein', icon: '❌', name: 'NEIN-Kampagne', desc: 'Gegen eine Initiative oder ein Referendum.' },
-    { val: 'mob',  icon: '📣', name: 'Mobilisierung', desc: 'Stimmberechtigte zur Urne bewegen.' },
+    { val: 'ja',   name: 'JA-Kampagne',  desc: 'Für eine Initiative oder einen Gegenvorschlag.' },
+    { val: 'nein', name: 'NEIN-Kampagne', desc: 'Gegen eine Initiative oder ein Referendum.' },
+    { val: 'mob',  name: 'Mobilisierung', desc: 'Stimmberechtigte zur Urne bewegen.' },
   ],
   wahl: [
-    { val: 'kand',  icon: '👤', name: 'Kandidatur',   desc: 'Persönlichkeitskampagne für eine Person.' },
-    { val: 'liste', icon: '📋', name: 'Listenwahl',   desc: 'Mehrere Kandidierende auf einer Parteiliste.' },
-    { val: 'mob',   icon: '🎯', name: 'Mobilisierung',desc: 'Wählerschaft aktivieren.' },
+    { val: 'kand',  name: 'Kandidatur',   desc: 'Persönlichkeitskampagne für eine Person.' },
+    { val: 'liste', name: 'Listenwahl',   desc: 'Mehrere Kandidierende auf einer Parteiliste.' },
+    { val: 'mob',   name: 'Mobilisierung',desc: 'Wählerschaft aktivieren.' },
   ],
 };
 
@@ -139,14 +138,14 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
       const newPills: string[] = [];
       if (campaignType && subtype) {
         const st = SUBTYPES[campaignType]?.find(x => x.val === subtype);
-        if (st) newPills.push(st.icon + ' ' + st.name);
+        if (st) newPills.push(st.name);
       }
       if (dateEvent) {
         const d = new Date(dateEvent + 'T00:00:00');
-        newPills.push('🗓️ ' + d.toLocaleDateString('de-CH', { day: '2-digit', month: 'short', year: 'numeric' }));
+        newPills.push(d.toLocaleDateString('de-CH', { day: '2-digit', month: 'short', year: 'numeric' }));
       }
       if (regions.length) {
-        newPills.push('📍 ' + regions.map(r => r.name).slice(0, 2).join(' · ') + (regions.length > 2 ? ` +${regions.length - 2}` : ''));
+        newPills.push(regions.map(r => r.name).slice(0, 2).join(' · ') + (regions.length > 2 ? ` +${regions.length - 2}` : ''));
       }
       setPills(newPills);
     }
@@ -336,8 +335,8 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                 {/* Type cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
                   {([
-                    { val: 'abstimmung' as CampaignType, icon: '🗳️', name: 'Abstimmung', desc: 'Volksinitiative, Referendum oder kommunale Vorlage.' },
-                    { val: 'wahl'       as CampaignType, icon: '🏛️', name: 'Wahl',        desc: 'National-, Kantons-, Gemeinderat oder Regierungsrat.' },
+                    { val: 'abstimmung' as CampaignType, name: 'Abstimmung', desc: 'Volksinitiative, Referendum oder kommunale Vorlage.' },
+                    { val: 'wahl'       as CampaignType, name: 'Wahl',        desc: 'National-, Kantons-, Gemeinderat oder Regierungsrat.' },
                   ]).map(opt => (
                     <button
                       key={opt.val}
@@ -366,7 +365,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                           fontSize: 9, fontWeight: 800, color: V, lineHeight: 1, paddingTop: 1,
                         }}>✓</div>
                       )}
-                      <div style={{ fontSize: 20, marginTop: 1, flexShrink: 0 }}>{opt.icon}</div>
                       <div>
                         <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 14, color: INK, marginBottom: 2 }}>{opt.name}</div>
                         <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.4 }}>{opt.desc}</div>
@@ -409,7 +407,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                             fontSize: 9, fontWeight: 800, color: V, lineHeight: 1, paddingTop: 1,
                           }}>✓</div>
                         )}
-                        <div style={{ fontSize: 20, marginTop: 1, flexShrink: 0 }}>{st.icon}</div>
                         <div>
                           <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 14, color: INK, marginBottom: 2 }}>{st.name}</div>
                           <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.4 }}>{st.desc}</div>
@@ -454,7 +451,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                     style={{ background: WHITE, border: `1.5px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px', boxShadow: SHADOW, transition: 'border-color 0.18s, box-shadow 0.18s' }}
                   >
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.9, textTransform: 'uppercase' as const, color: MUTED, marginBottom: 8 }}>
-                      <span style={{ fontSize: 14 }}>🗓️</span> Abstimmungs- / Wahltag
+                      Abstimmungs- / Wahltag
                     </label>
                     <input
                       type="date"
@@ -471,7 +468,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                     style={{ background: WHITE, border: `1.5px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px', boxShadow: SHADOW, transition: 'border-color 0.18s, box-shadow 0.18s' }}
                   >
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.9, textTransform: 'uppercase' as const, color: MUTED, marginBottom: 8 }}>
-                      <span style={{ fontSize: 14 }}>🚀</span> Kampagnenstart
+                      Kampagnenstart
                     </label>
                     <input
                       type="date"
@@ -493,7 +490,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                     marginBottom: 24,
                     animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
                   }}>
-                    <span>📊</span>
                     <span>{timelineDays} Tage Kampagnendauer · {timelineWeeks} Wochen</span>
                   </div>
                 )}
@@ -529,7 +525,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
 
                 {/* Search */}
                 <div style={{ position: 'relative' as const, marginBottom: 10 }}>
-                  <span style={{ position: 'absolute' as const, left: 14, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 15, pointerEvents: 'none' as const }}>🔍</span>
                   <input
                     type="text"
                     className="sp1-region-search"
@@ -681,7 +676,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                     cursor: 'pointer', transition: 'all 0.18s', marginBottom: 24,
                   }}
                 >
-                  <span>{budgetKnown ? '○' : '✕'}</span>
                   {budgetKnown ? 'Ich weiss es noch nicht' : 'Budget doch eingeben'}
                 </button>
 

@@ -92,7 +92,6 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
         onMouseEnter={e => { if (!dragOver) (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; }}
         onMouseLeave={e => { if (!dragOver) (e.currentTarget as HTMLDivElement).style.borderColor = C.border; }}
       >
-        <div style={{ fontSize: 26, marginBottom: 6 }}>📎</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.taupe }}>Dateien hierher ziehen</div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>oder klicken zum Auswählen</div>
         <div style={{ fontSize: 11, color: C.muted, marginTop: 7 }}>JPG, PNG, MP4, PDF · Max. 50 MB pro Datei</div>
@@ -119,7 +118,7 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
               }}
             >
               <span style={{ color: C.taupe, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                📄 {f.name}
+                {f.name}
               </span>
               <button
                 type="button"
@@ -152,16 +151,15 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
   );
 
   const spaeterBody = (
-    <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 10, padding: '11px 15px', fontSize: 13, color: '#7A5500', display: 'flex', gap: 9, lineHeight: 1.5 }}>
-      <span>💡</span>
-      <span>Wir reservieren dein Startdatum. Werbemittel müssen spätestens 5 Werktage vorher vorliegen.</span>
+    <div style={{ background: '#FFF8EE', border: '1px solid #FDDFA4', borderRadius: 10, padding: '11px 15px', fontSize: 13, color: '#7A5500', lineHeight: 1.5 }}>
+      Wir reservieren dein Startdatum. Werbemittel müssen spätestens 5 Werktage vorher vorliegen.
     </div>
   );
 
   const options: { value: 'upload' | 'erstellen' | 'spaeter'; ico: string; title: string; sub: string; badge: string; badgeStyle: React.CSSProperties; body: React.ReactNode }[] = [
     {
       value: 'upload',
-      ico: '📁',
+      ico: '',
       title: 'Eigene Werbemittel hochladen',
       sub: 'JPG, PNG, MP4, PDF · Max. 50 MB',
       badge: 'Kostenlos',
@@ -170,7 +168,7 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
     },
     {
       value: 'erstellen',
-      ico: '✨',
+      ico: '',
       title: 'Werbemittel selbst erstellen',
       sub: 'Mit dem VIO Ad Creator – Live-Vorschau aller Formate',
       badge: '+ CHF 500',
@@ -179,7 +177,7 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
     },
     {
       value: 'spaeter',
-      ico: '⏳',
+      ico: '',
       title: 'Später einschicken',
       sub: 'Kampagne jetzt starten, Werbemittel nachliefern',
       badge: 'Flexibel',
@@ -233,7 +231,6 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
             >
               {/* Header row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px' }}>
-                <div style={{ fontSize: 22, flexShrink: 0 }}>{opt.ico}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: C.taupe }}>{opt.title}</div>
                   <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{opt.sub}</div>
@@ -247,9 +244,9 @@ export default function Step5Creative({ briefing, updateBriefing, nextStep, onUp
                 </div>
                 <div style={{
                   fontSize: 12, color: C.muted, marginLeft: 8, flexShrink: 0,
-                  transition: 'transform .25s', transform: bodyOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform .25s',
                 }}>
-                  ▾
+                  {bodyOpen ? '−' : '+'}
                 </div>
               </div>
               {/* Accordion body */}

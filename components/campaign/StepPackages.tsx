@@ -190,13 +190,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       return {
         bg: isRed ? '#FCEBEB' : '#FAEEDA',
         color: isRed ? '#791F1F' : '#633806',
-        icon: isRed ? '⚠' : '⏰',
+        icon: '',
         text: p.hinweis,
       };
     }
-    if (key === 'dominanz') return { bg: '#EEEDFE', color: '#3C3489', icon: '⭐', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' };
-    if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '✓', text: 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.' };
-    return { bg: '#FAEEDA', color: '#633806', icon: '⚡', text: 'Letzter Impuls vor dem Unterlagen-Versand.' };
+    if (key === 'dominanz') return { bg: '#EEEDFE', color: '#3C3489', icon: '', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' };
+    if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '', text: 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.' };
+    return { bg: '#FAEEDA', color: '#633806', icon: '', text: 'Letzter Impuls vor dem Unterlagen-Versand.' };
   };
 
   const SbRow = ({ label, value, valueColor = '#2D1F52', last = false }: { label: string; value: string; valueColor?: string; last?: boolean }) => (
@@ -241,7 +241,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 14px', background: 'white', borderRadius: 12, border: '1px solid rgba(107,79,187,0.10)', marginBottom: 28 }}>
           <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>Politische Kampagne</span>
           {briefing.selectedRegions?.map(r => (
-            <span key={r.name} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#F1EFE8', color: '#7A7596' }}>📍 {r.name}</span>
+            <span key={r.name} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#F1EFE8', color: '#7A7596' }}>{r.name}</span>
           ))}
           <span style={{ fontSize: 13, color: '#2D1F52' }}>{vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}</span>
           <span style={{ flex: 1 }} />
@@ -269,7 +269,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 Basierend auf deinem Budget von <strong>{fmtCHF(userBudget)}</strong> haben wir das passende Paket vorausgewählt.
                 {userBudget < vioData.packages[vioData.recommendedPackage as PkgKey].finalBudget && (
                   <span style={{ display: 'block', color: '#633806', marginTop: 4, fontSize: 12 }}>
-                    💡 Dein Budget ist etwas knapp für diese Region — mit {fmtCHF(vioData.packages[vioData.recommendedPackage as PkgKey].finalBudget)} erzielst du deutlich mehr Wirkung.
+                    Dein Budget ist etwas knapp für diese Region — mit {fmtCHF(vioData.packages[vioData.recommendedPackage as PkgKey].finalBudget)} erzielst du deutlich mehr Wirkung.
                   </span>
                 )}
               </span>
@@ -325,8 +325,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${adj.pct}%` }} />
                   </div>
                   {badge && (
-                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, display: 'flex', gap: 7, alignItems: 'flex-start', background: badge.bg, color: badge.color }}>
-                      <span style={{ flexShrink: 0, marginTop: 1 }}>{badge.icon}</span>
+                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, background: badge.bg, color: badge.color }}>
                       {badge.text}
                     </div>
                   )}

@@ -182,7 +182,7 @@ export default function B2CFlow({ initialUrl = '', resumeData }: Props) {
               </button>
             </div>
             <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' as const, paddingTop: '16px', borderTop: `1px solid ${C.border}` }}>
-              {['🔒 Deine Daten bleiben bei uns', '⚡ Bereit in 15 Sekunden', '🇨🇭 Nur Schweizer Medien'].map(t => (
+              {['Deine Daten bleiben bei uns', 'Bereit in 15 Sekunden', 'Nur Schweizer Medien'].map(t => (
                 <span key={t} style={{ fontSize: '12px', color: C.muted, fontWeight: 500 }}>{t}</span>
               ))}
             </div>

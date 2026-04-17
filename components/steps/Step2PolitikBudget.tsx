@@ -331,14 +331,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           <div className="s2-ctx">
             <span className="s2-chip s2-chip-type">Politische Kampagne</span>
             {briefing.selectedRegions?.map(r => (
-              <span key={r.name} className="s2-chip s2-chip-region">📍 {r.name}</span>
+              <span key={r.name} className="s2-chip s2-chip-region">{r.name}</span>
             ))}
             <span className="s2-ctx-voters">
               {vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}
             </span>
             {vioData.daysUntilVote != null && (
               <span className="s2-chip s2-chip-date">
-                🗓️ Abstimmung in {vioData.daysUntilVote} Tagen
+                Abstimmung in {vioData.daysUntilVote} Tagen
               </span>
             )}
           </div>
@@ -421,10 +421,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       : key === 'sichtbar' ? 'Läuft kurz vor dem Unterlagen-Versand – ideal für den letzten Impuls.'
                       : key === 'praesenz' ? 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.'
                       : 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.';
-                    const ctxIcon = ctxType === 'warn' ? '⚠' : ctxType === 'star' ? '★' : '✓';
                     return (
                       <div className={`s2-ctx-tag ${ctxType}`}>
-                        <span style={{ flexShrink: 0, fontSize: '12px' }}>{ctxIcon}</span>
+                        <span style={{ flexShrink: 0, fontSize: '12px' }}></span>
                         <span>{ctxText}</span>
                       </div>
                     );
@@ -510,7 +509,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 fontSize: 13, color: '#B91C1C', fontWeight: 500,
                 display: 'flex', gap: 8, alignItems: 'flex-start',
               }}>
-                <span style={{ flexShrink: 0 }}>⚠️</span>
                 {dateError}
               </div>
             )}
@@ -600,7 +598,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               <div className="s2-si-sub">{Math.round(customReachPct * 100)}% der {inhabitants}</div>
               {isCapped && (
                 <div style={{ fontSize: '11px', color: '#D4A843', marginTop: '4px', fontWeight: 600 }}>
-                  ⚠ Max. Reichweite – höheres Budget steigert Frequenz (Ø {effectiveFreq}×)
+                  Max. Reichweite – höheres Budget steigert Frequenz (Ø {effectiveFreq}×)
                 </div>
               )}
             </div>
@@ -613,7 +611,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
           {/* ── DOOH Infobox (immer sichtbar) ── */}
           <div className="s2-info">
-            <div style={{ fontSize: '18px', flexShrink: 0, marginTop: '1px' }}>📋</div>
             <div>
               <div className="s2-info-ttl">Warum so früh buchen? DOOH-Freigabe für politische Kampagnen</div>
               <div className="s2-info-txt">

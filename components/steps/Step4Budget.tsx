@@ -430,7 +430,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
       const isUrgent = daysToVote != null && daysToVote <= 14;
       return {
         style: isUrgent ? BADGE_STYLES.red : BADGE_STYLES.warn,
-        icon:  '⚠',
+        icon:  '',
         text:  isUrgent
           ? `Abstimmung in ${daysToVote} Tagen — Kampagne endet nach dem Wahlsonntag. Nicht empfohlen.`
           : 'Letzter Impuls — kurz vor Unterlagen-Versand.',
@@ -439,13 +439,13 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
     if (pkgId === 'praesenz') {
       return {
         style: BADGE_STYLES.good,
-        icon:  '✓',
+        icon:  '',
         text:  'Läuft bis 28 Tage vor Unterlagen-Versand — optimal für Meinungsbildungsphase.',
       };
     }
     return {
       style: BADGE_STYLES.best,
-      icon:  '★',
+      icon:  '',
       text:  'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.',
     };
   };
@@ -584,7 +584,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             {isPolitik && briefing.selectedRegions && briefing.selectedRegions.length > 0 ? (
               <>
                 {briefing.selectedRegions.map(r => (
-                  <span key={r.name} className="badge-r">📍 {r.name}</span>
+                  <span key={r.name} className="badge-r">{r.name}</span>
                 ))}
                 <span style={{ fontSize: '13px', color: '#7A7596' }}>
                   {stimmber.toLocaleString('de-CH')} Stimmberechtigte
@@ -592,14 +592,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               </>
             ) : (
               <>
-                <span className="badge-r">📍 {regionName}</span>
+                <span className="badge-r">{regionName}</span>
                 {isB2B && b2bBrancheCodes.length > 0 && (
-                  <span className="badge-r">🏢 {b2bBrancheLabel}</span>
+                  <span className="badge-r">{b2bBrancheLabel}</span>
                 )}
               </>
             )}
             {isPolitik && briefing.daysUntil != null && (
-              <span className="badge-d">🗳️ Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen</span>
+              <span className="badge-d">Abstimmung in <strong>{briefing.daysUntil}</strong> Tagen</span>
             )}
             <button
               type="button"
@@ -833,15 +833,14 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             const endDate  = new Date(voteDate); endDate.setDate(voteDate.getDate() - 3);
             const fmt = (d: Date) => d.toLocaleDateString('de-CH', { day: 'numeric', month: 'long', year: 'numeric' });
             return (
-              <div style={{ background: '#FAEEDA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start', lineHeight: 1.5 }}>
-                <span>📅</span>
-                <span>Rückwärts gerechnet vom Wahlsonntag <strong>{fmt(voteDate)}</strong>. Kampagne endet <strong>{fmt(endDate)}</strong> — 3 Tage vor der Abstimmung.</span>
+              <div style={{ background: '#FAEEDA', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#633806', marginBottom: 16, lineHeight: 1.5 }}>
+                Rückwärts gerechnet vom Wahlsonntag <strong>{fmt(voteDate)}</strong>. Kampagne endet <strong>{fmt(endDate)}</strong> — 3 Tage vor der Abstimmung.
               </div>
             );
           })()}
 
           {/* ── SMART TIP ── */}
-          <div className="tip">💡 <strong>Tipp:</strong> {smartTip}</div>
+          <div className="tip"><strong>Tipp:</strong> {smartTip}</div>
 
           {/* ── CTA ── */}
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -906,7 +905,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
               {/* Politik Sidebar – Deine Zielregion */}
               <div className="sc">
                 <div className="sc-title">Deine Zielregion</div>
-                <div className="rname">📍 {regionName}</div>
+                <div className="rname">{regionName}</div>
                 <div className="rpop">{stimmber.toLocaleString('de-CH')} Stimmberechtigte</div>
                 <div className="sc-row"><span className="sc-l">Polit. Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
                 <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{reach.vonPct}%–{reach.bisPct}%</span></div>
@@ -925,9 +924,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
               <div className="sc">
                 <div className="sc-title">{isB2B ? 'Deine Zielgruppe' : 'Deine Zielregion'}</div>
-                <div className="rname">📍 {regionName}</div>
+                <div className="rname">{regionName}</div>
                 {isB2B && b2bBrancheCodes.length > 0 && (
-                  <div className="rname" style={{ fontSize: '13px', marginBottom: '3px' }}>🏢 {b2bBrancheLabel}</div>
+                  <div className="rname" style={{ fontSize: '13px', marginBottom: '3px' }}>{b2bBrancheLabel}</div>
                 )}
                 <div className="rpop">{isB2B ? `~${fmtN(b2bMitarbeitende)} Mitarbeitende` : `${stimmber.toLocaleString('de-CH')} Einwohner`}</div>
                 <div className="sc-row"><span className="sc-l">DOOH Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>

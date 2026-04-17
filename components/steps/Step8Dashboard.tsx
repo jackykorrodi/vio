@@ -32,8 +32,7 @@ function FeedbackCard({ briefing }: { briefing: BriefingData }) {
   if (status === 'done') {
     return (
       <div style={{ background: C8.bg, border: `1px solid ${C8.border}`, borderRadius: '14px', padding: '20px 22px', marginTop: '20px', textAlign: 'center' }}>
-        <span style={{ fontSize: '24px' }}>🙏</span>
-        <p style={{ fontSize: '14px', fontWeight: 600, color: C8.taupe, marginTop: '8px' }}>Danke für dein Feedback!</p>
+        <p style={{ fontSize: '14px', fontWeight: 600, color: C8.taupe }}>Danke für dein Feedback!</p>
       </div>
     );
   }
@@ -216,7 +215,6 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
           alignItems: 'center',
           gap: '8px',
         }}>
-          <span>👁</span>
           Vorschau – Kampagne noch nicht gestartet
         </div>
 
@@ -440,7 +438,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
         </div>
 
         <div style={{ textAlign: 'center', fontSize: '12px', color: C.muted, marginTop: '8px' }}>
-          🔒 Sichere Verbindung · Keine versteckten Kosten
+          Sichere Verbindung · Keine versteckten Kosten
         </div>
 
         <FeedbackCard briefing={briefing} />

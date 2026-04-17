@@ -145,7 +145,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
               ['Laufzeit', `${briefing.laufzeit} Wochen`],
               ['Region', briefing.analysis?.region?.join(', ') || '—'],
               ['Reichweite', briefing.reach ? `~${formatNumber(briefing.reach)}` : '—'],
-              ['Werbemittel', wms === 'upload' ? '✓ Hochgeladen' : wms === 'erstellen' ? '✓ Erstellt' : wms === 'später' ? '⏳ Nachgereicht' : '—'],
+              ['Werbemittel', wms === 'upload' ? 'Hochgeladen' : wms === 'erstellen' ? 'Erstellt' : wms === 'später' ? 'Nachgereicht' : '—'],
               ['Typ', briefing.campaignType === 'b2c' ? 'B2C' : 'B2B'],
             ].map(([lbl, val]) => (
               <div key={lbl}>
@@ -158,28 +158,19 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
 
         {/* Werbemittel status */}
         {wms === 'erstellen' ? (
-          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ fontSize: '22px' }}>✅</div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel erstellt</div>
-              {briefing.adHeadline && <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Headline: «{briefing.adHeadline}»</div>}
-            </div>
+          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel erstellt</div>
+            {briefing.adHeadline && <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Headline: «{briefing.adHeadline}»</div>}
           </div>
         ) : wms === 'upload' ? (
-          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ fontSize: '22px' }}>✅</div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel hochgeladen</div>
-              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Deine Dateien werden nach dem Abschluss verarbeitet.</div>
-            </div>
+          <div style={{ background: '#E8F5F2', border: `1.5px solid ${C.teal}`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: C.teal }}>Werbemittel hochgeladen</div>
+            <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Deine Dateien werden nach dem Abschluss verarbeitet.</div>
           </div>
         ) : wms === 'später' ? (
-          <div style={{ background: '#FFF8EC', border: `1.5px solid #E6AC3A`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ fontSize: '22px' }}>⏳</div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#7A5C00' }}>Werbemittel werden nach Buchung nachgereicht</div>
-              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Du erhältst eine E-Mail mit allen technischen Spezifikationen.</div>
-            </div>
+          <div style={{ background: '#FFF8EC', border: `1.5px solid #E6AC3A`, borderRadius: '20px', padding: '16px 20px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: '#7A5C00' }}>Werbemittel werden nach Buchung nachgereicht</div>
+            <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Du erhältst eine E-Mail mit allen technischen Spezifikationen.</div>
           </div>
         ) : null}
 
@@ -188,7 +179,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
           {[
             {
               value: 'buchen' as const,
-              ico: '🚀',
+              ico: '',
               title: 'Direkt buchen',
               sub: 'Sofort starten. Rechnung per E-Mail oder Kreditkarte.',
               badge: 'Direkt loslegen',
@@ -196,7 +187,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             },
             {
               value: 'offerte' as const,
-              ico: '📄',
+              ico: '',
               title: 'Offerte anfordern',
               sub: 'Kostenlos & unverbindlich. Per E-Mail in wenigen Minuten.',
               badge: 'Kostenlos',
@@ -220,7 +211,6 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
                 onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = C.primary; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; } }}
                 onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLDivElement).style.borderColor = C.border; (e.currentTarget as HTMLDivElement).style.transform = 'none'; } }}
               >
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>{opt.ico}</div>
                 <div style={{ fontWeight: 700, fontSize: '15px', color: C.taupe, marginBottom: '6px' }}>{opt.title}</div>
                 <div style={{ fontSize: '12px', color: C.muted, lineHeight: 1.5, marginBottom: '10px' }}>{opt.sub}</div>
                 <div style={{ ...opt.badgeStyle, display: 'inline-block', padding: '4px 12px', borderRadius: '100px', fontSize: '11px', fontWeight: 700 }}>
@@ -348,7 +338,6 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
 
         {/* Call box */}
         <div style={{ background: C.pl, border: `1.5px solid ${C.primary}`, borderRadius: '20px', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-          <div style={{ fontSize: '26px' }}>📞</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: C.taupe }}>Persönliche Beratung gewünscht?</div>
             <p style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Ab CHF 15&apos;000 empfehlen wir ein kurzes Gespräch. Kostenlos, 15 Minuten.</p>
@@ -411,7 +400,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
           {loading ? 'Wird gesendet...' : abschluss === 'buchen' ? 'Jetzt verbindlich buchen →' : 'Offerte anfordern →'}
         </button>
         <div style={{ textAlign: 'center', fontSize: '12px', color: C.muted, marginTop: '8px' }}>
-          🔒 Sichere Verbindung · Keine versteckten Kosten
+          Sichere Verbindung · Keine versteckten Kosten
         </div>
       </div>
     </section>

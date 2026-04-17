@@ -43,10 +43,10 @@ interface AnalysisStep {
 }
 
 const STEPS: AnalysisStep[] = [
-  { icon: '🔍', label: 'Website gelesen', sub: '' },
-  { icon: '🧠', label: 'Thema & Kontext erkannt', sub: 'KI analysiert Inhalte...' },
-  { icon: '🎯', label: 'Zielgruppe wird bestimmt', sub: 'KI gleicht mit Schweizer Daten ab...' },
-  { icon: '📊', label: 'Potenzial berechnen', sub: 'BFS-Bevölkerungsdaten werden geladen' },
+  { icon: '', label: 'Website gelesen', sub: '' },
+  { icon: '', label: 'Thema & Kontext erkannt', sub: 'KI analysiert Inhalte...' },
+  { icon: '', label: 'Zielgruppe wird bestimmt', sub: 'KI gleicht mit Schweizer Daten ab...' },
+  { icon: '', label: 'Potenzial berechnen', sub: 'BFS-Bevölkerungsdaten werden geladen' },
 ];
 
 function Step2Analysis({ briefing, updateBriefing, nextStep, isActive }: Props) {

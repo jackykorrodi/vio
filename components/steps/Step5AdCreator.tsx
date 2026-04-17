@@ -41,10 +41,10 @@ const FP = [
 ];
 
 const ANIM_TIPS: Record<string, string> = {
-  cta:  '✓ CTA pulsiert sanft',
-  qr:   '✓ QR blendet ein/aus',
-  hl:   '✓ Headline gleitet ein',
-  none: '⏸ Statisch',
+  cta:  'CTA pulsiert sanft',
+  qr:   'QR blendet ein/aus',
+  hl:   'Headline gleitet ein',
+  none: 'Statisch',
 };
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -697,7 +697,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         {/* CRAWL CARD */}
         <div style={{ background: 'linear-gradient(135deg,#f0ecfb,#f8f5ff)', border: '1.5px solid #6B4FBB', borderRadius: 10, padding: '11px 13px', marginBottom: 13 }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#6B4FBB', marginBottom: 7 }}>
-            🔗 Von Website geladen
+            Von Website geladen
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: '#2D1F52', fontWeight: 600 }}>{domain}</span>
@@ -805,7 +805,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
             ) : (
               <div onClick={() => logoFileRef.current?.click()}
                    style={{ width: '100%', height: 60, borderRadius: 8, border: '2px dashed #E8E4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 5, background: '#F5F2FB', color: '#7A6F96', fontSize: 11, cursor: 'pointer' }}>
-                <span>🏢</span><span>Kein Logo – klicken zum Hochladen</span>
+                <span>Kein Logo – klicken zum Hochladen</span>
               </div>
             )}
             <div style={{ display: 'flex', gap: 5, alignItems: 'stretch' }}>
@@ -815,7 +815,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
                      placeholder="https://… (auto befüllt)" />
               <button style={{ background: '#E8E4F0', border: '1px solid #E8E4F0', borderRadius: 8, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}
                       onClick={() => logoFileRef.current?.click()}>
-                📁
+                +
               </button>
             </div>
           </div>
@@ -833,7 +833,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           <div style={{ display: 'flex', gap: 5, alignItems: 'stretch' }}>
             <input style={{ ...sInp, flex: 1 }} value={bgUrlInput} onChange={e => handleBgUrl(e.target.value)} placeholder="https://… (auto befüllt)" />
             <label style={{ background: '#E8E4F0', border: '1px solid #E8E4F0', borderRadius: 8, padding: '0 9px', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              📁
+              +
               <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }}
                      onChange={e => { const f = e.target.files?.[0]; if (f) handleBgFile(f); }} />
             </label>
@@ -899,11 +899,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         <div style={{ ...sTitle, marginTop: 0 }}>Bildhelligkeit</div>
         <div style={sFg}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontSize: 11 }}>🌑</span>
+            <span style={{ fontSize: 11 }}>−</span>
             <input type="range" min={20} max={160} value={bgBright}
                    onChange={e => setBgBright(+e.target.value)}
                    style={{ flex: 1, accentColor: '#6B4FBB' }} />
-            <span style={{ fontSize: 11 }}>☀️</span>
+            <span style={{ fontSize: 11 }}>+</span>
             <span style={{ fontSize: 10, color: '#7A6F96', minWidth: 32, textAlign: 'right' }}>{bgBright}%</span>
           </div>
         </div>
@@ -980,21 +980,20 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
           {([
-            ['cta',  '👆', 'CTA-Button'],
-            ['qr',   '📱', 'QR-Code'],
-            ['hl',   '✏️', 'Headline'],
-            ['none', '⏸',  'Statisch'],
-          ] as const).map(([v, icon, lbl]) => (
+            ['cta',  'CTA-Button'],
+            ['qr',   'QR-Code'],
+            ['hl',   'Headline'],
+            ['none', 'Statisch'],
+          ] as const).map(([v, lbl]) => (
             <button key={v}
                     style={{ padding: '7px 5px', border: `1.5px solid ${animation === v ? '#6B4FBB' : '#E8E4F0'}`, borderRadius: 7, background: animation === v ? 'rgba(107,79,187,.07)' : 'white', cursor: 'pointer', textAlign: 'center', fontFamily: "'Jost',sans-serif", fontSize: 11, fontWeight: 500, color: animation === v ? '#6B4FBB' : '#7A6F96', transition: 'all .15s', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}
                     onClick={() => setAnimation(v)}>
-              <span>{icon}</span>
               <span>{lbl}</span>
             </button>
           ))}
         </div>
         <div style={{ fontSize: 10, background: '#2D1F52', color: 'white', padding: '4px 9px', borderRadius: 6, marginTop: 4 }}>
-          {ANIM_TIPS[animation] || '⏸ Statisch'}
+          {ANIM_TIPS[animation] || 'Statisch'}
         </div>
 
         <div style={sDivider} />
@@ -1003,11 +1002,11 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button onClick={handleNext}
                   style={{ width: '100%', background: '#6B4FBB', color: 'white', fontFamily: "'Jost',sans-serif", fontSize: 13, fontWeight: 600, padding: 11, borderRadius: 9, border: 'none', cursor: 'pointer', transition: 'all .15s' }}>
-            ✓ Werbemittel einreichen
+            Werbemittel einreichen
           </button>
           {resumeSent ? (
             <div style={{ fontSize: 11, color: '#3A9E7A', textAlign: 'center', padding: '6px 0' }}>
-              ✓ Link gesendet an {resumeEmail}
+              Link gesendet an {resumeEmail}
             </div>
           ) : showResumeInput ? (
             <div style={{ display: 'flex', gap: 5 }}>
@@ -1023,7 +1022,7 @@ export default function Step5AdCreator({ briefing, updateBriefing, nextStep }: P
           ) : (
             <button onClick={() => setShowResumeInput(true)}
                     style={{ width: '100%', background: 'transparent', color: '#2D1F52', border: '1.5px solid #E8E4F0', borderRadius: 9, padding: 8, fontFamily: "'Jost',sans-serif", fontSize: 12, cursor: 'pointer' }}>
-              📎 Link zum Weiterarbeiten senden
+              Link zum Weiterarbeiten senden
             </button>
           )}
           <button onClick={() => { updateBriefing({ werbemittel: 'spaeter' }); nextStep(); }}
