@@ -25,12 +25,18 @@ export type B2BStep1Output = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MIXED_CPM = 39.5
-const MIN_SICHTBAR_BUDGET = 2500
 
-const PACKAGES = {
-  sichtbar: { name: 'Sichtbar', reach: 0.15, freq: 3, days: 14 },
-  praesenz: { name: 'Präsenz',  reach: 0.30, freq: 4, days: 28 },
-  dominanz: { name: 'Dominanz', reach: 0.45, freq: 7, days: 35 },
+type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz'
+
+const PACKAGE_META: Record<PkgKey, {
+  name: string
+  freq: number
+  days: number
+  minBudget: number
+}> = {
+  sichtbar: { name: 'Sichtbar', freq: 3, days: 14, minBudget: 4000 },
+  praesenz: { name: 'Präsenz',  freq: 5, days: 28, minBudget: 6000 },
+  dominanz: { name: 'Dominanz', freq: 6, days: 42, minBudget: 8000 },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -41,26 +47,35 @@ function roundBudget(v: number): number {
   return Math.round(v / 1000) * 1000
 }
 
+function getReachPercent(mitarbeitende: number, key: PkgKey): number {
+  if (mitarbeitende < 50000)   return ({ sichtbar: 0.15, praesenz: 0.30, dominanz: 0.45 })[key]
+  if (mitarbeitende < 200000)  return ({ sichtbar: 0.08, praesenz: 0.15, dominanz: 0.25 })[key]
+  if (mitarbeitende < 500000)  return ({ sichtbar: 0.04, praesenz: 0.08, dominanz: 0.14 })[key]
+  return                             ({ sichtbar: 0.02, praesenz: 0.04, dominanz: 0.08 })[key]
+}
+
 function buildPackage(
-  pkg: { name: string; reach: number; freq: number; days: number },
+  key: PkgKey,
   mitarbeitende: number,
   isRecommended: boolean,
 ): B2BPackageResult {
-  const rawReach    = mitarbeitende * pkg.reach
+  const meta        = PACKAGE_META[key]
+  const reachPct    = getReachPercent(mitarbeitende, key)
+  const rawReach    = mitarbeitende * reachPct
   const capped      = Math.min(rawReach, mitarbeitende * 0.80)
-  const impressions = capped * pkg.freq
+  const impressions = capped * meta.freq
   const raw         = (impressions / 1000) * MIXED_CPM
   const rounded     = roundBudget(raw)
-  const final       = pkg.name === 'Sichtbar' ? Math.max(MIN_SICHTBAR_BUDGET, rounded) : rounded
+  const final       = Math.max(meta.minBudget, rounded)
   return {
-    name:               pkg.name,
-    reachPercent:       pkg.reach,
-    frequency:          pkg.freq,
-    durationDays:       pkg.days,
+    name:               meta.name,
+    reachPercent:       reachPct,
+    frequency:          meta.freq,
+    durationDays:       meta.days,
     targetReachPeople:  Math.round(capped),
     impressions:        Math.round(impressions),
     finalBudget:        final,
-    uniqueReachPercent: pkg.reach,
+    uniqueReachPercent: reachPct,
     badge:              isRecommended ? 'Empfohlen' : null,
   }
 }
@@ -76,9 +91,9 @@ export function buildB2BPackages({
     mitarbeitendeTotal: mitarbeitende,
     recommendedPackage: 'praesenz',
     packages: {
-      sichtbar: buildPackage(PACKAGES.sichtbar, mitarbeitende, false),
-      praesenz: buildPackage(PACKAGES.praesenz, mitarbeitende, true),
-      dominanz: buildPackage(PACKAGES.dominanz, mitarbeitende, false),
+      sichtbar: buildPackage('sichtbar', mitarbeitende, false),
+      praesenz: buildPackage('praesenz', mitarbeitende, true),
+      dominanz: buildPackage('dominanz', mitarbeitende, false),
     },
   }
 }

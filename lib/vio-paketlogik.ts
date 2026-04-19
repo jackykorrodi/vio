@@ -1,10 +1,12 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz'
+
 export type PackageResult = {
   name: string
-  reachPercent: number            // 0.15 | 0.30 | 0.45
-  frequency: number               // 3 | 4 | 7
-  durationDays: number            // 14 | 28 | 35
+  reachPercent: number            // Tier-abhängig (0.02 – 0.45)
+  frequency: number               // 3 | 5 | 6
+  durationDays: number            // 14 | 28 | 42
   targetReachPeople: number
   impressions: number
   rawBudget: number
@@ -19,7 +21,7 @@ export type PackageResult = {
 export type Step1Output = {
   eligibleVotersTotal: number
   daysUntilVote: number | null
-  recommendedPackage: 'sichtbar' | 'praesenz' | 'dominanz'
+  recommendedPackage: PkgKey
   packages: {
     sichtbar: PackageResult
     praesenz: PackageResult
@@ -30,13 +32,17 @@ export type Step1Output = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MIXED_CPM = 39.5
-const MIN_SICHTBAR_BUDGET = 4000
-const CAMPAIGN_END_OFFSET_DAYS = 3  // campaignEnd = voteDate − 3 days
+const CAMPAIGN_END_OFFSET_DAYS = 0   // alle Pakete enden am Abstimmungstag
 
-const PACKAGES = {
-  sichtbar: { name: 'Sichtbar', reach: 0.15, freq: 3, days: 14 },
-  praesenz: { name: 'Präsenz',  reach: 0.30, freq: 4, days: 28 },
-  dominanz: { name: 'Dominanz', reach: 0.45, freq: 7, days: 35 },
+const PACKAGE_META: Record<PkgKey, {
+  name: string
+  freq: number
+  days: number
+  minBudget: number
+}> = {
+  sichtbar: { name: 'Sichtbar', freq: 3, days: 14, minBudget: 4000 },
+  praesenz: { name: 'Präsenz',  freq: 5, days: 28, minBudget: 6000 },
+  dominanz: { name: 'Dominanz', freq: 6, days: 42, minBudget: 8000 },
 }
 
 const MONTHS_DE = [
@@ -50,17 +56,26 @@ function fmtDate(d: Date): string {
   return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`
 }
 
-function getRecommended(days: number | null): 'sichtbar' | 'praesenz' | 'dominanz' {
+// Tiered Reach Caps — je grösser die Region, desto unrealistischer hoher Reach
+function getReachPercent(voters: number, key: PkgKey): number {
+  if (voters < 50000)   return ({ sichtbar: 0.15, praesenz: 0.30, dominanz: 0.45 })[key]
+  if (voters < 200000)  return ({ sichtbar: 0.08, praesenz: 0.15, dominanz: 0.25 })[key]
+  if (voters < 500000)  return ({ sichtbar: 0.04, praesenz: 0.08, dominanz: 0.14 })[key]
+  return                       ({ sichtbar: 0.02, praesenz: 0.04, dominanz: 0.08 })[key]
+}
+
+// Variante B: Präsenz ist immer Default (Compromise Effect + Decoy Pricing).
+// Dominanz wird NIE automatisch empfohlen, bleibt aber buchbar.
+function getRecommended(days: number | null): PkgKey {
   if (days === null) return 'praesenz'
-  if (days >= 63)   return 'dominanz'
-  if (days >= 49)   return 'praesenz'
-  return 'sichtbar'
+  if (days >= 38)   return 'praesenz'   // 28 Laufzeit + 10 Setup = Präsenz noch machbar
+  return 'sichtbar'                      // < 38 Tage: nur Sichtbar realistisch
 }
 
 function getHinweis(days: number | null): string | null {
-  if (!days || days >= 49) return null
-  if (days >= 35) return 'Für Präsenz wäre ein früherer Start ideal gewesen.'
-  return 'Die Abstimmung ist bald – maximale Intensität auf kleinem Zeitfenster.'
+  if (days === null || days >= 38) return null
+  if (days >= 24) return 'Für Präsenz wäre ein früherer Start ideal gewesen.'
+  return 'Die Abstimmung ist bald — maximale Intensität auf kleinem Zeitfenster.'
 }
 
 function calcDates(
@@ -86,41 +101,31 @@ function roundBudget(v: number): number {
   return Math.round(v / 1000) * 1000
 }
 
-function getReachPercents(voters: number): { sichtbar: number; praesenz: number; dominanz: number } {
-  if (voters < 50000) {
-    return { sichtbar: 0.15, praesenz: 0.30, dominanz: 0.45 }
-  } else if (voters < 200000) {
-    return { sichtbar: 0.10, praesenz: 0.20, dominanz: 0.35 }
-  } else if (voters < 500000) {
-    return { sichtbar: 0.05, praesenz: 0.10, dominanz: 0.18 }
-  } else {
-    return { sichtbar: 0.02, praesenz: 0.05, dominanz: 0.09 }
-  }
-}
-
 function buildPackage(
-  pkg: { name: string; reach: number; freq: number; days: number },
+  key: PkgKey,
   voters: number,
   isRecommended: boolean,
   voteDate: string | null | undefined,
   hinweis: string | null,
 ): PackageResult {
-  const reach       = voters * pkg.reach
-  const impressions = reach * pkg.freq
+  const meta        = PACKAGE_META[key]
+  const reachPct    = getReachPercent(voters, key)
+  const reach       = voters * reachPct
+  const impressions = reach * meta.freq
   const raw         = (impressions / 1000) * MIXED_CPM
   const rounded     = roundBudget(raw)
-  const final       = Math.max(MIN_SICHTBAR_BUDGET, rounded)
-  const dates       = voteDate ? calcDates(voteDate, pkg.days) : null
+  const final       = Math.max(meta.minBudget, rounded)       // paketspezifisches Min-Budget
+  const dates       = voteDate ? calcDates(voteDate, meta.days) : null
   return {
-    name:                 pkg.name,
-    reachPercent:         pkg.reach,
-    frequency:            pkg.freq,
-    durationDays:         pkg.days,
+    name:                 meta.name,
+    reachPercent:         reachPct,
+    frequency:            meta.freq,
+    durationDays:         meta.days,
     targetReachPeople:    Math.round(reach),
     impressions:          Math.round(impressions),
     rawBudget:            raw,
     finalBudget:          final,
-    uniqueReachPercent:   pkg.reach,
+    uniqueReachPercent:   reachPct,
     recommendedStartDate: dates?.startDate ?? null,
     latestBookingDate:    dates?.bookingDate ?? null,
     badge:                isRecommended ? 'Empfohlen' : null,
@@ -144,15 +149,14 @@ export function buildVioPackages({
     : null
   const recommended = getRecommended(days)
   const hinweis     = getHinweis(days)
-  const rp          = getReachPercents(voters)
   return {
     eligibleVotersTotal: voters,
     daysUntilVote:       days,
     recommendedPackage:  recommended,
     packages: {
-      sichtbar: buildPackage({ ...PACKAGES.sichtbar, reach: rp.sichtbar }, voters, recommended === 'sichtbar', voteDate, hinweis),
-      praesenz: buildPackage({ ...PACKAGES.praesenz, reach: rp.praesenz }, voters, recommended === 'praesenz', voteDate, hinweis),
-      dominanz: buildPackage({ ...PACKAGES.dominanz, reach: rp.dominanz }, voters, recommended === 'dominanz', voteDate, hinweis),
+      sichtbar: buildPackage('sichtbar', voters, recommended === 'sichtbar', voteDate, hinweis),
+      praesenz: buildPackage('praesenz', voters, recommended === 'praesenz', voteDate, hinweis),
+      dominanz: buildPackage('dominanz', voters, recommended === 'dominanz', voteDate, hinweis),
     },
   }
 }
@@ -168,4 +172,10 @@ export function computeStartDateISO(voteDate: string, durationDays: number): str
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const actual = start < today ? today : start
   return actual.toISOString().split('T')[0]
+}
+
+// ─── Helper: per-package minimum budget ───────────────────────────────────────
+
+export function getMinBudget(key: PkgKey): number {
+  return PACKAGE_META[key].minBudget
 }
