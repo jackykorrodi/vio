@@ -207,7 +207,7 @@ Rollback: `git checkout v0.x-stable`
 
 ## Letzter Stand
 - Datum: 2026-04-19
-- Tiered Reach Caps + MAX_BUDGET cap in vio-paketlogik.ts: CHF 50k absolutes Cap, Backwards-Reach-Berechnung bei Clamping, 80%-Wähler-Cap — getestet: ja (tsc ✓)
+- Tiered Reach Caps + gestaffelte Floor-Budgets (4k/6k/9k) in vio-paketlogik.ts: REACH_TIERS Array, getTieredReach(), neue buildPackage-Signatur mit reachOverride, MAX_BUDGET 50k Cap, Backwards-Reach, 80%-Wähler-Cap — getestet: ja (tsc ✓)
 - Media-Marquee ersetzt Stats-Strip auf Homepage — Zeilen 229-247 app/page.tsx — getestet: nein
 - Hero floating Cards: 4 VIO-Vorteile ersetzen alte KPI-Cards (4 Schritten / Anbieter / CHF 4'000 / Keine Agentur) — app/page.tsx Zeilen 197–248 — getestet: nein
 - Why-Grid: Prompt für 4 neue Kacheln mit VIO-Vorteilen bereit, noch nicht ausgeführt
