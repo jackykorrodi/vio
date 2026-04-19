@@ -179,3 +179,26 @@ export function computeStartDateISO(voteDate: string, durationDays: number): str
 export function getMinBudget(key: PkgKey): number {
   return PACKAGE_META[key].minBudget
 }
+
+// ─── VERIFICATION (mental durchgegangen) ──────────────────────────────────────
+// Mit MIXED_CPM=39.5, Min 4/6/8k, Freq 3/5/6, Tiered Caps:
+//
+//   Dorf 5k (Tier 1: 15/30/45%)
+//     Sichtbar:  750 × 3  = 2'250 impr → raw   89 → final  4'000 (Min)
+//     Präsenz: 1'500 × 5  = 7'500 impr → raw  296 → final  6'000 (Min)
+//     Dominanz: 2'250 × 6 = 13'500 impr → raw 533 → final  8'000 (Min)
+//
+//   Winterthur 85k (Tier 2: 8/15/25%)
+//     Sichtbar: 6'800 × 3  = 20'400 impr → raw   806 → final 4'000 (Min)
+//     Präsenz: 12'750 × 5  = 63'750 impr → raw 2'518 → final 6'000 (Min)
+//     Dominanz: 21'250 × 6 = 127'500 impr → raw 5'036 → final 8'000 (Min)
+//
+//   Kanton ZH 1M (Tier 4: 2/4/8%)
+//     Sichtbar: 20'000 × 3  = 60'000 impr  → raw  2'370 → final  4'000 (Min)
+//     Präsenz: 40'000 × 5  = 200'000 impr  → raw  7'900 → final  7'900
+//     Dominanz: 80'000 × 6 = 480'000 impr  → raw 18'960 → final 19'000
+//
+//   Schweiz 5.5M (Tier 4: 2/4/8%)
+//     Sichtbar: 110'000 × 3  = 330'000 impr    → raw  13'035 → final  13'000
+//     Präsenz: 220'000 × 5  = 1'100'000 impr   → raw  43'450 → final  43'500
+//     Dominanz: 440'000 × 6 = 2'640'000 impr   → raw 104'280 → final 104'000

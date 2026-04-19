@@ -11,11 +11,13 @@ Drei Pakete mit fixen Namen, dynamisch berechneten Preisen je nach Region:
 
 ## 2. Paketdefinition
 
-| Paket | Ziel-Reichweite | Frequenz | Laufzeit | Opt. Buchung vor Abstimmung |
+| Paket | Ziel-Reichweite (Tier 1) | Frequenz | Laufzeit | Min-Budget |
 |---|---|---|---|---|
-| Sichtbar | 15% | 3× | 14 Tage | 52 Tage vorher |
-| Präsenz | 30% | 4× | 28 Tage | 66 Tage vorher |
-| Dominanz | 45% | 7× | 35 Tage | 73 Tage vorher |
+| Sichtbar | 15% | 3× | 14 Tage | CHF 4'000 |
+| Präsenz  | 30% | 5× | 28 Tage | CHF 6'000 |
+| Dominanz | 45% | 6× | 42 Tage | CHF 8'000 |
+
+Ziel-Reichweite ist tier-abhängig (→ Abschnitt 4). Min-Budget wird pro Paket angewendet (paketspezifisch, nicht nur für Sichtbar).
 
 Frequenz ist kombiniert DOOH + Display (gewichtet):
 - DOOH (70% Budget): physische Präsenz, tiefere Frequenz
@@ -23,42 +25,51 @@ Frequenz ist kombiniert DOOH + Display (gewichtet):
 
 ---
 
-## 3. Briefwahl-Logik & Zeitachse
+## 3. Kampagnen-Timing & Zeitachse
 
-Briefwahl-Offset: 28 Tage vor Abstimmungstag kommen Unterlagen an.
-Freigabe-Puffer: 10 Kalendertage (7 Werktage) für DOOH-Freigabe bei politischen Kampagnen.
+`CAMPAIGN_END_OFFSET_DAYS = 0` — alle Pakete enden am Abstimmungstag.
+Freigabe-Puffer: 10 Kalendertage (`MIN_SETUP_DAYS`) für DOOH-Freigabe.
 
 ### Formel Kampagnenstart
 ```
-Sichtbar:  Abstimmungstag - 28 (Briefwahl) - 14 (Laufzeit) = Start 42 Tage vorher
-Präsenz:   Abstimmungstag - 28 (Briefwahl) - 28 (Laufzeit) = Start 56 Tage vorher
-Dominanz:  Abstimmungstag - 28 (Briefwahl) - 35 (Laufzeit) = Start 63 Tage vorher
+Sichtbar:  Abstimmungstag - 14 (Laufzeit) = Start 14 Tage vorher
+Präsenz:   Abstimmungstag - 28 (Laufzeit) = Start 28 Tage vorher
+Dominanz:  Abstimmungstag - 42 (Laufzeit) = Start 42 Tage vorher
 ```
 
-### Formel Optimales Buchungsdatum
-```
-Optimales Buchungsdatum = Kampagnenstart - 10 Tage (Freigabe-Puffer)
-
-Sichtbar:  52 Tage vor Abstimmung
-Präsenz:   66 Tage vor Abstimmung
-Dominanz:  73 Tage vor Abstimmung
-```
+### Datums-Gating Step 1 (Hard Constraints)
+| Vorlauf bis Abstimmung | Status | Verhalten |
+|---|---|---|
+| < 10 Tage | Hard Block | Weiter-Button disabled, rote Fehlermeldung |
+| 10–23 Tage | Warning | Amber-Hinweis, nur Sichtbar machbar |
+| 24–37 Tage | Info | Lila-Hinweis, Präsenz nicht mehr machbar |
+| ≥ 38 Tage | OK | kein Hinweis |
 
 ### UI-Anzeige Datum
-- „Empfohlener Kampagnenstart: 12. März 2026"
-- „Für einen optimalen Start buche bis spätestens 2. März 2026"
-- Wenn optimales Buchungsdatum in Vergangenheit: „Deine Kampagne startet sobald die Freigabe erfolgt ist (ca. 7 Werktage)."
-- Alle Pakete immer buchbar – kein Sperrdatum
+- Datepicker-Min: heute + 10 Tage (`todayPlusDaysISO(MIN_SETUP_DAYS)`)
+- Alle Pakete immer buchbar – kein Sperrdatum in Schritt 2
 
 ---
 
 ## 4. Preislogik
 
-### Fixe Annahmen
-- DOOH-Anteil: 70% | CPM CHF 50
-- Display-Anteil: 30% | CPM CHF 15
-- Misch-CPM: CHF 39.50 (0.7×50 + 0.3×15)
-- Mindestbudget Sichtbar: CHF 2'500 (still angewendet, kein UI-Hinweis)
+### CPM-Struktur
+- DOOH: VK CHF 50 / EK CHF 25 | Display: VK CHF 15 / EK CHF 5
+- Split: 70% DOOH / 30% Display (Impressions-Ebene)
+- Misch-CPM VK: CHF 39.50 (0.7×50 + 0.3×15), EK: CHF 19.00 → Gross Margin 51.9%
+- Konstante `MIXED_CPM = 39.5` in `lib/vio-paketlogik.ts` und `lib/b2b-paketlogik.ts`
+
+### Min-Budgets (paketspezifisch)
+- Sichtbar: CHF 4'000 | Präsenz: CHF 6'000 | Dominanz: CHF 8'000
+- `getMinBudget(key: PkgKey)` exportiert aus `lib/vio-paketlogik.ts`
+
+### Tiered Reach Caps
+| Stimmberechtigte / Mitarbeitende | Sichtbar | Präsenz | Dominanz |
+|---|---|---|---|
+| < 50'000 | 15% | 30% | 45% |
+| 50'000–200'000 | 8% | 15% | 25% |
+| 200'000–500'000 | 4% | 8% | 14% |
+| 500'000+ | 2% | 4% | 8% |
 
 ### Formeln
 ```
@@ -77,16 +88,15 @@ CHF 10'000–50'000  → auf 500er runden
 
 ---
 
-## 5. Empfehlungssystem
+## 5. Empfehlungssystem (Variante B — Präsenz Default)
 
-Basis-Empfehlung: **Präsenz**
+Psychologische Basis: Compromise Effect + Decoy Pricing. Präsenz ist immer Default-Empfehlung und erhält das „Empfohlen"-Badge. Dominanz wird nie aktiv empfohlen, bleibt aber buchbar.
 
 | Tage bis Abstimmung | Empfehlung | UI-Hinweis |
 |---|---|---|
-| ≥ 63 Tage | Dominanz | (kein Hinweis) |
-| 49–62 Tage | Präsenz | (kein Hinweis) |
-| 35–48 Tage | Sichtbar | „Für Präsenz wäre ein früherer Start ideal gewesen." |
-| < 35 Tage | Sichtbar | „Die Abstimmung ist bald – maximale Intensität auf kleinem Zeitfenster." |
+| ≥ 38 Tage | Präsenz | (kein Hinweis) |
+| 24–37 Tage | Sichtbar | „Für Präsenz wäre ein früherer Start ideal gewesen." |
+| < 24 Tage | Sichtbar | „Die Abstimmung ist bald — maximale Intensität auf kleinem Zeitfenster." |
 | Kein Datum | Präsenz | (kein Hinweis) |
 
 Alle Pakete immer buchbar. Empfehlung ändert sich, nichts wird deaktiviert.
@@ -143,87 +153,50 @@ type Step1Output = {
 
 ---
 
-## 8. Pseudocode
+## 8. Pseudocode (Stand Go-Live)
 
 ```ts
 const MIXED_CPM = 39.5
-const MIN_SICHTBAR_BUDGET = 2500
-const BRIEFWAHL_OFFSET_DAYS = 28
-const FREIGABE_CALENDAR_DAYS = 10
+const CAMPAIGN_END_OFFSET_DAYS = 0   // endet am Abstimmungstag
+const MIN_SETUP_DAYS = 10            // DOOH-Freigabe Puffer
 
-const PACKAGES = {
-  sichtbar: { name: 'Sichtbar', reach: 0.15, freq: 3, days: 14 },
-  praesenz: { name: 'Präsenz',  reach: 0.30, freq: 4, days: 28 },
-  dominanz: { name: 'Dominanz', reach: 0.45, freq: 7, days: 35 },
+const PACKAGE_META = {
+  sichtbar: { name: 'Sichtbar', freq: 3, days: 14, minBudget: 4000 },
+  praesenz: { name: 'Präsenz',  freq: 5, days: 28, minBudget: 6000 },
+  dominanz: { name: 'Dominanz', freq: 6, days: 42, minBudget: 8000 },
 }
 
-function getRecommended(days: number | null) {
+function getReachPercent(voters, key) {
+  if (voters < 50000)  return { sichtbar: 0.15, praesenz: 0.30, dominanz: 0.45 }[key]
+  if (voters < 200000) return { sichtbar: 0.08, praesenz: 0.15, dominanz: 0.25 }[key]
+  if (voters < 500000) return { sichtbar: 0.04, praesenz: 0.08, dominanz: 0.14 }[key]
+  return                      { sichtbar: 0.02, praesenz: 0.04, dominanz: 0.08 }[key]
+}
+
+// Variante B: Präsenz immer Default, Dominanz nie automatisch empfohlen
+function getRecommended(days) {
   if (days === null) return 'praesenz'
-  if (days >= 63)   return 'dominanz'
-  if (days >= 49)   return 'praesenz'
+  if (days >= 38)   return 'praesenz'
   return 'sichtbar'
 }
 
-function getHinweis(days: number | null) {
-  if (!days || days >= 49) return null
-  if (days >= 35) return 'Für Präsenz wäre ein früherer Start ideal gewesen.'
-  return 'Die Abstimmung ist bald – maximale Intensität auf kleinem Zeitfenster.'
+function getHinweis(days) {
+  if (days === null || days >= 38) return null
+  if (days >= 24) return 'Für Präsenz wäre ein früherer Start ideal gewesen.'
+  return 'Die Abstimmung ist bald — maximale Intensität auf kleinem Zeitfenster.'
 }
 
-function calcDates(voteDate: string, durationDays: number) {
-  const vote = new Date(voteDate)
-  const start = new Date(vote)
-  start.setDate(vote.getDate() - BRIEFWAHL_OFFSET_DAYS - durationDays)
-  const booking = new Date(start)
-  booking.setDate(start.getDate() - FREIGABE_CALENDAR_DAYS)
-  const fmt = (d: Date) => d.toLocaleDateString('de-CH', { day: 'numeric', month: 'long', year: 'numeric' })
-  return { startDate: fmt(start), bookingDate: fmt(booking) }
-}
-
-function roundBudget(v: number) {
-  if (v < 10000)  return Math.round(v / 100) * 100
-  if (v < 50000)  return Math.round(v / 500) * 500
-  return Math.round(v / 1000) * 1000
-}
-
-function buildPackage(pkg, voters, isRecommended, voteDate, hinweis) {
-  const reach       = voters * pkg.reach
-  const impressions = reach * pkg.freq
+function buildPackage(key, voters, isRecommended, voteDate, hinweis) {
+  const meta        = PACKAGE_META[key]
+  const reachPct    = getReachPercent(voters, key)
+  const reach       = voters * reachPct
+  const impressions = reach * meta.freq
   const raw         = (impressions / 1000) * MIXED_CPM
-  const rounded     = roundBudget(raw)
-  const final       = pkg.name === 'Sichtbar' ? Math.max(MIN_SICHTBAR_BUDGET, rounded) : rounded
-  const dates       = voteDate ? calcDates(voteDate, pkg.days) : null
-  return {
-    ...pkg,
-    targetReachPeople:    Math.round(reach),
-    impressions:          Math.round(impressions),
-    rawBudget:            raw,
-    finalBudget:          final,
-    uniqueReachPercent:   pkg.reach,
-    recommendedStartDate: dates?.startDate ?? null,
-    latestBookingDate:    dates?.bookingDate ?? null,
-    badge:                isRecommended ? 'Empfohlen' : null,
-    hinweis:              isRecommended ? hinweis : null,
-  }
-}
-
-function buildVioPackages({ regions, voteDate, campaignType }) {
-  const voters      = regions.reduce((s, r) => s + r.eligibleVoters, 0)
-  const days        = voteDate
-    ? Math.ceil((new Date(voteDate).getTime() - new Date().getTime()) / 86400000)
-    : null
-  const recommended = getRecommended(days)
-  const hinweis     = getHinweis(days)
-  return {
-    eligibleVotersTotal: voters,
-    daysUntilVote:       days,
-    recommendedPackage:  recommended,
-    packages: {
-      sichtbar: buildPackage(PACKAGES.sichtbar, voters, recommended === 'sichtbar', voteDate, hinweis),
-      praesenz: buildPackage(PACKAGES.praesenz, voters, recommended === 'praesenz', voteDate, hinweis),
-      dominanz: buildPackage(PACKAGES.dominanz, voters, recommended === 'dominanz', voteDate, hinweis),
-    },
-  }
+  const final       = Math.max(meta.minBudget, roundBudget(raw))
+  return { ...meta, reachPercent: reachPct, targetReachPeople: Math.round(reach),
+    impressions: Math.round(impressions), rawBudget: raw, finalBudget: final,
+    badge: isRecommended ? 'Empfohlen' : null,
+    hinweis: isRecommended ? hinweis : null }
 }
 ```
 
@@ -231,10 +204,10 @@ function buildVioPackages({ regions, voteDate, campaignType }) {
 
 ## 9. Edge Cases
 
-### Kleine Gemeinden (Sichtbar < CHF 2'500)
-- Mindestbudget CHF 2'500 wird still angewendet
-- Kein UI-Hinweis
-- Tatsächliche Reichweite kann über 15% liegen – nicht kommunizieren
+### Kleine Gemeinden / tiefes Budget
+- Min-Budget wird paketspezifisch angewendet: 4/6/8k (statt früher nur 2'500 für Sichtbar)
+- Kein UI-Hinweis — Budget wird still geclamped
+- Tatsächliche Reichweite kann über Tier-Prozentsatz liegen – nicht kommunizieren
 
 ### Abstimmungsdatum fehlt oder in Vergangenheit
 - Kein Zeitdruck-Override

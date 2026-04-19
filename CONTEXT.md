@@ -64,10 +64,55 @@
 - Nutzt altes Farb-System (Terracotta) — vor Aktivierung auf VIO Design-System updaten
 - Status: Vorhanden, nicht aktiv promoted, kein Go-Live Blocker
 
+## Preislogik (Stand Go-Live)
+
+### CPM-Struktur
+- DOOH: VK CHF 50 / EK CHF 25 | Display: VK CHF 15 / EK CHF 5
+- Split: 70% DOOH / 30% Display (Impressions-Ebene)
+- Misch-CPM VK 39.50, EK 19.00 → Gross Margin 51.9%
+- Konstante `MIXED_CPM = 39.5` in `lib/vio-paketlogik.ts` und `lib/b2b-paketlogik.ts`
+
+### Pakete (Politik + B2B identisch)
+| Paket | Frequenz | Laufzeit | Min-Budget |
+|---|---|---|---|
+| Sichtbar | 3× | 14 Tage | CHF 4'000 |
+| Präsenz  | 5× | 28 Tage | CHF 6'000 |
+| Dominanz | 6× | 42 Tage | CHF 8'000 |
+
+### Tiered Reach Caps (nach Stimmberechtigten bzw. Mitarbeitenden)
+- < 50'000: 15 / 30 / 45%
+- 50–200k: 8 / 15 / 25%
+- 200–500k: 4 / 8 / 14%
+- 500k+: 2 / 4 / 8%
+
+### Kampagnen-Timing Politik
+- CAMPAIGN_END_OFFSET_DAYS = 0 → alle Pakete enden am Abstimmungstag
+- Laufzeit rückwärts vom Vote: 2 / 4 / 6 Wochen
+- Setup-Puffer 10 Tage (DOOH-Freigabe ca. 7 Werktage)
+
+### Datums-Gating Step 1 Politik
+- < 10 Tage: Hard Block (Weiter disabled)
+- 10–23 Tage: Warning
+- 24–37 Tage: Info (Präsenz nicht mehr machbar)
+- ≥ 38 Tage: kein Hinweis
+
+### Empfehlungssystem (Variante B)
+- Präsenz immer Default-Empfehlung
+- Dominanz wird nie automatisch empfohlen
+- Schwellen: ≥ 38 Tage → Präsenz, < 38 Tage → Sichtbar
+
 ## Tech-Debt (nach Go-Live angehen)
 - B2C Step 1 URL-Input ist inline in B2CFlow.tsx — in eigene Step1B2C.tsx Komponente auslagern
 - Step5AdCreator (1134 Zeilen) + Step4Budget/steps (951 Zeilen) sind zu gross — aufteilen
 - Step8Dashboard Farben auf VIO Design-System updaten wenn aktiviert
+
+### Erledigt im Go-Live Fix (April 2026)
+- Tiered Reach Caps umgesetzt (Kanton ZH Dominanz von 142k → 19k CHF)
+- Min-Budget paketspezifisch 4/6/8k (vorher nur Sichtbar 4k)
+- Frequenzen mediaplanerisch kalibriert (war 3/4/7, neu 3/5/6)
+- Dominanz-Laufzeit 35→42 Tage (6 Wochen rückwärts)
+- Kampagnen-Ende = Abstimmungstag (vorher −3 Tage, Widerspruch gelöst)
+- Datums-Gating Step 1 (Hard Block bei < 10 Tagen Vorlauf)
 
 ## Wichtige Dateien
 - `lib/dooh-screens.json` — 146 Einträge, Feld screens_politik für ~78% politikfähige Screens
@@ -95,6 +140,10 @@
 - CSS + Turbopack: Bei visuellen Komponenten inline style={{}} bevorzugen, keine externen CSS-Klassen
 - 4 Gemeinden permanent ausgeschlossen: Küsnacht, Martigny, Opfikon, Veyrier
 - Nie CPM oder Kanalaufteilung dem User zeigen — nur Von-Bis Reichweite
+- Frequenz-Fallbacks in UI-Komponenten: `?? 5` (neu, war `?? 4` — Präsenz ist Default)
+- Budget-Slider-Min dynamisch: via `getMinBudget(selectedPkg)` aus `lib/vio-paketlogik.ts`
+- Datepicker-Min: `todayPlusDaysISO(MIN_SETUP_DAYS)` in `Step1Politik.tsx` verhindert zu frühe Daten
+- Beim Paketwechsel: Budget muss auf neuen Min geclamped werden (`Math.max(newMin, ...)`)
 
 ## Prompt-Regeln
 
