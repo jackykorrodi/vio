@@ -92,6 +92,45 @@ function calcDaysUntil(iso: string): number {
   return Math.max(0, Math.round((d.getTime() - today.getTime()) / 86400000));
 }
 
+const MIN_SETUP_DAYS = 10  // DOOH-Freigabe braucht ca. 7 Werktage + Puffer
+
+type DateGate =
+  | { level: 'ok' }
+  | { level: 'info';    message: string }
+  | { level: 'warning'; message: string }
+  | { level: 'error';   message: string }
+
+function getDateGate(dateStr: string): DateGate {
+  if (!dateStr) return { level: 'ok' }
+  const days = calcDaysUntil(dateStr)
+  if (days < MIN_SETUP_DAYS) {
+    return {
+      level: 'error',
+      message: `Zu kurzfristig: Für die DOOH-Freigabe brauchen wir mindestens ${MIN_SETUP_DAYS} Tage Vorlauf. Bei Abstimmung in ${days} Tag${days === 1 ? '' : 'en'} ist eine Kampagne nicht mehr umsetzbar.`,
+    }
+  }
+  if (days < 24) {
+    return {
+      level: 'warning',
+      message: `Sehr knapp: Nach Freigabe bleiben nur noch ${days - MIN_SETUP_DAYS} Tage Kampagnenlaufzeit. Das Paket «Sichtbar» ist machbar – für mehr Wirkung empfehlen wir mindestens 38 Tage Vorlauf.`,
+    }
+  }
+  if (days < 38) {
+    return {
+      level: 'info',
+      message: `Paket «Präsenz» (4 Wochen) ist zeitlich nicht mehr machbar. «Sichtbar» (2 Wochen) läuft bis zur Abstimmung.`,
+    }
+  }
+  return { level: 'ok' }
+}
+
+function todayPlusDaysISO(days: number): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -190,7 +229,9 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
     timelineWeeks = Math.round(timelineDays / 7);
     timelineShow  = timelineDays > 0;
   }
-  const q2Valid = !!dateEvent && (dateStart ? timelineDays > 0 : true);
+  const dateGate    = getDateGate(dateEvent);
+  const dateBlocked = dateGate.level === 'error';
+  const q2Valid = !!dateEvent && (dateStart ? timelineDays > 0 : true) && !dateBlocked;
 
   // ─── Finish ───────────────────────────────────────────────────────────────
 
@@ -457,10 +498,45 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                       type="date"
                       className="sp1-date-input"
                       value={dateEvent}
+                      min={todayPlusDaysISO(MIN_SETUP_DAYS)}
                       onChange={e => setDateEvent(e.target.value)}
                     />
                     <div style={{ fontSize: 12, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Bundesabstimmungen finden immer an einem Sonntag statt.</div>
                   </div>
+
+                  {/* Date gate feedback */}
+                  {dateEvent && dateGate.level !== 'ok' && (
+                    <div
+                      style={{
+                        background:
+                          dateGate.level === 'error'   ? '#FFF0F0' :
+                          dateGate.level === 'warning' ? AMBER_BG :
+                                                         V_DIM,
+                        border: `1px solid ${
+                          dateGate.level === 'error'   ? '#FCA5A5' :
+                          dateGate.level === 'warning' ? AMBER :
+                                                         V_DIM2
+                        }`,
+                        borderRadius: 12,
+                        padding: '12px 16px',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        color:
+                          dateGate.level === 'error'   ? '#991B1B' :
+                          dateGate.level === 'warning' ? AMBER :
+                                                         INK2,
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'flex-start',
+                        fontWeight: 500,
+                      }}
+                    >
+                      <span style={{ flexShrink: 0, fontSize: 15 }}>
+                        {dateGate.level === 'error' ? '⛔' : dateGate.level === 'warning' ? '⚠️' : 'ℹ️'}
+                      </span>
+                      <span>{dateGate.message}</span>
+                    </div>
+                  )}
 
                   {/* Start date */}
                   <div
