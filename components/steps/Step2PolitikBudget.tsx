@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
-import { computeStartDateISO } from '@/lib/vio-paketlogik';
+import { computeStartDateISO, getMinBudget } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
 import ReichweiteKacheln from '@/components/ReichweiteKacheln';
 import doohScreensRaw from '@/lib/dooh-screens.json';
@@ -71,14 +71,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   };
   const computeEnd = () => {
     if (!briefing.votingDate) return '';
-    return addDays(briefing.votingDate, -28); // briefwahl offset – same for all pkgs
+    return briefing.votingDate; // alle Pakete enden am Abstimmungstag
   };
 
   const [startISO,   setStartISO]   = useState(() => computeStart('praesenz'));
   const [endISO,     setEndISO]     = useState(() => computeEnd());
   const [budget,     setBudget]     = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
   const [dateError,  setDateError]  = useState<string | null>(null);
-  const [frequency,  setFrequency]  = useState<number>(() => pkg?.frequency ?? 4);
+  const [frequency,  setFrequency]  = useState<number>(() => pkg?.frequency ?? 5);
 
   // Per-card computed start dates (for display on cards)
   const cardStartISO = (key: PkgKey) => computeStart(key);
@@ -88,8 +88,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     setSelectedPkg(key);
     setStartISO(computeStart(key));
     setEndISO(computeEnd());
-    setBudget(vioData?.packages[key].finalBudget ?? budget);
-    setFrequency(vioData?.packages[key].frequency ?? 4);
+    const newPkgBudget = vioData?.packages[key].finalBudget ?? budget;
+    const newMin = getMinBudget(key);
+    setBudget(Math.max(newMin, newPkgBudget));      // nie unter Min
+    setFrequency(vioData?.packages[key].frequency ?? 5);
   };
 
   const handleReset = () => handleSelectPkg(selectedPkg);
@@ -106,7 +108,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // ── Derived display values ───────────────────────────────────────────────────
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
-  const budgetPct  = Math.min(100, Math.max(0, ((budget - 4000) / (200000 - 4000)) * 100));
+  const minBudget  = getMinBudget(selectedPkg);
+  const budgetPct  = Math.min(100, Math.max(0, ((budget - minBudget) / (200000 - minBudget)) * 100));
 
   const freqDescMap: Record<number, string> = {
     1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
@@ -118,7 +121,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     7: 'Maximum Impact – höchste Frequenz.',
   };
   const freqDesc = freqDescMap[frequency] ?? '';
-  const freqFactor = frequency / (pkg?.frequency ?? 4);
+  const freqFactor = frequency / (pkg?.frequency ?? 5);
   const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
 
   const MIXED_CPM = 39.5;
@@ -144,7 +147,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   // ── Hard date boundaries ─────────────────────────────────────────────────────
   const earliestStartISO = addDays(todayISO(), 10);
-  const campaignEndISO   = sharedEndISO; // votingDate − 28 days, HARD
+  const campaignEndISO   = sharedEndISO; // Abstimmungstag (HARD), alle Pakete enden dort
 
   const earliestStart  = fmtLong(earliestStartISO);
   const recommendedEnd = campaignEndISO ? fmtLong(campaignEndISO) : '';
@@ -173,7 +176,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     }
     // ③ end ≤ campaignEnd
     if (campaignEndISO && endISO > campaignEndISO) {
-      setDateError(`Ende muss vor dem Unterlagen-Versand (${recommendedEnd}) liegen.`);
+      setDateError(`Ende muss spätestens am Abstimmungstag (${recommendedEnd}) sein.`);
       return;
     }
     // ④ duration ≥ 7 days
@@ -496,7 +499,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   onChange={e => { setEndISO(e.target.value); setDateError(null); }}
                 />
                 <div className="s2-cal-hint">
-                  Empfohlen: <span>{recommendedEnd}</span> (vor Unterlagen-Versand)
+                  Spätestens: <span>{recommendedEnd}</span> (Abstimmungstag)
                 </div>
               </div>
             </div>
@@ -524,7 +527,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <input
                   type="range"
                   className="s2-range-input"
-                  min={4000}
+                  min={minBudget}
                   max={200000}
                   step={500}
                   value={budget}
@@ -532,7 +535,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 />
               </div>
               <div className="s2-sl-range">
-                <span>CHF 4&apos;000</span>
+                <span>CHF {minBudget.toLocaleString('de-CH')}</span>
                 <span>CHF 200&apos;000</span>
               </div>
             </div>

@@ -40,7 +40,7 @@ function todayISO(): string {
 
 function calcCampaignDates(votingDate: string, laufzeitWeeks: number): { startISO: string; endISO: string } {
   const today = todayISO();
-  const endISO = addDays(votingDate, -3);
+  const endISO = votingDate; // endet am Abstimmungstag
   const rawStart = addDays(endISO, -(laufzeitWeeks * 7));
   if (rawStart < today) {
     return { startISO: today, endISO: addDays(today, laufzeitWeeks * 7) };
@@ -90,7 +90,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
 
   const [budget, setBudget] = useState<number>(initBudget);
   const [laufzeitWeeks, setLaufzeitWeeks] = useState<number>(initLaufzeit);
-  const [frequency, setFrequency] = useState<number>(() => pkg.frequency ?? 4);
+  const [frequency, setFrequency] = useState<number>(() => pkg.frequency ?? 5);
 
   // Derived
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
@@ -138,7 +138,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     7: 'Maximum Impact – höchste Frequenz.',
   };
   const freqDesc = freqDescMap[frequency] ?? '';
-  const freqFactor = frequency / (pkg.frequency ?? 4);
+  const freqFactor = frequency / (pkg.frequency ?? 5);
   const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
 
   // Slider fill
@@ -337,7 +337,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
                 <path d="M5 1v3M11 1v3M2 7h12" stroke="#BA7517" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
               <span>
-                Rückwärts gerechnet vom Wahlsonntag <strong>{fmtLong(briefing.votingDate)}</strong>: Kampagnenstart <strong>{fmtLong(campaignStartISO)}</strong> — <strong>{fmtLong(campaignEndISO)}</strong> (3 Tage vor Abstimmung).
+                Rückwärts gerechnet vom Wahlsonntag <strong>{fmtLong(briefing.votingDate)}</strong>: Kampagnenstart <strong>{fmtLong(campaignStartISO)}</strong> — Kampagnenende <strong>{fmtLong(campaignEndISO)}</strong> (Abstimmungstag).
               </span>
             </div>
           )}
