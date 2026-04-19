@@ -32,6 +32,7 @@ export type Step1Output = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MIXED_CPM = 39.5
+const MAX_BUDGET = 50_000            // absolutes Cap für alle Pakete
 const CAMPAIGN_END_OFFSET_DAYS = 0   // alle Pakete enden am Abstimmungstag
 
 const PACKAGE_META: Record<PkgKey, {
@@ -108,24 +109,42 @@ function buildPackage(
   voteDate: string | null | undefined,
   hinweis: string | null,
 ): PackageResult {
-  const meta        = PACKAGE_META[key]
-  const reachPct    = getReachPercent(voters, key)
-  const reach       = voters * reachPct
-  const impressions = reach * meta.freq
-  const raw         = (impressions / 1000) * MIXED_CPM
-  const rounded     = roundBudget(raw)
-  const final       = Math.max(meta.minBudget, rounded)       // paketspezifisches Min-Budget
-  const dates       = voteDate ? calcDates(voteDate, meta.days) : null
+  const meta      = PACKAGE_META[key]
+  const reachPct  = getReachPercent(voters, key)
+  const rawReach  = voters * reachPct
+  const rawImpr   = rawReach * meta.freq
+  const rawBudget = (rawImpr / 1000) * MIXED_CPM
+  const rounded   = roundBudget(rawBudget)
+
+  // Apply per-package floor and absolute ceiling
+  const finalBudget = Math.min(MAX_BUDGET, Math.max(meta.minBudget, rounded))
+
+  // If budget was clamped (up by minBudget OR down by MAX_BUDGET), recalculate reach backwards
+  const budgetClamped = finalBudget !== rounded
+  const effImpr       = budgetClamped
+    ? (finalBudget / MIXED_CPM) * 1000
+    : rawImpr
+  const effReach      = budgetClamped
+    ? Math.round(effImpr / meta.freq)
+    : Math.round(rawReach)
+
+  // Hard cap: never claim more than 80% of eligible voters
+  const maxReach       = Math.round(voters * 0.80)
+  const targetReach    = Math.min(effReach, maxReach)
+  const targetImpr     = Math.round(targetReach * meta.freq)
+  const targetReachPct = voters > 0 ? targetReach / voters : reachPct
+
+  const dates = voteDate ? calcDates(voteDate, meta.days) : null
   return {
     name:                 meta.name,
-    reachPercent:         reachPct,
+    reachPercent:         targetReachPct,
     frequency:            meta.freq,
     durationDays:         meta.days,
-    targetReachPeople:    Math.round(reach),
-    impressions:          Math.round(impressions),
-    rawBudget:            raw,
-    finalBudget:          final,
-    uniqueReachPercent:   reachPct,
+    targetReachPeople:    targetReach,
+    impressions:          targetImpr,
+    rawBudget:            rawBudget,
+    finalBudget:          finalBudget,
+    uniqueReachPercent:   targetReachPct,
     recommendedStartDate: dates?.startDate ?? null,
     latestBookingDate:    dates?.bookingDate ?? null,
     badge:                isRecommended ? 'Empfohlen' : null,
