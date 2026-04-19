@@ -72,6 +72,12 @@
 - Misch-CPM VK 39.50, EK 19.00 → Gross Margin 51.9%
 - Konstante `MIXED_CPM = 39.5` in `lib/vio-paketlogik.ts` und `lib/b2b-paketlogik.ts`
 
+### Einkauf-Modell
+- EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
+- Partner übernimmt: Splicky-Setup, Screen-Auswahl, Monitoring, Freigabe-Koordination
+- Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
+- VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
+
 ### Pakete (Politik + B2B identisch)
 | Paket | Frequenz | Laufzeit | Min-Budget |
 |---|---|---|---|
