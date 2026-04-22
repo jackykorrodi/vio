@@ -240,26 +240,60 @@ Bei Cap-Anschlag greift Hinweis `capped_by_region` (Abschnitt 11).
 
 ---
 
-## 7. Channel-Split dynamisch nach `screens_politik`
+## 7. Channel-Split und Screen-Klassen
 
-Der DOOH/Display-Split ist **nicht fix 70/30**, sondern passt sich der DOOH-Inventarverfügbarkeit der Zielregion an.
+### 7.1 Grundprinzip
 
-| `screens_politik_total` | DOOH-Anteil | Display-Anteil | Misch-CPM |
-|---|---|---|---|
-| < 30 | 10% | 90% | CHF 18.50 |
-| 30 – 150 | 50% | 50% | CHF 32.50 |
-| 150 – 500 | 70% | 30% | CHF 39.50 |
-| > 500 | 75% | 25% | CHF 41.25 |
+Der DOOH/Display-Split ist **nicht fix**, sondern passt sich der Screen-Verfügbarkeit der Zielregion an. VIO arbeitet mit drei Screen-Klassen, die automatisch den Split und allfällige UI-Hinweise bestimmen.
 
-### Logik
+### 7.2 Berechnung politisch freigegebener Screens
 
-- In Regionen ohne DOOH-Inventar kompensiert Display
-- In Grossstädten mit hoher Screen-Dichte dominiert DOOH
-- Der Misch-CPM skaliert entsprechend mit
+Nicht jeder DOOH-Screen ist standardmässig für politische Werbung freigegeben. Retail-Screens (Apotheken, Shoppingcenter, Kinos etc.) sind meist ausgeschlossen.
 
-### Edge Case: Kein DOOH verfügbar
+**Arbeitshypothese (empirisch validiert auf Basis Schweizer DOOH-Netz):**
 
-Wenn `screens_politik_total === 0`: Auto-Split 100% Display. Hinweis `no_dooh_inventory` (Abschnitt 11).
+```
+politScreens = max(screens × 0.7, screens_politik aus JSON)
+```
+
+- `screens` = theoretisches Gesamt-Inventar (aus `dooh-screens.json`)
+- `0.7` = Freigabequote (CH-Schnitt ~78%, konservativ bei 70% angesetzt)
+- `screens_politik` = operativ validierter Wert pro Region, falls höher
+
+Die `max()`-Logik ist defensiv-optimistisch: Wenn die Datenbasis für eine Region bereits höhere Werte zeigt, nutzen wir diese.
+
+### 7.3 Die drei Screen-Klassen
+
+| Klasse | Bedingung | DOOH / Display | Misch-CPM | UI-Hinweis |
+|---|---|---|---|---|
+| **Voll** | `politScreens ≥ 30` | 70% / 30% | CHF 39.50 | kein Hinweis |
+| **Begrenzt** | `politScreens 10–29` | 50% / 50% | CHF 32.50 | dezenter Hinweis |
+| **Display-dominant** | `politScreens < 10` | 20% / 80% | CHF 22.00 | klarer Hinweis |
+
+**Kantone und „Gesamte Schweiz"** sind **immer Klasse Voll** (Aggregat-Inventar ist ausreichend).
+
+### 7.4 Hinweis-Texte
+
+**Begrenzt:**
+> „In {Gemeinde} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal."
+
+**Display-dominant:**
+> „In {Gemeinde} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt."
+
+**Mehrere Regionen mit gemischten Klassen:**
+> „In Teilen deiner Region-Auswahl ist DOOH-Inventar begrenzt — der Online-Anteil wird entsprechend erhöht."
+
+### 7.5 Aggregation bei Mehrfach-Region-Auswahl
+
+Bei gewählter Kombination mehrerer Regionen:
+
+- **Split:** Gewichteter Durchschnitt nach `stimm`-Anteil jeder Region
+- **Klasse:** Strengste (Display-dominant > Begrenzt > Voll)
+- **Hinweis:** Angepasster Multi-Region-Text (siehe oben)
+
+### 7.6 Edge Case: Kein DOOH verfügbar
+
+Wenn `politScreens === 0` (theoretisch möglich, in unserer aktuellen Liste ausgeschlossen): Auto-Split 100% Display. Hinweis `no_dooh_inventory` (Abschnitt 11).
 
 ---
 
@@ -309,7 +343,71 @@ Modelliert mit konservativen Werten (3% pro Zusatzwoche, Floor 80%). **Nach erst
 
 ---
 
-## 9. Regionen-Kombinations-Regeln
+## 9. Buchbarkeit von Regionen
+
+Nicht jede Schweizer Gemeinde wird im VIO-Politik-Flow angeboten. Es gibt eine harte Qualifikations-Regel, die bestimmt, welche Gemeinden in der Auswahl erscheinen.
+
+### 9.1 Qualifikations-Regel (ODER-Logik)
+
+Eine Gemeinde ist buchbar, wenn:
+
+```
+(stimm ≥ 10'000) ODER (politScreens ≥ 20)
+UND NICHT in PERMANENTLY_EXCLUDED
+```
+
+Die ODER-Verknüpfung stellt sicher, dass **entweder Relevanz (genug Wähler:innen) oder Inventar (genug Screens)** gegeben ist. Beides zusammen ist nicht nötig.
+
+**Kantone und „Gesamte Schweiz"** sind **immer buchbar**.
+
+### 9.2 Permanent ausgeschlossene Gemeinden
+
+Vier Gemeinden sind unabhängig von den Schwellen ausgeschlossen (0 standardmässig freigegebene Screens):
+
+- Küsnacht (ZH) – **nicht zu verwechseln mit Küssnacht (SZ)**, das buchbar ist
+- Martigny
+- Opfikon
+- Veyrier
+
+### 9.3 Aktuelle Liste
+
+Nach Anwendung der Regel (Stand 22.04.2026):
+
+| Kategorie | Anzahl |
+|---|---|
+| Kantone | 26 |
+| Städte/Gemeinden (Klasse Voll) | 61 |
+| Städte/Gemeinden (Klasse Begrenzt) | 32 |
+| Städte/Gemeinden (Klasse Display-dominant) | 10 |
+| **Gesamt buchbar** | **130** (inkl. Schweiz) |
+
+16 ursprünglich gelistete Gemeinden wurden entfernt, weil sie weder die stimm- noch die Screen-Schwelle erreichten.
+
+### 9.4 „Meine Gemeinde fehlt"-Hinweis
+
+Im UI der Regionen-Auswahl erscheint unter dem Suchfeld (oder als Fallback, wenn eine Suche leer zurückkommt):
+
+> „Deine Gemeinde ist nicht in der Liste? Das liegt am Verhältnis zwischen Einwohnerzahl und verfügbaren DOOH-Flächen vor Ort. Melde dich bei uns — wir finden eine Lösung, zum Beispiel über den Kanton oder eine benachbarte Gemeinde."
+
+Konstante im Code: `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` in `lib/region-buchbarkeit.ts`.
+
+### 9.5 Implementierung
+
+Die Logik ist in `lib/region-buchbarkeit.ts` gekapselt. Exports:
+
+- `isBuchbar(region)` – boolean
+- `filterBuchbareRegionen(regions)` – gefilterte Liste
+- `getPolitScreens(region)` – berechnete Anzahl politischer Screens
+- `klassifiziereRegion(region)` – Klasse + Split + Hinweis
+- `klassifiziereMehrereRegionen(regions)` – aggregiert für Mehrfach-Auswahl
+- `PERMANENTLY_EXCLUDED` – Set der ausgeschlossenen Namen
+- `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` – UI-Text-Konstante
+
+Nicht-buchbare Gemeinden sind **physisch aus der `STAEDTE`-Liste entfernt**, nicht nur zur Laufzeit gefiltert. Dies garantiert, dass die Auswahl immer konsistent mit der Buchbarkeit ist.
+
+---
+
+## 10. Regionen-Kombinations-Regeln
 
 Bei Mehrfachauswahl werden Überlappungen dedupliziert.
 
@@ -354,7 +452,7 @@ Analog für `screens_politik_total`.
 
 ---
 
-## 10. Calibration Constants (DSP-Matching)
+## 11. Calibration Constants (DSP-Matching)
 
 Diese Konstanten kalibrieren unsere Prognose gegen reale Splicky/Adform-Delivery. Sie werden nach ersten ~10 Kampagnen justiert.
 
@@ -408,33 +506,70 @@ function getUncertaintyBand(screens_politik_total: number): number {
 
 ---
 
-## 11. Hinweis-System
+## 12. Hinweis-System
 
-Sechs Zustände, klar kommuniziert. Alle Hinweise sind **informativ**, kein Auto-Override.
+Alle Hinweise sind **informativ**, kein Auto-Override. Das System zeigt maximal einen prominenten Hinweis gleichzeitig.
+
+### 12.1 Hinweise zu Budget und Frequenz
 
 | Zustand | Trigger | UI-Text |
 |---|---|---|
 | `ok` | Alle Checks passieren | (kein Hinweis) |
-| `below_min_budget` | `budget < B_MIN` | "Mindestbudget CHF 4'000 – wir heben automatisch an." + Auto-Snap |
-| `too_thin` | `F_weekly < 3` | "Dein Budget ist für {X} Wochen zu dünn verteilt. Empfehlung: Laufzeit auf {Y} Wochen reduzieren." + Button "Anwenden" |
-| `overkill` | `F_weekly > 10` | "Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern." |
-| `daily_below_floor` | `budget / days < 150` | "Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen." |
-| `capped_by_region` | `unique_reach_raw > max_reachable` | "Maximale Reichweite in {Region} erreicht. Mehr Budget bringt keine zusätzlichen Personen." |
-| `no_dooh_inventory` | `screens_politik === 0` | "Keine DOOH-Flächen in {Region} verfügbar. Kampagne läuft zu 100% als Display." |
-| `calendly_nudge_soft` | `budget >= 20000 && budget < 30000` | Dezent: "Ab CHF 20'000 bieten wir persönliche Beratung. [Termin buchen]" |
-| `calendly_nudge_strong` | `budget >= 30000 && budget < 100000` | Prominente Card: "Grosse Kampagne geplant? Ab CHF 30'000 empfehlen wir ein persönliches Gespräch. Du kannst aber auch direkt weiterbuchen. [Termin buchen] [Weiter buchen]" |
-| `hard_stop_budget` | `budget >= 100000` | "Kampagnen ab CHF 100'000 planen wir persönlich. Buchung nur nach Gespräch möglich. [Termin buchen]" – Buchen-Button deaktiviert |
-| `region_overlap` | Überlappung in Auswahl | "{Stadt X} ist in Kanton {Y} enthalten und wird inkludiert." |
+| `below_min_budget` | `budget < B_MIN` | „Mindestbudget CHF 4'000 – wir heben automatisch an." + Auto-Snap |
+| `too_thin` | `F_weekly < 3` | „Dein Budget ist für {X} Wochen zu dünn verteilt. Empfehlung: Laufzeit auf {Y} Wochen reduzieren." + Button „Anwenden" |
+| `overkill` | `F_weekly > 10` | „Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern." |
+| `daily_below_floor` | `budget / days < 150` | „Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen." |
+| `capped_by_region` | `unique_reach_raw > max_reachable` | „Maximale Reichweite in {Region} erreicht. Mehr Budget bringt keine zusätzlichen Personen." |
 
-### Design-Regeln
+### 12.2 Hinweise zu Screen-Klassen
 
-- Maximal **ein Hinweis** gleichzeitig prominent
-- Bei mehreren Treffern: Priorität nach Liste oben (von `below_min_budget` absteigend)
+Diese Hinweise informieren über die Zusammensetzung der Kampagne basierend auf dem verfügbaren DOOH-Inventar (siehe Abschnitt 7).
+
+| Zustand | Trigger | UI-Text |
+|---|---|---|
+| `screen_class_begrenzt` | Gewählte Region ist Klasse „Begrenzt" | „In {Gemeinde} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal." |
+| `screen_class_display_dom` | Gewählte Region ist Klasse „Display-dominant" | „In {Gemeinde} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt." |
+| `screen_class_multi_mixed` | Mehrere Regionen mit gemischten Klassen | „In Teilen deiner Region-Auswahl ist DOOH-Inventar begrenzt — der Online-Anteil wird entsprechend erhöht." |
+| `no_dooh_inventory` | `politScreens === 0` (Edge Case) | „Keine DOOH-Flächen verfügbar. Kampagne läuft zu 100% als Display." |
+
+### 12.3 Hinweise zu Budget-Grenzen
+
+| Zustand | Trigger | UI-Text |
+|---|---|---|
+| `calendly_nudge_soft` | `budget >= 20'000 && budget < 30'000` | Dezent: „Ab CHF 20'000 bieten wir persönliche Beratung. [Termin buchen]" |
+| `calendly_nudge_strong` | `budget >= 30'000 && budget < 100'000` | Prominente Card: „Grosse Kampagne geplant? Ab CHF 30'000 empfehlen wir ein persönliches Gespräch. Du kannst aber auch direkt weiterbuchen. [Termin buchen] [Weiter buchen]" |
+| `hard_stop_budget` | `budget >= 100'000` | „Kampagnen ab CHF 100'000 planen wir persönlich. Buchung nur nach Gespräch möglich. [Termin buchen]" — Buchen-Button deaktiviert |
+
+### 12.4 Hinweise zu Regionen-Auswahl
+
+| Zustand | Trigger | UI-Text |
+|---|---|---|
+| `region_overlap` | Überlappung in Auswahl (siehe Abschnitt 10) | „{Stadt X} ist in Kanton {Y} enthalten und wird inkludiert." |
+| `gemeinde_nicht_gefunden` | Info-Baustein in Auswahl-UI | „Deine Gemeinde ist nicht in der Liste? Das liegt am Verhältnis zwischen Einwohnerzahl und verfügbaren DOOH-Flächen vor Ort. Melde dich bei uns — wir finden eine Lösung, zum Beispiel über den Kanton oder eine benachbarte Gemeinde." |
+
+### 12.5 Priorität bei mehreren Treffern
+
+Wenn mehrere Hinweise gleichzeitig zutreffen, wird nur einer prominent angezeigt. Priorität (absteigend):
+
+1. `hard_stop_budget` (blockierend)
+2. `below_min_budget` (blockierend)
+3. `too_thin` / `overkill` / `daily_below_floor` (Empfehlung)
+4. `capped_by_region` (Info)
+5. `calendly_nudge_strong` / `calendly_nudge_soft` (Nudge)
+6. `screen_class_*` (Kontext)
+7. `region_overlap` (Kontext)
+
+Die Gemeinde-nicht-gefunden-Info ist **kein Trigger-Hinweis**, sondern ein statischer Baustein in der Regionen-Auswahl-Komponente.
+
+### 12.6 Design-Regeln
+
 - Hinweise sind dezent farbig (Violet-Akzent), kein Rot/Ampel-System
+- Keine Emojis oder Icons (Ausnahme: ✓ in StepLayout)
+- Tonalität: informativ und lösungsorientiert, nie warnend
 
 ---
 
-## 12. UI-Regeln
+## 13. UI-Regeln
 
 ### Allgemein
 
@@ -499,7 +634,7 @@ In beiden Pfaden ist Wechsel möglich:
 
 ---
 
-## 13. Pakete – Finale Definition
+## 14. Pakete – Finale Definition
 
 Paket-Frequenzen sind politisch-stark kalibriert (high-involvement). Budgets werden dynamisch aus Region + Frequenz + Laufzeit berechnet.
 
@@ -551,7 +686,7 @@ Freigabe-Puffer = 10 Kalendertage (7 Werktage) vor Start
 
 ---
 
-## 14. Edge Cases
+## 15. Edge Cases
 
 ### Abstimmungsdatum in Vergangenheit oder leer
 - Keine Start-/Enddatum-Berechnung
@@ -585,51 +720,54 @@ Küsnacht, Martigny, Opfikon, Veyrier.
 
 ---
 
-## 15. Migration Plan – Arbeitspakete
+## 16. Migration Plan – Arbeitspakete
 
-### Paket A – Datenbereinigung (SOFORT, vor Paket B)
-**Ziel:** Saubere Basisdaten für korrekte Berechnungen.
+### ✅ Paket A – Datenbereinigung & Buchbarkeit (ERLEDIGT 22.04.2026)
+**Ziel:** Saubere Basisdaten + Buchbarkeits-Logik für Gemeinden.
 
-- `lib/regions.ts`: Alle `stimm`-Werte gegen echte BFS-Quoten (55–65% von `pop`) korrigieren
-- Top-20-Städte mit echten BFS-Einwohnerzahlen statt Cluster-Schätzungen
-- Sanity-Check: `sum(stadt.stimm) <= kanton.stimm` pro Kanton
-- Unit-Tests für Aggregation
+Umgesetzt:
+- `lib/regions.ts`: Alle 26 Kantone auf BFS-Zahlen Stand 31.12.2024
+- `lib/regions.ts`: 16 nicht-buchbare Gemeinden aus STAEDTE entfernt
+- `lib/region-buchbarkeit.ts` NEU: Buchbarkeits-Logik (ODER-Regel), Screen-Klassen-System (Voll/Begrenzt/Display-dominant), automatischer DOOH/Display-Split, Mehrfach-Region-Aggregation
+- Verteilung nach Umsetzung: 61 Voll, 32 Begrenzt, 10 Display-dominant
 
-**Geschätzter Aufwand:** 1 Prompt, ~20 Min
-
-### Paket B – Preislogik-Konsolidierung (Kern-Refactor)
+### Paket B – Preislogik-Konsolidierung (NÄCHSTER SCHRITT)
 
 **Ziel:** Eine Datei als Single Source of Truth.
 
 1. `lib/preislogik.ts` NEU anlegen (ersetzt `vio-paketlogik.ts` und `b2b-paketlogik.ts`)
-2. Calibration Constants, Tier-Caps, Split-Funktion, Budget-Laufzeit-Kopplung, Wearout, Dedup
-3. Export `calculateImpact()` und `buildPackages()`
-4. Alte Dateien als `.DEPRECATED.ts` markieren (nicht sofort löschen)
+2. Import und Verwendung von `klassifiziereRegion()` aus `region-buchbarkeit.ts` für Channel-Split
+3. Calibration Constants, Reach-Caps, Budget-Laufzeit-Kopplung (^0.75), Wearout, Dedup
+4. Export `calculateImpact()` und `buildPackages()`
+5. Alte Dateien als `.DEPRECATED.ts` markieren (nicht sofort löschen)
 
 **Geschätzter Aufwand:** 3–4 Prompts
 
 ### Paket C – UI Pfad A / Pfad B
 
-**Ziel:** Neuer Flow mit Wirkungsindikator.
+**Ziel:** Neuer Flow mit Wirkungsindikator und integrierten Hinweisen.
 
 1. `Step1Politik.tsx`: Wahl/Abstimmung-Frage entfernen, Pfad-Logik prüfen
-2. `Step2PolitikBudget.tsx` / Step2Politik: Pfad A und Pfad B als Varianten
+2. `Step2PolitikBudget.tsx`: Pfad A und Pfad B als Varianten
 3. Neue Komponente `<ImpactIndicator />` – wird von beiden Pfaden verwendet
 4. Hinweis-System als Komponente `<CampaignHint />`
-5. Paket-Karten aktualisieren mit neuen Frequenzen
+5. Regionen-Auswahl: `filterBuchbareRegionen()` einbauen, `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` anzeigen
+6. Screen-Klassen-Hinweise (Begrenzt / Display-dominant) bei Region-Auswahl live zeigen
+7. Paket-Karten aktualisieren mit neuen Frequenzen
 
-**Geschätzter Aufwand:** 2 Prompts
+**Geschätzter Aufwand:** 2–3 Prompts
 
 ### Paket D – Testing & Kalibrierung (nach Go-Live)
 
 - Erste 10 Kampagnen mit Splicky/Adform tracken
 - Delivery-Faktoren in CALIBRATION justieren
 - Wearout-Kurve validieren
+- Freigabequote 70% gegen reale Partner-Freigaben validieren
 - B2B/B2C auf dieselbe Logik migrieren
 
 ---
 
-## 16. Offene Punkte (TBD-Liste)
+## 17. Offene Punkte (TBD-Liste)
 
 | Punkt | Status | Verantwortlich |
 |---|---|---|
@@ -805,7 +943,7 @@ Damit ist das Controlling jederzeit in der Lage, Partner-Abrechnungen nachzuvoll
 
 Partner-Code-System wird **nach Go-Live** aktiviert (Priorität 2). Voraussetzungen vor Aktivierung:
 
-- AGB-Klausel (siehe Abschnitt 16) finalisiert und online
+- AGB-Klausel (siehe Abschnitt 17) finalisiert und online
 - Pipedrive-Custom-Entity aufgesetzt
 - n8n-Flows gebaut und getestet
 - Frontend-Integration in Step 1 Politik
@@ -819,7 +957,8 @@ Partner-Code-System wird **nach Go-Live** aktiviert (Priorität 2). Voraussetzun
 |---|---|---|
 | v1 | – | `vio-regelkatalog-paketlogik.md` – fixe Pakete, lineare Formel |
 | v2 | 21.04.2026 | Hybrid-Flow, dynamischer Split, Wochen-Frequenz-Leitplanken, konkave Budget-Laufzeit-Kopplung, tiered Reach-Caps, Wearout, Dedup, Kampagnentyp entfernt, Partner-Code-System |
+| v2.1 | 22.04.2026 | Drei-Klassen-Screen-System (Voll/Begrenzt/Display-dominant) mit automatischem Channel-Split; neuer Abschnitt 9 Buchbarkeit (ODER-Regel: stimm≥10k ODER politScreens≥20); Kantone auf BFS 2024; 16 nicht-buchbare Gemeinden entfernt; Hinweis-System um Screen-Klassen-Hinweise erweitert; Paket A umgesetzt |
 
 ---
 
-**Ende Regelkatalog v2**
+**Ende Regelkatalog v2.1**
