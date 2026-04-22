@@ -9,38 +9,46 @@ export interface Region {
 }
 
 export const SCHWEIZ: Region[] = [
-  { name: 'Gesamte Schweiz', type: 'schweiz', kanton: 'CH', pop: 8816000, stimm: 5571000 },
+  { name: 'Gesamte Schweiz', type: 'schweiz', kanton: 'CH', pop: 9051000, stimm: 5600000 },
 ];
 
 export const KANTONE: Region[] = [
-  { name: 'Zürich', type: 'kanton', kanton: 'ZH', pop: 1539000, stimm: 1170000 },
-  { name: 'Bern', type: 'kanton', kanton: 'BE', pop: 1050000, stimm: 770000 },
-  { name: 'Waadt', type: 'kanton', kanton: 'VD', pop: 820000, stimm: 590000 },
-  { name: 'Aargau', type: 'kanton', kanton: 'AG', pop: 720000, stimm: 490000 },
-  { name: 'St. Gallen', type: 'kanton', kanton: 'SG', pop: 520000, stimm: 390000 },
-  { name: 'Genf', type: 'kanton', kanton: 'GE', pop: 516000, stimm: 380000 },
-  { name: 'Luzern', type: 'kanton', kanton: 'LU', pop: 428000, stimm: 315000 },
-  { name: 'Tessin', type: 'kanton', kanton: 'TI', pop: 355000, stimm: 280000 },
-  { name: 'Wallis', type: 'kanton', kanton: 'VS', pop: 352000, stimm: 265000 },
-  { name: 'Freiburg', type: 'kanton', kanton: 'FR', pop: 337000, stimm: 230000 },
-  { name: 'Basel-Landschaft', type: 'kanton', kanton: 'BL', pop: 296000, stimm: 225000 },
-  { name: 'Solothurn', type: 'kanton', kanton: 'SO', pop: 283000, stimm: 215000 },
-  { name: 'Thurgau', type: 'kanton', kanton: 'TG', pop: 289000, stimm: 200000 },
-  { name: 'Graubünden', type: 'kanton', kanton: 'GR', pop: 202000, stimm: 155000 },
-  { name: 'Neuenburg', type: 'kanton', kanton: 'NE', pop: 177000, stimm: 135000 },
-  { name: 'Basel-Stadt', type: 'kanton', kanton: 'BS', pop: 196000, stimm: 130000 },
-  { name: 'Schwyz', type: 'kanton', kanton: 'SZ', pop: 166000, stimm: 115000 },
-  { name: 'Zug', type: 'kanton', kanton: 'ZG', pop: 131000, stimm: 95000 },
-  { name: 'Schaffhausen', type: 'kanton', kanton: 'SH', pop: 83000, stimm: 60000 },
-  { name: 'Jura', type: 'kanton', kanton: 'JU', pop: 73000, stimm: 55000 },
-  { name: 'Appenzell Ausserrhoden', type: 'kanton', kanton: 'AR', pop: 56000, stimm: 43000 },
-  { name: 'Nidwalden', type: 'kanton', kanton: 'NW', pop: 44000, stimm: 34000 },
-  { name: 'Glarus', type: 'kanton', kanton: 'GL', pop: 41000, stimm: 28000 },
-  { name: 'Obwalden', type: 'kanton', kanton: 'OW', pop: 39000, stimm: 28000 },
-  { name: 'Appenzell Innerrhoden', type: 'kanton', kanton: 'AI', pop: 17000, stimm: 13000 },
-  { name: 'Uri', type: 'kanton', kanton: 'UR', pop: 37000, stimm: 27000 },
+  // Quelle: BFS Bevölkerungsstatistik per 31.12.2024
+  // Stimmberechtigte: kantonsspezifische Quoten (Ausländeranteil-gewichtet)
+  // Letzte Aktualisierung: 22.04.2026
+  { name: 'Zürich', type: 'kanton', kanton: 'ZH', pop: 1620000, stimm: 1015000 },
+  { name: 'Bern', type: 'kanton', kanton: 'BE', pop: 1071000, stimm: 775000 },
+  { name: 'Waadt', type: 'kanton', kanton: 'VD', pop: 855000, stimm: 510000 },
+  { name: 'Aargau', type: 'kanton', kanton: 'AG', pop: 735000, stimm: 470000 },
+  { name: 'St. Gallen', type: 'kanton', kanton: 'SG', pop: 526000, stimm: 365000 },
+  { name: 'Genf', type: 'kanton', kanton: 'GE', pop: 526000, stimm: 285000 },
+  { name: 'Luzern', type: 'kanton', kanton: 'LU', pop: 432000, stimm: 305000 },
+  { name: 'Tessin', type: 'kanton', kanton: 'TI', pop: 357000, stimm: 235000 },
+  { name: 'Wallis', type: 'kanton', kanton: 'VS', pop: 360000, stimm: 240000 },
+  { name: 'Freiburg', type: 'kanton', kanton: 'FR', pop: 341000, stimm: 220000 },
+  { name: 'Basel-Landschaft', type: 'kanton', kanton: 'BL', pop: 300000, stimm: 200000 },
+  { name: 'Solothurn', type: 'kanton', kanton: 'SO', pop: 288000, stimm: 195000 },
+  { name: 'Thurgau', type: 'kanton', kanton: 'TG', pop: 296000, stimm: 195000 },
+  { name: 'Graubünden', type: 'kanton', kanton: 'GR', pop: 206000, stimm: 140000 },
+  { name: 'Neuenburg', type: 'kanton', kanton: 'NE', pop: 178000, stimm: 115000 },
+  { name: 'Basel-Stadt', type: 'kanton', kanton: 'BS', pop: 196000, stimm: 115000 },
+  { name: 'Schwyz', type: 'kanton', kanton: 'SZ', pop: 169000, stimm: 110000 },
+  { name: 'Zug', type: 'kanton', kanton: 'ZG', pop: 133000, stimm: 85000 },
+  { name: 'Schaffhausen', type: 'kanton', kanton: 'SH', pop: 85000, stimm: 55000 },
+  { name: 'Jura', type: 'kanton', kanton: 'JU', pop: 74000, stimm: 50000 },
+  { name: 'Appenzell Ausserrhoden', type: 'kanton', kanton: 'AR', pop: 57000, stimm: 38000 },
+  { name: 'Nidwalden', type: 'kanton', kanton: 'NW', pop: 44000, stimm: 31000 },
+  { name: 'Glarus', type: 'kanton', kanton: 'GL', pop: 41000, stimm: 27000 },
+  { name: 'Obwalden', type: 'kanton', kanton: 'OW', pop: 40000, stimm: 27000 },
+  { name: 'Uri', type: 'kanton', kanton: 'UR', pop: 37000, stimm: 26000 },
+  { name: 'Appenzell Innerrhoden', type: 'kanton', kanton: 'AI', pop: 17000, stimm: 12000 },
 ];
 
+// Quelle: BFS + dooh-screens.json
+// Buchbarkeit: stimm >= 10'000 ODER politScreens >= 20
+// 16 Gemeinden am 22.04.2026 entfernt (zu klein UND zu wenig Screens).
+// Klassifikation (Voll/Begrenzt/Display-dom) erfolgt runtime in lib/region-buchbarkeit.ts
+// Letzte Aktualisierung: 22.04.2026
 export const STAEDTE: Region[] = [
   { name: 'Zürich', type: 'stadt', kanton: 'ZH', pop: 443300, stimm: 310000 },
   { name: 'Genf', type: 'stadt', kanton: 'GE', pop: 207350, stimm: 145000 },
@@ -134,33 +142,17 @@ export const STAEDTE: Region[] = [
   { name: 'Rapperswil-Jona', type: 'stadt', kanton: 'SG', pop: 28600, stimm: 20000 },
   { name: 'Wädenswil', type: 'stadt', kanton: 'ZH', pop: 22880, stimm: 16000 },
   { name: 'Bülach', type: 'stadt', kanton: 'ZH', pop: 21450, stimm: 15000 },
-  { name: 'Hinwil', type: 'stadt', kanton: 'ZH', pop: 12155, stimm: 8500 },
   { name: 'Sierre', type: 'stadt', kanton: 'VS', pop: 17160, stimm: 12000 },
   { name: 'Stäfa', type: 'stadt', kanton: 'ZH', pop: 15730, stimm: 11000 },
   { name: 'Oftringen', type: 'stadt', kanton: 'AG', pop: 14300, stimm: 10000 },
-  { name: 'Küssnacht', type: 'stadt', kanton: 'SZ', pop: 13585, stimm: 9500 },
   { name: 'Brig-Glis', type: 'stadt', kanton: 'VS', pop: 13585, stimm: 9500 },
-  { name: 'Ecublens', type: 'stadt', kanton: 'VD', pop: 13585, stimm: 9500 },
-  { name: 'Versoix', type: 'stadt', kanton: 'GE', pop: 13585, stimm: 9500 },
   { name: 'Muri bei Bern', type: 'stadt', kanton: 'BE', pop: 13585, stimm: 9500 },
   { name: 'Münchenstein', type: 'stadt', kanton: 'BL', pop: 12870, stimm: 9000 },
-  { name: 'Rüti', type: 'stadt', kanton: 'ZH', pop: 12870, stimm: 9000 },
-  { name: 'Affoltern am Albis', type: 'stadt', kanton: 'ZH', pop: 12870, stimm: 9000 },
   { name: 'Le Grand-Saconnex', type: 'stadt', kanton: 'GE', pop: 12870, stimm: 9000 },
-  { name: 'Buchs', type: 'stadt', kanton: 'SG', pop: 12870, stimm: 9000 },
-  { name: 'Prilly', type: 'stadt', kanton: 'VD', pop: 12870, stimm: 9000 },
-  { name: 'Münsingen', type: 'stadt', kanton: 'BE', pop: 12870, stimm: 9000 },
   { name: 'Spiez', type: 'stadt', kanton: 'BE', pop: 12870, stimm: 9000 },
   { name: 'Worb', type: 'stadt', kanton: 'BE', pop: 12155, stimm: 8500 },
   { name: 'Zofingen', type: 'stadt', kanton: 'AG', pop: 12155, stimm: 8500 },
-  { name: 'Risch', type: 'stadt', kanton: 'ZG', pop: 11440, stimm: 8000 },
-  { name: 'Plan-les-Ouates', type: 'stadt', kanton: 'GE', pop: 11440, stimm: 8000 },
-  { name: 'Weinfelden', type: 'stadt', kanton: 'TG', pop: 11440, stimm: 8000 },
-  { name: 'Estavayer', type: 'stadt', kanton: 'FR', pop: 10725, stimm: 7500 },
   { name: 'Sursee', type: 'stadt', kanton: 'LU', pop: 10725, stimm: 7500 },
-  { name: 'Birsfelden', type: 'stadt', kanton: 'BL', pop: 10725, stimm: 7500 },
-  { name: 'Stans', type: 'stadt', kanton: 'NW', pop: 8580, stimm: 6000 },
-  { name: 'Nidau', type: 'stadt', kanton: 'BE', pop: 7579, stimm: 5300 },
 ];
 
 export const ALL_REGIONS: Region[] = [...SCHWEIZ, ...KANTONE, ...STAEDTE];

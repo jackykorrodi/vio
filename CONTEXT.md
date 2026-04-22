@@ -125,6 +125,7 @@
 - `lib/vio-inhabitants-map.ts` — 26 Kantone + ~120 Gemeinden mit Demonymen
 - `lib/vio-paketlogik.ts` — Dynamische Paketlogik Politik (Sichtbar/Präsenz/Dominanz)
 - `lib/b2b-paketlogik.ts` — Paketlogik B2B
+- `lib/region-buchbarkeit.ts` — Buchbarkeit (ODER-Regel: stimm>=10'000 ODER politScreens>=20) und drei Screen-Klassen (Voll/Begrenzt/Display-dom) mit automatischem DOOH/Display-Split. Exports: isBuchbar, filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen, GEMEINDE_NICHT_GEFUNDEN_HINWEIS.
 - `public/vio-regelkatalog-politik-v2.md` — Single Source of Truth für konsolidierte Preislogik Politik (Hybrid-Flow, dynamischer Split, tiered Reach-Caps, Partner-Code-System). Ersetzt schrittweise vio-regelkatalog-paketlogik.md im Rahmen von Paket B.
 - `DESIGN.md` — Design System, vor visuellen Änderungen lesen
 - `public/vio-adcreator-v16.html` — Ad Creator Referenz
