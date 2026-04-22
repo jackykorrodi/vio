@@ -126,6 +126,7 @@
 - `lib/vio-paketlogik.ts` — Dynamische Paketlogik Politik (Sichtbar/Präsenz/Dominanz)
 - `lib/b2b-paketlogik.ts` — Paketlogik B2B
 - `lib/region-buchbarkeit.ts` — Buchbarkeit (ODER-Regel: stimm>=10'000 ODER politScreens>=20) und drei Screen-Klassen (Voll/Begrenzt/Display-dom) mit automatischem DOOH/Display-Split. Exports: isBuchbar, filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen, GEMEINDE_NICHT_GEFUNDEN_HINWEIS.
+- `lib/preislogik.ts` — Single Source of Truth für Preislogik (calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit). Ersetzt schrittweise vio-paketlogik.ts + b2b-paketlogik.ts. Basiert auf Regelkatalog v2.1.
 - `public/vio-regelkatalog-politik-v2.md` — Single Source of Truth für konsolidierte Preislogik Politik (Hybrid-Flow, dynamischer Split, tiered Reach-Caps, Partner-Code-System). Ersetzt schrittweise vio-regelkatalog-paketlogik.md im Rahmen von Paket B.
 - `DESIGN.md` — Design System, vor visuellen Änderungen lesen
 - `public/vio-adcreator-v16.html` — Ad Creator Referenz
@@ -208,7 +209,11 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Datum: 2026-04-19
+- Datum: 2026-04-22
+- lib/preislogik.ts erstellt: calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit, Hinweis-System (13 Codes), Wearout-Kurve, dynamischer Channel-Split — getestet: ja (tsc ✓, 41/41 Sanity-Tests ✓)
+- lib/regions.ts BFS 2024 Update: 26 Kantone + 103 Gemeinden (16 zu kleine entfernt), Schweiz 5.6M Stimm — getestet: ja
+- lib/region-buchbarkeit.ts erstellt: isBuchbar, klassifiziereRegion, klassifiziereMehrereRegionen, Screen-Klassen (61 Voll / 32 Begrenzt / 10 Display-dom) — getestet: ja
+- vio-regelkatalog-politik-v2.md v2.1: dreistufiges Nudge-System (B_NUDGE_SOFT=20k, B_NUDGE_STRONG=30k, B_HARD_MAX=100k), Verteilung 61/32/10 — committed
 - Tiered Reach Caps + gestaffelte Floor-Budgets (4k/6k/9k) in vio-paketlogik.ts: REACH_TIERS Array, getTieredReach(), neue buildPackage-Signatur mit reachOverride, MAX_BUDGET 50k Cap, Backwards-Reach, 80%-Wähler-Cap — getestet: ja (tsc ✓)
 - Media-Marquee ersetzt Stats-Strip auf Homepage — Zeilen 229-247 app/page.tsx — getestet: nein
 - Hero floating Cards: 4 VIO-Vorteile ersetzen alte KPI-Cards (4 Schritten / Anbieter / CHF 4'000 / Keine Agentur) — app/page.tsx Zeilen 197–248 — getestet: nein
