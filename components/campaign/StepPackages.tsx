@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { buildVioPackages } from '@/lib/vio-paketlogik';
+import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
+import { calculateImpact } from '@/lib/preislogik';
+import { ALL_REGIONS } from '@/lib/regions';
+import type { Region } from '@/lib/regions';
 
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
-const MIXED_CPM = 39.5;
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 function addDays(iso: string, n: number): string {
@@ -56,15 +58,26 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
-  const vioData = (() => {
-    const regions = briefing.selectedRegions?.map(r => ({ eligibleVoters: r.stimm })) ?? [];
-    if (regions.length === 0) return briefing.vioPackages ?? null;
-    return buildVioPackages({
-      regions,
-      voteDate: briefing.votingDate ?? null,
-      campaignType: briefing.politikType ?? undefined,
-    });
-  })();
+  // Rekonstruiere Region[]-Objekte aus briefing (brauchen Typ für klassifiziereRegion)
+  const selectedRegionsFull: Region[] = (briefing.selectedRegions ?? []).map(r => {
+    const match = ALL_REGIONS.find(x => x.name === r.name);
+    if (match) return match;
+    return {
+      name: r.name,
+      type: (r.type as 'stadt' | 'kanton' | 'schweiz') ?? 'stadt',
+      kanton: r.kanton ?? 'CH',
+      pop: r.stimm * 2,
+      stimm: r.stimm,
+    };
+  });
+
+  const vioData = selectedRegionsFull.length === 0
+    ? (briefing.vioPackages ?? null)
+    : buildVioPackagesV2({
+        regions: selectedRegionsFull,
+        voteDate: briefing.votingDate ?? null,
+        campaignType: briefing.politikType ?? undefined,
+      });
 
   // FIX 1: hasBudget only when budget >= 4000
   const userBudget = briefing.recommendedBudget ?? 0;
@@ -111,13 +124,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const regionName = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
 
-  // Live-Berechnung per Paket
+  // Live-Berechnung per Paket — via calculateImpact (neue preislogik)
   const getAdjustedValues = (key: PkgKey) => {
     const p = vioData.packages[key];
     const isSelected = key === selectedPkg;
-    const pkgFreq = p.frequency ?? 4;
-    const pkgDurWeeks = Math.round(p.durationDays / 7);
-    // Für nicht-selektierte Pakete: Paket-Werte direkt verwenden
+
+    // Für nicht-selektierte Pakete: Paket-Default-Werte direkt verwenden (aus adapter/preislogik)
     if (!isSelected) {
       return {
         budget: p.finalBudget,
@@ -125,17 +137,34 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         pct: Math.round(p.reachPercent * 100),
       };
     }
-    // Für selektiertes Paket: Frequenz und Laufzeit-Faktor anwenden
+
+    // Für selektiertes Paket: Budget/Laufzeit kommen aus lokalem State (Slider)
+    // calculateImpact liefert konsistente Reach-Berechnung inkl. Screen-Klassen, Delivery-Faktoren, Wearout
+    if (selectedRegionsFull.length === 0) {
+      return {
+        budget: budget,
+        reach: p.targetReachPeople,
+        pct: Math.round(p.reachPercent * 100),
+      };
+    }
+
+    const impact = calculateImpact({
+      budget: budget,
+      laufzeitDays: laufzeitWeeks * 7,
+      regions: selectedRegionsFull,
+    });
+
+    // Frequenz-Slider ist UX-Skalierung auf Budget (nicht Teil der Reach-Formel)
+    const pkgFreq = p.frequency ?? 4;
     const freqFactor = frequency / pkgFreq;
-    const durFactor = laufzeitWeeks / pkgDurWeeks;
-    const adjBudget = Math.max(4000, Math.round(p.finalBudget * freqFactor * durFactor / 500) * 500);
-    // Reach skaliert umgekehrt zur Frequenz (mehr Frequenz = weniger unique reach bei gleichem Budget)
-    const adjReach = Math.round(p.targetReachPeople / freqFactor / 100) * 100;
-    const maxReach = Math.round(vioData.eligibleVotersTotal * 0.8);
+    const adjBudget = Math.max(4000, Math.round(budget * freqFactor / 500) * 500);
+
     return {
       budget: adjBudget,
-      reach: Math.min(adjReach, maxReach),
-      pct: Math.round((Math.min(adjReach, maxReach) / vioData.eligibleVotersTotal) * 100),
+      reach: impact.reachMitte,
+      pct: vioData.eligibleVotersTotal > 0
+        ? Math.round((impact.reachMitte / vioData.eligibleVotersTotal) * 100)
+        : 0,
     };
   };
   const adjustedBudget = getAdjustedValues(selectedPkg).budget;
