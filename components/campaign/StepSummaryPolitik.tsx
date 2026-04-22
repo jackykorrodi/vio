@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { buildVioPackages } from '@/lib/vio-paketlogik';
+import { calculateImpact } from '@/lib/preislogik';
+import { ALL_REGIONS } from '@/lib/regions';
+import type { Region } from '@/lib/regions';
 import doohScreensRaw from '@/lib/dooh-screens.json';
 
 type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
 const DOOH_DATA = doohScreensRaw as DoohEntry[];
 
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
-const MIXED_CPM = 39.5;
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 const MONTHS_SHORT = ['Jan','Feb','Mrz','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -59,15 +60,21 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
-  const vioData = (() => {
-    const regions = briefing.selectedRegions?.map(r => ({ eligibleVoters: r.stimm })) ?? [];
-    if (regions.length === 0) return briefing.vioPackages ?? null;
-    return buildVioPackages({
-      regions,
-      voteDate: briefing.votingDate ?? null,
-      campaignType: briefing.politikType ?? undefined,
-    });
-  })();
+  // Rekonstruiere Region[]-Objekte aus briefing (stimm-Werte sind enthalten, aber wir brauchen Region-Typen für klassifiziereRegion)
+  const selectedRegionsFull: Region[] = (briefing.selectedRegions ?? []).map(r => {
+    const match = ALL_REGIONS.find(x => x.name === r.name);
+    if (match) return match;
+    // Fallback falls Region nicht gefunden (sollte nicht passieren, Schutz vor Crash)
+    return {
+      name: r.name,
+      type: (r.type as 'stadt' | 'kanton' | 'schweiz') ?? 'stadt',
+      kanton: r.kanton ?? 'CH',
+      pop: r.stimm * 2,  // grobe Schätzung, wird nur im Edge-Case genutzt
+      stimm: r.stimm,
+    };
+  });
+
+  const vioData = briefing.vioPackages ?? null;
   const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
 
   if (!vioData) {
@@ -115,17 +122,21 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     ? calcCampaignDates(briefing.votingDate, laufzeitWeeks)
     : { startISO: '', endISO: '' };
 
-  // Reach
-  const selectedPkgBudget = pkg.finalBudget;
-  const isCustomBudget = budget !== selectedPkgBudget;
-  const rawReach = isCustomBudget
-    ? Math.round((budget / MIXED_CPM) * 1000 / pkg.frequency)
-    : pkg.targetReachPeople;
-  const maxReach = Math.round(vioData.eligibleVotersTotal * 0.8);
-  const isCapped = rawReach > maxReach;
-  const customReachPeople = isCapped ? maxReach : rawReach;
-  const customReachPct = customReachPeople / vioData.eligibleVotersTotal;
-  const displayPersonen = Math.round(customReachPeople * 0.3);
+  // Reach — via calculateImpact (neue preislogik)
+  const impact = selectedRegionsFull.length > 0
+    ? calculateImpact({
+        budget: budget,
+        laufzeitDays: laufzeitWeeks * 7,
+        regions: selectedRegionsFull,
+      })
+    : null;
+
+  const customReachPeople = impact?.reachMitte ?? pkg.targetReachPeople;
+  const customReachPct = vioData.eligibleVotersTotal > 0
+    ? customReachPeople / vioData.eligibleVotersTotal
+    : 0;
+  const isCapped = impact?.cappedByRegion ?? false;
+  const displayPersonen = Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
 
   // Frequency
   const freqDescMap: Record<number, string> = {

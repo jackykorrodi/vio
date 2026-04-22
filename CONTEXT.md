@@ -211,6 +211,7 @@ Rollback: `git checkout v0.x-stable`
 
 ## Letzter Stand
 - Datum: 2026-04-22
+- B.2b.1: StepSummaryPolitik.tsx direkt auf preislogik.ts (calculateImpact) umgestellt. MIXED_CPM-Konstante entfernt. Reach wird jetzt via dynamischem Channel-Split berechnet (DOOH+Display mit Delivery-Faktoren). Step 2 StepPackages.tsx bleibt am Adapter — folgt in B.2b.2 — getestet: ja (tsc ✓, Sanity ✓)
 - B.2a: Step1Politik.tsx nutzt jetzt preislogik.ts via Adapter (buildVioPackagesV2). Step 2 + 3 unverändert, lesen Step1Output-Struktur wie bisher. Budgets/Reaches können sich gegenüber alt unterscheiden wegen neuer Formel (Wearout, Delivery-Faktor, Screen-Klassen) — getestet: ja (tsc ✓, 5/5 Adapter-Sanity-Tests ✓)
 - lib/preislogik.ts erstellt: calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit, Hinweis-System (13 Codes), Wearout-Kurve, dynamischer Channel-Split — getestet: ja (tsc ✓, 41/41 Sanity-Tests ✓)
 - lib/regions.ts BFS 2024 Update: 26 Kantone + 103 Gemeinden (16 zu kleine entfernt), Schweiz 5.6M Stimm — getestet: ja
