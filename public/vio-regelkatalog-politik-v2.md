@@ -52,8 +52,9 @@ Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs
 | Variable | Wert | Zweck |
 |---|---|---|
 | `B_MIN` | CHF 4'000 | Absolutes Mindestbudget, Hard Floor |
-| `B_MAX_SELFSERVICE` | CHF 30'000 | Obergrenze Self-Service-Abschluss |
-| `B_CALENDLY_NUDGE` | CHF 20'000 | Ab hier optionaler Beratungstermin |
+| `B_HARD_MAX` | CHF 100'000 | Absolute Obergrenze, darüber Hard Stop |
+| `B_NUDGE_STRONG` | CHF 30'000 | Prominente Beratungs-Bubble, aber weiter buchbar |
+| `B_NUDGE_SOFT` | CHF 20'000 | Dezenter Calendly-Nudge |
 | `DAILY_MIN` | CHF 150 / Tag | Splicky-DSP-Floor (sonst keine Auslieferung) |
 | `LAUFZEIT_MIN` | 7 Tage | Minimale Kampagnendauer |
 | `LAUFZEIT_MAX` | 84 Tage (12 Wo) | Maximale Kampagnendauer |
@@ -110,7 +111,7 @@ Der **Misch-CPM wird dynamisch** pro Kampagne berechnet, nicht als fixer Wert. F
 
 ```typescript
 // Inputs
-budget           // CHF, >= B_MIN, <= B_MAX_SELFSERVICE
+budget           // CHF, >= B_MIN, <= B_HARD_MAX
 laufzeit_days    // Tage, LAUFZEIT_MIN <= x <= LAUFZEIT_MAX
 regions[]        // gewählte Regionen mit stimm + screens_politik
 
@@ -420,8 +421,9 @@ Sechs Zustände, klar kommuniziert. Alle Hinweise sind **informativ**, kein Auto
 | `daily_below_floor` | `budget / days < 150` | "Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen." |
 | `capped_by_region` | `unique_reach_raw > max_reachable` | "Maximale Reichweite in {Region} erreicht. Mehr Budget bringt keine zusätzlichen Personen." |
 | `no_dooh_inventory` | `screens_politik === 0` | "Keine DOOH-Flächen in {Region} verfügbar. Kampagne läuft zu 100% als Display." |
-| `calendly_nudge` | `budget >= 20000` | "Ab CHF 20'000 bieten wir persönliche Beratung. [Termin buchen]" |
-| `self_service_limit` | `budget > 30000` | "Kampagnen über CHF 30'000 planen wir persönlich mit dir. [Gespräch buchen]" |
+| `calendly_nudge_soft` | `budget >= 20000 && budget < 30000` | Dezent: "Ab CHF 20'000 bieten wir persönliche Beratung. [Termin buchen]" |
+| `calendly_nudge_strong` | `budget >= 30000 && budget < 100000` | Prominente Card: "Grosse Kampagne geplant? Ab CHF 30'000 empfehlen wir ein persönliches Gespräch. Du kannst aber auch direkt weiterbuchen. [Termin buchen] [Weiter buchen]" |
+| `hard_stop_budget` | `budget >= 100000` | "Kampagnen ab CHF 100'000 planen wir persönlich. Buchung nur nach Gespräch möglich. [Termin buchen]" – Buchen-Button deaktiviert |
 | `region_overlap` | Überlappung in Auswahl | "{Stadt X} ist in Kanton {Y} enthalten und wird inkludiert." |
 
 ### Design-Regeln
@@ -531,7 +533,7 @@ Beispiel-Budgets **Stadt Zürich** (stimm 310'000, screens_politik 869):
 | Präsenz | 8% | 24'800 | 496'000 | **CHF 19'500** |
 | Dominanz | 14% | 43'400 | 1'736'000 | **CHF 68'400** → überschreitet Self-Service |
 
-Für Dominanz-Stadt-ZH greift `self_service_limit` → Calendly-Pflicht.
+Für Dominanz-Stadt-ZH greift `calendly_nudge_strong` → prominente Beratungs-Bubble, direkte Buchung bleibt aber möglich.
 
 ### Paket-Empfehlung
 
