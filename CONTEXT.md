@@ -127,6 +127,7 @@
 - `lib/b2b-paketlogik.ts` — Paketlogik B2B
 - `lib/region-buchbarkeit.ts` — Buchbarkeit (ODER-Regel: stimm>=10'000 ODER politScreens>=20) und drei Screen-Klassen (Voll/Begrenzt/Display-dom) mit automatischem DOOH/Display-Split. Exports: isBuchbar, filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen, GEMEINDE_NICHT_GEFUNDEN_HINWEIS.
 - `lib/preislogik.ts` — Single Source of Truth für Preislogik (calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit). Ersetzt schrittweise vio-paketlogik.ts + b2b-paketlogik.ts. Basiert auf Regelkatalog v2.1.
+- `lib/preislogik-adapter.ts` — TEMPORÄRER Adapter, mappt PakeResult aus preislogik.ts auf Step1Output-Struktur aus vio-paketlogik.ts. Export: buildVioPackagesV2. Wird in Paket B.2b entfernt, sobald Step 2 + 3 direkt auf calculateImpact/buildPackages umgestellt sind.
 - `public/vio-regelkatalog-politik-v2.md` — Single Source of Truth für konsolidierte Preislogik Politik (Hybrid-Flow, dynamischer Split, tiered Reach-Caps, Partner-Code-System). Ersetzt schrittweise vio-regelkatalog-paketlogik.md im Rahmen von Paket B.
 - `DESIGN.md` — Design System, vor visuellen Änderungen lesen
 - `public/vio-adcreator-v16.html` — Ad Creator Referenz
@@ -210,6 +211,7 @@ Rollback: `git checkout v0.x-stable`
 
 ## Letzter Stand
 - Datum: 2026-04-22
+- B.2a: Step1Politik.tsx nutzt jetzt preislogik.ts via Adapter (buildVioPackagesV2). Step 2 + 3 unverändert, lesen Step1Output-Struktur wie bisher. Budgets/Reaches können sich gegenüber alt unterscheiden wegen neuer Formel (Wearout, Delivery-Faktor, Screen-Klassen) — getestet: ja (tsc ✓, 5/5 Adapter-Sanity-Tests ✓)
 - lib/preislogik.ts erstellt: calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit, Hinweis-System (13 Codes), Wearout-Kurve, dynamischer Channel-Split — getestet: ja (tsc ✓, 41/41 Sanity-Tests ✓)
 - lib/regions.ts BFS 2024 Update: 26 Kantone + 103 Gemeinden (16 zu kleine entfernt), Schweiz 5.6M Stimm — getestet: ja
 - lib/region-buchbarkeit.ts erstellt: isBuchbar, klassifiziereRegion, klassifiziereMehrereRegionen, Screen-Klassen (61 Voll / 32 Begrenzt / 10 Display-dom) — getestet: ja

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
-import { buildVioPackages } from '@/lib/vio-paketlogik';
+import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -236,8 +236,8 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
   // ─── Finish ───────────────────────────────────────────────────────────────
 
   const finish = () => {
-    const vioData = buildVioPackages({
-      regions:      regions.map(r => ({ eligibleVoters: r.stimm })),
+    const vioData = buildVioPackagesV2({
+      regions:      regions,
       voteDate:     dateEvent || null,
       campaignType: mapSubtype(subtype),
     });
