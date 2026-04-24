@@ -14,7 +14,7 @@ interface ImpactIndicatorProps {
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────
 
 function fmt(n: number): string {
-  return n.toLocaleString('de-CH');
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u2019');
 }
 
 function getBarWidth(reach: number, pool: number): number {
