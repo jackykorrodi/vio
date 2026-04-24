@@ -132,6 +132,9 @@
 - `DESIGN.md` — Design System, vor visuellen Änderungen lesen
 - `public/vio-adcreator-v16.html` — Ad Creator Referenz
 - `public/prototypes/` — Abgenommene HTML-Prototypen als Ground Truth
+- `public/prototypes/vio-impact-indicator-v1.html` — HTML-Referenz-Prototyp für ImpactIndicator
+- `components/shared/ImpactIndicator.tsx` — Wirkungsanzeige mit Reach-Range, Bar, Stats, Channel-Split, Screen-Klassen-Badge. Props: impact (ImpactResult), regionName (string, optional), compact (boolean). Test unter /test-internal/impact-indicator.
+- `app/test-internal/impact-indicator/page.tsx` — Test-Playground mit 5 Zuständen.
 
 ### Step-Komponenten (immer exakte Pfade verwenden)
 - `components/steps/Step1Entry.tsx` — Einstieg B2C
@@ -210,7 +213,8 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Datum: 2026-04-22
+- Datum: 2026-04-24
+- C.2: ImpactIndicator-Komponente angelegt (Full + Compact-Variante). Test unter /test-internal/impact-indicator. Noch nicht in Step 2/3 integriert — folgt in C.3.
 - B.2b.2: StepPackages.tsx (Politik Step 2) direkt auf preislogik.ts umgestellt. MIXED_CPM-Konstante entfernt. getAdjustedValues nutzt jetzt calculateImpact für Live-Reach bei Slider-Änderung. Paket-Defaults kommen weiterhin via buildVioPackagesV2 aus Adapter. Step 1 + 2 + 3 jetzt alle auf neuer Preislogik. Adapter bleibt noch drin für Paket-Struktur-Kompatibilität — wird in B.2c entfernt — getestet: ja (tsc ✓, 4/4 Sanity ✓)
 - B.2b.1: StepSummaryPolitik.tsx direkt auf preislogik.ts (calculateImpact) umgestellt. MIXED_CPM-Konstante entfernt. Reach wird jetzt via dynamischem Channel-Split berechnet (DOOH+Display mit Delivery-Faktoren). Step 2 StepPackages.tsx bleibt am Adapter — folgt in B.2b.2 — getestet: ja (tsc ✓, Sanity ✓)
 - B.2a: Step1Politik.tsx nutzt jetzt preislogik.ts via Adapter (buildVioPackagesV2). Step 2 + 3 unverändert, lesen Step1Output-Struktur wie bisher. Budgets/Reaches können sich gegenüber alt unterscheiden wegen neuer Formel (Wearout, Delivery-Faktor, Screen-Klassen) — getestet: ja (tsc ✓, 5/5 Adapter-Sanity-Tests ✓)
