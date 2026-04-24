@@ -214,6 +214,7 @@ Rollback: `git checkout v0.x-stable`
 
 ## Letzter Stand
 - Datum: 2026-04-24
+- C.3a: StepSummaryPolitik.tsx nutzt jetzt ImpactIndicator + CampaignHint. Manuelle Reach-Anzeige und barPct entfernt. handleNext schreibt impact.reachMitte/reachVonPct/reachBisPct ins Briefing. Step2 (StepPackages + Step2PolitikBudget) folgt in C.3b.
 - C.2: ImpactIndicator-Komponente angelegt (Full + Compact-Variante). Test unter /test-internal/impact-indicator. Noch nicht in Step 2/3 integriert — folgt in C.3.
 - B.2b.2: StepPackages.tsx (Politik Step 2) direkt auf preislogik.ts umgestellt. MIXED_CPM-Konstante entfernt. getAdjustedValues nutzt jetzt calculateImpact für Live-Reach bei Slider-Änderung. Paket-Defaults kommen weiterhin via buildVioPackagesV2 aus Adapter. Step 1 + 2 + 3 jetzt alle auf neuer Preislogik. Adapter bleibt noch drin für Paket-Struktur-Kompatibilität — wird in B.2c entfernt — getestet: ja (tsc ✓, 4/4 Sanity ✓)
 - B.2b.1: StepSummaryPolitik.tsx direkt auf preislogik.ts (calculateImpact) umgestellt. MIXED_CPM-Konstante entfernt. Reach wird jetzt via dynamischem Channel-Split berechnet (DOOH+Display mit Delivery-Faktoren). Step 2 StepPackages.tsx bleibt am Adapter — folgt in B.2b.2 — getestet: ja (tsc ✓, Sanity ✓)

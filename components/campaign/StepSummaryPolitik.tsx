@@ -7,6 +7,8 @@ import { calculateImpact } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import doohScreensRaw from '@/lib/dooh-screens.json';
+import ImpactIndicator from '@/components/shared/ImpactIndicator';
+import CampaignHint from '@/components/shared/CampaignHint';
 
 type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
 const DOOH_DATA = doohScreensRaw as DoohEntry[];
@@ -135,7 +137,6 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const customReachPct = vioData.eligibleVotersTotal > 0
     ? customReachPeople / vioData.eligibleVotersTotal
     : 0;
-  const isCapped = impact?.cappedByRegion ?? false;
   const displayPersonen = Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
 
   // Frequency
@@ -155,16 +156,15 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   // Slider fill
   const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
   const durPct    = Math.min(100, ((laufzeitWeeks - 1) / 7) * 100);
-  const barPct    = Math.min(100, (customReachPct / 0.8) * 100);
 
   const handleNext = () => {
     updateBriefing({
       budget:      adjustedBudget,
       laufzeit:    laufzeitWeeks,
       startDate:   campaignStartISO || todayISO(),
-      reach:       customReachPeople,
-      reachVonPct: Math.round(customReachPct * 100),
-      reachBisPct: Math.round(customReachPct * 100),
+      reach:       impact?.reachMitte ?? pkg.targetReachPeople,
+      reachVonPct: impact?.reachVonPct ?? 0,
+      reachBisPct: impact?.reachBisPct ?? 0,
       b2bReach:    null,
     });
     nextStep();
@@ -278,8 +278,28 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
             </div>
           </div>
 
+          {/* Wirkungsindikator */}
+          {impact && (
+            <ImpactIndicator
+              impact={impact}
+              regionName={regionName}
+            />
+          )}
+
+          {/* Kampagnen-Hinweise */}
+          {impact && impact.hinweise.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <CampaignHint
+                hinweise={impact.hinweise}
+                onBookConsult={() => {
+                  window.open(process.env.NEXT_PUBLIC_CALENDLY_URL ?? '#', '_blank');
+                }}
+              />
+            </div>
+          )}
+
           {/* Section label */}
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Budget & Laufzeit</div>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12, marginTop: 24 }}>Budget & Laufzeit</div>
 
           {/* Sliders box */}
           <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginBottom: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -377,22 +397,6 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
           <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: 18 }}>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#2D1F52', marginBottom: 6 }}>Deine Kampagne</div>
 
-            {/* Reach block */}
-            <div style={{ textAlign: 'center', padding: '14px 0 16px', borderBottom: '1px solid rgba(107,79,187,0.08)', marginBottom: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 4 }}>Stimmberechtigte erreichbar</div>
-              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 800, color: '#534AB7', lineHeight: 1.1 }}>~{customReachPeople.toLocaleString('de-CH')}</div>
-              <div style={{ fontSize: 12, color: '#7A7596', marginTop: 3 }}>{Math.round(customReachPct * 100)}% der {inhabitants}</div>
-              <div style={{ marginTop: 10 }}>
-                <div style={{ height: 4, background: '#F1EFE8', borderRadius: 2 }}>
-                  <div style={{ height: 4, background: '#7F77DD', borderRadius: 2, width: `${barPct}%`, transition: 'width 0.3s' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3, fontSize: 10, color: '#7A7596' }}>
-                  <span>0%</span>
-                  <span>{Math.round(customReachPct * 100)}%</span>
-                  <span>80% (max)</span>
-                </div>
-              </div>
-            </div>
 
             <SbRow label="Paket" value={pkg.name} />
             <SbRow label="Budget" value={fmtCHF(adjustedBudget)} valueColor="#6B4FBB" />
