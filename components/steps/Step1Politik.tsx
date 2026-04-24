@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
+import { klassifiziereRegion, GEMEINDE_NICHT_GEFUNDEN_HINWEIS } from '@/lib/region-buchbarkeit';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -619,8 +620,30 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                     boxShadow: SHADOW_H, overflow: 'hidden', maxHeight: 210, overflowY: 'auto' as const,
                     marginBottom: 14,
                   }}>
-                    {filteredRegions.length === 0 ? (
-                      <div style={{ padding: '10px 16px', fontSize: 14, color: MUTED, fontStyle: 'italic' }}>Keine Treffer</div>
+                    {filteredRegions.length === 0 && regionQuery.trim().length > 0 ? (
+                      <div style={{
+                        padding: '14px 16px',
+                        fontSize: 13,
+                        color: '#5A556F',
+                        fontWeight: 500,
+                        lineHeight: 1.55,
+                        borderTop: '1px solid rgba(107,79,187,0.08)',
+                      }}>
+                        {GEMEINDE_NICHT_GEFUNDEN_HINWEIS}
+                        <a
+                          href="mailto:hello@vio.ch"
+                          style={{
+                            display: 'block',
+                            marginTop: 8,
+                            color: '#6B4FBB',
+                            fontWeight: 600,
+                            fontSize: 13,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          hello@vio.ch →
+                        </a>
+                      </div>
                     ) : filteredRegions.map(r => (
                       <div
                         key={r.name + r.type}
@@ -652,21 +675,45 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                 {/* Tags */}
                 {regions.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 7, marginBottom: 24 }}>
-                    {regions.map(r => (
-                      <div key={r.name} style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        background: V_DIM2, border: `1.5px solid ${BORDER2}`,
-                        borderRadius: 99, padding: '5px 14px',
-                        fontSize: 13, fontWeight: 600, color: V,
-                        animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-                      }}>
-                        {r.name}
-                        <span
-                          onClick={() => removeRegion(r.name)}
-                          style={{ cursor: 'pointer', fontSize: 13, opacity: 0.5, lineHeight: 1, marginLeft: 2 }}
-                        >✕</span>
-                      </div>
-                    ))}
+                    {regions.map(r => {
+                      const klass = klassifiziereRegion(r);
+                      const badge = klass.klasse === 'begrenzt'
+                        ? { text: 'Erhöhter Online-Anteil', show: true }
+                        : klass.klasse === 'display-dominant'
+                          ? { text: 'Primär online', show: true }
+                          : { text: '', show: false };
+
+                      return (
+                        <div key={r.name} style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          background: V_DIM2, border: `1.5px solid ${BORDER2}`,
+                          borderRadius: 99, padding: '5px 14px',
+                          fontSize: 13, fontWeight: 600, color: V,
+                          animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                        }}>
+                          {r.name}
+                          {badge.show && (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: '#6B4FBB',
+                              background: '#F7F5FF',
+                              border: '1px solid rgba(107,79,187,0.20)',
+                              borderRadius: 100,
+                              padding: '1px 8px',
+                              marginLeft: 6,
+                              whiteSpace: 'nowrap' as const,
+                            }}>
+                              {badge.text}
+                            </span>
+                          )}
+                          <span
+                            onClick={() => removeRegion(r.name)}
+                            style={{ cursor: 'pointer', fontSize: 13, opacity: 0.5, lineHeight: 1, marginLeft: 2 }}
+                          >✕</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
