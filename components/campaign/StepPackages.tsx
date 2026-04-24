@@ -6,6 +6,8 @@ import { getInhabitants } from '@/lib/vio-inhabitants-map';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
 import { calculateImpact } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
+import ImpactIndicator from '@/components/shared/ImpactIndicator';
+import CampaignHint from '@/components/shared/CampaignHint';
 import type { Region } from '@/lib/regions';
 
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
@@ -169,6 +171,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   };
   const adjustedBudget = getAdjustedValues(selectedPkg).budget;
   const adjustedReach  = getAdjustedValues(selectedPkg).reach;
+
+  // Impact-Objekt für ImpactIndicator + CampaignHint (nur für selektiertes Paket)
+  const liveImpact = selectedRegionsFull.length > 0
+    ? calculateImpact({
+        budget: budget,
+        laufzeitDays: laufzeitWeeks * 7,
+        regions: selectedRegionsFull,
+      })
+    : null;
 
   // Frequency description
   const freqDescMap: Record<number, string> = {
@@ -447,6 +458,33 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             <span style={{ fontSize: 13, color: '#3C3489' }}>Paketbudget (angepasst)</span>
             <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 800, color: '#6B4FBB' }}>{fmtCHF(adjustedBudget)}</span>
           </div>
+
+          {/* Wirkungsindikator */}
+          {liveImpact && (
+            <div style={{ marginTop: 20 }}>
+              <ImpactIndicator
+                impact={liveImpact}
+                regionName={regionName}
+              />
+            </div>
+          )}
+
+          {/* Kampagnen-Hinweise */}
+          {liveImpact && liveImpact.hinweise.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <CampaignHint
+                hinweise={liveImpact.hinweise}
+                onBookConsult={() => {
+                  window.open(process.env.NEXT_PUBLIC_CALENDLY_URL ?? '#', '_blank');
+                }}
+                onApply={(code) => {
+                  if (code === 'too_thin') {
+                    setLaufzeitWeeks(prev => Math.max(1, Math.round(prev / 2)));
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {/* CTA */}
           <button
