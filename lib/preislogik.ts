@@ -432,6 +432,12 @@ export function buildPackages(input: {
       ? klassifiziereRegion(regions[0])
       : { klasse: 'voll' as const, politScreens: 0, split: { dooh: 0.70, display: 0.30 }, hinweis: null };
 
+  const PKG_MIN: Record<PaketKey, number> = {
+    sichtbar: 4000,
+    praesenz: 6000,
+    dominanz: 9000,
+  };
+
   const buildOne = (key: PaketKey): Paket => {
     const spec = PAKET_SPECS[key];
     const reachCap = getReachCap(stimmTotal, spec.reachCapLevel);
@@ -449,7 +455,7 @@ export function buildPackages(input: {
     // damit nach Delivery-Faktor die Ziel-Impressions tatsächlich ausgespielt werden
     const avgDelivery = klass.split.dooh * DELIVERY_DOOH + klass.split.display * DELIVERY_DISPLAY;
     const adjustedBudget = rawBudget / avgDelivery;
-    const finalBudget = Math.max(B_MIN, roundBudget(adjustedBudget));
+    const finalBudget = Math.max(PKG_MIN[key], roundBudget(adjustedBudget));
 
     // Reach-Range
     const band = klass.klasse === 'voll' ? 0.07
