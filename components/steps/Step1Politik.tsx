@@ -6,49 +6,20 @@ import { Region, ALL_REGIONS } from '@/lib/regions';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
 import { klassifiziereRegion, GEMEINDE_NICHT_GEFUNDEN_HINWEIS } from '@/lib/region-buchbarkeit';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type CampaignType = 'abstimmung' | 'wahl';
-type SubtypeVal = 'ja' | 'nein' | 'mob' | 'kand' | 'liste';
-
-interface SubtypeOption {
-  val: SubtypeVal;
-  name: string;
-  desc: string;
-}
-
 // ─── Data ────────────────────────────────────────────────────────────────────
-
-const SUBTYPES: Record<CampaignType, SubtypeOption[]> = {
-  abstimmung: [
-    { val: 'ja',   name: 'JA-Kampagne',  desc: 'Für eine Initiative oder einen Gegenvorschlag.' },
-    { val: 'nein', name: 'NEIN-Kampagne', desc: 'Gegen eine Initiative oder ein Referendum.' },
-    { val: 'mob',  name: 'Mobilisierung', desc: 'Stimmberechtigte zur Urne bewegen.' },
-  ],
-  wahl: [
-    { val: 'kand',  name: 'Kandidatur',   desc: 'Persönlichkeitskampagne für eine Person.' },
-    { val: 'liste', name: 'Listenwahl',   desc: 'Mehrere Kandidierende auf einer Parteiliste.' },
-    { val: 'mob',   name: 'Mobilisierung',desc: 'Wählerschaft aktivieren.' },
-  ],
-};
 
 const SIDEBAR: Record<number, { title: string; text: string; tip: string }> = {
   1: {
-    title: 'Abstimmung oder Wahl – macht das einen Unterschied?',
-    text:  'Ja. Abstimmungen brauchen klare Botschaften (Ja/Nein), kurze Kampagnenfenster und hohe Frequenz. Bei Wahlen geht es stärker um Bekanntheit und Gesichtspräsenz – das verändert wie wir aussteuern.',
-    tip:   '<strong>Gut zu wissen:</strong> Abstimmungskampagnen profitieren davon, früh zu starten. Die letzten 10 Tage sind am wirkungsvollsten.',
-  },
-  2: {
     title: 'Warum zuerst das Enddatum?',
     text:  'Weil der Abstimmungs- oder Wahltag fix ist. Von dort aus rechnen wir rückwärts – so siehst du sofort, wie viel Vorlauf du noch hast und ob das Budget reicht.',
     tip:   '<strong>Empfehlung:</strong> 4–6 Wochen Vorlauf sind ideal. Unter 2 Wochen wird es knapp – aber auch das ist möglich.',
   },
-  3: {
+  2: {
     title: 'Lokal wirkt stärker.',
     text:  'Wer in einer Region lebt und dort Werbung sieht, nimmt sie als relevanter wahr. Deshalb spielen wir ausschliesslich in deinen Zielgebieten aus – keine Streuverluste ausserhalb deines Wahlkreises.',
     tip:   '<strong>Tipp:</strong> Du kannst Kantone und Gemeinden kombinieren. Wir fassen alles zu einer einzigen Kampagne zusammen.',
   },
-  4: {
+  3: {
     title: 'Kein fixes Budget? Kein Problem.',
     text:  'Viele starten ohne genaue Zahl. Du kannst einen Richtwert angeben – oder das Budget im nächsten Schritt mit dem Reichweiten-Tool bestimmen.',
     tip:   "<strong>Mindestbudget:</strong> CHF 4'000 für DOOH + Display. Empfohlen: CHF 7'500–15'000 für spürbare Wirkung.",
@@ -75,13 +46,6 @@ const SHADOW  = '0 1px 3px rgba(30,21,53,0.06), 0 4px 16px rgba(30,21,53,0.04)';
 const SHADOW_H= '0 2px 8px rgba(107,79,187,0.12), 0 8px 32px rgba(107,79,187,0.1)';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function mapSubtype(st: string | null): 'ja' | 'nein' | 'kandidat' | 'event' {
-  if (st === 'ja')   return 'ja';
-  if (st === 'nein') return 'nein';
-  if (st === 'kand' || st === 'liste') return 'kandidat';
-  return 'event';
-}
 
 function fmtCHF(n: number): string {
   return "CHF " + n.toLocaleString('de-CH').replace(/\./g, "'");
@@ -150,20 +114,15 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
   const [animKey, setAnimKey] = useState(0);
 
   // Q1 state
-  const [campaignType, setCampaignType] = useState<CampaignType | null>(null);
-  const [subtype, setSubtype]           = useState<SubtypeVal | null>(null);
-  const [subtypeOpen, setSubtypeOpen]   = useState(false);
-
-  // Q2 state
   const [dateEvent, setDateEvent] = useState('');
   const [dateStart, setDateStart] = useState('');
 
-  // Q3 state
+  // Q2 state
   const [regions, setRegions]         = useState<Region[]>([]);
   const [regionQuery, setRegionQuery] = useState('');
   const [ddOpen, setDdOpen]           = useState(false);
 
-  // Q4 state
+  // Q3 state
   const [budget, setBudget]           = useState(5000);
   const [budgetKnown, setBudgetKnown] = useState(true);
 
@@ -176,10 +135,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
     if (dir === 'forward') {
       // Snapshot current answers into pills before moving forward
       const newPills: string[] = [];
-      if (campaignType && subtype) {
-        const st = SUBTYPES[campaignType]?.find(x => x.val === subtype);
-        if (st) newPills.push(st.name);
-      }
       if (dateEvent) {
         const d = new Date(dateEvent + 'T00:00:00');
         newPills.push(d.toLocaleDateString('de-CH', { day: '2-digit', month: 'short', year: 'numeric' }));
@@ -232,7 +187,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
   }
   const dateGate    = getDateGate(dateEvent);
   const dateBlocked = dateGate.level === 'error';
-  const q2Valid = !!dateEvent && (dateStart ? timelineDays > 0 : true) && !dateBlocked;
+  const q1Valid = !!dateEvent && (dateStart ? timelineDays > 0 : true) && !dateBlocked;
 
   // ─── Finish ───────────────────────────────────────────────────────────────
 
@@ -240,13 +195,12 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
     const vioData = buildVioPackagesV2({
       regions:      regions,
       voteDate:     dateEvent || null,
-      campaignType: mapSubtype(subtype),
+      campaignType: 'event',
     });
     const rec  = vioData.packages[vioData.recommendedPackage];
     const days = dateEvent ? calcDaysUntil(dateEvent) : 0;
 
     updateBriefing({
-      politikType:       mapSubtype(subtype),
       votingDate:        dateEvent,
       daysUntil:         days,
       selectedRegions:   regions.map(r => ({ name: r.name, type: r.type, stimm: r.stimm, kanton: r.kanton })),
@@ -338,7 +292,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
 
           {/* Progress dots */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 32 }}>
-            {[1, 2, 3, 4].map(i => (
+            {[1, 2, 3].map(i => (
               <div key={i} style={{
                 height: 4,
                 borderRadius: 2,
@@ -367,122 +321,10 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
           {/* ── Slide track ── */}
           <div key={animKey} style={{ animation: slideAnim }}>
 
-            {/* ────── Q1: Was ──────────────────────────────────────────────── */}
+            {/* ────── Q1: Wann ──────────────────────────────────────────────── */}
             {curQ === 1 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 1 von 4</div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Worum geht es?</div>
-                <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Abstimmung oder Wahl – das gibt uns die Grundlage für alles weitere.</div>
-
-                {/* Type cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-                  {([
-                    { val: 'abstimmung' as CampaignType, name: 'Abstimmung', desc: 'Volksinitiative, Referendum oder kommunale Vorlage.' },
-                    { val: 'wahl'       as CampaignType, name: 'Wahl',        desc: 'National-, Kantons-, Gemeinderat oder Regierungsrat.' },
-                  ]).map(opt => (
-                    <button
-                      key={opt.val}
-                      className="sp1-card"
-                      onClick={() => {
-                        setCampaignType(opt.val);
-                        setSubtype(null);
-                        setSubtypeOpen(true);
-                      }}
-                      style={{
-                        background: campaignType === opt.val ? V_DIM : WHITE,
-                        border: `1.5px solid ${campaignType === opt.val ? V : BORDER}`,
-                        borderRadius: 14, padding: '16px 18px',
-                        cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 13,
-                        textAlign: 'left' as const, boxShadow: SHADOW, position: 'relative' as const,
-                        transition: 'border-color 0.18s, box-shadow 0.18s, transform 0.18s',
-                        userSelect: 'none' as const, width: '100%',
-                      }}
-                    >
-                      {campaignType === opt.val && (
-                        <div style={{
-                          position: 'absolute', top: 8, right: 10,
-                          width: 16, height: 16, borderRadius: '50%',
-                          background: WHITE, border: `1.5px solid ${V}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 800, color: V, lineHeight: 1, paddingTop: 1,
-                        }}>✓</div>
-                      )}
-                      <div>
-                        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 14, color: INK, marginBottom: 2 }}>{opt.name}</div>
-                        <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.4 }}>{opt.desc}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Subtype (animated expand) */}
-                <div style={{
-                  overflow: 'hidden',
-                  maxHeight: subtypeOpen && campaignType ? 300 : 0,
-                  opacity: subtypeOpen && campaignType ? 1 : 0,
-                  transition: 'max-height 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.3s ease',
-                  marginBottom: subtypeOpen && campaignType ? 24 : 0,
-                }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 10 }}>Genauer –</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                    {campaignType && SUBTYPES[campaignType].map(st => (
-                      <button
-                        key={st.val}
-                        className="sp1-card"
-                        onClick={() => setSubtype(st.val)}
-                        style={{
-                          background: subtype === st.val ? V_DIM : WHITE,
-                          border: `1.5px solid ${subtype === st.val ? V : BORDER}`,
-                          borderRadius: 14, padding: '16px 18px',
-                          cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: 13,
-                          textAlign: 'left' as const, boxShadow: SHADOW, position: 'relative' as const,
-                          transition: 'border-color 0.18s, box-shadow 0.18s, transform 0.18s',
-                          userSelect: 'none' as const, width: '100%',
-                        }}
-                      >
-                        {subtype === st.val && (
-                          <div style={{
-                            position: 'absolute', top: 8, right: 10,
-                            width: 16, height: 16, borderRadius: '50%',
-                            background: WHITE, border: `1.5px solid ${V}`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 9, fontWeight: 800, color: V, lineHeight: 1, paddingTop: 1,
-                          }}>✓</div>
-                        )}
-                        <div>
-                          <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 14, color: INK, marginBottom: 2 }}>{st.name}</div>
-                          <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.4 }}>{st.desc}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-                  <button
-                    onClick={next}
-                    disabled={!campaignType || !subtype}
-                    style={{
-                      flex: 1, padding: '13px 24px', borderRadius: 10, border: 'none',
-                      background: (!campaignType || !subtype) ? BORDER : V,
-                      fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700,
-                      color: (!campaignType || !subtype) ? MUTED : WHITE,
-                      cursor: (!campaignType || !subtype) ? 'not-allowed' : 'pointer',
-                      boxShadow: (!campaignType || !subtype) ? 'none' : '0 4px 18px rgba(107,79,187,0.28)',
-                      transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    }}
-                    className="sp1-btn-next"
-                  >
-                    Weiter →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ────── Q2: Wann ──────────────────────────────────────────────── */}
-            {curQ === 2 && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 2 von 4</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 1 von 3</div>
                 <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Wann findet das statt?</div>
                 <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Erst der Abstimmungssonntag – dann der Kampagnenstart. So haben wir den Vorlauf im Blick.</div>
 
@@ -572,17 +414,16 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                 )}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-                  <button onClick={back} className="sp1-btn-back" style={{ padding: '11px 18px', borderRadius: 10, border: `1.5px solid ${BORDER}`, background: WHITE, fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 500, color: MUTED, cursor: 'pointer', transition: 'all 0.18s', flexShrink: 0 }}>← Zurück</button>
                   <button
                     onClick={next}
-                    disabled={!q2Valid}
+                    disabled={!q1Valid}
                     style={{
                       flex: 1, padding: '13px 24px', borderRadius: 10, border: 'none',
-                      background: !q2Valid ? BORDER : V,
+                      background: !q1Valid ? BORDER : V,
                       fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700,
-                      color: !q2Valid ? MUTED : WHITE,
-                      cursor: !q2Valid ? 'not-allowed' : 'pointer',
-                      boxShadow: !q2Valid ? 'none' : '0 4px 18px rgba(107,79,187,0.28)',
+                      color: !q1Valid ? MUTED : WHITE,
+                      cursor: !q1Valid ? 'not-allowed' : 'pointer',
+                      boxShadow: !q1Valid ? 'none' : '0 4px 18px rgba(107,79,187,0.28)',
                       transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     }}
                     className="sp1-btn-next"
@@ -593,10 +434,10 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
               </div>
             )}
 
-            {/* ────── Q3: Wo ────────────────────────────────────────────────── */}
-            {curQ === 3 && (
+            {/* ────── Q2: Wo ────────────────────────────────────────────────── */}
+            {curQ === 2 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 3 von 4</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 2 von 3</div>
                 <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Wo ist deine Zielregion?</div>
                 <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Wähle Kantone oder Gemeinden. Mehrere Gebiete lassen sich kombinieren.</div>
 
@@ -620,29 +461,9 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                     boxShadow: SHADOW_H, overflow: 'hidden', maxHeight: 210, overflowY: 'auto' as const,
                     marginBottom: 14,
                   }}>
-                    {filteredRegions.length === 0 && regionQuery.trim().length > 0 ? (
-                      <div style={{
-                        padding: '14px 16px',
-                        fontSize: 13,
-                        color: '#5A556F',
-                        fontWeight: 500,
-                        lineHeight: 1.55,
-                        borderTop: '1px solid rgba(107,79,187,0.08)',
-                      }}>
+                    {filteredRegions.length === 0 ? (
+                      <div style={{ padding: '14px 16px', fontSize: 13, color: '#7A7596', lineHeight: 1.6 }}>
                         {GEMEINDE_NICHT_GEFUNDEN_HINWEIS}
-                        <a
-                          href="mailto:hello@vio.ch"
-                          style={{
-                            display: 'block',
-                            marginTop: 8,
-                            color: '#6B4FBB',
-                            fontWeight: 600,
-                            fontSize: 13,
-                            textDecoration: 'none',
-                          }}
-                        >
-                          hello@vio.ch →
-                        </a>
                       </div>
                     ) : filteredRegions.map(r => (
                       <div
@@ -739,10 +560,10 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
               </div>
             )}
 
-            {/* ────── Q4: Budget ────────────────────────────────────────────── */}
-            {curQ === 4 && (
+            {/* ────── Q3: Budget ────────────────────────────────────────────── */}
+            {curQ === 3 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 4 von 4</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 3 von 3</div>
                 <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Hast du schon ein Budget?</div>
                 <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Wenn ja, gib uns einen Richtwert. Wenn nicht, kein Problem – du legst das im nächsten Schritt fest.</div>
 

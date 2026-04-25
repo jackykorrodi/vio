@@ -213,7 +213,8 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Datum: 2026-04-24
+- Datum: 2026-04-25
+- 1.1: Step1Politik Q1 entfernt (Abstimmung/Wahl/Subtypen), 3 Fragen statt 4, GEMEINDE_NICHT_GEFUNDEN_HINWEIS eingebunden — getestet: ja
 - C.4: Step1Politik.tsx Q3 Regionen-Auswahl erweitert: GEMEINDE_NICHT_GEFUNDEN_HINWEIS bei leerer Suche, Screen-Klassen-Badge (Begrenzt/Display-dominant) bei gewählten Regionen. Paket C vollständig.
 - C.3b: StepPackages.tsx (Politik Step 2) nutzt jetzt ImpactIndicator + CampaignHint. liveImpact via calculateImpact reaktiv auf Slider-Änderungen. onApply(too_thin) halbiert Laufzeit. Step2PolitikBudget.tsx (inaktiv, hat noch MIXED_CPM) bleibt für späteres Cleanup.
 - C.3a: StepSummaryPolitik.tsx nutzt jetzt ImpactIndicator + CampaignHint. Manuelle Reach-Anzeige und barPct entfernt. handleNext schreibt impact.reachMitte/reachVonPct/reachBisPct ins Briefing. Step2 (StepPackages + Step2PolitikBudget) folgt in C.3b.
