@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
-import { klassifiziereRegion, GEMEINDE_NICHT_GEFUNDEN_HINWEIS } from '@/lib/region-buchbarkeit';
+import { filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen, GEMEINDE_NICHT_GEFUNDEN_HINWEIS } from '@/lib/region-buchbarkeit';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -121,6 +121,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
   const [regions, setRegions]         = useState<Region[]>([]);
   const [regionQuery, setRegionQuery] = useState('');
   const [ddOpen, setDdOpen]           = useState(false);
+  const [screenHinweis, setScreenHinweis] = useState<string | null>(null);
 
   // Q3 state
   const [budget, setBudget]           = useState(5000);
@@ -154,23 +155,45 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
 
   // ─── Region search ────────────────────────────────────────────────────────
 
-  const filteredRegions = regionQuery.length > 0
-    ? ALL_REGIONS
-        .filter(r =>
-          r.name.toLowerCase().includes(regionQuery.toLowerCase()) &&
-          !regions.find(x => x.name === r.name)
-        )
-        .slice(0, 10)
-    : [];
+  const filteredRegions = useMemo(() => {
+    if (regionQuery.length === 0) return [];
+    const q = regionQuery.toLowerCase();
+    const matched = ALL_REGIONS.filter(r =>
+      r.name.toLowerCase().includes(q) &&
+      !regions.find(x => x.name === r.name)
+    );
+    const buchbar = matched.filter(r =>
+      r.type !== 'stadt' || filterBuchbareRegionen([r]).length > 0
+    );
+    return buchbar.slice(0, 12);
+  }, [regionQuery, regions]);
 
   const addRegion = (r: Region) => {
-    setRegions(prev => [...prev, r]);
+    const newRegions = [...regions, r];
+    setRegions(newRegions);
     setRegionQuery('');
     setDdOpen(false);
+    if (newRegions.length === 1) {
+      const klass = klassifiziereRegion(r);
+      setScreenHinweis(klass.hinweis ?? null);
+    } else {
+      const klass = klassifiziereMehrereRegionen(newRegions);
+      setScreenHinweis(klass.hinweis ?? null);
+    }
   };
 
   const removeRegion = (name: string) => {
-    setRegions(prev => prev.filter(r => r.name !== name));
+    const newRegions = regions.filter(r => r.name !== name);
+    setRegions(newRegions);
+    if (newRegions.length === 0) {
+      setScreenHinweis(null);
+    } else if (newRegions.length === 1) {
+      const klass = klassifiziereRegion(newRegions[0]);
+      setScreenHinweis(klass.hinweis ?? null);
+    } else {
+      const klass = klassifiziereMehrereRegionen(newRegions);
+      setScreenHinweis(klass.hinweis ?? null);
+    }
   };
 
   // ─── Timeline ─────────────────────────────────────────────────────────────
@@ -535,6 +558,19 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {screenHinweis && (
+                  <div style={{
+                    marginTop: 12, padding: '10px 14px', borderRadius: 10,
+                    background: '#F0ECFA', border: '1px solid rgba(107,79,187,0.15)',
+                    fontSize: 12, color: '#5A4A7A', lineHeight: 1.55,
+                    display: 'flex', gap: 8, alignItems: 'flex-start',
+                    marginBottom: 12,
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: V, flexShrink: 0, marginTop: 4 }} />
+                    <span>{screenHinweis}</span>
                   </div>
                 )}
 

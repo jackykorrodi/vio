@@ -214,6 +214,7 @@ Rollback: `git checkout v0.x-stable`
 
 ## Letzter Stand
 - Datum: 2026-04-25
+- 4.1: filterBuchbareRegionen in Step1Politik eingebaut, Screen-Klassen-Hinweis live bei Regionen-Auswahl — getestet: nein
 - 3.1: StepPackages Pfad A (hasBudget && !showAllPackets) — direkte Slider + dark-card Wirkungsindikator; Pfad B (!hasBudget || showAllPackets) — 3 Pakete + Accordion + Paket-Slider-Konflikt-Hinweis; ImpactIndicator/CampaignHint durch inline dark card ersetzt — getestet: nein
 - 2.3: Sidebar-Mismatch gefixt — initPkg immer recommendedPackage, initBudget immer Paket-Budget statt userBudget — getestet: ja
 - 2.2: Budget↔Laufzeit-Kopplung (^0.75) verdrahtet, dynamischer Laufzeit-Korridor, Budget-Max 100k — StepPackages + StepSummaryPolitik — getestet: ja
