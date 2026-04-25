@@ -6,9 +6,11 @@ import { getInhabitants } from '@/lib/vio-inhabitants-map';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
 import { calculateImpact, coupleBudgetToLaufzeit, getLaufzeitCorridor } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
-import ImpactIndicator from '@/components/shared/ImpactIndicator';
-import CampaignHint from '@/components/shared/CampaignHint';
 import type { Region } from '@/lib/regions';
+
+function fmtNum(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u2019');
+}
 
 type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
@@ -233,10 +235,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     </div>
   );
 
-  const pkgKeysToShow: PkgKey[] = (hasBudget && !showAllPackets)
-    ? [(vioData.recommendedPackage as PkgKey)]
-    : PKG_ORDER;
-
   return (
     <section style={{ background: '#F5F3FF', minHeight: '100vh', fontFamily: "'Jost', sans-serif", paddingBottom: 60 }}>
       <style>{`
@@ -289,94 +287,49 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Reichweite & Paket</div>
 
-          {/* hasBudget info banner */}
-          {hasBudget && !showAllPackets && (
-            <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#3C3489', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-              <span>
-                Du hast <strong>{fmtCHF(userBudget)}</strong> als Richtwert angegeben — wir haben das passende Paket vorgewählt. Du kannst Budget und Laufzeit unten anpassen.
-              </span>
-              <button type="button" onClick={() => setShowAllPackets(true)} style={{ background: 'none', border: 'none', color: '#6B4FBB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                Alle Pakete ansehen →
-              </button>
-            </div>
-          )}
-
-          {/* Paket grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: (hasBudget && !showAllPackets) ? '1fr' : '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-            {pkgKeysToShow.map(key => {
-              const p = vioData.packages[key];
-              const isSel = selectedPkg === key;
-              const isRec = key === vioData.recommendedPackage;
-              const adj = getAdjustedValues(key);
-              const badge = getInsightBadge(key);
-
-              return (
-                <div
-                  key={key}
-                  onClick={() => handleSelectPkg(key)}
-                  style={{
-                    position: 'relative',
-                    background: isSel ? '#F0ECFA' : 'white',
-                    border: isSel ? '2.5px solid #6B4FBB' : '1px solid rgba(107,79,187,0.12)',
-                    borderRadius: 14,
-                    padding: 16,
-                    cursor: 'pointer',
-                    textAlign: 'left' as const,
-                    transition: 'all 0.18s',
-                    opacity: 1,
-                    boxShadow: isSel ? '0 4px 20px rgba(107,79,187,0.18)' : 'none',
-                    transform: isSel ? 'translateY(-3px)' : 'none',
-                  }}
-                >
-                  {isRec && (
-                    <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 12px', borderRadius: 20, whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      Empfohlen
-                    </div>
-                  )}
-                  <div style={{ position: 'absolute', top: 13, right: 13, width: 18, height: 18, borderRadius: '50%', background: isSel ? '#6B4FBB' : 'white', border: isSel ? '1.5px solid #6B4FBB' : '1.5px solid #D3D1C7', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                    {isSel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
-                  </div>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A7596' }}>{p.name}</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: isSel ? '#534AB7' : '#2D1F52', margin: '2px 0' }}>{fmtCHF(adj.budget)}</div>
-                  <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>{Math.round(p.durationDays / 7)} Wochen Laufzeit</div>
-                  <div style={{ height: 0.5, background: 'rgba(107,79,187,0.10)', margin: '8px 0' }} />
-                  <div style={{ fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#7A7596' }}>Stimmberechtigte erreichbar</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', marginTop: 2 }}>~{adj.reach.toLocaleString('de-CH')}</div>
-                  <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{adj.pct}% der {inhabitants}</div>
-                  <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
-                    <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${adj.pct}%` }} />
-                  </div>
-                  {badge && (
-                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, background: badge.bg, color: badge.color }}>
-                      {badge.text}
-                    </div>
-                  )}
+          {/* ── Shared: Wirkungsindikator dark card ── */}
+          {(() => {
+            const impact = liveImpact;
+            const pkg = vioData.packages[selectedPkg];
+            return (
+              <div id="wirkungsindikator" style={{ background: '#2D1F52', borderRadius: 16, padding: '24px 28px', margin: '20px 0', color: 'white' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Deine Botschaft erreicht</div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 4 }}>
+                  {impact
+                    ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}`
+                    : `~${fmtNum(pkg.targetReachPeople)}`}
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 20 }}>{inhabitants}</div>
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                    Frequenz: Ø {impact ? Math.round(impact.frequencyCampaign) : (pkg.frequency ?? 5)}× pro Person
+                  </div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                    Pro Woche: ≈ {impact ? impact.frequencyWeekly.toFixed(1) : (pkg.frequency ?? 5)}× / Woche
+                  </div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                    Zielgruppe: {fmtNum(impact?.stimmTotal ?? vioData.eligibleVotersTotal)} Stimmber.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
-          {hasBudget && showAllPackets && (
-            <button type="button" onClick={() => setShowAllPackets(false)} style={{ background: 'none', border: 'none', color: '#7A7596', fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
-              ← Zurück zur Vorauswahl
-            </button>
-          )}
+          {hasBudget && !showAllPackets ? (
+            /* ─── PFAD A: hasBudget — direkte Slider + Wirkungsindikator ─── */
+            <>
+              {/* Banner */}
+              <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#3C3489', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <span>
+                  Du hast <strong>{fmtCHF(userBudget)}</strong> als Richtwert angegeben — wir haben das passende Paket vorgewählt. Du kannst Budget und Laufzeit unten anpassen.
+                </span>
+                <button type="button" onClick={() => setShowAllPackets(true)} style={{ background: 'none', border: 'none', color: '#6B4FBB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Alle Pakete ansehen →
+                </button>
+              </div>
 
-          {/* ── Budget & Laufzeit (eingeklappt) ── */}
-          <div style={{ marginTop: 16 }}>
-            <div
-              onClick={() => setAdjOpen(o => !o)}
-              style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'background .15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#F5F3FF'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'white'; }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 5h12M5 8h6M7 11h2" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', flex: 1 }}>Budget &amp; Laufzeit anpassen</span>
-              <svg style={{ transform: adjOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#7A7596" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-
-            {adjOpen && (
-              <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              {/* Direkte Slider */}
+              <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 {/* Budget slider */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
@@ -420,75 +373,165 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* ── Kontaktfrequenz (Read-only, aus calculateImpact) ── */}
-          {(() => {
-            const impact = selectedRegionsFull.length > 0
-              ? calculateImpact({
-                  budget: budget,
-                  laufzeitDays: laufzeitWeeks * 7,
-                  regions: selectedRegionsFull,
-                })
-              : null;
-            const fWeekly = impact?.frequencyWeekly
-              ?? vioData.packages[selectedPkg].frequency
-              ?? 5;
-            const fCampaign = Math.round(fWeekly * laufzeitWeeks);
-            return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: 'rgba(107,79,187,0.04)', borderRadius: 10, border: '1px solid rgba(107,79,187,0.10)', marginTop: 12 }}>
-                <span style={{ fontSize: 13, color: '#7A7596' }}>Ø Kontaktfrequenz</span>
-                <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 700, color: '#2D1F52' }}>
-                  {fCampaign}× pro Person
-                </span>
-                <span style={{ fontSize: 12, color: '#9A90BB' }}>
-                  (≈ {fWeekly.toFixed(1)}× / Woche)
-                </span>
+              {/* Hinweis box */}
+              {liveImpact?.hinweise[0] && (
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
+                  {liveImpact.hinweise[0].text}
+                </div>
+              )}
+            </>
+          ) : (
+            /* ─── PFAD B: Paket-Karten → Wirkungsindikator → Accordion ─── */
+            <>
+              {/* 3 Paket-Karten */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {PKG_ORDER.map(key => {
+                  const p = vioData.packages[key];
+                  const isSel = selectedPkg === key;
+                  const isRec = key === vioData.recommendedPackage;
+                  const adj = getAdjustedValues(key);
+                  const badge = getInsightBadge(key);
+
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => handleSelectPkg(key)}
+                      style={{
+                        position: 'relative',
+                        background: isSel ? '#F0ECFA' : 'white',
+                        border: isSel ? '2.5px solid #6B4FBB' : '1px solid rgba(107,79,187,0.12)',
+                        borderRadius: 14,
+                        padding: 16,
+                        cursor: 'pointer',
+                        textAlign: 'left' as const,
+                        transition: 'all 0.18s',
+                        opacity: 1,
+                        boxShadow: isSel ? '0 4px 20px rgba(107,79,187,0.18)' : 'none',
+                        transform: isSel ? 'translateY(-3px)' : 'none',
+                      }}
+                    >
+                      {isRec && (
+                        <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 12px', borderRadius: 20, whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                          Empfohlen
+                        </div>
+                      )}
+                      <div style={{ position: 'absolute', top: 13, right: 13, width: 18, height: 18, borderRadius: '50%', background: isSel ? '#6B4FBB' : 'white', border: isSel ? '1.5px solid #6B4FBB' : '1.5px solid #D3D1C7', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+                        {isSel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A7596' }}>{p.name}</div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: isSel ? '#534AB7' : '#2D1F52', margin: '2px 0' }}>{fmtCHF(adj.budget)}</div>
+                      <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>{Math.round(p.durationDays / 7)} Wochen Laufzeit</div>
+                      <div style={{ height: 0.5, background: 'rgba(107,79,187,0.10)', margin: '8px 0' }} />
+                      <div style={{ fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#7A7596' }}>Stimmberechtigte erreichbar</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', marginTop: 2 }}>~{fmtNum(adj.reach)}</div>
+                      <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{adj.pct}% der {inhabitants}</div>
+                      <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
+                        <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${adj.pct}%` }} />
+                      </div>
+                      {badge && (
+                        <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, background: badge.bg, color: badge.color }}>
+                          {badge.text}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })()}
 
-          {/* ── Paketbudget live (angepasst) ── */}
-          <div style={{ background: '#EEEDFE', borderRadius: 12, padding: '12px 16px', marginTop: 12, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: '#3C3489' }}>Paketbudget (angepasst)</span>
-            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 800, color: '#6B4FBB' }}>{fmtCHF(adjustedBudget)}</span>
-          </div>
+              {/* Zurück zur Vorauswahl */}
+              {hasBudget && showAllPackets && (
+                <button type="button" onClick={() => setShowAllPackets(false)} style={{ background: 'none', border: 'none', color: '#7A7596', fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
+                  ← Zurück zur Vorauswahl
+                </button>
+              )}
 
-          {/* Wirkungsindikator */}
-          {liveImpact && (
-            <div style={{ marginTop: 20 }}>
-              <ImpactIndicator
-                impact={liveImpact}
-                regionName={regionName}
-              />
-            </div>
-          )}
+              {/* Budget & Laufzeit accordion */}
+              <div style={{ marginTop: 16 }}>
+                <div
+                  onClick={() => setAdjOpen(o => !o)}
+                  style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'background .15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#F5F3FF'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'white'; }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 5h12M5 8h6M7 11h2" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', flex: 1 }}>Budget &amp; Laufzeit anpassen</span>
+                  <svg style={{ transform: adjOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#7A7596" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
 
-          {/* Kampagnen-Hinweise */}
-          {liveImpact && liveImpact.hinweise.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <CampaignHint
-                hinweise={liveImpact.hinweise}
-                onBookConsult={() => {
-                  window.open(process.env.NEXT_PUBLIC_CALENDLY_URL ?? '#', '_blank');
-                }}
-                onApply={(code) => {
-                  if (code === 'too_thin') {
-                    setLaufzeitWeeks(prev => Math.max(1, Math.round(prev / 2)));
-                  }
-                }}
-              />
-            </div>
+                {adjOpen && (
+                  <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                    {/* Budget slider */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, color: '#7A7596' }}>Budget</span>
+                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{fmtCHF(budget)}</span>
+                      </div>
+                      <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
+                        <input type="range" className="sp-range" min={4000} max={100000} step={500} value={budget} onChange={e => {
+                          const newBudget = Number(e.target.value);
+                          setBudget(newBudget);
+                          setBudgetRef({ budget: newBudget, days: laufzeitWeeks * 7 });
+                          const c = getLaufzeitCorridor(newBudget);
+                          const minW = Math.ceil(c.minDays / 7);
+                          const maxW = Math.floor(c.maxDays / 7);
+                          if (laufzeitWeeks < minW) setLaufzeitWeeks(minW);
+                          if (laufzeitWeeks > maxW) setLaufzeitWeeks(maxW);
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
+                        <span>CHF 4&apos;000</span><span>CHF 100&apos;000</span>
+                      </div>
+                    </div>
+                    {/* Laufzeit slider */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                        <span style={{ fontSize: 13, color: '#7A7596' }}>Laufzeit</span>
+                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{laufzeitWeeks} Woche{laufzeitWeeks !== 1 ? 'n' : ''}</span>
+                      </div>
+                      <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
+                        <input type="range" className="sp-range" min={laufzeitMinWeeks} max={laufzeitMaxWeeks} step={1} value={laufzeitWeeks} onChange={e => {
+                          const newWeeks = Number(e.target.value);
+                          setLaufzeitWeeks(newWeeks);
+                          const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newWeeks * 7);
+                          setBudget(coupled);
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
+                        <span>{laufzeitMinWeeks} Woche{laufzeitMinWeeks !== 1 ? 'n' : ''}</span><span>{laufzeitMaxWeeks} Wochen</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Paket-Slider-Konflikt-Hinweis */}
+              {adjOpen && (
+                <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 12, lineHeight: 1.5, marginTop: 8 }}>
+                  <span>&#9888;</span>
+                  <span>Wenn Sie Budget oder Laufzeit anpassen, weicht die Kampagne vom gewählten Paket ab. Das gewählte Paket dient als Ausgangspunkt.</span>
+                </div>
+              )}
+
+              {/* Hinweis box */}
+              {liveImpact?.hinweise[0] && (
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
+                  {liveImpact.hinweise[0].text}
+                </div>
+              )}
+            </>
           )}
 
           {/* CTA */}
           <button
             type="button"
             onClick={handleNext}
-            style={{ background: '#6B4FBB', color: 'white', border: 'none', borderRadius: 100, padding: '16px 32px', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', marginTop: 8 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#3C3489'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#6B4FBB'; }}
+            disabled={budget >= 100000}
+            style={{ background: budget >= 100000 ? '#9A90BB' : '#6B4FBB', color: 'white', border: 'none', borderRadius: 100, padding: '16px 32px', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, cursor: budget >= 100000 ? 'not-allowed' : 'pointer', transition: 'all 0.2s', marginTop: 16 }}
+            onMouseEnter={e => { if (budget < 100000) (e.currentTarget as HTMLButtonElement).style.background = '#3C3489'; }}
+            onMouseLeave={e => { if (budget < 100000) (e.currentTarget as HTMLButtonElement).style.background = '#6B4FBB'; }}
           >
             Weiter zur Zusammenfassung →
           </button>
