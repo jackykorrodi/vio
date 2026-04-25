@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
-import { calculateImpact } from '@/lib/preislogik';
+import { calculateImpact, coupleBudgetToLaufzeit, getLaufzeitCorridor } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import ImpactIndicator from '@/components/shared/ImpactIndicator';
 import CampaignHint from '@/components/shared/CampaignHint';
@@ -106,6 +106,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [laufzeitWeeks, setLaufzeitWeeks] = useState(() =>
     Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7)
   );
+  const [budgetRef, setBudgetRef] = useState<{ budget: number; days: number }>({
+    budget: initBudget,
+    days: vioData?.packages[initPkg].durationDays ?? 28,
+  });
   const [adjOpen, setAdjOpen] = useState<boolean>(false);
 
   if (!vioData) {
@@ -177,17 +181,25 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       })
     : null;
 
-  // Slider fill percentages
-  const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
-  const durPct    = Math.min(100, ((laufzeitWeeks - 1) / 7) * 100);
+  // Slider fill percentages + corridor
+  const corridor = getLaufzeitCorridor(budget);
+  const laufzeitMinWeeks = Math.ceil(corridor.minDays / 7);
+  const laufzeitMaxWeeks = Math.floor(corridor.maxDays / 7);
+  const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (100000 - 4000)) * 100));
+  const durPct = laufzeitMaxWeeks > laufzeitMinWeeks
+    ? Math.min(100, Math.max(0, ((laufzeitWeeks - laufzeitMinWeeks) / (laufzeitMaxWeeks - laufzeitMinWeeks)) * 100))
+    : 100;
 
   // Feasibility — immer true, Datums-Validierung passiert in StepSummaryPolitik
   const isPkgFeasible = (_key: PkgKey): boolean => true;
 
   const handleSelectPkg = (key: PkgKey) => {
     setSelectedPkg(key);
-    setBudget(vioData.packages[key].finalBudget);
-    setLaufzeitWeeks(Math.round(vioData.packages[key].durationDays / 7));
+    const newBudget = vioData.packages[key].finalBudget;
+    const newDays = vioData.packages[key].durationDays;
+    setBudget(newBudget);
+    setLaufzeitWeeks(Math.round(newDays / 7));
+    setBudgetRef({ budget: newBudget, days: newDays });
   };
 
   const handleNext = () => {
@@ -386,10 +398,19 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   </div>
                   <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
-                    <input type="range" className="sp-range" min={4000} max={150000} step={500} value={budget} onChange={e => setBudget(Number(e.target.value))} />
+                    <input type="range" className="sp-range" min={4000} max={100000} step={500} value={budget} onChange={e => {
+                      const newBudget = Number(e.target.value);
+                      setBudget(newBudget);
+                      setBudgetRef({ budget: newBudget, days: laufzeitWeeks * 7 });
+                      const c = getLaufzeitCorridor(newBudget);
+                      const minW = Math.ceil(c.minDays / 7);
+                      const maxW = Math.floor(c.maxDays / 7);
+                      if (laufzeitWeeks < minW) setLaufzeitWeeks(minW);
+                      if (laufzeitWeeks > maxW) setLaufzeitWeeks(maxW);
+                    }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                    <span>CHF 4&apos;000</span><span>CHF 150&apos;000</span>
+                    <span>CHF 4&apos;000</span><span>CHF 100&apos;000</span>
                   </div>
                 </div>
                 {/* Laufzeit slider */}
@@ -400,10 +421,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   </div>
                   <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
-                    <input type="range" className="sp-range" min={1} max={8} step={1} value={laufzeitWeeks} onChange={e => setLaufzeitWeeks(Number(e.target.value))} />
+                    <input type="range" className="sp-range" min={laufzeitMinWeeks} max={laufzeitMaxWeeks} step={1} value={laufzeitWeeks} onChange={e => {
+                      const newWeeks = Number(e.target.value);
+                      setLaufzeitWeeks(newWeeks);
+                      const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newWeeks * 7);
+                      setBudget(coupled);
+                    }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                    <span>1 Woche</span><span>8 Wochen</span>
+                    <span>{laufzeitMinWeeks} Woche{laufzeitMinWeeks !== 1 ? 'n' : ''}</span><span>{laufzeitMaxWeeks} Wochen</span>
                   </div>
                 </div>
               </div>

@@ -214,6 +214,7 @@ Rollback: `git checkout v0.x-stable`
 
 ## Letzter Stand
 - Datum: 2026-04-25
+- 2.2: Budget↔Laufzeit-Kopplung (^0.75) verdrahtet, dynamischer Laufzeit-Korridor, Budget-Max 100k — StepPackages + StepSummaryPolitik — getestet: ja
 - 2.1: Medienintensität-Slider entfernt (StepPackages + Step2PolitikBudget), Frequenz jetzt Read-only aus calculateImpact, Budget-Max 100k + Calendly Hard Stop bei >= 100k — getestet: ja
 - 1.1: Step1Politik Q1 entfernt (Abstimmung/Wahl/Subtypen), 3 Fragen statt 4, GEMEINDE_NICHT_GEFUNDEN_HINWEIS eingebunden — getestet: ja
 - C.4: Step1Politik.tsx Q3 Regionen-Auswahl erweitert: GEMEINDE_NICHT_GEFUNDEN_HINWEIS bei leerer Suche, Screen-Klassen-Badge (Begrenzt/Display-dominant) bei gewählten Regionen. Paket C vollständig.

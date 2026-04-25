@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { calculateImpact } from '@/lib/preislogik';
+import { calculateImpact, coupleBudgetToLaufzeit, getLaufzeitCorridor } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import doohScreensRaw from '@/lib/dooh-screens.json';
@@ -99,7 +99,10 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
 
   const [budget, setBudget] = useState<number>(initBudget);
   const [laufzeitWeeks, setLaufzeitWeeks] = useState<number>(initLaufzeit);
-  const [frequency, setFrequency] = useState<number>(() => pkg.frequency ?? 5);
+  const [budgetRef, setBudgetRef] = useState<{ budget: number; days: number }>({
+    budget: initBudget,
+    days: initLaufzeit * 7,
+  });
 
   // Derived
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
@@ -139,23 +142,16 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     : 0;
   const displayPersonen = Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
 
-  // Frequency
-  const freqDescMap: Record<number, string> = {
-    1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
-    2: 'Breite Streuung – hohe Unique Reach mit leichter Wiederholung.',
-    3: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
-    4: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
-    5: 'Impact – intensivere Bespielung.',
-    6: 'High Impact – starke Wiederholung für maximale Wirkung.',
-    7: 'Maximum Impact – höchste Frequenz.',
-  };
-  const freqDesc = freqDescMap[frequency] ?? '';
-  const freqFactor = frequency / (pkg.frequency ?? 5);
-  const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
+  const adjustedBudget = budget;
 
-  // Slider fill
-  const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
-  const durPct    = Math.min(100, ((laufzeitWeeks - 1) / 7) * 100);
+  // Slider fill + corridor
+  const corridor = getLaufzeitCorridor(budget);
+  const laufzeitMinWeeks = Math.ceil(corridor.minDays / 7);
+  const laufzeitMaxWeeks = Math.floor(corridor.maxDays / 7);
+  const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (100000 - 4000)) * 100));
+  const durPct = laufzeitMaxWeeks > laufzeitMinWeeks
+    ? Math.min(100, Math.max(0, ((laufzeitWeeks - laufzeitMinWeeks) / (laufzeitMaxWeeks - laufzeitMinWeeks)) * 100))
+    : 100;
 
   const handleNext = () => {
     updateBriefing({
@@ -311,10 +307,19 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
               </div>
               <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
-                <input type="range" className="ss-range" min={4000} max={150000} step={500} value={budget} onChange={e => setBudget(Number(e.target.value))} />
+                <input type="range" className="ss-range" min={4000} max={100000} step={500} value={budget} onChange={e => {
+                  const newBudget = Number(e.target.value);
+                  setBudget(newBudget);
+                  setBudgetRef({ budget: newBudget, days: laufzeitWeeks * 7 });
+                  const c = getLaufzeitCorridor(newBudget);
+                  const minW = Math.ceil(c.minDays / 7);
+                  const maxW = Math.floor(c.maxDays / 7);
+                  if (laufzeitWeeks < minW) setLaufzeitWeeks(minW);
+                  if (laufzeitWeeks > maxW) setLaufzeitWeeks(maxW);
+                }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                <span>CHF 4&apos;000</span><span>CHF 150&apos;000</span>
+                <span>CHF 4&apos;000</span><span>CHF 100&apos;000</span>
               </div>
             </div>
 
@@ -326,37 +331,16 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
               </div>
               <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
-                <input type="range" className="ss-range" min={1} max={8} step={1} value={laufzeitWeeks} onChange={e => setLaufzeitWeeks(Number(e.target.value))} />
+                <input type="range" className="ss-range" min={laufzeitMinWeeks} max={laufzeitMaxWeeks} step={1} value={laufzeitWeeks} onChange={e => {
+                  const newWeeks = Number(e.target.value);
+                  setLaufzeitWeeks(newWeeks);
+                  const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newWeeks * 7);
+                  setBudget(coupled);
+                }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                <span>1 Woche</span><span>8 Wochen</span>
+                <span>{laufzeitMinWeeks} Woche{laufzeitMinWeeks !== 1 ? 'n' : ''}</span><span>{laufzeitMaxWeeks} Wochen</span>
               </div>
-            </div>
-
-            {/* Frequenz-Slider */}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 13, color: '#7A7596' }}>Medienintensität</span>
-                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                  <div
-                    style={{ width: 16, height: 16, borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
-                    onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
-                    onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
-                  >i</div>
-                  <div style={{ display: 'none', position: 'absolute', left: 22, top: -6, width: 220, background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
-                    Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
-                  </div>
-                </div>
-                <span style={{ marginLeft: 'auto', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{frequency}×</span>
-              </div>
-              <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${((frequency - 1) / 6) * 100}%`, pointerEvents: 'none' }} />
-                <input type="range" className="ss-range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6, marginBottom: 4 }}>
-                <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#7A7596', minHeight: 16 }}>{freqDesc}</div>
             </div>
           </div>
 
