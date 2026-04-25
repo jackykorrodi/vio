@@ -352,39 +352,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             ))}
           </div>
 
-          {/* ── Shared: Wirkungsindikator dark card ── */}
-          {(() => {
-            const impact = liveImpact;
-            const pkg = vioData.packages[selectedPkg];
-            return (
-              <div id="wirkungsindikator" style={{ background: '#2D1F52', borderRadius: 16, padding: '24px 28px', margin: '20px 0', color: 'white' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Deine Botschaft erreicht</div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 4 }}>
-                  {impact
-                    ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}`
-                    : `~${fmtNum(pkg.targetReachPeople)}`}
-                </div>
-                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 20 }}>{inhabitants}</div>
-                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                    Frequenz: Ø {impact ? Math.round(impact.frequencyCampaign) : (pkg.frequency ?? 5)}× pro Person
-                  </div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                    Pro Woche: ≈ {impact ? impact.frequencyWeekly.toFixed(1) : (pkg.frequency ?? 5)}× / Woche
-                  </div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                    Zielgruppe: {fmtNum(impact?.stimmTotal ?? vioData.eligibleVotersTotal)} Stimmber.
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
           {pfad === 'A' ? (
-            /* ─── PFAD A: Eigenes Budget — Slider + Wirkungsindikator ─── */
+            /* ─── PFAD A: Wirkungskonfigurator ─── */
             <>
-              {/* Direkte Slider */}
-              <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+              {/* Kampagnen-Steuerung */}
+              <div style={{ background: '#F5F2FF', borderRadius: 16, padding: '24px', border: '0.5px solid rgba(107,79,187,0.1)', marginBottom: 16 }}>
+                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6B4FBB', marginBottom: 16 }}>Kampagnen-Steuerung</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 {/* Budget slider */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
@@ -427,18 +401,122 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     <span>{laufzeitMinWeeks} Woche{laufzeitMinWeeks !== 1 ? 'n' : ''}</span><span>{laufzeitMaxWeeks} Wochen</span>
                   </div>
                 </div>
+                </div>
               </div>
 
-              {/* Hinweis box */}
+              {/* Deine Wirkung */}
+              {liveImpact && (
+                <>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6B4FBB', marginBottom: 10 }}>Deine Wirkung</div>
+
+                  {/* Metric cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <div style={{ background: 'white', border: '0.5px solid rgba(107,79,187,0.15)', borderRadius: 12, padding: 20 }}>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7596', marginBottom: 8 }}>Abdeckung</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 32, fontWeight: 800, color: '#6B4FBB', lineHeight: 1 }}>{liveImpact.reachVonPct}–{liveImpact.reachBisPct}</span>
+                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>%</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#7A7596', marginTop: 6 }}>{fmtNum(liveImpact.reachVon)}–{fmtNum(liveImpact.reachBis)} {inhabitants}</div>
+                    </div>
+                    <div style={{ background: 'white', border: '0.5px solid rgba(107,79,187,0.15)', borderRadius: 12, padding: 20 }}>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7596', marginBottom: 8 }}>Kontaktdruck</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 32, fontWeight: 800, color: '#6B4FBB', lineHeight: 1 }}>{Math.round(liveImpact.frequencyCampaign)}</span>
+                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>×</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#7A7596', marginTop: 6 }}>Kontakte pro Person (ø) · {liveImpact.frequencyWeekly.toFixed(1)}× / Woche</div>
+                    </div>
+                  </div>
+
+                  {/* Zeitraum */}
+                  {campaignStartISO && (
+                    <div style={{ background: 'white', border: '0.5px solid rgba(107,79,187,0.15)', borderRadius: 12, padding: 20, marginBottom: 12 }}>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7596', marginBottom: 12 }}>Kampagnen-Zeitraum</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: 10, color: '#7A7596', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Start</div>
+                          <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{fmtShort(campaignStartISO)}</div>
+                        </div>
+                        <div style={{ color: '#6B4FBB', fontSize: 13, fontWeight: 600 }}>{laufzeitWeeks * 7} Tage</div>
+                        <div style={{ textAlign: 'right' as const }}>
+                          <div style={{ fontSize: 10, color: '#7A7596', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{briefing.votingDate ? 'Abstimmung' : 'Ende'}</div>
+                          <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{fmtShort(campaignEndISO)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Budget-Aufteilung */}
+                  <div style={{ background: 'white', border: '0.5px solid rgba(107,79,187,0.15)', borderRadius: 12, padding: 20, marginBottom: 12 }}>
+                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#7A7596', marginBottom: 14 }}>Budget-Aufteilung</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <span style={{ fontWeight: 600, minWidth: 60, fontSize: 13, color: '#2D1F52' }}>DOOH</span>
+                      <div style={{ flex: 1, height: 24, background: '#F5F2FF', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#6B4FBB', width: `${Math.round(liveImpact.doohShare * 100)}%`, transition: 'width 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8 }}>
+                          <span style={{ color: 'white', fontSize: 10, fontWeight: 700 }}>{Math.round(liveImpact.doohShare * 100)}%</span>
+                        </div>
+                      </div>
+                      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, minWidth: 90, textAlign: 'right' as const, fontSize: 13, color: '#2D1F52' }}>{fmtCHF(budget * liveImpact.doohShare)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontWeight: 600, minWidth: 60, fontSize: 13, color: '#2D1F52' }}>Display</span>
+                      <div style={{ flex: 1, height: 24, background: '#F5F2FF', borderRadius: 6, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: '#B8A9E8', width: `${Math.round(liveImpact.displayShare * 100)}%`, transition: 'width 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8 }}>
+                          <span style={{ color: 'white', fontSize: 10, fontWeight: 700 }}>{Math.round(liveImpact.displayShare * 100)}%</span>
+                        </div>
+                      </div>
+                      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, minWidth: 90, textAlign: 'right' as const, fontSize: 13, color: '#2D1F52' }}>{fmtCHF(budget * liveImpact.displayShare)}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 8 }}>Zielgruppe: {fmtNum(liveImpact.stimmTotal)} Stimmberechtigte</div>
+                </>
+              )}
+
+              {/* Hinweis */}
               {liveImpact?.hinweise[0] && (
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 13, lineHeight: 1.5, marginTop: 4 }}>
                   {liveImpact.hinweise[0].text}
                 </div>
               )}
+
+              {/* Disclaimer */}
+              <div style={{ background: 'rgba(24,95,165,0.06)', borderLeft: '3px solid #185FA5', padding: '14px 16px', borderRadius: '0 8px 8px 0', fontSize: 12, lineHeight: 1.6, color: '#0C447C', marginTop: 12 }}>
+                Die Wirkung ist eine fundierte Modellrechnung, keine exakte Vorhersage. Display-Kontakte sind messbar, DOOH-Kontakte basieren auf erprobten Kennzahlen der Schweizer Mediaplanung.
+              </div>
             </>
           ) : (
             /* ─── PFAD B: Paket-Karten → Wirkungsindikator → Accordion ─── */
             <>
+              {/* Dark Wirkungsindikator */}
+              {(() => {
+                const impact = liveImpact;
+                const pkg = vioData.packages[selectedPkg];
+                return (
+                  <div id="wirkungsindikator" style={{ background: '#2D1F52', borderRadius: 16, padding: '24px 28px', margin: '0 0 20px 0', color: 'white' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Deine Botschaft erreicht</div>
+                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 4 }}>
+                      {impact
+                        ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}`
+                        : `~${fmtNum(pkg.targetReachPeople)}`}
+                    </div>
+                    <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 20 }}>{inhabitants}</div>
+                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                        Frequenz: Ø {impact ? Math.round(impact.frequencyCampaign) : (pkg.frequency ?? 5)}× pro Person
+                      </div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                        Pro Woche: ≈ {impact ? impact.frequencyWeekly.toFixed(1) : (pkg.frequency ?? 5)}× / Woche
+                      </div>
+                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                        Zielgruppe: {fmtNum(impact?.stimmTotal ?? vioData.eligibleVotersTotal)} Stimmber.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* 3 Paket-Karten */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
                 {PKG_ORDER.map(key => {
