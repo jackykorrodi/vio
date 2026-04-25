@@ -6,6 +6,9 @@ import { computeStartDateISO, getMinBudget } from '@/lib/vio-paketlogik';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
 import ReichweiteKacheln from '@/components/ReichweiteKacheln';
 import doohScreensRaw from '@/lib/dooh-screens.json';
+import { calculateImpact } from '@/lib/preislogik';
+import { ALL_REGIONS } from '@/lib/regions';
+import type { Region } from '@/lib/regions';
 
 type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
 const DOOH_DATA_POLITIK = doohScreensRaw as DoohEntry[];
@@ -78,7 +81,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [endISO,     setEndISO]     = useState(() => computeEnd());
   const [budget,     setBudget]     = useState(() => vioData?.packages['praesenz'].finalBudget ?? 9500);
   const [dateError,  setDateError]  = useState<string | null>(null);
-  const [frequency,  setFrequency]  = useState<number>(() => pkg?.frequency ?? 5);
 
   // Per-card computed start dates (for display on cards)
   const cardStartISO = (key: PkgKey) => computeStart(key);
@@ -91,7 +93,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     const newPkgBudget = vioData?.packages[key].finalBudget ?? budget;
     const newMin = getMinBudget(key);
     setBudget(Math.max(newMin, newPkgBudget));      // nie unter Min
-    setFrequency(vioData?.packages[key].frequency ?? 5);
   };
 
   const handleReset = () => handleSelectPkg(selectedPkg);
@@ -109,20 +110,20 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
   const weeks      = startISO && endISO ? diffWeeks(startISO, endISO) : Math.round(pkg.durationDays / 7);
   const minBudget  = getMinBudget(selectedPkg);
-  const budgetPct  = Math.min(100, Math.max(0, ((budget - minBudget) / (200000 - minBudget)) * 100));
+  const budgetPct  = Math.min(100, Math.max(0, ((budget - minBudget) / (100000 - minBudget)) * 100));
+  const adjustedBudget = budget;
 
-  const freqDescMap: Record<number, string> = {
-    1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
-    2: 'Breite Streuung – hohe Unique Reach mit leichter Wiederholung.',
-    3: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
-    4: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
-    5: 'Impact – intensivere Bespielung.',
-    6: 'High Impact – starke Wiederholung für maximale Wirkung.',
-    7: 'Maximum Impact – höchste Frequenz.',
-  };
-  const freqDesc = freqDescMap[frequency] ?? '';
-  const freqFactor = frequency / (pkg?.frequency ?? 5);
-  const adjustedBudget = Math.round(budget * freqFactor / 500) * 500;
+  const selectedRegionsFull: Region[] = (briefing.selectedRegions ?? []).map(r => {
+    const match = ALL_REGIONS.find(x => x.name === r.name);
+    if (match) return match;
+    return {
+      name: r.name,
+      type: (r.type as 'stadt' | 'kanton' | 'schweiz') ?? 'stadt',
+      kanton: r.kanton ?? 'CH',
+      pop: r.stimm * 2,
+      stimm: r.stimm,
+    };
+  });
 
   const MIXED_CPM = 39.5;
   const selectedPkgBudget = vioData?.packages[selectedPkg].finalBudget ?? 0;
@@ -528,7 +529,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   type="range"
                   className="s2-range-input"
                   min={minBudget}
-                  max={200000}
+                  max={100000}
                   step={500}
                   value={budget}
                   onChange={e => setBudget(Number(e.target.value))}
@@ -536,41 +537,53 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </div>
               <div className="s2-sl-range">
                 <span>CHF {minBudget.toLocaleString('de-CH')}</span>
-                <span>CHF 200&apos;000</span>
+                <span>CHF 100&apos;000</span>
               </div>
             </div>
 
-            {/* ── Frequenz-Slider ── */}
-            <div style={{ marginTop: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '13px', fontWeight: 600, color: '#5A4A7A' }}>
-                  Medienintensität
-                </span>
-                <div style={{ position: 'relative', display: 'inline-flex' }}>
-                  <div
-                    style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
-                    onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
-                    onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
-                  >i</div>
-                  <div style={{ display: 'none', position: 'absolute', left: '22px', top: '-6px', width: '220px', background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: '10px', padding: '10px 12px', fontSize: '12px', color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
-                    Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
-                  </div>
+            {/* ── Calendly Hard Stop bei >= 100k ── */}
+            {budget >= 100000 && (
+              <div style={{ padding: '16px 20px', background: '#F0ECFA', borderRadius: 12, border: '1px solid rgba(107,79,187,0.2)', marginTop: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#2D1F52', marginBottom: 6 }}>
+                  Grosse Kampagne geplant?
                 </div>
+                <div style={{ fontSize: 13, color: '#5A4A7A', marginBottom: 12, lineHeight: 1.55 }}>
+                  Ab CHF 100&apos;000 planen wir Kampagnen persönlich. Buch ein Gespräch — kostenlos und unverbindlich.
+                </div>
+                <a
+                  href={process.env.NEXT_PUBLIC_CALENDLY_URL ?? 'https://calendly.com/vio'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#6B4FBB', color: '#fff', borderRadius: 50, padding: '12px 24px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
+                >
+                  Gespräch buchen →
+                </a>
               </div>
-              <input
-                type="range"
-                min={1} max={7} step={1}
-                value={frequency}
-                onChange={e => setFrequency(Number(e.target.value))}
-                style={{ width: '100%' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#B8ADDA', marginTop: '4px', marginBottom: '6px' }}>
-                <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
-              </div>
-              <div style={{ fontSize: '12px', color: '#7A7596', minHeight: '16px' }}>
-                {freqDesc}
-              </div>
-            </div>
+            )}
+
+            {/* ── Kontaktfrequenz (Read-only, aus calculateImpact) ── */}
+            {(() => {
+              const impact = selectedRegionsFull.length > 0
+                ? calculateImpact({
+                    budget: budget,
+                    laufzeitDays: weeks * 7,
+                    regions: selectedRegionsFull,
+                  })
+                : null;
+              const fWeekly = impact?.frequencyWeekly ?? pkg.frequency ?? 5;
+              const fCampaign = Math.round(fWeekly * weeks);
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: 'rgba(107,79,187,0.04)', borderRadius: 10, border: '1px solid rgba(107,79,187,0.10)', marginTop: 12 }}>
+                  <span style={{ fontSize: 13, color: '#7A7596' }}>Ø Kontaktfrequenz</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 700, color: '#2D1F52' }}>
+                    {fCampaign}× pro Person
+                  </span>
+                  <span style={{ fontSize: 12, color: '#9A90BB' }}>
+                    (≈ {fWeekly.toFixed(1)}× / Woche)
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* ── Summary bar ── */}
@@ -627,7 +640,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
           {/* ── CTA ── */}
           <div className="s2-cta-row">
-            <button type="button" className="s2-btn" onClick={handleNext}>
+            <button type="button" className="s2-btn" onClick={handleNext} disabled={budget >= 100000} style={budget >= 100000 ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>
               Weiter zu den Werbemitteln
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

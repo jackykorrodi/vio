@@ -106,7 +106,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [laufzeitWeeks, setLaufzeitWeeks] = useState(() =>
     Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7)
   );
-  const [frequency, setFrequency] = useState<number>(() => vioData?.packages[initPkg].frequency ?? 4);
   const [adjOpen, setAdjOpen] = useState<boolean>(false);
 
   if (!vioData) {
@@ -156,10 +155,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       regions: selectedRegionsFull,
     });
 
-    // Frequenz-Slider ist UX-Skalierung auf Budget (nicht Teil der Reach-Formel)
-    const pkgFreq = p.frequency ?? 4;
-    const freqFactor = frequency / pkgFreq;
-    const adjBudget = Math.max(4000, Math.round(budget * freqFactor / 500) * 500);
+    const adjBudget = budget;
 
     return {
       budget: adjBudget,
@@ -181,18 +177,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       })
     : null;
 
-  // Frequency description
-  const freqDescMap: Record<number, string> = {
-    1: 'Awareness – maximale Streuung, jede Person sieht es einmal.',
-    2: 'Breite Streuung – hohe Unique Reach mit leichter Wiederholung.',
-    3: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
-    4: 'Standard – gute Balance zwischen Reichweite und Erinnerungswirkung.',
-    5: 'Impact – intensivere Bespielung.',
-    6: 'High Impact – starke Wiederholung für maximale Wirkung.',
-    7: 'Maximum Impact – höchste Frequenz.',
-  };
-  const freqDesc = freqDescMap[frequency] ?? '';
-
   // Slider fill percentages
   const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (150000 - 4000)) * 100));
   const durPct    = Math.min(100, ((laufzeitWeeks - 1) / 7) * 100);
@@ -204,7 +188,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     setSelectedPkg(key);
     setBudget(vioData.packages[key].finalBudget);
     setLaufzeitWeeks(Math.round(vioData.packages[key].durationDays / 7));
-    setFrequency(vioData.packages[key].frequency ?? 4);
   };
 
   const handleNext = () => {
@@ -427,31 +410,31 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             )}
           </div>
 
-          {/* ── Medienintensität (immer sichtbar, separat) ── */}
-          <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 13, color: '#7A7596' }}>Medienintensität</span>
-              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <div
-                  style={{ width: 16, height: 16, borderRadius: '50%', background: '#F0ECFA', border: '0.5px solid rgba(107,79,187,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontStyle: 'italic', color: '#7A7596', cursor: 'default' }}
-                  onMouseEnter={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'block'; }}
-                  onMouseLeave={e => { const t = e.currentTarget.nextElementSibling as HTMLElement; if (t) t.style.display = 'none'; }}
-                >i</div>
-                <div style={{ display: 'none', position: 'absolute', left: 22, top: -6, width: 220, background: '#fff', border: '0.5px solid rgba(107,79,187,0.2)', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#7A7596', zIndex: 20, lineHeight: 1.55 }}>
-                  Die Frequenz bestimmt, wie oft eine einzelne Person deine Botschaft durchschnittlich sieht. Höhere Frequenz = stärkere Erinnerungswirkung, das Budget passt sich entsprechend an.
-                </div>
+          {/* ── Kontaktfrequenz (Read-only, aus calculateImpact) ── */}
+          {(() => {
+            const impact = selectedRegionsFull.length > 0
+              ? calculateImpact({
+                  budget: budget,
+                  laufzeitDays: laufzeitWeeks * 7,
+                  regions: selectedRegionsFull,
+                })
+              : null;
+            const fWeekly = impact?.frequencyWeekly
+              ?? vioData.packages[selectedPkg].frequency
+              ?? 5;
+            const fCampaign = Math.round(fWeekly * laufzeitWeeks);
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: 'rgba(107,79,187,0.04)', borderRadius: 10, border: '1px solid rgba(107,79,187,0.10)', marginTop: 12 }}>
+                <span style={{ fontSize: 13, color: '#7A7596' }}>Ø Kontaktfrequenz</span>
+                <span style={{ marginLeft: 'auto', fontSize: 15, fontWeight: 700, color: '#2D1F52' }}>
+                  {fCampaign}× pro Person
+                </span>
+                <span style={{ fontSize: 12, color: '#9A90BB' }}>
+                  (≈ {fWeekly.toFixed(1)}× / Woche)
+                </span>
               </div>
-              <span style={{ marginLeft: 'auto', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{frequency}×</span>
-            </div>
-            <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${((frequency - 1) / 6) * 100}%`, pointerEvents: 'none' }} />
-              <input type="range" className="sp-range" min={1} max={7} step={1} value={frequency} onChange={e => setFrequency(Number(e.target.value))} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6, marginBottom: 4 }}>
-              <span>1× Awareness</span><span>4× Standard</span><span>7× Impact</span>
-            </div>
-            <div style={{ fontSize: 12, color: '#7A7596', minHeight: 16 }}>{freqDesc}</div>
-          </div>
+            );
+          })()}
 
           {/* ── Paketbudget live (angepasst) ── */}
           <div style={{ background: '#EEEDFE', borderRadius: 12, padding: '12px 16px', marginTop: 12, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
