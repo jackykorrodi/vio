@@ -85,23 +85,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const userBudget = briefing.recommendedBudget ?? 0;
   const hasBudget = userBudget >= 4000;
 
-  const initPkg = (() => {
-    if (!hasBudget) return (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
-    // Wähle das Paket dessen finalBudget am nächsten zum userBudget liegt (von unten)
-    const budgets: [PkgKey, number][] = [
-      ['sichtbar', vioData?.packages.sichtbar.finalBudget ?? 0],
-      ['praesenz', vioData?.packages.praesenz.finalBudget ?? 0],
-      ['dominanz', vioData?.packages.dominanz.finalBudget ?? 0],
-    ];
-    // Nimm das grösste Paket das <= userBudget ist, sonst sichtbar
-    const fit = budgets.filter(([, b]) => b <= userBudget);
-    return (fit.length > 0 ? fit[fit.length - 1][0] : 'sichtbar') as PkgKey;
-  })();
+  const initPkg = (
+    briefing.selectedPackage ??
+    vioData?.recommendedPackage ??
+    'praesenz'
+  ) as PkgKey;
   const [selectedPkg, setSelectedPkg] = useState<PkgKey>(initPkg);
   const [showAllPackets, setShowAllPackets] = useState<boolean>(!hasBudget);
 
-  // FIX 2: Budget/Laufzeit/Frequenz slider state
-  const initBudget = userBudget >= 4000 ? userBudget : (vioData?.packages[initPkg]?.finalBudget ?? 9500);
+  const initBudget = vioData?.packages[initPkg]?.finalBudget ?? 9500;
   const [budget, setBudget] = useState<number>(initBudget);
   const [laufzeitWeeks, setLaufzeitWeeks] = useState(() =>
     Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7)
@@ -301,15 +293,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           {hasBudget && !showAllPackets && (
             <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#3C3489', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <span>
-                Basierend auf deinem Budget von <strong>{fmtCHF(userBudget)}</strong> haben wir das passende Paket vorausgewählt.
-                {userBudget < vioData.packages[vioData.recommendedPackage as PkgKey].finalBudget && (
-                  <span style={{ display: 'block', color: '#633806', marginTop: 4, fontSize: 12 }}>
-                    Dein Budget ist etwas knapp für diese Region — mit {fmtCHF(vioData.packages[vioData.recommendedPackage as PkgKey].finalBudget)} erzielst du deutlich mehr Wirkung.
-                  </span>
-                )}
+                Du hast <strong>{fmtCHF(userBudget)}</strong> als Richtwert angegeben — wir haben das passende Paket vorgewählt. Du kannst Budget und Laufzeit unten anpassen.
               </span>
               <button type="button" onClick={() => setShowAllPackets(true)} style={{ background: 'none', border: 'none', color: '#6B4FBB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                Anderes Paket wählen →
+                Alle Pakete ansehen →
               </button>
             </div>
           )}
