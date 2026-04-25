@@ -93,16 +93,25 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     'praesenz'
   ) as PkgKey;
   const [selectedPkg, setSelectedPkg] = useState<PkgKey>(initPkg);
-  const [showAllPackets, setShowAllPackets] = useState<boolean>(!hasBudget);
+  const [pfad, setPfad] = useState<'A' | 'B'>(hasBudget ? 'A' : 'B');
 
-  const initBudget = vioData?.packages[initPkg]?.finalBudget ?? 9500;
+  const initBudgetA = Math.max(4000, briefing.recommendedBudget ?? 4000);
+  const initBudgetB = vioData?.packages[initPkg]?.finalBudget ?? 9500;
+  const initBudget = hasBudget ? initBudgetA : initBudgetB;
+  const initDays = hasBudget
+    ? getLaufzeitCorridor(initBudgetA).minDays
+    : (vioData?.packages[initPkg].durationDays ?? 28);
   const [budget, setBudget] = useState<number>(initBudget);
-  const [laufzeitWeeks, setLaufzeitWeeks] = useState(() =>
-    Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7)
-  );
+  const [laufzeitWeeks, setLaufzeitWeeks] = useState(() => {
+    if (hasBudget) {
+      const c = getLaufzeitCorridor(initBudgetA);
+      return Math.ceil(c.minDays / 7);
+    }
+    return Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7);
+  });
   const [budgetRef, setBudgetRef] = useState<{ budget: number; days: number }>({
     budget: initBudget,
-    days: vioData?.packages[initPkg].durationDays ?? 28,
+    days: initDays,
   });
   const [adjOpen, setAdjOpen] = useState<boolean>(false);
 
@@ -187,6 +196,25 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // Feasibility — immer true, Datums-Validierung passiert in StepSummaryPolitik
   const isPkgFeasible = (_key: PkgKey): boolean => true;
 
+  const handleSwitchPfad = (newPfad: 'A' | 'B') => {
+    if (newPfad === pfad) return;
+    setPfad(newPfad);
+    if (newPfad === 'A') {
+      const b = Math.max(4000, briefing.recommendedBudget ?? 4000);
+      const c = getLaufzeitCorridor(b);
+      const w = Math.ceil(c.minDays / 7);
+      setBudget(b);
+      setLaufzeitWeeks(w);
+      setBudgetRef({ budget: b, days: w * 7 });
+    } else {
+      const b = vioData!.packages[selectedPkg].finalBudget;
+      const d = vioData!.packages[selectedPkg].durationDays;
+      setBudget(b);
+      setLaufzeitWeeks(Math.round(d / 7));
+      setBudgetRef({ budget: b, days: d });
+    }
+  };
+
   const handleSelectPkg = (key: PkgKey) => {
     setSelectedPkg(key);
     const newBudget = vioData.packages[key].finalBudget;
@@ -194,6 +222,18 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     setBudget(newBudget);
     setLaufzeitWeeks(Math.round(newDays / 7));
     setBudgetRef({ budget: newBudget, days: newDays });
+  };
+
+  const handleNextA = () => {
+    updateBriefing({
+      budget,
+      laufzeit:       laufzeitWeeks,
+      selectedPackage: 'praesenz',
+      reach:          liveImpact?.reachMitte ?? 0,
+      reachVonPct:    liveImpact?.reachVonPct ?? 0,
+      reachBisPct:    liveImpact?.reachBisPct ?? 0,
+    });
+    nextStep();
   };
 
   const handleNext = () => {
@@ -287,6 +327,31 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Reichweite & Paket</div>
 
+          {/* ── Pfad-Toggle ── */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            {(['A', 'B'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleSwitchPfad(key)}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: 100,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  background: pfad === key ? '#6B4FBB' : 'transparent',
+                  color: pfad === key ? 'white' : '#6B4FBB',
+                  border: '1.5px solid #6B4FBB',
+                }}
+              >
+                {key === 'A' ? 'Eigenes Budget' : 'Pakete ansehen'}
+              </button>
+            ))}
+          </div>
+
           {/* ── Shared: Wirkungsindikator dark card ── */}
           {(() => {
             const impact = liveImpact;
@@ -315,19 +380,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             );
           })()}
 
-          {hasBudget && !showAllPackets ? (
-            /* ─── PFAD A: hasBudget — direkte Slider + Wirkungsindikator ─── */
+          {pfad === 'A' ? (
+            /* ─── PFAD A: Eigenes Budget — Slider + Wirkungsindikator ─── */
             <>
-              {/* Banner */}
-              <div style={{ background: '#EEEDFE', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#3C3489', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <span>
-                  Du hast <strong>{fmtCHF(userBudget)}</strong> als Richtwert angegeben — wir haben das passende Paket vorgewählt. Du kannst Budget und Laufzeit unten anpassen.
-                </span>
-                <button type="button" onClick={() => setShowAllPackets(true)} style={{ background: 'none', border: 'none', color: '#6B4FBB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  Alle Pakete ansehen →
-                </button>
-              </div>
-
               {/* Direkte Slider */}
               <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 {/* Budget slider */}
@@ -439,13 +494,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 })}
               </div>
 
-              {/* Zurück zur Vorauswahl */}
-              {hasBudget && showAllPackets && (
-                <button type="button" onClick={() => setShowAllPackets(false)} style={{ background: 'none', border: 'none', color: '#7A7596', fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
-                  ← Zurück zur Vorauswahl
-                </button>
-              )}
-
               {/* Budget & Laufzeit accordion */}
               <div style={{ marginTop: 16 }}>
                 <div
@@ -527,7 +575,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           {/* CTA */}
           <button
             type="button"
-            onClick={handleNext}
+            onClick={pfad === 'A' ? handleNextA : handleNext}
             disabled={budget >= 100000}
             style={{ background: budget >= 100000 ? '#9A90BB' : '#6B4FBB', color: 'white', border: 'none', borderRadius: 100, padding: '16px 32px', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, cursor: budget >= 100000 ? 'not-allowed' : 'pointer', transition: 'all 0.2s', marginTop: 16 }}
             onMouseEnter={e => { if (budget < 100000) (e.currentTarget as HTMLButtonElement).style.background = '#3C3489'; }}
