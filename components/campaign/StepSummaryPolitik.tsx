@@ -88,17 +88,22 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   }
 
   const pkg = vioData.packages[selectedPkg];
+
+  // Step 2 ist Source of Truth: budget/laufzeit/freq werden dort konsistent zum gewählten Paket gesetzt.
+  // Wir übernehmen diese Werte direkt. Fallback nur falls Step 2 noch nie durchlaufen wurde (Edge-Case Resume).
   const initBudget = briefing.budget && briefing.budget > 0
     ? briefing.budget
-    : (briefing.recommendedBudget && briefing.recommendedBudget > 0
-        ? briefing.recommendedBudget
-        : pkg.finalBudget);
+    : pkg.finalBudget;
   const initLaufzeit = briefing.laufzeit && briefing.laufzeit > 0
     ? briefing.laufzeit
     : Math.round(pkg.durationDays / 7);
+  const initFrequency = briefing.freq && briefing.freq > 0
+    ? briefing.freq
+    : (pkg.frequency ?? 5);
 
   const [budget, setBudget] = useState<number>(initBudget);
   const [laufzeitWeeks, setLaufzeitWeeks] = useState<number>(initLaufzeit);
+  const [frequency, setFrequency] = useState<number>(initFrequency);
   const [budgetRef, setBudgetRef] = useState<{ budget: number; days: number }>({
     budget: initBudget,
     days: initLaufzeit * 7,
@@ -157,6 +162,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     updateBriefing({
       budget:      adjustedBudget,
       laufzeit:    laufzeitWeeks,
+      freq:        frequency,
       startDate:   campaignStartISO || todayISO(),
       reach:       impact?.reachMitte ?? pkg.targetReachPeople,
       reachVonPct: impact?.reachVonPct ?? 0,
