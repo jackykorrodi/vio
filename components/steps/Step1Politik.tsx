@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
-import { filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen, GEMEINDE_NICHT_GEFUNDEN_HINWEIS } from '@/lib/region-buchbarkeit';
+import { filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen } from '@/lib/region-buchbarkeit';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -189,16 +189,11 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
   // ─── Region search ────────────────────────────────────────────────────────
 
   const filteredRegions = useMemo(() => {
-    if (regionQuery.length === 0) return [];
-    const q = regionQuery.toLowerCase();
-    const matched = ALL_REGIONS.filter(r =>
-      r.name.toLowerCase().includes(q) &&
-      !regions.find(x => x.name === r.name)
-    );
-    const buchbar = matched.filter(r =>
-      r.type !== 'stadt' || filterBuchbareRegionen([r]).length > 0
-    );
-    return buchbar.slice(0, 12);
+    const q = regionQuery.trim().toLowerCase();
+    return ALL_REGIONS
+      .filter(r => !regions.some(s => s.name === r.name))
+      .filter(r => r.type !== 'stadt' || filterBuchbareRegionen([r]).length > 0)
+      .filter(r => !q || r.name.toLowerCase().includes(q));
   }, [regionQuery, regions]);
 
   const addRegion = (r: Region) => {
@@ -652,15 +647,31 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                 </div>
 
                 {/* Dropdown */}
-                {ddOpen && (regionQuery.length > 0) && (
+                {ddOpen && (
                   <div style={{
                     background: WHITE, border: `1.5px solid ${BORDER2}`, borderRadius: 12,
-                    boxShadow: SHADOW_H, overflow: 'hidden', maxHeight: 210, overflowY: 'auto' as const,
+                    boxShadow: SHADOW_H, overflow: 'hidden', maxHeight: 280, overflowY: 'auto' as const,
                     marginBottom: 14,
                   }}>
                     {filteredRegions.length === 0 ? (
-                      <div style={{ padding: '14px 16px', fontSize: 13, color: '#7A7596', lineHeight: 1.6 }}>
-                        {GEMEINDE_NICHT_GEFUNDEN_HINWEIS}
+                      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: INK }}>Region nicht gefunden?</div>
+                        <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5, marginBottom: 4 }}>
+                          Kein Problem — wir haben fast immer eine Lösung. Schreib uns kurz.
+                        </div>
+                        <a
+                          href="mailto:hello@vio.ch"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            fontSize: 13, fontWeight: 600, color: V,
+                            textDecoration: 'none',
+                            background: V_DIM2, borderRadius: 8,
+                            padding: '8px 12px', width: 'fit-content',
+                          }}
+                          onMouseDown={e => e.preventDefault()}
+                        >
+                          hello@vio.ch kontaktieren →
+                        </a>
                       </div>
                     ) : filteredRegions.map(r => (
                       <div
