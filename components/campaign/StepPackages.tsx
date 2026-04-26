@@ -1,57 +1,211 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
-import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
-import { calculateImpact, coupleBudgetToLaufzeit, getLaufzeitCorridor } from '@/lib/preislogik';
+import {
+  calculateImpact, buildPackages, getLaufzeitCorridor, coupleBudgetToLaufzeit,
+} from '@/lib/preislogik';
+import type { PaketKey, PakeResult, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
+import { getInhabitants } from '@/lib/vio-inhabitants-map';
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const T = {
+  violet:      '#6B4FBB',
+  violetDeep:  '#5A3FA8',
+  ink:         '#2D1F52',
+  slate:       '#7A7596',
+  bg:          '#F7F5FF',
+  card:        '#FFFFFF',
+  line:        '#E8E4F5',
+  lineStrong:  '#D5CDEC',
+  highlight:   '#F0EBFF',
+  warn:        '#C97A2B',
+  warnBg:      '#FFF6E8',
+  infoBg:      '#EEF1FE',
+  infoText:    '#3B4A87',
+  good:        '#5B8C5A',
+  goodBg:      '#EEF6EE',
+} as const;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmtNum(n: number): string {
-  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u2019');
+  return Math.round(n).toLocaleString('de-CH');
+}
+function fmtCHF(n: number): string {
+  return 'CHF ' + Math.round(n).toLocaleString('de-CH');
+}
+const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function fmtDateShort(d: Date): string {
+  return `${d.getDate()}. ${MONTHS[d.getMonth()]}`;
+}
+function addDaysToDate(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
 }
 
-type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
-const PKG_ORDER: PkgKey[] = ['sichtbar', 'praesenz', 'dominanz'];
+// ─── Package cards sub-component ─────────────────────────────────────────────
+const PKG_ORDER: PaketKey[] = ['sichtbar', 'praesenz', 'dominanz'];
+const PKG_SUBTITLE: Record<PaketKey, string> = {
+  sichtbar: 'Sichtbarkeit aufbauen',
+  praesenz: 'Optimal in Meinungsbildungsphase',
+  dominanz: 'Maximale Präsenz',
+};
 
-// ─── Date helpers ─────────────────────────────────────────────────────────────
-function addDays(iso: string, n: number): string {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
+function PackageCards({ packages, selectedPkg, onChange }: {
+  packages: PakeResult;
+  selectedPkg: PaketKey;
+  onChange: (key: PaketKey) => void;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 18 }}>
+      {PKG_ORDER.map(key => {
+        const p = packages[key];
+        const isSel = selectedPkg === key;
+        const isRec = key === 'praesenz';
+        const fCamp = Math.round(p.frequencyCampaign);
+        return (
+          <div
+            key={key}
+            onClick={() => onChange(key)}
+            style={{
+              position: 'relative',
+              background: T.card,
+              border: `1.5px solid ${isSel ? T.violet : T.line}`,
+              borderRadius: 16,
+              padding: '20px 20px 18px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column' as const,
+              gap: 12,
+              boxShadow: isSel ? '0 4px 24px rgba(107,79,187,0.10)' : 'none',
+              transition: 'all 0.18s ease',
+            }}
+          >
+            {isRec && (
+              <div style={{
+                position: 'absolute', top: -10, left: 16,
+                background: T.violet, color: 'white',
+                fontSize: 10, fontWeight: 700,
+                textTransform: 'uppercase' as const, letterSpacing: '0.1em',
+                padding: '4px 10px', borderRadius: 999,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+              }}>Empfohlen</div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontSize: 11, fontWeight: 700, color: T.slate,
+                textTransform: 'uppercase' as const, letterSpacing: '0.14em',
+              }}>{p.name}</span>
+              <div style={{
+                width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                border: `2px solid ${isSel ? T.violet : T.lineStrong}`,
+                background: isSel ? T.violet : 'transparent',
+                boxShadow: isSel ? 'inset 0 0 0 3px white' : 'none',
+                transition: 'all 0.15s ease',
+              }} />
+            </div>
+            <div style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 28, fontWeight: 800, color: T.ink,
+              letterSpacing: '-0.02em', lineHeight: 1,
+            }}>{fmtCHF(p.budget)}</div>
+            <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12, color: T.slate, fontSize: 13, lineHeight: 1.4 }}>
+              <strong style={{ color: T.ink, fontWeight: 600 }}>{p.laufzeitDays} Tage</strong>
+              {' · '}
+              <span>{fCamp}× Kontakte</span>
+              <br />
+              <span>{PKG_SUBTITLE[key]}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function todayISO(): string {
-  return new Date().toISOString().split('T')[0];
+// ─── Slider ──────────────────────────────────────────────────────────────────
+function Slider({ label, value, min, max, step, formatVal, onChange, minLabel, maxLabel }: {
+  label: string; value: number; min: number; max: number; step: number;
+  formatVal: (v: number) => string; onChange: (v: number) => void;
+  minLabel?: string; maxLabel?: string;
+}) {
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>{label}</span>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{formatVal(value)}</span>
+      </div>
+      <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: T.violet, borderRadius: 999, pointerEvents: 'none' }} />
+        <input
+          type="range" className="vio-range"
+          min={min} max={max} step={step} value={value}
+          onChange={e => onChange(Number(e.target.value))}
+        />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate }}>
+        <span>{minLabel ?? formatVal(min)}</span>
+        <span>{maxLabel ?? formatVal(max)}</span>
+      </div>
+    </div>
+  );
 }
 
-function calcCampaignDates(votingDate: string, laufzeitWeeks: number): { startISO: string; endISO: string } {
-  const today = todayISO();
-  const endISO = addDays(votingDate, -3);
-  const rawStart = addDays(endISO, -(laufzeitWeeks * 7));
-  if (rawStart < today) {
-    return { startISO: today, endISO: addDays(today, laufzeitWeeks * 7) };
-  }
-  return { startISO: rawStart, endISO };
+// ─── Hint display ────────────────────────────────────────────────────────────
+type HintTone = 'warn' | 'info' | 'good' | 'violet';
+interface HintDisplay { tone: HintTone; title: string; text: string }
+
+const HINT_META: Record<HintTone, { bg: string; border: string; iconBg: string; titleColor: string; icon: string }> = {
+  warn:   { bg: T.warnBg,    border: '#F0D5A8', iconBg: T.warn,     titleColor: T.warn,      icon: '!' },
+  info:   { bg: T.infoBg,    border: '#D0D6F0', iconBg: T.infoText, titleColor: T.infoText,  icon: 'i' },
+  good:   { bg: T.goodBg,    border: '#C5DDC5', iconBg: T.good,     titleColor: T.good,      icon: '✓' },
+  violet: { bg: T.highlight, border: T.lineStrong, iconBg: T.violet, titleColor: T.violetDeep, icon: '★' },
+};
+
+function hinweisToDisplay(h: Hinweis, days: number, regionName: string): HintDisplay {
+  const { code, text } = h;
+  if (code === 'hard_stop_budget')        return { tone: 'warn',   title: 'Persönliche Planung empfohlen',                  text };
+  if (code === 'below_min_budget')        return { tone: 'warn',   title: "Mindestbudget CHF 4'000",                        text };
+  if (code === 'too_thin')                return { tone: 'warn',   title: 'Budget über zu lange Laufzeit verteilt',          text };
+  if (code === 'overkill')                return { tone: 'warn',   title: 'Werbemüdigkeit droht',                           text };
+  if (code === 'daily_below_floor')       return { tone: 'warn',   title: 'Tagesbudget zu tief für stabile Auslieferung',   text };
+  if (code === 'capped_by_region')        return { tone: 'info',   title: 'Sättigung in Sicht',                             text };
+  if (code === 'calendly_nudge_strong')   return { tone: 'violet', title: 'Grosse Kampagne — persönliche Planung sinnvoll', text };
+  if (code === 'calendly_nudge_soft')     return { tone: 'info',   title: 'Wir bieten persönliche Beratung',                text };
+  if (code === 'screen_class_display_dom') return { tone: 'info',  title: 'In dieser Region primär online',                 text };
+  if (code === 'screen_class_begrenzt')   return { tone: 'info',   title: 'Erhöhter Online-Anteil',                         text };
+  if (code === 'no_dooh_inventory')       return { tone: 'info',   title: 'Keine DOOH-Flächen verfügbar',                   text };
+  return { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${days}-tägige Kampagne in ${regionName}.` };
 }
 
-const MONTHS_SHORT = ['Jan','Feb','Mrz','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-const MONTHS_LONG  = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-
-function fmtShort(iso: string): string {
-  if (!iso) return '—';
-  const d = new Date(iso + 'T00:00:00');
-  return `${d.getDate()}. ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+function HintCard({ hint }: { hint: HintDisplay }) {
+  const s = HINT_META[hint.tone];
+  return (
+    <div style={{
+      borderRadius: 14, padding: '14px 18px', marginBottom: 18,
+      display: 'flex', gap: 14, alignItems: 'flex-start',
+      background: s.bg, border: `1px solid ${s.border}`,
+      fontSize: 14, lineHeight: 1.5, fontFamily: "'Jost', sans-serif",
+    }}>
+      <div style={{
+        width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: s.iconBg, color: 'white', fontSize: 14, fontWeight: 700, marginTop: 1,
+      }}>{s.icon}</div>
+      <div>
+        <div style={{ fontWeight: 600, color: s.titleColor, marginBottom: 2 }}>{hint.title}</div>
+        <div style={{ color: T.slate }}>{hint.text}</div>
+      </div>
+    </div>
+  );
 }
 
-function fmtLong(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  return `${d.getDate()}. ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Props ───────────────────────────────────────────────────────────────────
 interface Props {
   briefing: BriefingData;
   updateBriefing: (data: Partial<BriefingData>) => void;
@@ -60,581 +214,371 @@ interface Props {
   stepNumber?: number;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Main component ──────────────────────────────────────────────────────────
 export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep, stepNumber }: Props) {
-  // Rekonstruiere Region[]-Objekte aus briefing (brauchen Typ für klassifiziereRegion)
-  const selectedRegionsFull: Region[] = (briefing.selectedRegions ?? []).map(r => {
-    const match = ALL_REGIONS.find(x => x.name === r.name);
-    if (match) return match;
-    return {
-      name: r.name,
-      type: (r.type as 'stadt' | 'kanton' | 'schweiz') ?? 'stadt',
-      kanton: r.kanton ?? 'CH',
-      pop: r.stimm * 2,
-      stimm: r.stimm,
-    };
-  });
+  const selectedRegionsFull: Region[] = useMemo(
+    () => (briefing.selectedRegions ?? []).map(r => {
+      const match = ALL_REGIONS.find(x => x.name === r.name);
+      if (match) return match;
+      return { name: r.name, type: r.type as Region['type'], kanton: r.kanton ?? 'CH', pop: r.stimm * 2, stimm: r.stimm };
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [(briefing.selectedRegions ?? []).map(r => r.name).join(',')]
+  );
 
-  const vioData = selectedRegionsFull.length === 0
-    ? (briefing.vioPackages ?? null)
-    : buildVioPackagesV2({
-        regions: selectedRegionsFull,
-        voteDate: briefing.votingDate ?? null,
-        campaignType: briefing.politikType ?? undefined,
-      });
+  const packages: PakeResult | null = useMemo(
+    () => selectedRegionsFull.length > 0 ? buildPackages({ regions: selectedRegionsFull }) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRegionsFull.map(r => r.name).join(',')]
+  );
 
-  // FIX 1: hasBudget only when budget >= 4000
-  const userBudget = briefing.recommendedBudget ?? 0;
-  const hasBudget = userBudget >= 4000;
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [path, setPath]               = useState<'A' | 'B'>('A');
+  const [pkg, setPkg]                 = useState<PaketKey>('praesenz');
+  const [budget, setBudget]           = useState<number>(
+    packages ? packages.praesenz.budget : 8000
+  );
+  const [days, setDays]               = useState<number>(
+    packages ? packages.praesenz.laufzeitDays : 21
+  );
+  const [feintuningOpen, setFeintuning] = useState(false);
+  const [budgetRef]                   = useState(() => ({
+    budget: packages ? packages.praesenz.budget : 8000,
+    days: packages ? packages.praesenz.laufzeitDays : 21,
+  }));
 
-  const initPkg = (
-    briefing.selectedPackage ??
-    vioData?.recommendedPackage ??
-    'praesenz'
-  ) as PkgKey;
-  const [selectedPkg, setSelectedPkg] = useState<PkgKey>(initPkg);
-  const [pfad, setPfad] = useState<'A' | 'B'>(hasBudget ? 'A' : 'B');
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const corridor = getLaufzeitCorridor(budget);
 
-  const initBudgetA = Math.max(4000, briefing.recommendedBudget ?? 4000);
-  const initBudgetB = vioData?.packages[initPkg]?.finalBudget ?? 9500;
-  const initBudget = hasBudget ? initBudgetA : initBudgetB;
-  const initDays = hasBudget
-    ? getLaufzeitCorridor(initBudgetA).minDays
-    : (vioData?.packages[initPkg].durationDays ?? 28);
-  const [budget, setBudget] = useState<number>(initBudget);
-  const [laufzeitWeeks, setLaufzeitWeeks] = useState(() => {
-    if (hasBudget) {
-      const c = getLaufzeitCorridor(initBudgetA);
-      return Math.ceil(c.minDays / 7);
+  // Clamp days to corridor on budget change
+  const effectiveDays = Math.min(corridor.maxDays, Math.max(corridor.minDays, days));
+
+  const demonym    = getInhabitants(selectedRegionsFull.map(r => r.name));
+  const regionName = briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
+
+  const impact = useMemo(
+    () => selectedRegionsFull.length > 0
+      ? calculateImpact({ budget, laufzeitDays: effectiveDays, regions: selectedRegionsFull })
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [budget, effectiveDays, selectedRegionsFull.map(r => r.name).join(',')]
+  );
+
+  const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
+
+  const daysUntilVote = useMemo(() => {
+    if (!briefing.votingDate) return null;
+    const ms = new Date(briefing.votingDate + 'T00:00:00').getTime() - Date.now();
+    return Math.ceil(ms / 86400000);
+  }, [briefing.votingDate]);
+
+  const zeitraumDates = useMemo(() => {
+    if (!briefing.votingDate) return null;
+    const abstimmung = new Date(briefing.votingDate + 'T00:00:00');
+    const end   = addDaysToDate(abstimmung, -28);
+    const start = addDaysToDate(end, -effectiveDays);
+    return { start: fmtDateShort(start), end: fmtDateShort(end) };
+  }, [briefing.votingDate, effectiveDays]);
+
+  const votingDateLabel = useMemo(() => {
+    if (!briefing.votingDate) return null;
+    const d = new Date(briefing.votingDate + 'T00:00:00');
+    return `${d.getDate()}. ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }, [briefing.votingDate]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  function switchPath(p: 'A' | 'B') {
+    if (p === 'B' && packages) {
+      setPkg('praesenz');
+      setBudget(packages.praesenz.budget);
+      setDays(packages.praesenz.laufzeitDays);
     }
-    return Math.round((vioData?.packages[initPkg].durationDays ?? 28) / 7);
-  });
-  const [budgetRef, setBudgetRef] = useState<{ budget: number; days: number }>({
-    budget: initBudget,
-    days: initDays,
-  });
-  const [adjOpen, setAdjOpen] = useState<boolean>(false);
-
-  if (!vioData) {
-    return (
-      <section style={{ padding: '80px 20px', textAlign: 'center', color: '#7A7596' }}>
-        Keine Paketdaten vorhanden. Bitte gehe zu Schritt 1 zurück.
-      </section>
-    );
+    setPath(p);
   }
 
-  // Campaign dates
-  const { startISO: campaignStartISO, endISO: campaignEndISO } = briefing.votingDate
-    ? calcCampaignDates(briefing.votingDate, laufzeitWeeks)
-    : { startISO: '', endISO: '' };
-
-  const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
-  const regionName = briefing.politikRegion ?? briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
-  const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
-
-  // Live-Berechnung per Paket — via calculateImpact (neue preislogik)
-  const getAdjustedValues = (key: PkgKey) => {
-    const p = vioData.packages[key];
-    const isSelected = key === selectedPkg;
-
-    // Für nicht-selektierte Pakete: Paket-Default-Werte direkt verwenden (aus adapter/preislogik)
-    if (!isSelected) {
-      return {
-        budget: p.finalBudget,
-        reach: p.targetReachPeople,
-        pct: Math.round(p.reachPercent * 100),
-      };
+  function handlePkgChange(key: PaketKey) {
+    setPkg(key);
+    if (packages) {
+      setBudget(packages[key].budget);
+      setDays(packages[key].laufzeitDays);
     }
+  }
 
-    // Für selektiertes Paket: Budget/Laufzeit kommen aus lokalem State (Slider)
-    // calculateImpact liefert konsistente Reach-Berechnung inkl. Screen-Klassen, Delivery-Faktoren, Wearout
-    if (selectedRegionsFull.length === 0) {
-      return {
-        budget: budget,
-        reach: p.targetReachPeople,
-        pct: Math.round(p.reachPercent * 100),
-      };
-    }
-
-    const impact = calculateImpact({
-      budget: budget,
-      laufzeitDays: laufzeitWeeks * 7,
-      regions: selectedRegionsFull,
-    });
-
-    const adjBudget = budget;
-
-    return {
-      budget: adjBudget,
-      reach: impact.reachMitte,
-      pct: vioData.eligibleVotersTotal > 0
-        ? Math.round((impact.reachMitte / vioData.eligibleVotersTotal) * 100)
-        : 0,
-    };
-  };
-  const adjustedBudget = getAdjustedValues(selectedPkg).budget;
-  const adjustedReach  = getAdjustedValues(selectedPkg).reach;
-
-  // Impact-Objekt für ImpactIndicator + CampaignHint (nur für selektiertes Paket)
-  const liveImpact = selectedRegionsFull.length > 0
-    ? calculateImpact({
-        budget: budget,
-        laufzeitDays: laufzeitWeeks * 7,
-        regions: selectedRegionsFull,
-      })
-    : null;
-
-  // Slider fill percentages + corridor
-  const corridor = getLaufzeitCorridor(budget);
-  const laufzeitMinWeeks = Math.ceil(corridor.minDays / 7);
-  const laufzeitMaxWeeks = Math.floor(corridor.maxDays / 7);
-  const budgetPct = Math.min(100, Math.max(0, ((budget - 4000) / (100000 - 4000)) * 100));
-  const durPct = laufzeitMaxWeeks > laufzeitMinWeeks
-    ? Math.min(100, Math.max(0, ((laufzeitWeeks - laufzeitMinWeeks) / (laufzeitMaxWeeks - laufzeitMinWeeks)) * 100))
-    : 100;
-
-  // Feasibility — immer true, Datums-Validierung passiert in StepSummaryPolitik
-  const isPkgFeasible = (_key: PkgKey): boolean => true;
-
-  const handleSwitchPfad = (newPfad: 'A' | 'B') => {
-    if (newPfad === pfad) return;
-    setPfad(newPfad);
-    if (newPfad === 'A') {
-      const b = Math.max(4000, briefing.recommendedBudget ?? 4000);
-      const c = getLaufzeitCorridor(b);
-      const w = Math.ceil(c.minDays / 7);
-      setBudget(b);
-      setLaufzeitWeeks(w);
-      setBudgetRef({ budget: b, days: w * 7 });
-    } else {
-      const b = vioData!.packages[selectedPkg].finalBudget;
-      const d = vioData!.packages[selectedPkg].durationDays;
-      setBudget(b);
-      setLaufzeitWeeks(Math.round(d / 7));
-      setBudgetRef({ budget: b, days: d });
-    }
-  };
-
-  const handleSelectPkg = (key: PkgKey) => {
-    setSelectedPkg(key);
-    const newBudget = vioData.packages[key].finalBudget;
-    const newDays = vioData.packages[key].durationDays;
+  function handleBudgetChange(newBudget: number) {
     setBudget(newBudget);
-    setLaufzeitWeeks(Math.round(newDays / 7));
-    setBudgetRef({ budget: newBudget, days: newDays });
-  };
+    const c = getLaufzeitCorridor(newBudget);
+    if (effectiveDays < c.minDays) setDays(c.minDays);
+    else if (effectiveDays > c.maxDays) setDays(c.maxDays);
+  }
 
-  const handleNextA = () => {
+  function handleDaysChange(newDays: number) {
+    setDays(newDays);
+    const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newDays);
+    setBudget(coupled);
+  }
+
+  function handleNext() {
     updateBriefing({
+      selectedPackage: path === 'B' ? pkg : undefined,
       budget,
-      laufzeit:       laufzeitWeeks,
-      selectedPackage: 'praesenz',
-      reach:          liveImpact?.reachMitte ?? 0,
-      reachVonPct:    liveImpact?.reachVonPct ?? 0,
-      reachBisPct:    liveImpact?.reachBisPct ?? 0,
+      laufzeit: Math.round(effectiveDays / 7),
+      reach:       impact?.reachMitte ?? 0,
+      reachVonPct: impact?.reachVonPct ?? 0,
+      reachBisPct: impact?.reachBisPct ?? 0,
+      b2bReach: null,
     });
     nextStep();
-  };
+  }
 
-  const handleNext = () => {
-    const adj = getAdjustedValues(selectedPkg);
-    updateBriefing({
-      selectedPackage: selectedPkg,
-      budget:      adj.budget,
-      laufzeit:    laufzeitWeeks,
-      startDate:   campaignStartISO || todayISO(),
-      reach:       adj.reach,
-      reachVonPct: adj.pct,
-      reachBisPct: adj.pct,
-      b2bReach:    null,
-    });
-    nextStep();
-  };
+  // ── Hint ───────────────────────────────────────────────────────────────────
+  const activeHint: HintDisplay =
+    impact && impact.hinweise.length > 0
+      ? hinweisToDisplay(impact.hinweise[0], effectiveDays, regionName)
+      : { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${effectiveDays}-tägige Kampagne in ${regionName}.` };
 
-  // FIX 3: Insight badge — alle 3 Pakete
-  const getInsightBadge = (key: PkgKey) => {
-    const p = vioData.packages[key];
-    if (key === vioData.recommendedPackage && p.hinweis) {
-      const isRed = (vioData.daysUntilVote ?? 99) < 35;
-      return {
-        bg: isRed ? '#FCEBEB' : '#FAEEDA',
-        color: isRed ? '#791F1F' : '#633806',
-        icon: '',
-        text: p.hinweis,
-      };
-    }
-    if (key === 'dominanz') return { bg: '#EEEDFE', color: '#3C3489', icon: '', text: 'Maximale Präsenz — deckt Unterlagen-Versand und Schlussphase vollständig ab.' };
-    if (key === 'praesenz') return { bg: '#EAF3DE', color: '#27500A', icon: '', text: 'Läuft rund um den Unterlagen-Versand — optimale Präsenz in der Meinungsbildungsphase.' };
-    return { bg: '#FAEEDA', color: '#633806', icon: '', text: 'Letzter Impuls vor dem Unterlagen-Versand.' };
-  };
+  // ── Wirkungsindikator derived values ───────────────────────────────────────
+  const doohPct    = impact ? Math.round(impact.doohShare * 100) : 70;
+  const displayPct = 100 - doohPct;
+  const klasseLabel = ({ voll: 'Voll', begrenzt: 'Begrenzt', 'display-dominant': 'Display-dominant' })[impact?.screenKlasse ?? 'voll'];
+  const fCampaign  = impact ? impact.frequencyCampaign.toFixed(1) : '—';
+  const fWeekly    = impact ? impact.frequencyWeekly.toFixed(1)   : '—';
 
-  const SbRow = ({ label, value, valueColor = '#2D1F52', last = false }: { label: string; value: string; valueColor?: string; last?: boolean }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: last ? 'none' : '1px solid rgba(107,79,187,0.07)', fontSize: 13 }}>
-      <span style={{ color: '#7A7596' }}>{label}</span>
-      <span style={{ fontWeight: 600, color: valueColor }}>{value}</span>
+  // ── Sidebar row ─────────────────────────────────────────────────────────────
+  const SbRow = ({ label, val, color = T.ink, last = false }: { label: string; val: string; color?: string; last?: boolean }) => (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      padding: '9px 0', borderBottom: last ? 'none' : `1px solid ${T.line}`, fontSize: 14,
+    }}>
+      <span style={{ color: T.slate }}>{label}</span>
+      <span style={{ fontWeight: 600, color }}>{val}</span>
     </div>
   );
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <section style={{ background: '#F5F3FF', minHeight: '100vh', fontFamily: "'Jost', sans-serif", paddingBottom: 60 }}>
+    <section style={{ background: T.bg, minHeight: '100vh', fontFamily: "'Jost', sans-serif", color: T.ink }}>
       <style>{`
-        .sp-range { width: 100%; height: 4px; border-radius: 2px; outline: none; border: none; cursor: pointer; -webkit-appearance: none; appearance: none; background: transparent; position: absolute; top: 50%; transform: translateY(-50%); margin: 0; }
-        .sp-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
-        .sp-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: white; border: 2.5px solid #6B4FBB; box-shadow: 0 1px 4px rgba(107,79,187,0.25); }
-        .sp-ctx-tag { border-radius: 10px; padding: 9px 11px; font-size: 11px; line-height: 1.45; display: flex; gap: 6px; align-items: flex-start; margin-top: 10px; }
-        .sp-ctx-tag.warn { background: #FCEBEB; color: #791F1F; }
-        .sp-ctx-tag.ok   { background: #EAF3DE; color: #27500A; }
-        .sp-ctx-tag.star { background: #FAEEDA; color: #633806; }
+        .vio-range { -webkit-appearance: none; appearance: none; position: absolute; width: 100%; top: 50%; transform: translateY(-50%); margin: 0; background: transparent; outline: none; border: none; cursor: pointer; height: 22px; }
+        .vio-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; background: white; border: 3px solid #6B4FBB; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px rgba(107,79,187,0.30); transition: transform .12s; }
+        .vio-range::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        .vio-range::-moz-range-thumb { width: 22px; height: 22px; background: white; border: 3px solid #6B4FBB; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px rgba(107,79,187,0.30); }
+        @media (max-width: 700px) {
+          .vio-stage { grid-template-columns: 1fr !important; }
+          .vio-sidebar { position: relative !important; top: 0 !important; }
+          .vio-ctrl-grid { grid-template-columns: 1fr !important; gap: 22px !important; }
+          .vio-kpis { grid-template-columns: 1fr !important; }
+          .vio-pkgs { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
-      {/* ── Header ── */}
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '32px 40px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <div style={{ width: 20, height: 2, background: '#6B4FBB', borderRadius: 2 }} />
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6B4FBB' }}>
-            {stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 2'} · Politische Kampagne
-          </span>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 32px 80px' }}>
+
+        {/* Step tag */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: T.violet, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
+          <span style={{ width: 24, height: 2, background: T.violet, display: 'inline-block' }} />
+          {stepNumber != null ? `Schritt ${stepNumber}` : 'Schritt 2'} · Politische Kampagne
         </div>
-        <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 28, fontWeight: 800, color: '#2D1F52', letterSpacing: '-0.025em', marginBottom: 4 }}>
+        <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 36, fontWeight: 800, color: T.ink, letterSpacing: '-0.01em', marginBottom: 10, lineHeight: 1.1 }}>
           Wie weit soll deine Kampagne strahlen?
         </h1>
-        <p style={{ fontSize: 14, color: '#7A7596', fontWeight: 300, marginBottom: 20 }}>
-          Alle Preise sind dynamisch auf deine Zielregion abgestimmt.
+        <p style={{ color: T.slate, marginBottom: 28, fontSize: 15 }}>
+          Alle Werte sind dynamisch auf deine Zielregion abgestimmt.
         </p>
 
         {/* Context bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 14px', background: 'white', borderRadius: 12, border: '1px solid rgba(107,79,187,0.10)', marginBottom: 28 }}>
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>Politische Kampagne</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const, background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, padding: '14px 18px', marginBottom: 24 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 500, background: T.highlight, color: T.violetDeep }}>Politische Kampagne</span>
           {briefing.selectedRegions?.map(r => (
-            <span key={r.name} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#F1EFE8', color: '#7A7596' }}>{r.name}</span>
+            <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: '#F2EFFA', color: T.ink }}>{r.name}</span>
           ))}
-          <span style={{ fontSize: 13, color: '#2D1F52' }}>{vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}</span>
-          <span style={{ flex: 1 }} />
-          {vioData.daysUntilVote != null && (
-            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#FAEEDA', color: '#633806', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', display: 'inline-block' }} />
-              Abstimmung in {vioData.daysUntilVote} Tagen
+          {stimmTotal > 0 && (
+            <span style={{ color: T.slate, fontSize: 14 }}>{fmtNum(stimmTotal)} {demonym}</span>
+          )}
+          {daysUntilVote != null && (
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 500, background: T.warnBg, color: T.warn }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.warn, display: 'inline-block', flexShrink: 0 }} />
+              Abstimmung in {daysUntilVote} Tagen
             </span>
           )}
         </div>
-      </div>
 
-      {/* ── flex-row: main + sidebar ── */}
-      <div style={{ maxWidth: 1160, margin: '0 auto', padding: '0 40px', display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+        {/* Stage: main + sidebar */}
+        <div className="vio-stage" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32, alignItems: 'start' }}>
 
-        {/* ── MAIN ── */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* MAIN */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.slate, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 12 }}>
+              Reichweite &amp; Paket
+            </div>
 
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 12 }}>Reichweite & Paket</div>
-
-          {/* ── Pfad-Toggle ── */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-            {(['A', 'B'] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleSwitchPfad(key)}
-                style={{
-                  padding: '8px 18px',
-                  borderRadius: 100,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  background: pfad === key ? '#6B4FBB' : 'transparent',
-                  color: pfad === key ? 'white' : '#6B4FBB',
-                  border: '1.5px solid #6B4FBB',
-                }}
-              >
-                {key === 'A' ? 'Eigenes Budget' : 'Pakete ansehen'}
-              </button>
-            ))}
-          </div>
-
-          {pfad === 'A' ? (
-            /* ─── PFAD A: Wirkungskonfigurator ─── */
-            <>
-              {/* Kampagnen-Steuerung */}
-              <div style={{ background: '#F5F2FF', borderRadius: 16, padding: '24px', border: '0.5px solid rgba(107,79,187,0.1)', marginBottom: 16 }}>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6B4FBB', marginBottom: 16 }}>Kampagnen-Steuerung</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                {/* Budget slider */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, color: '#7A7596' }}>Budget</span>
-                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{fmtCHF(budget)}</span>
-                  </div>
-                  <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
-                    <input type="range" className="sp-range" min={4000} max={100000} step={500} value={budget} onChange={e => {
-                      const newBudget = Number(e.target.value);
-                      setBudget(newBudget);
-                      setBudgetRef({ budget: newBudget, days: laufzeitWeeks * 7 });
-                      const c = getLaufzeitCorridor(newBudget);
-                      const minW = Math.ceil(c.minDays / 7);
-                      const maxW = Math.floor(c.maxDays / 7);
-                      if (laufzeitWeeks < minW) setLaufzeitWeeks(minW);
-                      if (laufzeitWeeks > maxW) setLaufzeitWeeks(maxW);
-                    }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                    <span>CHF 4&apos;000</span><span>CHF 100&apos;000</span>
-                  </div>
-                </div>
-                {/* Laufzeit slider */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, color: '#7A7596' }}>Laufzeit</span>
-                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{laufzeitWeeks} Woche{laufzeitWeeks !== 1 ? 'n' : ''}</span>
-                  </div>
-                  <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
-                    <input type="range" className="sp-range" min={laufzeitMinWeeks} max={laufzeitMaxWeeks} step={1} value={laufzeitWeeks} onChange={e => {
-                      const newWeeks = Number(e.target.value);
-                      setLaufzeitWeeks(newWeeks);
-                      const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newWeeks * 7);
-                      setBudget(coupled);
-                    }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                    <span>{laufzeitMinWeeks} Woche{laufzeitMinWeeks !== 1 ? 'n' : ''}</span><span>{laufzeitMaxWeeks} Wochen</span>
-                  </div>
-                </div>
-                </div>
-              </div>
-
-              {/* Wirkungsindikator */}
-              {liveImpact && (
-                <div style={{ background: '#2D1F52', borderRadius: 16, padding: 28, marginTop: 16, color: 'white' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B8A9E8', marginBottom: 8 }}>Deine Botschaft erreicht</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 38, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 4 }}>
-                    {fmtNum(liveImpact.reachVon)} – {fmtNum(liveImpact.reachBis)}
-                  </div>
-                  <div style={{ fontSize: 14, color: '#B8A9E8', marginBottom: 20 }}>{inhabitants}</div>
-                  <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', marginBottom: 16 }} />
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.08)', padding: '5px 10px', borderRadius: 20 }}>
-                      Frequenz: Ø {Math.round(liveImpact.frequencyCampaign)}× pro Person
-                    </span>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.08)', padding: '5px 10px', borderRadius: 20 }}>
-                      Pro Woche: ≈ {liveImpact.frequencyWeekly.toFixed(1)}× / Woche
-                    </span>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.08)', padding: '5px 10px', borderRadius: 20 }}>
-                      Zielgruppe: {fmtNum(liveImpact.stimmTotal)} Stimmber.
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Hinweis */}
-              {liveImpact?.hinweise[0] && (
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: liveImpact.hinweise[0].priority === 1 ? '#FCEBEB' : '#FAEEDA', color: liveImpact.hinweise[0].priority === 1 ? '#791F1F' : '#633806', fontSize: 13, lineHeight: 1.5, marginTop: 10 }}>
-                  {liveImpact.hinweise[0].text}
-                </div>
-              )}
-            </>
-          ) : (
-            /* ─── PFAD B: Paket-Karten → Wirkungsindikator → Accordion ─── */
-            <>
-              {/* Dark Wirkungsindikator */}
-              {(() => {
-                const impact = liveImpact;
-                const pkg = vioData.packages[selectedPkg];
-                return (
-                  <div id="wirkungsindikator" style={{ background: '#2D1F52', borderRadius: 16, padding: '24px 28px', margin: '0 0 20px 0', color: 'white' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Deine Botschaft erreicht</div>
-                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 4 }}>
-                      {impact
-                        ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}`
-                        : `~${fmtNum(pkg.targetReachPeople)}`}
-                    </div>
-                    <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 20 }}>{inhabitants}</div>
-                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                        Frequenz: Ø {impact ? Math.round(impact.frequencyCampaign) : (pkg.frequency ?? 5)}× pro Person
-                      </div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                        Pro Woche: ≈ {impact ? impact.frequencyWeekly.toFixed(1) : (pkg.frequency ?? 5)}× / Woche
-                      </div>
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                        Zielgruppe: {fmtNum(impact?.stimmTotal ?? vioData.eligibleVotersTotal)} Stimmber.
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 3 Paket-Karten */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-                {PKG_ORDER.map(key => {
-                  const p = vioData.packages[key];
-                  const isSel = selectedPkg === key;
-                  const isRec = key === vioData.recommendedPackage;
-                  const adj = getAdjustedValues(key);
-                  const badge = getInsightBadge(key);
-
-                  return (
-                    <div
-                      key={key}
-                      onClick={() => handleSelectPkg(key)}
-                      style={{
-                        position: 'relative',
-                        background: isSel ? '#F0ECFA' : 'white',
-                        border: isSel ? '2.5px solid #6B4FBB' : '1px solid rgba(107,79,187,0.12)',
-                        borderRadius: 14,
-                        padding: 16,
-                        cursor: 'pointer',
-                        textAlign: 'left' as const,
-                        transition: 'all 0.18s',
-                        opacity: 1,
-                        boxShadow: isSel ? '0 4px 20px rgba(107,79,187,0.18)' : 'none',
-                        transform: isSel ? 'translateY(-3px)' : 'none',
-                      }}
-                    >
-                      {isRec && (
-                        <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: '#6B4FBB', color: 'white', fontSize: 10, fontWeight: 600, padding: '2px 12px', borderRadius: 20, whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                          Empfohlen
-                        </div>
-                      )}
-                      <div style={{ position: 'absolute', top: 13, right: 13, width: 18, height: 18, borderRadius: '50%', background: isSel ? '#6B4FBB' : 'white', border: isSel ? '1.5px solid #6B4FBB' : '1.5px solid #D3D1C7', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                        {isSel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'white' }} />}
-                      </div>
-                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7A7596' }}>{p.name}</div>
-                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: isSel ? '#534AB7' : '#2D1F52', margin: '2px 0' }}>{fmtCHF(adj.budget)}</div>
-                      <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 10 }}>{Math.round(p.durationDays / 7)} Wochen Laufzeit</div>
-                      <div style={{ height: 0.5, background: 'rgba(107,79,187,0.10)', margin: '8px 0' }} />
-                      <div style={{ fontSize: 10, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#7A7596' }}>Stimmberechtigte erreichbar</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', marginTop: 2 }}>~{fmtNum(adj.reach)}</div>
-                      <div style={{ fontSize: 11, color: '#7A7596', marginBottom: 5 }}>{adj.pct}% der {inhabitants}</div>
-                      <div style={{ height: 3, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
-                        <div style={{ height: 3, borderRadius: 2, background: '#7F77DD', width: `${adj.pct}%` }} />
-                      </div>
-                      {badge && (
-                        <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8, fontSize: 11, lineHeight: 1.5, background: badge.bg, color: badge.color }}>
-                          {badge.text}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Budget & Laufzeit accordion */}
-              <div style={{ marginTop: 16 }}>
-                <div
-                  onClick={() => setAdjOpen(o => !o)}
-                  style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'background .15s' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#F5F3FF'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'white'; }}
+            {/* Path toggle pill */}
+            <div style={{ display: 'inline-flex', background: T.card, border: `1px solid ${T.line}`, borderRadius: 999, padding: 4, marginBottom: 24 }}>
+              {(['A', 'B'] as const).map(p => (
+                <button
+                  key={p} type="button" onClick={() => switchPath(p)}
+                  style={{
+                    border: 'none', padding: '9px 22px',
+                    fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 600,
+                    borderRadius: 999, cursor: 'pointer', transition: 'all 0.18s ease',
+                    background: path === p ? T.violet : 'transparent',
+                    color: path === p ? 'white' : T.slate,
+                    boxShadow: path === p ? '0 2px 8px rgba(107,79,187,0.25)' : 'none',
+                  }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 5h12M5 8h6M7 11h2" stroke="#6B4FBB" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#2D1F52', flex: 1 }}>Budget &amp; Laufzeit anpassen</span>
-                  <svg style={{ transform: adjOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#7A7596" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {p === 'A' ? 'Eigenes Budget' : 'Pakete ansehen'}
+                </button>
+              ))}
+            </div>
+
+            {/* Pfad A: 2 sliders */}
+            {path === 'A' && (
+              <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '24px 28px', marginBottom: 18 }}>
+                <div className="vio-ctrl-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+                  <Slider label="Budget" value={budget} min={4000} max={100000} step={500}
+                    formatVal={fmtCHF} onChange={handleBudgetChange} />
+                  <Slider label="Laufzeit" value={effectiveDays}
+                    min={corridor.minDays} max={corridor.maxDays} step={1}
+                    formatVal={v => `${v} Tage`} onChange={setDays}
+                    minLabel={`${corridor.minDays} Tage`} maxLabel={`${corridor.maxDays} Tage`} />
+                </div>
+              </div>
+            )}
+
+            {/* Pfad B: package cards + feintuning */}
+            {path === 'B' && packages && (
+              <>
+                <div className="vio-pkgs">
+                  <PackageCards packages={packages} selectedPkg={pkg} onChange={handlePkgChange} />
                 </div>
 
-                {adjOpen && (
-                  <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 22, marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                    {/* Budget slider */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                        <span style={{ fontSize: 13, color: '#7A7596' }}>Budget</span>
-                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{fmtCHF(budget)}</span>
-                      </div>
-                      <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${budgetPct}%`, pointerEvents: 'none' }} />
-                        <input type="range" className="sp-range" min={4000} max={100000} step={500} value={budget} onChange={e => {
-                          const newBudget = Number(e.target.value);
-                          setBudget(newBudget);
-                          setBudgetRef({ budget: newBudget, days: laufzeitWeeks * 7 });
-                          const c = getLaufzeitCorridor(newBudget);
-                          const minW = Math.ceil(c.minDays / 7);
-                          const maxW = Math.floor(c.maxDays / 7);
-                          if (laufzeitWeeks < minW) setLaufzeitWeeks(minW);
-                          if (laufzeitWeeks > maxW) setLaufzeitWeeks(maxW);
-                        }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                        <span>CHF 4&apos;000</span><span>CHF 100&apos;000</span>
-                      </div>
-                    </div>
-                    {/* Laufzeit slider */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-                        <span style={{ fontSize: 13, color: '#7A7596' }}>Laufzeit</span>
-                        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#6B4FBB' }}>{laufzeitWeeks} Woche{laufzeitWeeks !== 1 ? 'n' : ''}</span>
-                      </div>
-                      <div style={{ position: 'relative', height: 4, background: '#EDE8F7', borderRadius: 2 }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, background: '#6B4FBB', borderRadius: 2, width: `${durPct}%`, pointerEvents: 'none' }} />
-                        <input type="range" className="sp-range" min={laufzeitMinWeeks} max={laufzeitMaxWeeks} step={1} value={laufzeitWeeks} onChange={e => {
-                          const newWeeks = Number(e.target.value);
-                          setLaufzeitWeeks(newWeeks);
-                          const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newWeeks * 7);
-                          setBudget(coupled);
-                        }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A7596', marginTop: 6 }}>
-                        <span>{laufzeitMinWeeks} Woche{laufzeitMinWeeks !== 1 ? 'n' : ''}</span><span>{laufzeitMaxWeeks} Wochen</span>
-                      </div>
-                    </div>
+                {/* Feintuning accordion */}
+                <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, marginBottom: 18, overflow: 'hidden' }}>
+                  <div
+                    onClick={() => setFeintuning(o => !o)}
+                    style={{ padding: '14px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' as const }}
+                  >
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 600, color: T.ink }}>Budget &amp; Laufzeit feintunen</span>
+                    <span style={{ color: T.slate, fontSize: 18, display: 'inline-block', transition: 'transform 0.2s', transform: feintuningOpen ? 'rotate(180deg)' : 'none' }}>⌄</span>
                   </div>
-                )}
+                  {feintuningOpen && (
+                    <div style={{ padding: '4px 20px 22px' }}>
+                      <div className="vio-ctrl-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, paddingTop: 14, borderTop: `1px solid ${T.line}` }}>
+                        <Slider label="Budget" value={budget} min={4000} max={100000} step={500}
+                          formatVal={fmtCHF} onChange={handleBudgetChange} />
+                        <Slider label="Laufzeit" value={effectiveDays}
+                          min={corridor.minDays} max={corridor.maxDays} step={1}
+                          formatVal={v => `${v} Tage`} onChange={handleDaysChange}
+                          minLabel={`${corridor.minDays} Tage`} maxLabel={`${corridor.maxDays} Tage`} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Wirkungsindikator — identisch beide Pfade */}
+            <div style={{
+              background: T.ink, borderRadius: 18, padding: '32px 32px 28px',
+              color: 'white', marginBottom: 18, position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 240, height: 240, background: 'radial-gradient(circle at top right, rgba(107,79,187,0.5), transparent 60%)', pointerEvents: 'none' }} />
+
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
+                Deine Botschaft erreicht
+              </div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
+                {impact ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}` : '—'}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
+
+              {/* 3 KPIs */}
+              <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Abdeckung</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
+                    {impact ? `${Math.round(impact.reachVonPct)}–${Math.round(impact.reachBisPct)} %` : '—'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>der Stimmberechtigten</div>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kontaktdruck</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
+                    Ø {fCampaign}×
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>≈ {fWeekly}× / Woche</div>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Zeitraum</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
+                    {effectiveDays} Tage
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+                    {zeitraumDates ? `${zeitraumDates.start} – ${zeitraumDates.end}` : '—'}
+                  </div>
+                </div>
               </div>
 
-              {/* Paket-Slider-Konflikt-Hinweis */}
-              {adjOpen && (
-                <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 12, lineHeight: 1.5, marginTop: 8 }}>
-                  <span>&#9888;</span>
-                  <span>Wenn Sie Budget oder Laufzeit anpassen, weicht die Kampagne vom gewählten Paket ab. Das gewählte Paket dient als Ausgangspunkt.</span>
+              {/* Channel Mix Bar */}
+              <div style={{ marginTop: 22, position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+                  <span>Kanal-Mix</span>
+                  <span>Klasse: {klasseLabel}</span>
                 </div>
-              )}
-
-              {/* Hinweis box */}
-              {liveImpact?.hinweise[0] && (
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#FAEEDA', color: '#633806', fontSize: 13, lineHeight: 1.5, marginTop: 8 }}>
-                  {liveImpact.hinweise[0].text}
+                <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden', display: 'flex', gap: 2 }}>
+                  <div style={{ width: `${doohPct}%`, background: '#B8A2F0', borderRadius: '999px 0 0 999px', transition: 'width 0.3s ease' }} />
+                  <div style={{ width: `${displayPct}%`, background: T.violet, borderRadius: '0 999px 999px 0', transition: 'width 0.3s ease' }} />
                 </div>
-              )}
-            </>
-          )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+                  <span><strong style={{ color: 'white', fontWeight: 600 }}>{doohPct}%</strong> Digitale Plakate</span>
+                  <span><strong style={{ color: 'white', fontWeight: 600 }}>{displayPct}%</strong> Online-Display</span>
+                </div>
+              </div>
+            </div>
 
-          {/* CTA */}
-          <button
-            type="button"
-            onClick={pfad === 'A' ? handleNextA : handleNext}
-            disabled={budget >= 100000}
-            style={{ background: budget >= 100000 ? '#9A90BB' : '#6B4FBB', color: 'white', border: 'none', borderRadius: 100, padding: '16px 32px', fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, cursor: budget >= 100000 ? 'not-allowed' : 'pointer', transition: 'all 0.2s', marginTop: 16 }}
-            onMouseEnter={e => { if (budget < 100000) (e.currentTarget as HTMLButtonElement).style.background = '#3C3489'; }}
-            onMouseLeave={e => { if (budget < 100000) (e.currentTarget as HTMLButtonElement).style.background = '#6B4FBB'; }}
-          >
-            Weiter zur Zusammenfassung →
-          </button>
-        </div>
+            {/* Hint (max 1) */}
+            <HintCard hint={activeHint} />
 
-        {/* ── SIDEBAR — Step 1 info only ── */}
-        <div style={{ width: 268, flexShrink: 0, position: 'sticky', top: 72, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: 18 }}>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#2D1F52', marginBottom: 12 }}>Deine Kampagne</div>
-            <SbRow label="Kampagnentyp" value="Politisch" />
-            {briefing.politikType && <SbRow label="Art" value={briefing.politikType} />}
-            <SbRow label="Region" value={regionName} />
-            {briefing.votingDate && <SbRow label="Abstimmung" value={fmtShort(briefing.votingDate)} valueColor="#BA7517" />}
-            <SbRow label="Paket" value={vioData.packages[selectedPkg].name} />
-            <SbRow label="Erreichbare Personen" value={`~${adjustedReach.toLocaleString('de-CH')}`} />
-            <SbRow label="Budget" value={fmtCHF(adjustedBudget)} valueColor="#6B4FBB" />
-            <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} last />
+            {/* CTA row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 26 }}>
+              <button type="button" onClick={() => window.history.back()}
+                style={{ background: 'transparent', border: 'none', color: T.slate, fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: '10px 4px' }}>
+                ← Zurück
+              </button>
+              <button type="button" onClick={handleNext} disabled={budget >= 100000}
+                style={{
+                  background: budget >= 100000 ? '#9A90BB' : T.violet,
+                  color: 'white', border: 'none', padding: '14px 28px', borderRadius: 999,
+                  fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 600,
+                  cursor: budget >= 100000 ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(107,79,187,0.3)', transition: 'all 0.15s ease',
+                }}>
+                Weiter zur Zusammenfassung →
+              </button>
+            </div>
           </div>
 
-          <div style={{ background: '#EEEDFE', borderRadius: 14, padding: 18 }}>
-            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#2D1F52', marginBottom: 6 }}>Fragen?</div>
-            <p style={{ fontSize: 12, color: '#7A7596', lineHeight: 1.6, margin: '0 0 12px 0' }}>
-              Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.
-            </p>
-            <a href={process.env.NEXT_PUBLIC_CALENDLY_URL || '#'} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'block', background: '#6B4FBB', color: 'white', border: 'none', borderRadius: 100, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%', fontFamily: "'Jost', sans-serif", textAlign: 'center', textDecoration: 'none' }}>
-              Gespräch buchen →
-            </a>
-          </div>
+          {/* SIDEBAR */}
+          <aside className="vio-sidebar" style={{ position: 'sticky', top: 32, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+            <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '22px 22px 18px' }}>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 16 }}>Deine Kampagne</div>
+              <SbRow label="Kampagnentyp" val="Politisch" />
+              <SbRow label="Region" val={regionName} />
+              {votingDateLabel && <SbRow label="Abstimmung" val={votingDateLabel} color={T.warn} />}
+              {path === 'B' && packages && (
+                <SbRow label="Paket" val={packages[pkg].name} color={T.violetDeep} />
+              )}
+              <SbRow label="Budget" val={fmtCHF(budget)} color={T.violetDeep} />
+              <SbRow label="Laufzeit" val={`${effectiveDays} Tage`} last />
+            </div>
+            <div style={{ background: T.highlight, borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: T.ink, marginBottom: 6, fontSize: 15 }}>Persönliche Beratung</div>
+              <p style={{ color: T.slate, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Unsere Mediaplaner:innen helfen dir, das optimale Paket für deine Kampagne zu finden.</p>
+              <a href={process.env.NEXT_PUBLIC_CALENDLY_URL ?? '#'} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-block', background: T.violet, color: 'white', border: 'none', padding: '10px 18px', borderRadius: 999, fontFamily: "'Jost', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
+                Gespräch buchen →
+              </a>
+            </div>
+          </aside>
         </div>
       </div>
     </section>
