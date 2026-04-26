@@ -213,7 +213,8 @@ Rollback: `git checkout v0.x-stable`
 🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
 
 ## Letzter Stand
-- Datum: 2026-04-25
+- Datum: 2026-04-26
+- DOOH_OTS_MULTIPLIER=2.5 eingebaut in lib/preislogik.ts — calculateImpact + buildPackages konsistent — TODO-Flag gesetzt (validieren mit ersten 10 Splicky-Kampagnen) — getestet: ja (tsc ✓, ZH Präsenz ~CHF 11k ✓, Aarau ≥ CHF 4k ✓, KT ZH > CHF 9k ✓)
 - 4.1: filterBuchbareRegionen in Step1Politik eingebaut, Screen-Klassen-Hinweis live bei Regionen-Auswahl — getestet: nein
 - 3.1: StepPackages Pfad A (hasBudget && !showAllPackets) — direkte Slider + dark-card Wirkungsindikator; Pfad B (!hasBudget || showAllPackets) — 3 Pakete + Accordion + Paket-Slider-Konflikt-Hinweis; ImpactIndicator/CampaignHint durch inline dark card ersetzt — getestet: nein
 - 2.3: Sidebar-Mismatch gefixt — initPkg immer recommendedPackage, initBudget immer Paket-Budget statt userBudget — getestet: ja

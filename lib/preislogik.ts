@@ -35,6 +35,10 @@ export const CPM_DISPLAY = 15;
 export const DELIVERY_DOOH = 0.75;
 export const DELIVERY_DISPLAY = 0.90;
 
+// TODO: mit ersten 10 Splicky-Kampagnen validieren (aktuell CH-DOOH-Branchenschätzung)
+// Splicky CPM = Cost per 1000 Ad Plays (nicht Audience Contacts) → Multiplier nötig
+export const DOOH_OTS_MULTIPLIER = 2.5;
+
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
 export type HinweisCode =
@@ -345,12 +349,12 @@ export function calculateImpact(input: {
   const mixedCpm = doohShare * CPM_DOOH + displayShare * CPM_DISPLAY;
   void mixedCpm; // used indirectly via budget split below
 
-  // Total-Impressions aus Budget (mit Delivery-Faktoren)
-  const budgetDooh = input.budget * doohShare;
-  const budgetDisplay = input.budget * displayShare;
-  const impressionsDoohDelivered = (budgetDooh / CPM_DOOH) * 1000 * DELIVERY_DOOH;
-  const impressionsDisplayDelivered = (budgetDisplay / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
-  const impressionsEffective = impressionsDoohDelivered + impressionsDisplayDelivered;
+  // Total-Kontakte aus Budget (mit Delivery-Faktoren + OTS-Multiplier für DOOH)
+  const doohBudget = input.budget * doohShare;
+  const displayBudget = input.budget * displayShare;
+  const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
+  const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
+  const impressionsEffective = doohContacts + displayContacts;
 
   // Laufzeit
   const laufzeitWeeks = input.laufzeitDays / 7;
@@ -444,18 +448,13 @@ export function buildPackages(input: {
     const targetReach = stimmTotal * reachCap;
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
-    const mixedCpm = klass.split.dooh * CPM_DOOH + klass.split.display * CPM_DISPLAY;
-    void mixedCpm;
-
-    // Impressions rechnen (ohne Delivery-Faktoren, weil Budget der Output ist)
-    const impressions = targetReach * spec.weeklyFreq * laufzeitWeeks;
-    const rawBudget = (impressions / 1000) * (klass.split.dooh * CPM_DOOH + klass.split.display * CPM_DISPLAY);
-
-    // Delivery-adjustiertes Budget: Wir müssen ein höheres Budget buchen,
-    // damit nach Delivery-Faktor die Ziel-Impressions tatsächlich ausgespielt werden
-    const avgDelivery = klass.split.dooh * DELIVERY_DOOH + klass.split.display * DELIVERY_DISPLAY;
-    const adjustedBudget = rawBudget / avgDelivery;
-    const finalBudget = Math.max(PKG_MIN[key], roundBudget(adjustedBudget));
+    // Kontakte pro CHF je Kanal (Umkehrung von calculateImpact)
+    const doohYield = (1000 / CPM_DOOH) * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
+    const displayYield = (1000 / CPM_DISPLAY) * DELIVERY_DISPLAY;
+    const mixedYield = klass.split.dooh * doohYield + klass.split.display * displayYield;
+    const totalContactsNeeded = targetReach * spec.weeklyFreq * laufzeitWeeks;
+    const rawBudget = totalContactsNeeded / mixedYield;
+    const finalBudget = Math.max(PKG_MIN[key], roundBudget(rawBudget));
 
     // Reach-Range
     const band = klass.klasse === 'voll' ? 0.07
