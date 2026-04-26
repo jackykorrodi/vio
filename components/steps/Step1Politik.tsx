@@ -8,11 +8,25 @@ import { filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegion
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
+const CH_ABSTIMMUNGSSONNTAGE = [
+  '2026-06-14',
+  '2026-09-27',
+  '2026-11-29',
+  '2027-03-07',
+  '2027-06-13',
+  '2027-09-28',
+  '2027-11-28',
+  '2028-03-12',
+  '2028-06-11',
+];
+
+const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
 const SIDEBAR: Record<number, { title: string; text: string; tip: string }> = {
   1: {
     title: 'Warum zuerst das Enddatum?',
-    text:  'Weil der Abstimmungs- oder Wahltag fix ist. Von dort aus rechnen wir rückwärts – so siehst du sofort, wie viel Vorlauf du noch hast und ob das Budget reicht.',
-    tip:   '<strong>Empfehlung:</strong> 4–6 Wochen Vorlauf sind ideal. Unter 2 Wochen wird es knapp – aber auch das ist möglich.',
+    text:  'Weil der Abstimmungs- oder Wahltag fix ist. Von dort aus rechnen wir rückwärts – so siehst du sofort, wie viel Vorlauf du noch hast und welche Pakete zeitlich möglich sind.',
+    tip:   '<strong>Empfehlung:</strong> 4–6 Wochen Vorlauf sind ideal. Die Timeline wird automatisch berechnet – du musst keinen Starttermin eingeben.',
   },
   2: {
     title: 'Lokal wirkt stärker.',
@@ -47,8 +61,20 @@ const SHADOW_H= '0 2px 8px rgba(107,79,187,0.12), 0 8px 32px rgba(107,79,187,0.1
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function fmtCHF(n: number): string {
-  return "CHF " + n.toLocaleString('de-CH').replace(/\./g, "'");
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function fmtLongDE(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtPillDE(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]}`;
 }
 
 function calcDaysUntil(iso: string): number {
@@ -57,7 +83,23 @@ function calcDaysUntil(iso: string): number {
   return Math.max(0, Math.round((d.getTime() - today.getTime()) / 86400000));
 }
 
-const MIN_SETUP_DAYS = 10  // DOOH-Freigabe braucht ca. 7 Werktage + Puffer
+const MIN_SETUP_DAYS = 10;
+
+function todayPlusDaysISO(days: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function todayISO(): string {
+  return todayPlusDaysISO(0);
+}
+
+function getNext2Sundays(): string[] {
+  const minDate = todayPlusDaysISO(MIN_SETUP_DAYS);
+  return CH_ABSTIMMUNGSSONNTAGE.filter(d => d >= minDate).slice(0, 2);
+}
 
 type DateGate =
   | { level: 'ok' }
@@ -89,13 +131,6 @@ function getDateGate(dateStr: string): DateGate {
   return { level: 'ok' }
 }
 
-function todayPlusDaysISO(days: number): string {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + days)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -115,7 +150,7 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
 
   // Q1 state
   const [dateEvent, setDateEvent] = useState('');
-  const [dateStart, setDateStart] = useState('');
+  const [showCustomDate, setShowCustomDate] = useState(false);
 
   // Q2 state
   const [regions, setRegions]         = useState<Region[]>([]);
@@ -134,11 +169,9 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
 
   const goTo = (q: number, dir: 'forward' | 'back') => {
     if (dir === 'forward') {
-      // Snapshot current answers into pills before moving forward
       const newPills: string[] = [];
       if (dateEvent) {
-        const d = new Date(dateEvent + 'T00:00:00');
-        newPills.push(d.toLocaleDateString('de-CH', { day: '2-digit', month: 'short', year: 'numeric' }));
+        newPills.push(fmtLongDE(dateEvent));
       }
       if (regions.length) {
         newPills.push(regions.map(r => r.name).slice(0, 2).join(' · ') + (regions.length > 2 ? ` +${regions.length - 2}` : ''));
@@ -196,21 +229,37 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
     }
   };
 
-  // ─── Timeline ─────────────────────────────────────────────────────────────
+  // ─── Q1 derived state ─────────────────────────────────────────────────────
 
-  let timelineDays  = 0;
-  let timelineWeeks = 0;
-  let timelineShow  = false;
-  if (dateEvent && dateStart) {
-    const evD = new Date(dateEvent + 'T00:00:00');
-    const stD = new Date(dateStart + 'T00:00:00');
-    timelineDays  = Math.round((evD.getTime() - stD.getTime()) / 86400000);
-    timelineWeeks = Math.round(timelineDays / 7);
-    timelineShow  = timelineDays > 0;
-  }
   const dateGate    = getDateGate(dateEvent);
   const dateBlocked = dateGate.level === 'error';
-  const q1Valid = !!dateEvent && (dateStart ? timelineDays > 0 : true) && !dateBlocked;
+  const q1Valid     = !!dateEvent && !dateBlocked;
+
+  // Auto-computed campaign timeline (default 28-day campaign back from voting day)
+  const tlCampaignEnd   = dateEvent;
+  const tlCampaignStart = dateEvent
+    ? (() => {
+        const raw     = addDaysISO(dateEvent, -28);
+        const minDate = todayPlusDaysISO(MIN_SETUP_DAYS);
+        return raw < minDate ? minDate : raw;
+      })()
+    : '';
+  const tlDurationDays = tlCampaignStart && tlCampaignEnd
+    ? Math.max(0, Math.round(
+        (new Date(tlCampaignEnd + 'T00:00:00').getTime() -
+         new Date(tlCampaignStart + 'T00:00:00').getTime()) / 86400000
+      ))
+    : 0;
+  const daysToEvent = dateEvent ? calcDaysUntil(dateEvent) : 0;
+  const tlPkgHint = dateEvent && !dateBlocked
+    ? daysToEvent >= 70 ? 'Paket «Dominanz» (8 Wochen) wäre möglich'
+    : daysToEvent >= 42 ? 'Paket «Präsenz» (4 Wochen) empfohlen'
+    : daysToEvent >= 28 ? 'Paket «Sichtbar» (2 Wochen) möglich'
+    : null
+    : null;
+
+  // Pills for voting day selection
+  const next2Sundays = getNext2Sundays();
 
   // ─── Finish ───────────────────────────────────────────────────────────────
 
@@ -258,7 +307,6 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
   return (
     <div style={{ fontFamily: "'Jost', sans-serif", background: BG, minHeight: '100vh', color: INK }}>
 
-      {/* Keyframes – only for slide animations (cannot be done inline) */}
       <style>{`
         @keyframes sp1-slideRight {
           from { opacity: 0; transform: translateX(40px) scale(0.98); }
@@ -286,9 +334,10 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
         .sp1-nob:hover, .sp1-nob.active { border-color:${V}; color:${V}; background:${V_DIM}; }
         .sp1-nob.active { background:${V_DIM2} !important; }
         .sp1-region-opt:hover { background:${V_DIM}; }
+        .sp1-date-pill { transition: all 0.18s; cursor: pointer; }
+        .sp1-date-pill:hover { border-color: ${BORDER2} !important; box-shadow: ${SHADOW_H} !important; transform: translateY(-1px); }
       `}</style>
 
-      {/* ── Page layout ─────────────────────────────────────────────────────── */}
       <div style={{
         maxWidth: 1060,
         margin: '0 auto',
@@ -301,13 +350,11 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
 
         {/* ── Main flow area ── */}
         <div>
-          {/* Flow label */}
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase' as const, color: V, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             Schritt 1 · Politische Kampagne
             <div style={{ flex: 1, height: 1, background: BORDER }} />
           </div>
 
-          {/* Flow title */}
           <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 800, color: INK, letterSpacing: -0.5, marginBottom: 28, lineHeight: 1.2 }}>
             Lass uns deine{' '}
             <em style={{ fontStyle: 'italic', color: V }}>Kampagne einrichten.</em>
@@ -349,13 +396,90 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 1 von 3</div>
                 <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Wann findet das statt?</div>
-                <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Erst der Abstimmungssonntag – dann der Kampagnenstart. So haben wir den Vorlauf im Blick.</div>
+                <div style={{ fontSize: 14, color: MUTED, marginBottom: 24, lineHeight: 1.55 }}>Wähle den Abstimmungs- oder Wahltag. Wir berechnen den Kampagnenstart automatisch.</div>
 
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14, marginBottom: 20 }}>
-                  {/* Event date */}
+                {/* Date pills */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10, marginBottom: 16 }}>
+                  {next2Sundays.map(iso => {
+                    const isSelected = dateEvent === iso && !showCustomDate;
+                    return (
+                      <button
+                        key={iso}
+                        className="sp1-date-pill"
+                        onClick={() => { setDateEvent(iso); setShowCustomDate(false); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 14,
+                          background: isSelected ? V_DIM2 : WHITE,
+                          border: `1.5px solid ${isSelected ? V : BORDER}`,
+                          borderRadius: 14, padding: '14px 18px',
+                          boxShadow: isSelected ? `0 0 0 3px ${V_DIM}` : SHADOW,
+                          cursor: 'pointer', textAlign: 'left' as const,
+                          transition: 'all 0.18s',
+                        }}
+                      >
+                        <div style={{
+                          width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                          border: `2px solid ${isSelected ? V : BORDER2}`,
+                          background: isSelected ? V : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: WHITE }} />}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' as const, color: isSelected ? V : MUTED, marginBottom: 3 }}>
+                            Bundesabstimmung · Sonntag
+                          </div>
+                          <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 800, color: isSelected ? V : INK, letterSpacing: -0.3 }}>
+                            {fmtLongDE(iso)}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div style={{ fontSize: 11, fontWeight: 700, color: V, background: V_DIM2, padding: '3px 10px', borderRadius: 99, flexShrink: 0 }}>
+                            Ausgewählt
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {/* "Anderes Datum" pill */}
+                  <button
+                    className="sp1-date-pill"
+                    onClick={() => { setShowCustomDate(true); setDateEvent(''); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      background: showCustomDate ? V_DIM2 : WHITE,
+                      border: `1.5px ${showCustomDate ? 'solid' : 'dashed'} ${showCustomDate ? V : BORDER2}`,
+                      borderRadius: 14, padding: '14px 18px',
+                      boxShadow: showCustomDate ? `0 0 0 3px ${V_DIM}` : 'none',
+                      cursor: 'pointer', textAlign: 'left' as const,
+                      transition: 'all 0.18s',
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                      border: `2px solid ${showCustomDate ? V : BORDER2}`,
+                      background: showCustomDate ? V : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {showCustomDate && <div style={{ width: 6, height: 6, borderRadius: '50%', background: WHITE }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' as const, color: showCustomDate ? V : MUTED, marginBottom: 3 }}>
+                        Anderes Datum
+                      </div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, color: showCustomDate ? V : INK2 }}>
+                        {showCustomDate && dateEvent ? fmtLongDE(dateEvent) : 'Datum selbst wählen'}
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Custom date input */}
+                {showCustomDate && (
                   <div
                     className="sp1-date-field"
-                    style={{ background: WHITE, border: `1.5px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px', boxShadow: SHADOW, transition: 'border-color 0.18s, box-shadow 0.18s' }}
+                    style={{ background: WHITE, border: `1.5px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px', boxShadow: SHADOW, marginBottom: 16, transition: 'border-color 0.18s, box-shadow 0.18s', animation: 'sp1-popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}
                   >
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.9, textTransform: 'uppercase' as const, color: MUTED, marginBottom: 8 }}>
                       Abstimmungs- / Wahltag
@@ -366,73 +490,123 @@ export default function Step1Politik({ updateBriefing, onComplete }: Props) {
                       value={dateEvent}
                       min={todayPlusDaysISO(MIN_SETUP_DAYS)}
                       onChange={e => setDateEvent(e.target.value)}
+                      autoFocus
                     />
                     <div style={{ fontSize: 12, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Bundesabstimmungen finden immer an einem Sonntag statt.</div>
                   </div>
+                )}
 
-                  {/* Date gate feedback */}
-                  {dateEvent && dateGate.level !== 'ok' && (
-                    <div
-                      style={{
-                        background:
-                          dateGate.level === 'error'   ? '#FFF0F0' :
-                          dateGate.level === 'warning' ? AMBER_BG :
-                                                         V_DIM,
-                        border: `1px solid ${
-                          dateGate.level === 'error'   ? '#FCA5A5' :
-                          dateGate.level === 'warning' ? AMBER :
-                                                         V_DIM2
-                        }`,
-                        borderRadius: 12,
-                        padding: '12px 16px',
-                        fontSize: 13,
-                        lineHeight: 1.5,
-                        color:
-                          dateGate.level === 'error'   ? '#991B1B' :
-                          dateGate.level === 'warning' ? AMBER :
-                                                         INK2,
-                        display: 'flex',
-                        gap: 10,
-                        alignItems: 'flex-start',
-                        fontWeight: 500,
-                      }}
-                    >
-                      <span style={{ flexShrink: 0, fontSize: 15 }}>
-                        {dateGate.level === 'error' ? '⛔' : dateGate.level === 'warning' ? '⚠️' : 'ℹ️'}
-                      </span>
-                      <span>{dateGate.message}</span>
-                    </div>
-                  )}
-
-                  {/* Start date */}
+                {/* Date gate alert */}
+                {dateEvent && dateGate.level !== 'ok' && (
                   <div
-                    className="sp1-date-field"
-                    style={{ background: WHITE, border: `1.5px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px', boxShadow: SHADOW, transition: 'border-color 0.18s, box-shadow 0.18s' }}
+                    style={{
+                      background:
+                        dateGate.level === 'error'   ? '#FFF0F0' :
+                        dateGate.level === 'warning' ? AMBER_BG :
+                                                       V_DIM,
+                      border: `1px solid ${
+                        dateGate.level === 'error'   ? '#FCA5A5' :
+                        dateGate.level === 'warning' ? AMBER :
+                                                       V_DIM2
+                      }`,
+                      borderRadius: 12,
+                      padding: '12px 16px',
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color:
+                        dateGate.level === 'error'   ? '#991B1B' :
+                        dateGate.level === 'warning' ? AMBER :
+                                                       INK2,
+                      display: 'flex',
+                      gap: 10,
+                      alignItems: 'flex-start',
+                      fontWeight: 500,
+                      marginBottom: 16,
+                      animation: 'sp1-popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+                    }}
                   >
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.9, textTransform: 'uppercase' as const, color: MUTED, marginBottom: 8 }}>
-                      Kampagnenstart
-                    </label>
-                    <input
-                      type="date"
-                      className="sp1-date-input"
-                      value={dateStart}
-                      onChange={e => setDateStart(e.target.value)}
-                    />
-                    <div style={{ fontSize: 12, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Wir empfehlen 4–6 Wochen Vorlauf für maximale Wirkung.</div>
+                    <span style={{ flexShrink: 0, fontSize: 15 }}>
+                      {dateGate.level === 'error' ? '⛔' : dateGate.level === 'warning' ? '⚠️' : 'ℹ️'}
+                    </span>
+                    <span>{dateGate.message}</span>
                   </div>
-                </div>
+                )}
 
-                {/* Timeline pill */}
-                {timelineShow && (
+                {/* Auto-calculated timeline */}
+                {dateEvent && !dateBlocked && tlDurationDays > 0 && (
                   <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    background: V_DIM2, border: `1.5px solid ${BORDER2}`,
-                    borderRadius: 99, padding: '10px 20px',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: V,
+                    background: V_DIM, border: `1.5px solid ${BORDER}`,
+                    borderRadius: 14, padding: '16px 20px',
                     marginBottom: 24,
                     animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
                   }}>
-                    <span>{timelineDays} Tage Kampagnendauer · {timelineWeeks} Wochen</span>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' as const, color: V, marginBottom: 16 }}>
+                      Kampagnen-Timeline
+                    </div>
+
+                    {/* 3-node timeline */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                      {/* Node: Heute */}
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 52 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: GREEN, border: '2px solid white', boxShadow: `0 0 0 3px ${GREEN_BG}` }} />
+                        <div style={{ fontSize: 10, fontWeight: 700, color: GREEN, marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
+                          Heute<br />
+                          <span style={{ fontWeight: 400, color: MUTED }}>{fmtPillDE(todayISO())}</span>
+                        </div>
+                      </div>
+
+                      {/* Connector: setup period (gray) */}
+                      <div style={{ flex: 1, height: 2, background: BORDER2, marginTop: 4, position: 'relative' as const }}>
+                        <div style={{
+                          position: 'absolute' as const, top: -18, left: '50%', transform: 'translateX(-50%)',
+                          fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const,
+                          background: BG, padding: '0 4px',
+                        }}>
+                          Vorlauf
+                        </div>
+                      </div>
+
+                      {/* Node: Kampagnenstart */}
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 70 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: WHITE, border: `2.5px solid ${V}` }} />
+                        <div style={{ fontSize: 10, fontWeight: 700, color: V, marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
+                          Start<br />
+                          <span style={{ fontWeight: 400, color: INK2 }}>{fmtPillDE(tlCampaignStart)}</span>
+                        </div>
+                      </div>
+
+                      {/* Connector: campaign (violet) */}
+                      <div style={{ flex: 2, height: 2, background: V, marginTop: 4, position: 'relative' as const }}>
+                        <div style={{
+                          position: 'absolute' as const, top: -18, left: '50%', transform: 'translateX(-50%)',
+                          fontSize: 9.5, fontWeight: 700, color: V, whiteSpace: 'nowrap' as const,
+                          background: BG, padding: '0 4px',
+                        }}>
+                          {tlDurationDays} Tage
+                        </div>
+                      </div>
+
+                      {/* Node: Abstimmungstag */}
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 70 }}>
+                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: V, border: '2px solid white', boxShadow: `0 0 0 3px ${V_DIM2}`, marginTop: -1 }} />
+                        <div style={{ fontSize: 10, fontWeight: 800, color: V, marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
+                          Abstimmung<br />
+                          <span style={{ fontWeight: 400 }}>{fmtPillDE(dateEvent)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chips */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 7, marginTop: 16 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: V, background: WHITE, border: `1px solid ${BORDER2}`, borderRadius: 99, padding: '3px 10px' }}>
+                        {tlDurationDays} Tage · {Math.round(tlDurationDays / 7)} Wochen
+                      </span>
+                      {tlPkgHint && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: INK2, background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 99, padding: '3px 10px' }}>
+                          {tlPkgHint}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
