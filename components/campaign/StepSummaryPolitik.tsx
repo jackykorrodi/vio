@@ -401,7 +401,20 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
             <div style={{ fontSize: 14, fontWeight: 600, color: '#6B4FBB', marginBottom: 2 }}>{regionName}</div>
             <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 10 }}>{vioData.eligibleVotersTotal.toLocaleString('de-CH')} Stimmberechtigte</div>
             <SbRow label="Polit. Screens" value={doohScreenCount.toLocaleString('de-CH')} />
-            <SbRow label="Reichweite" value={`~${Math.round(customReachPct * 100)}%`} last />
+            <SbRow label="Reichweite" value={`~${Math.round(customReachPct * 100)}%`} last={!impact || impact.er3Reach === 0} />
+            {impact && impact.er3Reach > 0 && (
+              <div style={{ textAlign: 'center', padding: '10px 0 14px', borderBottom: '1px solid rgba(107,79,187,0.08)', marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase' as const, color: '#7A7596', marginBottom: 4 }}>
+                  davon mit Erinnerungswirkung
+                </div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 18, fontWeight: 700, color: '#7A7596' }}>
+                  ~{impact.er3Reach.toLocaleString('de-CH')}
+                </div>
+                <div style={{ fontSize: 11, color: '#7A7596', marginTop: 2 }}>
+                  ≥ 3 Kontakte ({Math.round(impact.er3Factor * 100)}%)
+                </div>
+              </div>
+            )}
             <div style={{ fontSize: 10, color: '#888780', marginTop: 8 }}>Quelle: VIO DOOH-Screendaten & BFS 2023</div>
           </div>
 
