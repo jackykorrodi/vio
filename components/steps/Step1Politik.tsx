@@ -156,9 +156,11 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
 
   // Q2 state
   const [regions, setRegions]         = useState<Region[]>(
-    (briefing.selectedRegions ?? []).map(r => ({
-      name: r.name, type: r.type as any, stimm: r.stimm, kanton: r.kanton,
-    }))
+    (briefing.selectedRegions ?? []).map(r => {
+      const match = ALL_REGIONS.find(x => x.name === r.name);
+      if (match) return match;
+      return { name: r.name, type: r.type as Region['type'], kanton: r.kanton ?? 'CH', pop: r.stimm * 2, stimm: r.stimm };
+    })
   );
   const [regionQuery, setRegionQuery] = useState('');
   const [ddOpen, setDdOpen]           = useState(false);
