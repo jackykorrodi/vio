@@ -139,13 +139,15 @@ interface Props {
   updateBriefing: (data: Partial<BriefingData>) => void;
   onComplete: () => void;
   isActive: boolean;
+  initialQ?: number;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function Step1Politik({ briefing, updateBriefing, onComplete }: Props) {
+export default function Step1Politik({ briefing, updateBriefing, onComplete, initialQ }: Props) {
   // Navigation
   const [curQ, setCurQ] = useState(() =>
+    initialQ != null ? initialQ :
     briefing.votingDate && briefing.selectedRegions?.length && briefing.politikType ? 4 : 1
   );
   const [animDir, setAnimDir] = useState<'forward' | 'back'>('forward');

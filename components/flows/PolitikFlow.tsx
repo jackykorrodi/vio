@@ -36,6 +36,7 @@ export default function PolitikFlow({ resumeData }: Props) {
 
   const [currentStep, setCurrentStep] = useState(_targetStep ?? 1);
   const [step4Phase, setStep4Phase] = useState<'creative' | 'adcreator'>('creative');
+  const [step1ResumeQ, setStep1ResumeQ] = useState<number>(1);
   const [resumeLoaded] = useState(!!resumeData);
   const [showLabels, setShowLabels] = useState(false);
 
@@ -57,6 +58,7 @@ export default function PolitikFlow({ resumeData }: Props) {
 
   const prevStep = () => {
     if (currentStep === 4 && step4Phase === 'adcreator') { setStep4Phase('creative'); return; }
+    if (currentStep === 2) setStep1ResumeQ(3);
     setCurrentStep(prev => Math.max(1, prev - 1));
   };
 
@@ -154,7 +156,7 @@ export default function PolitikFlow({ resumeData }: Props) {
 
       {/* ── Step 1: Region / Wahlkreis / Kampagnentyp ── */}
       {currentStep === 1 && (
-        <Step2Politik briefing={briefing} updateBriefing={updateBriefing} onComplete={nextStep} isActive />
+        <Step2Politik briefing={briefing} updateBriefing={updateBriefing} onComplete={() => { setStep1ResumeQ(1); nextStep(); }} isActive initialQ={step1ResumeQ} />
       )}
 
       {/* ── Step 2: Paket wählen ── */}

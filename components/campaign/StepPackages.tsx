@@ -236,7 +236,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [path, setPath]               = useState<'A' | 'B'>('A');
   const [pkg, setPkg]                 = useState<PaketKey>('praesenz');
   const [budget, setBudget]           = useState<number>(
-    packages ? packages.praesenz.budget : 8000
+    briefing.budget ?? briefing.recommendedBudget ?? 4000
   );
   const [days, setDays]               = useState<number>(
     packages ? packages.praesenz.laufzeitDays : 21
