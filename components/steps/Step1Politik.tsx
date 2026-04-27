@@ -142,25 +142,31 @@ interface Props {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function Step1Politik({ updateBriefing, onComplete }: Props) {
+export default function Step1Politik({ briefing, updateBriefing, onComplete }: Props) {
   // Navigation
-  const [curQ, setCurQ] = useState(1);
+  const [curQ, setCurQ] = useState(() =>
+    briefing.votingDate && briefing.selectedRegions?.length && briefing.politikType ? 4 : 1
+  );
   const [animDir, setAnimDir] = useState<'forward' | 'back'>('forward');
   const [animKey, setAnimKey] = useState(0);
 
   // Q1 state
-  const [dateEvent, setDateEvent] = useState('');
+  const [dateEvent, setDateEvent] = useState(briefing.votingDate ?? '');
   const [showCustomDate, setShowCustomDate] = useState(false);
 
   // Q2 state
-  const [regions, setRegions]         = useState<Region[]>([]);
+  const [regions, setRegions]         = useState<Region[]>(
+    (briefing.selectedRegions ?? []).map(r => ({
+      name: r.name, type: r.type as any, stimm: r.stimm, kanton: r.kanton,
+    }))
+  );
   const [regionQuery, setRegionQuery] = useState('');
   const [ddOpen, setDdOpen]           = useState(false);
   const [screenHinweis, setScreenHinweis] = useState<string | null>(null);
 
   // Q3 state
-  const [budget, setBudget]           = useState(5000);
-  const [budgetKnown, setBudgetKnown] = useState(true);
+  const [budget, setBudget]           = useState(briefing.recommendedBudget ?? 5000);
+  const [budgetKnown, setBudgetKnown] = useState(!!briefing.recommendedBudget);
 
   // Summary pills (accumulated as user progresses)
   const [pills, setPills] = useState<string[]>([]);

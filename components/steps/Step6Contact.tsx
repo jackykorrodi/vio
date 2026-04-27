@@ -50,9 +50,16 @@ interface Props {
 }
 
 export default function Step6Contact({ briefing, updateBriefing, nextStep, goToStep }: Props) {
-  const [abschluss, setAbschluss] = useState<'buchen' | 'offerte'>('buchen');
+  const [abschluss, setAbschluss] = useState<'buchen' | 'offerte'>(
+    (briefing as any).abschluss ?? 'buchen'
+  );
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleAbschlussChange = (val: 'buchen' | 'offerte') => {
+    setAbschluss(val);
+    updateBriefing({ abschluss: val } as any);
+  };
   const [submitError, setSubmitError] = useState('');
 
   const validate = (): boolean => {
@@ -198,7 +205,7 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             return (
               <div
                 key={opt.value}
-                onClick={() => setAbschluss(opt.value)}
+                onClick={() => handleAbschlussChange(opt.value)}
                 style={{
                   background: active ? C.pl : C.white,
                   borderRadius: '20px',

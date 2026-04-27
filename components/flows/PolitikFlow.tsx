@@ -184,7 +184,7 @@ export default function PolitikFlow({ resumeData }: Props) {
 
       {/* ── Step 5: Abschluss ── */}
       {currentStep === 5 && (
-        <Step6Contact briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} goToStep={setCurrentStep} isActive />
+        <Step6Contact briefing={briefing} updateBriefing={updateBriefing} nextStep={nextStep} goToStep={(step) => setCurrentStep(Math.min(step, TOTAL_STEPS))} isActive />
       )}
 
       {/* ── Step 6: Bestätigung ── */}
