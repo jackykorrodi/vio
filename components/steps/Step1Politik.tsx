@@ -84,6 +84,7 @@ function calcDaysUntil(iso: string): number {
 }
 
 const MIN_SETUP_DAYS = 10;
+const STIMMUNTERLAGEN_OFFSET = 28;
 
 function todayPlusDaysISO(days: number): string {
   const d = new Date();
@@ -260,6 +261,12 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
     : daysToEvent >= 28 ? 'Paket «Sichtbar» (2 Wochen) möglich'
     : null
     : null;
+
+  // Stimmunterlagenversand: CH-Standard = Abstimmungstag − 28 Tage
+  const tlUnterlagenDate         = dateEvent ? addDaysISO(dateEvent, -STIMMUNTERLAGEN_OFFSET) : '';
+  const unterlagenBeforeCampaign = !!(tlCampaignStart && tlUnterlagenDate && tlUnterlagenDate <= tlCampaignStart);
+  const flexStartToUnterlagen    = Math.max(1, tlDurationDays - STIMMUNTERLAGEN_OFFSET);
+  const flexUnterlagenToVote     = STIMMUNTERLAGEN_OFFSET;
 
   // Pills for voting day selection
   const next2Sundays = getNext2Sundays();
@@ -547,7 +554,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
                       Kampagnen-Timeline
                     </div>
 
-                    {/* 3-node timeline */}
+                    {/* 4-node timeline */}
                     <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                       {/* Node: Heute */}
                       <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 52 }}>
@@ -578,8 +585,8 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
                         </div>
                       </div>
 
-                      {/* Connector: campaign (violet) */}
-                      <div style={{ flex: 2, height: 2, background: V, marginTop: 4, position: 'relative' as const }}>
+                      {/* Connector: Start → Unterlagen (violet) */}
+                      <div style={{ flex: flexStartToUnterlagen, height: 2, background: V, marginTop: 4, position: 'relative' as const }}>
                         <div style={{
                           position: 'absolute' as const, top: -18, left: '50%', transform: 'translateX(-50%)',
                           fontSize: 9.5, fontWeight: 700, color: V, whiteSpace: 'nowrap' as const,
@@ -588,6 +595,26 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
                           {tlDurationDays} Tage
                         </div>
                       </div>
+
+                      {/* Node: Stimmunterlagenversand */}
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 58 }}>
+                        <div style={{
+                          width: 10, height: 10, borderRadius: '50%',
+                          background: unterlagenBeforeCampaign ? MUTED : '#BA7517',
+                          border: '2px solid white',
+                          boxShadow: unterlagenBeforeCampaign ? 'none' : '0 0 0 3px #FAEEDA',
+                        }} />
+                        <div style={{ fontSize: 10, fontWeight: 700, color: unterlagenBeforeCampaign ? MUTED : '#BA7517', marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
+                          Unterlagen<br />
+                          <span style={{ fontWeight: 400, color: unterlagenBeforeCampaign ? MUTED : INK2 }}>{fmtPillDE(tlUnterlagenDate)}</span>
+                          {unterlagenBeforeCampaign && (
+                            <span style={{ display: 'block', fontSize: 9, color: MUTED, marginTop: 1, whiteSpace: 'nowrap' as const }}>Bereits versendet</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Connector: Unterlagen → Abstimmung (violet) */}
+                      <div style={{ flex: flexUnterlagenToVote, height: 2, background: V, marginTop: 4 }} />
 
                       {/* Node: Abstimmungstag */}
                       <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 70 }}>
