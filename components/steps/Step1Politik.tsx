@@ -430,7 +430,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' as const, color: isSelected ? V : MUTED, marginBottom: 3 }}>
-                            Bundesabstimmung · Sonntag
+                            ABSTIMMUNGS- / WAHLSONNTAG
                           </div>
                           <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 800, color: isSelected ? V : INK, letterSpacing: -0.3 }}>
                             {fmtLongDE(iso)}
@@ -495,7 +495,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete }: P
                       onChange={e => setDateEvent(e.target.value)}
                       autoFocus
                     />
-                    <div style={{ fontSize: 12, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Bundesabstimmungen finden immer an einem Sonntag statt.</div>
+                    <div style={{ fontSize: 12, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Abstimmungs- und Wahlsonntage sind immer sonntags.</div>
                   </div>
                 )}
 
