@@ -241,7 +241,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [days, setDays]               = useState<number>(
     packages ? packages.praesenz.laufzeitDays : 21
   );
-  const [feintuningOpen, setFeintuning] = useState(false);
+  const [feintuningOpen, setFeintuning] = useState<boolean>((briefing as any).adjOpen ?? false);
+
+  const handleFeintuning = (val: boolean) => {
+    setFeintuning(val);
+    updateBriefing({ adjOpen: val } as any);
+  };
   const [budgetRef]                   = useState(() => ({
     budget: packages ? packages.praesenz.budget : 8000,
     days: packages ? packages.praesenz.laufzeitDays : 21,
@@ -455,7 +460,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 {/* Feintuning accordion */}
                 <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, marginBottom: 18, overflow: 'hidden' }}>
                   <div
-                    onClick={() => setFeintuning(o => !o)}
+                    onClick={() => handleFeintuning(!feintuningOpen)}
                     style={{ padding: '14px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' as const }}
                   >
                     <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 600, color: T.ink }}>Budget &amp; Laufzeit feintunen</span>

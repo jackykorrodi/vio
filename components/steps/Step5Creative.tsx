@@ -34,7 +34,9 @@ interface Props {
 
 export default function Step5Creative({ briefing, updateBriefing, nextStep, onUploadSelected, stepNumber }: Props) {
   const selected = briefing.werbemittel;
-  const [openItem, setOpenItem] = useState<'upload' | 'erstellen' | 'spaeter' | null>(null);
+  const [openItem, setOpenItem] = useState<'upload' | 'erstellen' | 'spaeter' | null>(
+    (briefing.werbemittel as 'upload' | 'erstellen' | 'spaeter' | null) ?? null
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
