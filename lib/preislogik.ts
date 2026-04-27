@@ -35,6 +35,10 @@ export const CPM_DISPLAY = 15;
 export const DELIVERY_DOOH = 0.75;
 export const DELIVERY_DISPLAY = 0.90;
 
+export const REACH_CURVE_K = 0.4;   // Hofmans-Steilheit, CH-Politik kalibriert
+export const ER3_BETA = 5.0;        // Effective Reach Heterogenität (Long-Tail)
+export const ER3_OFFSET = 0.5;      // Schwelle avg_freq für >=3 Kontakte
+
 // TODO: mit ersten 10 Splicky-Kampagnen validieren (aktuell CH-DOOH-Branchenschätzung)
 // Splicky CPM = Cost per 1000 Ad Plays (nicht Audience Contacts) → Multiplier nötig
 export const DOOH_OTS_MULTIPLIER = 2.5;
@@ -88,6 +92,13 @@ export interface ImpactResult {
   displayShare: number;       // z.B. 0.30
   screenKlasse: 'voll' | 'begrenzt' | 'display-dominant';
 
+  // Hofmans
+  impPerCapita: number;        // Kontakte / Stimmberechtigte
+  reachFactor: number;         // Hofmans-Sättigungsfaktor (0–1)
+  uniqueReachHofmans: number;  // Absolute Unique Reach (vor Pool-Cap)
+  er3Factor: number;           // Effective Reach ≥3 Faktor (0–1)
+  er3Reach: number;            // Absoluter Effective Reach 3+
+
   // Flags
   cappedByRegion: boolean;
   hinweise: Hinweis[];
@@ -108,6 +119,8 @@ export interface Paket {
   reachMitte: number;
   reachVonPct: number;
   reachBisPct: number;
+  er3Factor: number;
+  er3Reach: number;
   recommended: boolean;
 }
 
@@ -240,7 +253,7 @@ function buildHinweise(ctx: {
   }
 
   // Priorität 2: Empfehlungen
-  if (ctx.frequencyWeekly < F_MIN_WEEKLY) {
+  if (ctx.frequencyWeekly < 0.5) {
     const emptohleneWochen = Math.max(1, Math.floor(ctx.laufzeitDays / 7 / 2));
     hinweise.push({
       code: 'too_thin',
@@ -359,16 +372,23 @@ export function calculateImpact(input: {
   // Laufzeit
   const laufzeitWeeks = input.laufzeitDays / 7;
 
-  // Unique Reach via Ziel-Frequenz, mit Pool-Cap
+  // Hofmans-Sättigungskurve
+  const impPerCapita = stimmTotal > 0 ? impressionsEffective / stimmTotal : 0;
+  const reachFactor = 1 - 1 / (1 + REACH_CURVE_K * impPerCapita);
+  const uniqueReachHofmans = stimmTotal * reachFactor;
+
+  // Pool-Cap
   const poolCap = stimmTotal * MAX_REACH_CAP;
-  const uniqueReachRaw = laufzeitWeeks > 0
-    ? impressionsEffective / (F_REC_WEEKLY * laufzeitWeeks)
-    : 0;
-  let uniqueReach = Math.min(uniqueReachRaw, poolCap);
-  const cappedByRegion = uniqueReachRaw > poolCap;
+  let uniqueReach = Math.min(uniqueReachHofmans, poolCap);
+  const cappedByRegion = uniqueReachHofmans > poolCap;
 
   // Wearout bei Laufzeit > 8 Wochen
   uniqueReach = uniqueReach * applyWearoutFactor(laufzeitWeeks);
+
+  // Effective Reach 3+
+  const avgFreq = uniqueReach > 0 ? impressionsEffective / uniqueReach : 0;
+  const er3Factor = Math.max(0, 1 - Math.exp(-(avgFreq - ER3_OFFSET) / ER3_BETA));
+  const er3Reach = Math.round(uniqueReach * er3Factor);
 
   // Effektive Frequenzen (read-only für UI)
   const frequencyWeekly = (uniqueReach > 0 && laufzeitWeeks > 0)
@@ -417,6 +437,11 @@ export function calculateImpact(input: {
     displayShare,
     screenKlasse: klass.klasse,
     cappedByRegion,
+    impPerCapita: Math.round(impPerCapita * 10) / 10,
+    reachFactor: Math.round(reachFactor * 1000) / 1000,
+    uniqueReachHofmans: Math.round(uniqueReachHofmans),
+    er3Factor: Math.round(er3Factor * 1000) / 1000,
+    er3Reach,
     hinweise,
   };
 }
@@ -466,6 +491,11 @@ export function buildPackages(input: {
     const reachVonPct = stimmTotal > 0 ? Math.round((reachVon / stimmTotal) * 100) : 0;
     const reachBisPct = stimmTotal > 0 ? Math.round((reachBis / stimmTotal) * 100) : 0;
 
+    // Effective Reach 3+ für dieses Paket
+    const pkgAvgFreq = spec.weeklyFreq * laufzeitWeeks;
+    const pkgEr3Factor = Math.max(0, 1 - Math.exp(-(pkgAvgFreq - ER3_OFFSET) / ER3_BETA));
+    const pkgEr3Reach = Math.round(reachMitte * pkgEr3Factor);
+
     return {
       key,
       name: spec.name,
@@ -479,6 +509,8 @@ export function buildPackages(input: {
       reachMitte,
       reachVonPct,
       reachBisPct,
+      er3Factor: Math.round(pkgEr3Factor * 1000) / 1000,
+      er3Reach: pkgEr3Reach,
       recommended: key === 'praesenz',
     };
   };
