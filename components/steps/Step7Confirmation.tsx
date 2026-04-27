@@ -114,6 +114,40 @@ function FeedbackCard({ briefing }: { briefing: BriefingData }) {
 }
 
 export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Props) {
+  const POLITIK_TYPE_LABELS: Record<string, string> = {
+    ja: 'Ja-Kampagne', nein: 'Nein-Kampagne', kandidat: 'Kandidatur', event: 'Event',
+  };
+  const PKG_LABELS: Record<string, string> = {
+    sichtbar: 'Sichtbar', praesenz: 'Präsenz', dominanz: 'Dominanz',
+  };
+  const WERBEMITTEL_LABELS: Record<string, string> = {
+    upload: 'Dateien hochgeladen', erstellen: 'Mit Ad Creator erstellt', spaeter: 'Später einreichen',
+  };
+
+  const regionLabel     = (briefing.selectedRegions ?? []).map(r => r.name).join(', ') || '—';
+  const politikLabel    = POLITIK_TYPE_LABELS[briefing.politikType ?? ''] ?? '—';
+  const paketLabel      = PKG_LABELS[briefing.selectedPackage ?? ''] ?? '—';
+  const budgetLabel     = briefing.budget ? `CHF ${briefing.budget.toLocaleString('de-CH')}` : '—';
+  const laufzeitLabel   = briefing.laufzeit ? `${briefing.laufzeit} Wochen` : '—';
+  const datumLabel      = briefing.startDate && briefing.votingDate
+    ? `${new Date(briefing.startDate + 'T00:00:00').toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${new Date(briefing.votingDate + 'T00:00:00').toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+    : '—';
+  const reachLabel      = briefing.reach ? briefing.reach.toLocaleString('de-CH') + ' Personen' : '—';
+  const werbemittelLabel = WERBEMITTEL_LABELS[briefing.werbemittel ?? ''] ?? '—';
+  const abschlussLabel  = (briefing as any).abschluss === 'buchen' ? 'Direktbuchung' : 'Offerte angefordert';
+
+  const rows = [
+    { label: 'Region',       value: regionLabel },
+    { label: 'Kampagnentyp', value: politikLabel },
+    { label: 'Paket',        value: paketLabel },
+    { label: 'Budget',       value: budgetLabel },
+    { label: 'Laufzeit',     value: laufzeitLabel },
+    { label: 'Zeitraum',     value: datumLabel },
+    { label: 'Reichweite',   value: reachLabel },
+    { label: 'Werbemittel',  value: werbemittelLabel },
+    { label: 'Abschluss',    value: abschlussLabel },
+  ];
+
   return (
     <section style={{ backgroundColor: C.bg }}>
       <div style={page}>
@@ -143,6 +177,19 @@ export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Pr
               ? `Deine Offerte kommt in wenigen Minuten an ${briefing.email}.`
               : 'Deine Offerte kommt in wenigen Minuten per E-Mail.'}
           </p>
+        </div>
+
+        {/* Campaign summary */}
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid rgba(107,79,187,0.12)', padding: '20px 24px', marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', color: '#7A7596', textTransform: 'uppercase' as const, marginBottom: 12 }}>
+            Deine Kampagne
+          </div>
+          {rows.map((row, i) => (
+            <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(107,79,187,0.07)' : 'none', fontSize: 13 }}>
+              <span style={{ color: '#7A7596' }}>{row.label}</span>
+              <span style={{ fontWeight: 600, color: '#2D1F52', textAlign: 'right' as const, maxWidth: '60%' }}>{row.value}</span>
+            </div>
+          ))}
         </div>
 
         {/* What happens next */}
