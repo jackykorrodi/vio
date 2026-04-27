@@ -233,7 +233,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   );
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [path, setPath]               = useState<'A' | 'B'>('A');
+  const [path, setPath]               = useState<'A' | 'B'>(briefing.budgetKnown === false ? 'B' : 'A');
   const [pkg, setPkg]                 = useState<PaketKey>('praesenz');
   const [budget, setBudget]           = useState<number>(
     briefing.budget ?? briefing.recommendedBudget ?? 4000

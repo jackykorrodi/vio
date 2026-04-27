@@ -295,6 +295,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
       vioPackages:       vioData,
       recommendedBudget:    budgetKnown ? budget : 0,
       recommendedLaufzeit:  Math.round(rec.durationDays / 7),
+      budgetKnown,
       ...(budgetKnown ? { budget } : {}),
     });
     onComplete();

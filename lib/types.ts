@@ -62,6 +62,7 @@ export interface BriefingData {
   daysUntil?: number;
   recommendedBudget?: number;
   recommendedLaufzeit?: number;
+  budgetKnown?: boolean;
   selectedRegions?: Array<{ name: string; type: string; stimm: number; kanton?: string }>;
   totalStimmber?: number;
   vioPackages?: Step1Output;
