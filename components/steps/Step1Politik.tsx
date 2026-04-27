@@ -174,7 +174,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
   const [screenHinweis, setScreenHinweis] = useState<string | null>(null);
 
   // Q3 state
-  const [budget, setBudget]           = useState(briefing.recommendedBudget ?? 5000);
+  const [budget, setBudget]           = useState(briefing.recommendedBudget ?? 15000);
   const [budgetKnown, setBudgetKnown] = useState(!!briefing.recommendedBudget);
 
   // Summary pills (accumulated as user progresses)
