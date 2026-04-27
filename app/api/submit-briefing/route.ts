@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Client } from '@hubspot/api-client';
-import { AssociationSpecAssociationCategoryEnum } from '@hubspot/api-client/lib/codegen/crm/deals';
 import { BriefingData } from '@/lib/types';
 import { rateLimit } from '@/lib/rate-limit';
 import { checkDuplicate } from '@/lib/submission-guard';
@@ -53,85 +51,83 @@ export async function POST(request: NextRequest) {
 
     console.log('[submit-briefing] received briefing for:', b.email, '| abschluss:', b.abschluss);
 
-    const hubspot = new Client({ accessToken: process.env.HUBSPOT_ACCESS_TOKEN! });
-    let contactId: string | null = null;
+    const PD_TOKEN = process.env.PIPEDRIVE_API_TOKEN ?? '';
+    const PD_BASE  = 'https://api.pipedrive.com/v1';
 
-    // ── Create HubSpot contact ──────────────────────────────────────────────
+    // ── Step 1: Create Pipedrive person ────────────────────────────────────────
+    let personId: number | null = null;
     try {
-      console.log('[submit-briefing] creating HubSpot contact for:', b.email);
-      const contact = await hubspot.crm.contacts.basicApi.create({
-        properties: {
-          firstname: b.vorname,
-          lastname: b.nachname,
-          email: b.email,
-          phone: b.telefon,
-          company: b.firma,
-        },
+      const res = await fetch(`${PD_BASE}/persons?api_token=${PD_TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:     `${b.vorname} ${b.nachname}`.trim(),
+          email:    [{ value: b.email, primary: true }],
+          phone:    b.telefon ? [{ value: b.telefon, primary: true }] : undefined,
+          org_name: b.firma || undefined,
+        }),
       });
-      contactId = contact.id;
-      console.log('[submit-briefing] HubSpot contact created, id:', contactId);
+      const json = await res.json();
+      personId = json?.data?.id ?? null;
+      console.log('[submit-briefing] Pipedrive person created, id:', personId);
     } catch (e) {
-      console.error('[submit-briefing] HubSpot contact creation failed:', e);
-      // Continue — deal creation will run without an association
+      console.error('[submit-briefing] Pipedrive person creation failed:', e);
     }
 
-    // ── Create HubSpot deal ─────────────────────────────────────────────────
-    let dealId: string | null = null;
+    // ── Step 2: Create Pipedrive deal ──────────────────────────────────────────
+    let dealId: number | null = null;
     try {
-      console.log('[submit-briefing] creating HubSpot deal, contactId:', contactId);
-      const adCreatorState = {
-        adHeadline: b.adHeadline,
-        adSubline: b.adSubline,
-        adCta: b.adCta,
-        adBgStyle: b.adBgStyle,
-        adBgColor: b.adBgColor,
-        adTextColor: b.adTextColor,
-        adAccentColor: b.adAccentColor,
-        adLogoMode: b.adLogoMode,
-        sessionId: b.sessionId,
-      };
-      const dealPayload: Parameters<typeof hubspot.crm.deals.basicApi.create>[0] = {
-        properties: {
-          dealname: `VIO – ${b.analysis?.organisation || b.firma || b.email} – ${b.budget} CHF`,
-          amount: String(b.budget),
-          dealstage: b.abschluss === 'buchen' ? 'closedwon' : 'presentationscheduled',
-          pipeline: 'default',
-          description: JSON.stringify({
-            url: b.url,
-            campaignType: b.campaignType,
-            analysis: b.analysis,
-            reach: b.reach,
-            laufzeit: b.laufzeit,
-            startDate: b.startDate,
-            werbemittel: b.werbemittel,
-            abschluss: b.abschluss,
-          }),
-          // Session persistence custom properties
-          ...(b.sessionId ? {
-            vio_session_id: b.sessionId,
-            vio_ad_creator_state: JSON.stringify(adCreatorState),
-          } : {}),
-          // Agenturcode
-          ...(b.agenturcode ? { vio_agenturcode: b.agenturcode } : {}),
-        },
-        ...(contactId ? {
-          associations: [
-            {
-              to: { id: contactId },
-              types: [{ associationCategory: AssociationSpecAssociationCategoryEnum.HubspotDefined, associationTypeId: 3 }],
-            },
-          ],
-        } : {}),
-      };
-      const deal = await hubspot.crm.deals.basicApi.create(dealPayload);
-      dealId = deal.id;
-      console.log('[submit-briefing] HubSpot deal created, id:', dealId);
+      const regionLabel = (b.selectedRegions ?? []).map((r: any) => r.name).join(', ')
+        || b.politikRegion || b.firma || b.email;
+      const res = await fetch(`${PD_BASE}/deals?api_token=${PD_TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:     `VIO – ${regionLabel} – CHF ${b.budget ?? 0}`,
+          value:     b.budget ?? 0,
+          currency:  'CHF',
+          person_id: personId ?? undefined,
+          status:    b.abschluss === 'buchen' ? 'won' : 'open',
+        }),
+      });
+      const json = await res.json();
+      dealId = json?.data?.id ?? null;
+      console.log('[submit-briefing] Pipedrive deal created, id:', dealId);
     } catch (e) {
-      console.error('[submit-briefing] HubSpot deal creation failed:', e);
-      // Continue — user should not see this error
+      console.error('[submit-briefing] Pipedrive deal creation failed:', e);
     }
 
-    // ── Send resume link email ──────────────────────────────────────────────
+    // ── Step 3: Attach note with campaign details ──────────────────────────────
+    try {
+      if (dealId) {
+        await fetch(`${PD_BASE}/notes?api_token=${PD_TOKEN}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: JSON.stringify({
+              campaignType:    b.campaignType,
+              politikType:     b.politikType,
+              selectedRegions: b.selectedRegions,
+              selectedPackage: b.selectedPackage,
+              budget:          b.budget,
+              laufzeit:        b.laufzeit,
+              startDate:       b.startDate,
+              votingDate:      b.votingDate,
+              reach:           b.reach,
+              werbemittel:     b.werbemittel,
+              abschluss:       b.abschluss,
+              sessionId:       b.sessionId,
+              agenturcode:     b.agenturcode,
+            }),
+            deal_id: dealId,
+          }),
+        });
+      }
+    } catch (e) {
+      console.error('[submit-briefing] Pipedrive note creation failed:', e);
+    }
+
+    // ── Send resume link email ──────────────────────────────────────────────────
     if (b.sessionId && b.email && process.env.RESEND_API_KEY) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vio-beta.vercel.app';
@@ -157,11 +153,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[submit-briefing] done, returning success');
-    return NextResponse.json({ success: true, navigateTo: 8, dealId });
+    return NextResponse.json({ success: true, dealId });
 
   } catch (e) {
     console.error('[submit-briefing] unexpected top-level error:', e);
-    // Return 200 so the user flow continues regardless
-    return NextResponse.json({ success: true, navigateTo: 8 });
+    return NextResponse.json({ success: true });
   }
 }
