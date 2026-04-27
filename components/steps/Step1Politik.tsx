@@ -97,6 +97,10 @@ function todayISO(): string {
   return todayPlusDaysISO(0);
 }
 
+function fmt(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('de-CH', { day: 'numeric', month: 'short' });
+}
+
 function getNext2Sundays(): string[] {
   const minDate = todayPlusDaysISO(MIN_SETUP_DAYS);
   return CH_ABSTIMMUNGSSONNTAGE.filter(d => d >= minDate).slice(0, 2);
@@ -120,13 +124,13 @@ function getDateGate(dateStr: string): DateGate {
   if (days < 24) {
     return {
       level: 'warning',
-      message: `Sehr knapp: Nach Freigabe bleiben nur noch ${days - MIN_SETUP_DAYS} Tage Kampagnenlaufzeit. Das Paket «Sichtbar» ist machbar – für mehr Wirkung empfehlen wir mindestens 38 Tage Vorlauf.`,
+      message: `Sehr knapp: Es bleiben nur noch ${days - MIN_SETUP_DAYS} Tage Laufzeit. Kampagne ist möglich, aber begrenzt wirksam.`,
     }
   }
   if (days < 38) {
     return {
       level: 'info',
-      message: `Paket «Präsenz» (4 Wochen) ist zeitlich nicht mehr machbar. «Sichtbar» (2 Wochen) läuft bis zur Abstimmung.`,
+      message: `Noch ${days} Tage bis zur Abstimmung — ausreichend für eine kompakte Kampagne.`,
     }
   }
   return { level: 'ok' }
@@ -546,102 +550,70 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
                 )}
 
                 {/* Auto-calculated timeline */}
-                {dateEvent && !dateBlocked && tlDurationDays > 0 && (
-                  <div style={{
-                    background: V_DIM, border: `1.5px solid ${BORDER}`,
-                    borderRadius: 14, padding: '16px 20px',
-                    marginBottom: 24,
-                    animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' as const, color: V, marginBottom: 16 }}>
-                      Kampagnen-Timeline
-                    </div>
+                {dateEvent && !dateBlocked && (() => {
+                  const tlStart = todayPlusDaysISO(MIN_SETUP_DAYS);
+                  const kampagneDays = Math.max(0, calcDaysUntil(dateEvent) - MIN_SETUP_DAYS);
+                  const kampagneWeeks = Math.round(kampagneDays / 7);
+                  const diffStartToUnterlagen = Math.round(
+                    (new Date(tlUnterlagenDate + 'T00:00:00').getTime() - new Date(tlStart + 'T00:00:00').getTime()) / 86400000
+                  );
+                  return (
+                    <div style={{
+                      background: '#F3F0FF', borderRadius: 16, padding: '18px 20px',
+                      border: '1.5px solid rgba(107,79,187,0.14)',
+                      marginBottom: 24,
+                      animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' as const, color: '#7A7596', marginBottom: 14 }}>
+                        KAMPAGNEN-TIMELINE
+                      </div>
 
-                    {/* 4-node timeline */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                      {/* Node: Heute */}
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 52 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: GREEN, border: '2px solid white', boxShadow: `0 0 0 3px ${GREEN_BG}` }} />
-                        <div style={{ fontSize: 10, fontWeight: 700, color: GREEN, marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
-                          Heute<br />
-                          <span style={{ fontWeight: 400, color: MUTED }}>{fmtPillDE(todayISO())}</span>
+                      {/* Timeline track */}
+                      <div style={{ position: 'relative' as const, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 28 }}>
+                        {/* Background line */}
+                        <div style={{ position: 'absolute' as const, top: 8, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
+
+                        {/* Node 0: Heute */}
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#6B4FBB', border: '2.5px solid #6B4FBB' }} />
+                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Heute</div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(todayISO())}</div>
+                        </div>
+
+                        {/* Node 1: Start */}
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
+                          <div style={{ fontSize: 9, fontWeight: 500, color: MUTED, marginBottom: 2, textAlign: 'center' as const }}>Vorlauf</div>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2px solid #6B4FBB' }} />
+                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Start</div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(tlStart)}</div>
+                        </div>
+
+                        {/* Node 2: Unterlagen */}
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
+                          <div style={{ fontSize: 9, fontWeight: 500, color: MUTED, marginBottom: 2, textAlign: 'center' as const }}>{diffStartToUnterlagen} Tage</div>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2px solid rgba(107,79,187,0.35)' }} />
+                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Unterlagen</div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(tlUnterlagenDate)}</div>
+                          <div style={{ fontSize: 9, fontWeight: 400, color: MUTED, marginTop: 1, textAlign: 'center' as const }}>Bereits versendet</div>
+                        </div>
+
+                        {/* Node 3: Abstimmung */}
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2.5px solid #6B4FBB' }} />
+                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Abstimmung</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B4FBB', marginTop: 1, textAlign: 'center' as const }}>{fmt(dateEvent)}</div>
                         </div>
                       </div>
 
-                      {/* Connector: setup period (gray) */}
-                      <div style={{ flex: 1, height: 2, background: BORDER2, marginTop: 4, position: 'relative' as const }}>
-                        <div style={{
-                          position: 'absolute' as const, top: -18, left: '50%', transform: 'translateX(-50%)',
-                          fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const,
-                          background: BG, padding: '0 4px',
-                        }}>
-                          Vorlauf
-                        </div>
-                      </div>
-
-                      {/* Node: Kampagnenstart */}
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 70 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: WHITE, border: `2.5px solid ${V}` }} />
-                        <div style={{ fontSize: 10, fontWeight: 700, color: V, marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
-                          Start<br />
-                          <span style={{ fontWeight: 400, color: INK2 }}>{fmtPillDE(tlCampaignStart)}</span>
-                        </div>
-                      </div>
-
-                      {/* Connector: Start → Unterlagen (violet) */}
-                      <div style={{ flex: flexStartToUnterlagen, height: 2, background: V, marginTop: 4, position: 'relative' as const }}>
-                        <div style={{
-                          position: 'absolute' as const, top: -18, left: '50%', transform: 'translateX(-50%)',
-                          fontSize: 9.5, fontWeight: 700, color: V, whiteSpace: 'nowrap' as const,
-                          background: BG, padding: '0 4px',
-                        }}>
-                          {tlDurationDays} Tage
-                        </div>
-                      </div>
-
-                      {/* Node: Stimmunterlagenversand */}
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 58 }}>
-                        <div style={{
-                          width: 10, height: 10, borderRadius: '50%',
-                          background: unterlagenBeforeCampaign ? MUTED : '#BA7517',
-                          border: '2px solid white',
-                          boxShadow: unterlagenBeforeCampaign ? 'none' : '0 0 0 3px #FAEEDA',
-                        }} />
-                        <div style={{ fontSize: 10, fontWeight: 700, color: unterlagenBeforeCampaign ? MUTED : '#BA7517', marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
-                          Unterlagen<br />
-                          <span style={{ fontWeight: 400, color: unterlagenBeforeCampaign ? MUTED : INK2 }}>{fmtPillDE(tlUnterlagenDate)}</span>
-                          {unterlagenBeforeCampaign && (
-                            <span style={{ display: 'block', fontSize: 9, color: MUTED, marginTop: 1, whiteSpace: 'nowrap' as const }}>Bereits versendet</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Connector: Unterlagen → Abstimmung (violet) */}
-                      <div style={{ flex: flexUnterlagenToVote, height: 2, background: V, marginTop: 4 }} />
-
-                      {/* Node: Abstimmungstag */}
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', minWidth: 70 }}>
-                        <div style={{ width: 12, height: 12, borderRadius: '50%', background: V, border: '2px solid white', boxShadow: `0 0 0 3px ${V_DIM2}`, marginTop: -1 }} />
-                        <div style={{ fontSize: 10, fontWeight: 800, color: V, marginTop: 5, textAlign: 'center' as const, lineHeight: 1.3 }}>
-                          Abstimmung<br />
-                          <span style={{ fontWeight: 400 }}>{fmtPillDE(dateEvent)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Chips */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 7, marginTop: 16 }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: V, background: WHITE, border: `1px solid ${BORDER2}`, borderRadius: 99, padding: '3px 10px' }}>
-                        {tlDurationDays} Tage · {Math.round(tlDurationDays / 7)} Wochen
-                      </span>
-                      {tlPkgHint && (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: INK2, background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 99, padding: '3px 10px' }}>
-                          {tlPkgHint}
+                      {/* Pill row */}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: V, background: WHITE, border: `1px solid ${BORDER2}`, borderRadius: 99, padding: '3px 10px' }}>
+                          {kampagneDays} Tage · {kampagneWeeks} Wochen
                         </span>
-                      )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
                   <button
