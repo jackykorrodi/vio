@@ -1,6 +1,6 @@
 # VIO Regelkatalog: Preislogik & Kampagnenplanung – Politik v2
 
-> **Status:** Final (21. April 2026)
+> **Status:** Final (27. April 2026) — v2.2
 > **Scope:** Politik-Flow. B2B/B2C migrieren später auf dieselbe Logik.
 > **Ersetzt:** `public/vio-regelkatalog-paketlogik.md`
 > **Zielablage:** `public/vio-regelkatalog-politik-v2.md`
@@ -73,6 +73,9 @@ Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs
 |---|---|---|
 | `MAX_REACH_CAP` | 80% | Absolute Obergrenze des erreichbaren Pools |
 | `EXPONENT_BUDGET_LAUFZEIT` | 0.75 | Konkave Kopplung Budget↔Laufzeit |
+| `REACH_CURVE_K` | 0.4 | Hofmans-Steilheit (Impressions pro Kopf → Reach). Kalibrierung nach 10 Kampagnen. |
+| `ER3_BETA` | 5.0 | Effective Reach 3+ Heterogenität (Long-Tail-Faktor). |
+| `ER3_OFFSET` | 0.5 | Mindest-Kampagnenfrequenz für Erinnerungswirkung. |
 
 ### CPM-Tarife
 
@@ -134,29 +137,50 @@ max_reachable = stimm_total * pool_cap
 delivered_impressions_dooh    = total_impressions * split.dooh * CAL.dooh.delivery
 delivered_impressions_display = total_impressions * split.display * CAL.display.delivery
 
-// Schritt 6 — Frequenz & Reach
-laufzeit_weeks = laufzeit_days / 7
+// Schritt 6 — Hofmans-Sättigung (ersetzt lineare Frequenz-Formel)
+// Modell: je mehr Impressions pro Kopf, desto weniger zusätzliche Unique Reach
+laufzeit_weeks        = laufzeit_days / 7
 impressions_effective = delivered_impressions_dooh + delivered_impressions_display
 
-// Implizite Frequenz: Ziel ist F_REC_WEEKLY, aber gedeckelt durch Pool
-unique_reach_raw = impressions_effective / (F_REC_WEEKLY * laufzeit_weeks)
-unique_reach     = min(unique_reach_raw, max_reachable)
-unique_reach     = min(unique_reach, stimm_total * MAX_REACH_CAP)
+imp_per_capita   = impressions_effective / stimm_total
+reach_factor     = 1 - 1 / (1 + REACH_CURVE_K * imp_per_capita)
+unique_reach_raw = stimm_total * MAX_REACH_CAP * reach_factor
+unique_reach     = applyWearoutCurve(unique_reach_raw, laufzeit_weeks)
+capped_by_region = reach_factor >= 0.95
 
-// Effektive Frequenzen
-f_weekly_effective   = impressions_effective / (unique_reach * laufzeit_weeks)
-f_campaign_effective = f_weekly_effective * laufzeit_weeks
+// Effektive Frequenzen (emergent, nicht mehr als Zielgrösse)
+f_campaign_effective = unique_reach > 0 ? impressions_effective / unique_reach : 0
+f_weekly_effective   = laufzeit_weeks > 0 ? f_campaign_effective / laufzeit_weeks : 0
 
-// Schritt 7 — Wearout-Anpassung bei Laufzeit > 8 Wochen (Abschnitt 8)
-if (laufzeit_weeks > 8) {
-  unique_reach = applyWearoutCurve(unique_reach, laufzeit_weeks)
-}
+// Schritt 7 — Effective Reach 3+ (Erinnerungswirkung)
+// Beta-Approximation: wie viele Unique-Reach-Personen ≥3 Kontakte erhalten
+er3_factor        = max(0, 1 - exp(-(f_campaign_effective - ER3_OFFSET) / ER3_BETA))
+effective_reach_3 = unique_reach * er3_factor
 
-// Schritt 8 — Unsicherheits-Band (Abschnitt 10)
-band = getUncertaintyBand(tier, screens_politik_total)
+// Schritt 8 — Campaign Mode (für UI-Badge und Hinweise)
+campaign_mode = f_weekly_effective > F_MAX_WEEKLY ? 'overkill'
+              : f_weekly_effective < 1.5           ? 'awareness'
+              : f_weekly_effective < 4.5           ? 'balanced'
+              : 'mobilization'
+
+// Schritt 9 — Unsicherheits-Band
+band      = getUncertaintyBand(screens_politik_total)
 reach_von = round(unique_reach * (1 - band), 500)
 reach_bis = round(unique_reach * (1 + band), 500)
+er3_von   = round(effective_reach_3 * (1 - band), 500)
+er3_bis   = round(effective_reach_3 * (1 + band), 500)
 ```
+
+### Output-Struktur (ImpactResult)
+
+| Feld | Beschreibung |
+|---|---|
+| `reachVon / reachBis` | Unique Reach Range (Headline-Zahl im UI) |
+| `effectiveReach3plus` | Personen mit ≥3 Kontakten (Erinnerungswirkung) |
+| `effectiveReach3plusVon/Bis` | Effective Reach als Range |
+| `frequencyCampaign` | Durchschnittliche Gesamt-Frequenz (emergent) |
+| `frequencyWeekly` | Durchschnittliche Wochen-Frequenz (intern, Validierung) |
+| `campaignMode` | awareness / balanced / mobilization / overkill |
 
 ### Budget↔Laufzeit-Kopplung (Exponent 0.75)
 
@@ -210,6 +234,19 @@ Angezeigt als:
 ```
 
 Die Wochen-Angabe ist erklärender Kontext, nicht Primärmetrik.
+
+### Campaign Mode (neu ab v2.2)
+
+Die Wochen-Frequenz bestimmt nicht mehr die Reach, sondern emergiert aus ihr. Sie dient als Qualitäts-Label für die UI.
+
+| Mode | F_weekly | UI-Badge | Bedeutung |
+|---|---|---|---|
+| `awareness` | < 1.5× | "AWARENESS" | Breite Streuung, wenig Wiederholung |
+| `balanced` | 1.5–4.5× | "STANDARD" | Ausgewogene Wirkung |
+| `mobilization` | 4.5–10× | "MOBILISIERUNG" | Hohe Wiederholung, Endspurt |
+| `overkill` | > 10× | "SEHR HOHE FREQUENZ" | Werbemüdigkeit-Risiko, Hinweis aktiv |
+
+Hinweis `too_thin` triggert neu bei f_weekly < 0.5 (statt < F_MIN_WEEKLY = 3). Begründung: awareness-Mode (~1×/Wo) ist ein legitimer Kampagnentyp.
 
 ### Warum Wochen-Leitplanken intern
 
@@ -582,23 +619,27 @@ Die Gemeinde-nicht-gefunden-Info ist **kein Trigger-Hinweis**, sondern ein stati
 ### Pfad A (Budget-first)
 
 ```
-Dein Budget: CHF 8'000
-[────●─────────]  CHF 4'000 ── CHF 30'000
-
-Laufzeit: 21 Tage
-[───●────]        7 ── 35 Tage (Korridor)
-
-┌─ Wirkungsindikator ─────────────────────────┐
-│                                             │
-│  145'000 – 180'000                          │
-│  Zürcherinnen und Zürcher                   │
-│                                             │
-│  Ø 15× pro Person (≈ 5× pro Woche)          │
-│  über 21 Tage                               │
-│                                             │
-└─────────────────────────────────────────────┘
-
-Zielgruppe: 310'000 Stimmberechtigte
+Dein Budget: CHF 100'000
+[────────────────●]  CHF 4'000 ── CHF 100'000
+Laufzeit: 56 Tage
+[──────────●────]    7 ── 84 Tage
+┌─ Wirkungsindikator ──────────────────────────────────┐
+│ AWARENESS                                            │
+│                                                      │
+│  310'000 – 355'000                                   │
+│  Bernerinnen und Berner                              │
+│                                                      │
+│  Davon 220'000–260'000 mit Erinnerungswirkung        │
+│  (mind. 3× gesehen)                                  │
+│                                                      │
+│  ABDECKUNG     KONTAKTDRUCK     ZEITRAUM             │
+│  40–46%        Ø 5.8×           56 Tage             │
+│  der Stimm.    ≈ 0.7× / Woche   22. Mrz – 17. Mai   │
+│                                                      │
+│  KANAL-MIX            KLASSE: VOLL                   │
+│  ████████████░░░░░░                                  │
+│  70% Digitale Plakate    30% Online-Display          │
+└──────────────────────────────────────────────────────┘
 ```
 
 ### Pfad B (Pakete)
@@ -772,6 +813,8 @@ Umgesetzt:
 | Punkt | Status | Verantwortlich |
 |---|---|---|
 | Delivery-Faktoren DOOH/Display | Arbeitshypothese 0.75/0.90 | Dani, nach ersten 10 Kampagnen |
+| Hofmans-Kalibrierungsparameter k=0.4 validieren | Nach ersten 10 Kampagnen Splicky-Daten abgleichen, ggf. k anpassen | Jacky + Dani |
+| ER3_BETA=5.0 validieren | Effective Reach 3+ gegen reale Delivery testen | Jacky + Dani |
 | Wearout-Kurve validieren | Konservativ modelliert | Beobachten nach Go-Live |
 | Echte BFS-Zahlen Top-20-Städte | Cluster-Schätzungen | Paket A |
 | B2B/B2C Migration | Geplant | Post-Go-Live |
@@ -958,7 +1001,8 @@ Partner-Code-System wird **nach Go-Live** aktiviert (Priorität 2). Voraussetzun
 | v1 | – | `vio-regelkatalog-paketlogik.md` – fixe Pakete, lineare Formel |
 | v2 | 21.04.2026 | Hybrid-Flow, dynamischer Split, Wochen-Frequenz-Leitplanken, konkave Budget-Laufzeit-Kopplung, tiered Reach-Caps, Wearout, Dedup, Kampagnentyp entfernt, Partner-Code-System |
 | v2.1 | 22.04.2026 | Drei-Klassen-Screen-System (Voll/Begrenzt/Display-dominant) mit automatischem Channel-Split; neuer Abschnitt 9 Buchbarkeit (ODER-Regel: stimm≥10k ODER politScreens≥20); Kantone auf BFS 2024; 16 nicht-buchbare Gemeinden entfernt; Hinweis-System um Screen-Klassen-Hinweise erweitert; Paket A umgesetzt |
+| v2.2 | 27.04.2026 | Hofmans-Sättigungskurve (ersetzt lineare Reach-Formel); Effective Reach 3+ als zweite UI-Metrik; Campaign-Mode-Badge (awareness/balanced/mobilization/overkill); too_thin-Trigger auf f_weekly<0.5 gesenkt |
 
 ---
 
-**Ende Regelkatalog v2.1**
+**Ende Regelkatalog v2.2**
