@@ -35,9 +35,9 @@ export const CPM_DISPLAY = 15;
 export const DELIVERY_DOOH = 0.75;
 export const DELIVERY_DISPLAY = 0.90;
 
-// TODO: mit ersten 10 Splicky-Kampagnen validieren (aktuell CH-DOOH-Branchenschätzung)
+// CH-DOOH Schätzung, konservativer Default — Splicky-Validierung ausstehend (Range 1.8–2.5)
 // Splicky CPM = Cost per 1000 Ad Plays (nicht Audience Contacts) → Multiplier nötig
-export const DOOH_OTS_MULTIPLIER = 2.5;
+export const DOOH_OTS_MULTIPLIER = 2.0;
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 

@@ -84,6 +84,12 @@ Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs
 | DOOH | CHF 50 | VIO-Verkaufspreis inkl. Marge |
 | Display | CHF 15 | VIO-Verkaufspreis inkl. Marge |
 
+### OTS-Kalibrierung
+
+| Variable | Wert | Zweck |
+|---|---|---|
+| `DOOH_OTS_MULTIPLIER` | 2.0 | 1 Ad Play = 2.0 Audience Contacts (konservativ, CH-DOOH Branchenbereich 1.8–2.5, Splicky-Validierung ausstehend) |
+
 Der **Misch-CPM wird dynamisch** pro Kampagne berechnet, nicht als fixer Wert. Formel siehe Abschnitt 7.
 
 ---
@@ -497,7 +503,8 @@ Diese Konstanten kalibrieren unsere Prognose gegen reale Splicky/Adform-Delivery
 const CALIBRATION = {
   dooh: {
     cpm: 50,
-    deliveryFactor: 0.75,   // TBD mit Dani
+    deliveryFactor: 0.75,     // TBD mit Dani
+    otsMultiplier: 2.0,       // konservativer Default (CH-DOOH Range 1.8–2.5), Splicky-Validierung ausstehend
     uncertaintyBand: 0.10,
   },
   display: {
