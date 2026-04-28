@@ -1,3 +1,10 @@
+> CONTEXT.md ist KEIN Default.
+> Nur lesen wenn:
+> - Logik unklar
+> - Flow unklar
+> - mehrere Dateien betroffen
+
+
 # VIO – Projekt Context für Claude Code
 
 > Diese Datei ist die Single Source of Truth für Claude Code.
@@ -64,13 +71,16 @@
 - Nutzt altes Farb-System (Terracotta) — vor Aktivierung auf VIO Design-System updaten
 - Status: Vorhanden, nicht aktiv promoted, kein Go-Live Blocker
 
-## Preislogik (Stand Go-Live)
 
-### CPM-Struktur
-- DOOH: VK CHF 50 / EK CHF 25 | Display: VK CHF 15 / EK CHF 5
-- Split: 70% DOOH / 30% Display (Impressions-Ebene)
-- Misch-CPM VK 39.50, EK 19.00 → Gross Margin 51.9%
-- Konstante `MIXED_CPM = 39.5` in `lib/vio-paketlogik.ts` und `lib/b2b-paketlogik.ts`
+## Preislogik (vereinfacht)
+
+- Min Budget: CHF 4'000
+- Pakete: Sichtbar / Präsenz / Dominanz
+- Reach basiert auf:
+  - Budget
+  - Region
+  - Laufzeit
+- Berechnung: siehe vio-regelkatalog-politik-v2.md
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -107,137 +117,3 @@
 - Dominanz wird nie automatisch empfohlen
 - Schwellen: ≥ 38 Tage → Präsenz, < 38 Tage → Sichtbar
 
-## Tech-Debt (nach Go-Live angehen)
-- B2C Step 1 URL-Input ist inline in B2CFlow.tsx — in eigene Step1B2C.tsx Komponente auslagern
-- Step5AdCreator (1134 Zeilen) + Step4Budget/steps (951 Zeilen) sind zu gross — aufteilen
-- Step8Dashboard Farben auf VIO Design-System updaten wenn aktiviert
-
-### Erledigt im Go-Live Fix (April 2026)
-- Tiered Reach Caps umgesetzt (Kanton ZH Dominanz von 142k → 19k CHF)
-- Min-Budget paketspezifisch 4/6/8k (vorher nur Sichtbar 4k)
-- Frequenzen mediaplanerisch kalibriert (war 3/4/7, neu 3/5/6)
-- Dominanz-Laufzeit 35→42 Tage (6 Wochen rückwärts)
-- Kampagnen-Ende = Abstimmungstag (vorher −3 Tage, Widerspruch gelöst)
-- Datums-Gating Step 1 (Hard Block bei < 10 Tagen Vorlauf)
-
-## Wichtige Dateien
-- `lib/dooh-screens.json` — 146 Einträge, Feld screens_politik für ~78% politikfähige Screens
-- `lib/vio-inhabitants-map.ts` — 26 Kantone + ~120 Gemeinden mit Demonymen
-- `lib/vio-paketlogik.ts` — Dynamische Paketlogik Politik (Sichtbar/Präsenz/Dominanz)
-- `lib/b2b-paketlogik.ts` — Paketlogik B2B
-- `lib/region-buchbarkeit.ts` — Buchbarkeit (ODER-Regel: stimm>=10'000 ODER politScreens>=20) und drei Screen-Klassen (Voll/Begrenzt/Display-dom) mit automatischem DOOH/Display-Split. Exports: isBuchbar, filterBuchbareRegionen, klassifiziereRegion, klassifiziereMehrereRegionen, GEMEINDE_NICHT_GEFUNDEN_HINWEIS.
-- `lib/preislogik.ts` — Single Source of Truth für Preislogik (calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit). Ersetzt schrittweise vio-paketlogik.ts + b2b-paketlogik.ts. Basiert auf Regelkatalog v2.1.
-- `lib/preislogik-adapter.ts` — TEMPORÄRER Adapter, mappt PakeResult aus preislogik.ts auf Step1Output-Struktur aus vio-paketlogik.ts. Export: buildVioPackagesV2. Wird in Paket B.2b entfernt, sobald Step 2 + 3 direkt auf calculateImpact/buildPackages umgestellt sind.
-- `public/vio-regelkatalog-politik-v2.md` — Single Source of Truth für konsolidierte Preislogik Politik (Hybrid-Flow, dynamischer Split, tiered Reach-Caps, Partner-Code-System). Ersetzt schrittweise vio-regelkatalog-paketlogik.md im Rahmen von Paket B.
-- `DESIGN.md` — Design System, vor visuellen Änderungen lesen
-- `public/vio-adcreator-v16.html` — Ad Creator Referenz
-- `public/prototypes/` — Abgenommene HTML-Prototypen als Ground Truth
-- `public/prototypes/vio-impact-indicator-v1.html` — HTML-Referenz-Prototyp für ImpactIndicator
-- `components/shared/ImpactIndicator.tsx` — Wirkungsanzeige mit Reach-Range, Bar, Stats, Channel-Split, Screen-Klassen-Badge. Props: impact (ImpactResult), regionName (string, optional), compact (boolean). Test unter /test-internal/impact-indicator.
-- `app/test-internal/impact-indicator/page.tsx` — Test-Playground mit 5 Zuständen.
-
-### Step-Komponenten (immer exakte Pfade verwenden)
-- `components/steps/Step1Entry.tsx` — Einstieg B2C
-- `components/steps/Step1B2B.tsx` — Einstieg B2B
-- `components/steps/Step2Politik.tsx` — Politik Region
-- `components/steps/Step2PolitikBudget.tsx` — Politik Budget
-- `components/steps/Step4Budget.tsx` — B2C + B2B Budget (AKTIV, wird von B2BFlow + B2CFlow importiert)
-- `components/campaign/Step4Budget.DEPRECATED.tsx` — NICHT VERWENDEN (ungenutzt, deprecated)
-- `components/campaign/StepPackages.tsx` — Paketauswahl
-
-### Prototypen (Ground Truth für visuelle Implementierung)
-- `public/prototypes/` — alle abgenommenen HTML-Referenzen
-
-## Bekannte Fallstricke
-- Umlaut-Encoding: Immer gegen Schweizer Schreibweise validieren (Bülach, nicht Bulach)
-- CSS + Turbopack: Bei visuellen Komponenten inline style={{}} bevorzugen, keine externen CSS-Klassen
-- 4 Gemeinden permanent ausgeschlossen: Küsnacht, Martigny, Opfikon, Veyrier
-- Nie CPM oder Kanalaufteilung dem User zeigen — nur Von-Bis Reichweite
-- Frequenz-Fallbacks in UI-Komponenten: `?? 5` (neu, war `?? 4` — Präsenz ist Default)
-- Budget-Slider-Min dynamisch: via `getMinBudget(selectedPkg)` aus `lib/vio-paketlogik.ts`
-- Datepicker-Min: `todayPlusDaysISO(MIN_SETUP_DAYS)` in `Step1Politik.tsx` verhindert zu frühe Daten
-- Beim Paketwechsel: Budget muss auf neuen Min geclamped werden (`Math.max(newMin, ...)`)
-
-## Prompt-Regeln
-
-### Pre-Prompt Checkliste (vor jedem Task abhaken)
-☐ HTML-Prototyp abgenommen und in /public/prototypes/?
-☐ Exakter Dateipfad bekannt?
-☐ Task auf eine einzige Sache reduziert?
-→ Nur wenn alle drei ✓: Prompt ausführen
-
-### Prompt-Abschluss (immer in dieser Reihenfolge)
-1. npx tsc --noEmit ausführen — bei Fehlern zuerst fixen, dann weiter
-2. CONTEXT.md ## Letzter Stand updaten
-3. git add . && git commit -m 'feat: [was] — [wo] — getestet: ja/nein' && git push
-
-- Struktur: ZIEL / DATEI / ZEILEN / REFERENZ / ÄNDERUNG / NICHT ANFASSEN
-- Immer Dateipfade angeben, nie ohne Kontext bauen
-- Prototyp aus /public/prototypes/ als Referenz mitgeben bei visuellen Änderungen
-- Endet immer mit: git add . && git commit -m 'feat: [beschreibung]' && git push
-
-## Definition of Done
-Ein Task gilt als abgeschlossen wenn:
-1. Vercel Build grün (kein Deploy-Fehler)
-2. Screenshot in Vercel gemacht und mit Prototyp/Ziel verglichen
-3. Abnahme erfolgt (visuell oder funktional bestätigt)
-4. CONTEXT.md ## Letzter Stand aktualisiert
-
-## Commit-Konvention
-Format: `feat: [was] — [wo] — getestet: ja/nein`
-Beispiele:
-- `feat: channel cards inline-styled — Step4Budget.tsx — getestet: ja ✓`
-- `fix: paketauswahl klickbar — StepPackages.tsx — getestet: nein (Vercel pending)`
-
-## Stabile Versionen (Git Tags)
-Bei jedem funktionierenden Meilenstein: `git tag v0.x-stable`
-Rollback: `git checkout v0.x-stable`
-
-## Decision Log
-| Datum | Entscheid | Begründung |
-|---|---|---|
-| 2026-04-10 | Inline styles statt CSS-Klassen für Komponenten | Turbopack cached CSS aggressiv, inline ist zuverlässiger |
-| 2026-04-10 | HubSpot → Pipedrive | HubSpot zu teuer/komplex, Integration noch nicht abgeschlossen, Pipedrive schlanker für 2-Mann-Team |
-| 2026-04-10 | Gemini 2.5 Flash statt Claude für Analyse | Kosteneffizienter für URL-Crawling |
-| 2026-04-10 | 70% DOOH / 30% Display fix | Bewusste Mediaplanung-Entscheidung, nicht ändern |
-| 2026-04-10 | Keine CPM-Anzeige für User | Vereinfachung, nur Von-Bis Reichweite zeigen |
-| 2026-04-14 | Vercel bleibt auch für Live | Next.js-optimiert, Zero-Ops, kein Grund für Hostpoint/Coolify für Frontend |
-| 2026-04-14 | Coolify auf Hetzner Zürich für self-hosted Services | Umami + n8n brauchen eigenen Server, Coolify nimmt Docker-Overhead ab |
-| 2026-04-14 | AWS S3 Zürich für File-Storage | Werbemittel-Uploads + Offerte PDFs, Presigned URLs, post Go-Live |
-| 2026-04-14 | Templated.io als Ad Creator V2 | Flexibler, wartungsarm, günstiger als custom-built langfristig |
-| 2026-04-14 | Bexio für Buchhaltung | CH-native, Treuhänder-Anbindung, post Go-Live |
-
-## Offene Go-Live Blocker
-🔴 KRITISCH: HubSpot Properties anlegen / Resend Domain verifizieren / Vercel ENV prüfen / Firecrawl Rate Limiting
-🟡 WICHTIG: Mobile Steps 1-4+6-7 / Session Timeout / Firecrawl Fallback / Offerte PDF / Duplicate Submission
-🔒 SECURITY: Rate Limiting / Input Validation / CORS / API Keys in ENV
-
-## Letzter Stand
-- Datum: 2026-04-26
-- DOOH_OTS_MULTIPLIER=2.5 eingebaut in lib/preislogik.ts — calculateImpact + buildPackages konsistent — TODO-Flag gesetzt (validieren mit ersten 10 Splicky-Kampagnen) — getestet: ja (tsc ✓, ZH Präsenz ~CHF 11k ✓, Aarau ≥ CHF 4k ✓, KT ZH > CHF 9k ✓)
-- 4.1: filterBuchbareRegionen in Step1Politik eingebaut, Screen-Klassen-Hinweis live bei Regionen-Auswahl — getestet: nein
-- 3.1: StepPackages Pfad A (hasBudget && !showAllPackets) — direkte Slider + dark-card Wirkungsindikator; Pfad B (!hasBudget || showAllPackets) — 3 Pakete + Accordion + Paket-Slider-Konflikt-Hinweis; ImpactIndicator/CampaignHint durch inline dark card ersetzt — getestet: nein
-- 2.3: Sidebar-Mismatch gefixt — initPkg immer recommendedPackage, initBudget immer Paket-Budget statt userBudget — getestet: ja
-- 2.2: Budget↔Laufzeit-Kopplung (^0.75) verdrahtet, dynamischer Laufzeit-Korridor, Budget-Max 100k — StepPackages + StepSummaryPolitik — getestet: ja
-- 2.1: Medienintensität-Slider entfernt (StepPackages + Step2PolitikBudget), Frequenz jetzt Read-only aus calculateImpact, Budget-Max 100k + Calendly Hard Stop bei >= 100k — getestet: ja
-- 1.1: Step1Politik Q1 entfernt (Abstimmung/Wahl/Subtypen), 3 Fragen statt 4, GEMEINDE_NICHT_GEFUNDEN_HINWEIS eingebunden — getestet: ja
-- C.4: Step1Politik.tsx Q3 Regionen-Auswahl erweitert: GEMEINDE_NICHT_GEFUNDEN_HINWEIS bei leerer Suche, Screen-Klassen-Badge (Begrenzt/Display-dominant) bei gewählten Regionen. Paket C vollständig.
-- C.3b: StepPackages.tsx (Politik Step 2) nutzt jetzt ImpactIndicator + CampaignHint. liveImpact via calculateImpact reaktiv auf Slider-Änderungen. onApply(too_thin) halbiert Laufzeit. Step2PolitikBudget.tsx (inaktiv, hat noch MIXED_CPM) bleibt für späteres Cleanup.
-- C.3a: StepSummaryPolitik.tsx nutzt jetzt ImpactIndicator + CampaignHint. Manuelle Reach-Anzeige und barPct entfernt. handleNext schreibt impact.reachMitte/reachVonPct/reachBisPct ins Briefing. Step2 (StepPackages + Step2PolitikBudget) folgt in C.3b.
-- C.2: ImpactIndicator-Komponente angelegt (Full + Compact-Variante). Test unter /test-internal/impact-indicator. Noch nicht in Step 2/3 integriert — folgt in C.3.
-- B.2b.2: StepPackages.tsx (Politik Step 2) direkt auf preislogik.ts umgestellt. MIXED_CPM-Konstante entfernt. getAdjustedValues nutzt jetzt calculateImpact für Live-Reach bei Slider-Änderung. Paket-Defaults kommen weiterhin via buildVioPackagesV2 aus Adapter. Step 1 + 2 + 3 jetzt alle auf neuer Preislogik. Adapter bleibt noch drin für Paket-Struktur-Kompatibilität — wird in B.2c entfernt — getestet: ja (tsc ✓, 4/4 Sanity ✓)
-- B.2b.1: StepSummaryPolitik.tsx direkt auf preislogik.ts (calculateImpact) umgestellt. MIXED_CPM-Konstante entfernt. Reach wird jetzt via dynamischem Channel-Split berechnet (DOOH+Display mit Delivery-Faktoren). Step 2 StepPackages.tsx bleibt am Adapter — folgt in B.2b.2 — getestet: ja (tsc ✓, Sanity ✓)
-- B.2a: Step1Politik.tsx nutzt jetzt preislogik.ts via Adapter (buildVioPackagesV2). Step 2 + 3 unverändert, lesen Step1Output-Struktur wie bisher. Budgets/Reaches können sich gegenüber alt unterscheiden wegen neuer Formel (Wearout, Delivery-Faktor, Screen-Klassen) — getestet: ja (tsc ✓, 5/5 Adapter-Sanity-Tests ✓)
-- lib/preislogik.ts erstellt: calculateImpact, buildPackages, dedupRegions, getLaufzeitCorridor, coupleBudgetToLaufzeit, Hinweis-System (13 Codes), Wearout-Kurve, dynamischer Channel-Split — getestet: ja (tsc ✓, 41/41 Sanity-Tests ✓)
-- lib/regions.ts BFS 2024 Update: 26 Kantone + 103 Gemeinden (16 zu kleine entfernt), Schweiz 5.6M Stimm — getestet: ja
-- lib/region-buchbarkeit.ts erstellt: isBuchbar, klassifiziereRegion, klassifiziereMehrereRegionen, Screen-Klassen (61 Voll / 32 Begrenzt / 10 Display-dom) — getestet: ja
-- vio-regelkatalog-politik-v2.md v2.1: dreistufiges Nudge-System (B_NUDGE_SOFT=20k, B_NUDGE_STRONG=30k, B_HARD_MAX=100k), Verteilung 61/32/10 — committed
-- Tiered Reach Caps + gestaffelte Floor-Budgets (4k/6k/9k) in vio-paketlogik.ts: REACH_TIERS Array, getTieredReach(), neue buildPackage-Signatur mit reachOverride, MAX_BUDGET 50k Cap, Backwards-Reach, 80%-Wähler-Cap — getestet: ja (tsc ✓)
-- Media-Marquee ersetzt Stats-Strip auf Homepage — Zeilen 229-247 app/page.tsx — getestet: nein
-- Hero floating Cards: 4 VIO-Vorteile ersetzen alte KPI-Cards (4 Schritten / Anbieter / CHF 4'000 / Keine Agentur) — app/page.tsx Zeilen 197–248 — getestet: nein
-- Why-Grid: Prompt für 4 neue Kacheln mit VIO-Vorteilen bereit, noch nicht ausgeführt
-- Tech Stack aktualisiert: HubSpot → Pipedrive, Coolify/Hetzner für self-hosted Services, AWS S3, Templated.io, Bexio, Umami, n8n dokumentiert
-- Politik Budget-Step: Design auf v2 Prototype angeglichen (Sidebar, Channel Cards mit vio-Bildern, Sliders, Vote-Hint)
-- Paket-Karten: onClick-Selektion gefixt, selectedPackage State korrekt verdrahtet
-- Channel Cards: Hintergrundbilder /images/vio-dooh-bahnhof.jpg + /images/vio-display-phone.jpg eingebunden
-- Politik Step 1: neuer 4-Fragen-Flow (Step1Politik.tsx) — Q1 Typ+Subtyp, Q2 Datum, Q3 Region, Q4 Budget

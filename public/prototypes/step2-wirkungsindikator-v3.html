@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO · Step 2 · Wirkungsindikator integriert</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --violet: #6B4FBB;
+    --violet-deep: #5A3FA8;
+    --ink: #2D1F52;
+    --slate: #7A7596;
+    --bg: #F7F5FF;
+    --card: #FFFFFF;
+    --line: #E8E4F5;
+    --line-strong: #D5CDEC;
+    --highlight: #F0EBFF;
+    --warn: #C97A2B;
+    --warn-bg: #FFF6E8;
+    --info-bg: #EEF1FE;
+    --info-text: #3B4A87;
+    --good: #5B8C5A;
+    --good-bg: #EEF6EE;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+  h1, h2, h3, h4 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.01em; }
+
+  /* ---------- Layout ---------- */
+  .page { max-width: 1280px; margin: 0 auto; padding: 32px 32px 80px; }
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 980px) {
+    .stage { grid-template-columns: 1fr; }
+    .sidebar { position: relative !important; top: 0 !important; }
+  }
+
+  /* ---------- Step Header ---------- */
+  .step-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--violet);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 14px;
+  }
+  .step-tag::before {
+    content: '';
+    width: 24px;
+    height: 2px;
+    background: var(--violet);
+  }
+  h1 {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .subline { color: var(--slate); margin-bottom: 28px; font-size: 15px; }
+
+  /* ---------- Context Bar ---------- */
+  .context-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .chip-violet { background: var(--highlight); color: var(--violet-deep); }
+  .chip-neutral { background: #F2EFFA; color: var(--ink); }
+  .chip-region { font-weight: 600; }
+  .chip-warn {
+    background: var(--warn-bg);
+    color: var(--warn);
+    margin-left: auto;
+    font-weight: 500;
+  }
+  .chip-warn::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--warn);
+    margin-right: 8px;
+  }
+  .context-bar .pool {
+    color: var(--slate);
+    font-size: 14px;
+  }
+
+  /* ---------- Path Toggle ---------- */
+  .path-toggle {
+    display: inline-flex;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+  .path-toggle button {
+    border: none;
+    background: transparent;
+    padding: 9px 22px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--slate);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .path-toggle button.active {
+    background: var(--violet);
+    color: white;
+    box-shadow: 0 2px 8px rgba(107, 79, 187, 0.25);
+  }
+  .path-toggle button:hover:not(.active) { color: var(--ink); }
+
+  /* ---------- Section Label ---------- */
+  .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 12px;
+  }
+
+  /* ---------- Pfad A: Steuerung ---------- */
+  .control-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 18px;
+  }
+  .control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  @media (max-width: 700px) {
+    .control-grid { grid-template-columns: 1fr; gap: 22px; }
+  }
+  .control-row { display: flex; flex-direction: column; gap: 8px; }
+  .control-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .control-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate);
+  }
+  .control-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--violet);
+  }
+  .control-bounds {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--slate);
+    margin-top: 2px;
+  }
+
+  /* Native range slider, restyled */
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--line-strong);
+    border-radius: 999px;
+    outline: none;
+    margin: 14px 0 4px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    background: white;
+    border: 3px solid var(--violet);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(107, 79, 187, 0.3);
+    transition: transform 0.12s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    background: white;
+    border: 3px solid var(--violet);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(107, 79, 187, 0.3);
+  }
+
+  /* ---------- Pfad B: Pakete ---------- */
+  .packages {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 700px) { .packages { grid-template-columns: 1fr; } }
+
+  .pkg {
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 20px 18px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pkg:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+  .pkg.selected {
+    border-color: var(--violet);
+    background: white;
+    box-shadow: 0 4px 24px rgba(107, 79, 187, 0.10);
+  }
+  .pkg-rec {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--violet);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .pkg-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .pkg-radio {
+    width: 18px; height: 18px;
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+    transition: all 0.15s ease;
+  }
+  .pkg.selected .pkg-radio {
+    border-color: var(--violet);
+    background: var(--violet);
+    box-shadow: inset 0 0 0 3px white;
+  }
+  .pkg-budget {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .pkg-meta {
+    color: var(--slate);
+    font-size: 13px;
+    line-height: 1.4;
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+  }
+  .pkg-meta strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Wirkungsindikator (Hero) ---------- */
+  .impact {
+    background: var(--ink);
+    border-radius: 18px;
+    padding: 32px 32px 28px;
+    color: white;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .impact::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle at top right, rgba(107, 79, 187, 0.5), transparent 60%);
+    pointer-events: none;
+  }
+  .impact-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-bottom: 14px;
+  }
+  .impact-hero {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .impact-hero-sub {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    margin-bottom: 26px;
+  }
+
+  .impact-kpis {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+  .kpi {
+    background: rgba(255, 255, 255, 0.04);
+    padding: 18px 18px 16px;
+  }
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.05;
+    margin-bottom: 4px;
+  }
+  .kpi-sub {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Channel Mix bar */
+  .mix-row {
+    margin-top: 22px;
+    position: relative;
+    z-index: 1;
+  }
+  .mix-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 10px;
+  }
+  .mix-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+    display: flex;
+    gap: 2px;
+  }
+  .mix-dooh {
+    background: #B8A2F0;
+    border-radius: 999px 0 0 999px;
+    transition: width 0.3s ease;
+  }
+  .mix-display {
+    background: #6B4FBB;
+    border-radius: 0 999px 999px 0;
+    transition: width 0.3s ease;
+  }
+  .mix-legend {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .mix-legend span strong { color: white; font-weight: 600; }
+
+  /* ---------- Hint Card (priorisiert) ---------- */
+  .hint {
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .hint-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+  .hint-body { flex: 1; }
+  .hint-title { font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .hint-text { color: var(--slate); }
+  .hint-cta {
+    color: var(--violet-deep);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+  .hint-warn { background: var(--warn-bg); border: 1px solid #F0D5A8; }
+  .hint-warn .hint-icon { background: var(--warn); color: white; }
+  .hint-warn .hint-title { color: var(--warn); }
+  .hint-info { background: var(--info-bg); border: 1px solid #D0D6F0; }
+  .hint-info .hint-icon { background: var(--info-text); color: white; }
+  .hint-info .hint-title { color: var(--info-text); }
+  .hint-good { background: var(--good-bg); border: 1px solid #C5DDC5; }
+  .hint-good .hint-icon { background: var(--good); color: white; }
+  .hint-good .hint-title { color: var(--good); }
+  .hint-violet { background: var(--highlight); border: 1px solid var(--line-strong); }
+  .hint-violet .hint-icon { background: var(--violet); color: white; }
+  .hint-violet .hint-title { color: var(--violet-deep); }
+
+  /* ---------- Feintuning (collapsed) ---------- */
+  .feintuning {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .feintuning-head {
+    padding: 14px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background 0.15s ease;
+  }
+  .feintuning-head:hover { background: #FAFAFD; }
+  .feintuning-head h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .feintuning-chev {
+    color: var(--slate);
+    transition: transform 0.2s ease;
+    font-size: 18px;
+  }
+  .feintuning.open .feintuning-chev { transform: rotate(180deg); }
+  .feintuning-body {
+    padding: 0 20px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+  .feintuning.open .feintuning-body {
+    max-height: 280px;
+    padding: 4px 20px 22px;
+  }
+  .feintuning-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 600px) { .feintuning-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- CTA ---------- */
+  .cta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 26px;
+  }
+  .btn-back {
+    background: transparent;
+    border: none;
+    color: var(--slate);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 10px 4px;
+  }
+  .btn-back:hover { color: var(--ink); }
+  .btn-next {
+    background: var(--violet);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: 0 4px 14px rgba(107, 79, 187, 0.3);
+  }
+  .btn-next:hover { background: var(--violet-deep); transform: translateY(-1px); }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    position: sticky;
+    top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .recap {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px 22px 18px;
+  }
+  .recap-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+  .recap-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .recap-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .recap-key { color: var(--slate); }
+  .recap-val { font-weight: 600; color: var(--ink); }
+  .recap-val.accent { color: var(--violet-deep); }
+  .recap-val.warn { color: var(--warn); }
+
+  .help-card {
+    background: var(--highlight);
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .help-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+    font-size: 15px;
+  }
+  .help-text {
+    color: var(--slate);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .help-btn {
+    display: inline-block;
+    background: var(--violet);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+  }
+  .help-btn:hover { background: var(--violet-deep); }
+
+  /* ---------- Annotations (Designer-Notes) ---------- */
+  .annotation {
+    margin-top: 60px;
+    padding: 26px 30px;
+    background: white;
+    border: 1px dashed var(--line-strong);
+    border-radius: 16px;
+    color: var(--slate);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .annotation h3 {
+    color: var(--ink);
+    font-size: 15px;
+    margin-bottom: 14px;
+    font-weight: 700;
+  }
+  .annotation ul { padding-left: 20px; margin-top: 6px; }
+  .annotation li { margin-bottom: 4px; }
+  .annotation strong { color: var(--ink); }
+  .annotation code {
+    font-family: 'JetBrains Mono', 'Menlo', monospace;
+    font-size: 12px;
+    background: var(--highlight);
+    color: var(--violet-deep);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="stage">
+    <!-- ========== MAIN COLUMN ========== -->
+    <div class="main">
+      <div class="step-tag">Schritt 2 · Politische Kampagne</div>
+      <h1>Wie weit soll deine Kampagne strahlen?</h1>
+      <div class="subline">Alle Werte sind dynamisch auf deine Zielregion abgestimmt.</div>
+
+      <!-- Context Bar -->
+      <div class="context-bar">
+        <span class="chip chip-violet">Politische Kampagne</span>
+        <span class="chip chip-neutral chip-region">Zug</span>
+        <span class="pool">85'000 Zugerinnen und Zuger</span>
+        <span class="chip chip-warn">Abstimmung in 23 Tagen</span>
+      </div>
+
+      <!-- Path Toggle -->
+      <div class="label">Reichweite &amp; Paket</div>
+      <div class="path-toggle">
+        <button id="tab-a" class="active" onclick="setPath('A')">Eigenes Budget</button>
+        <button id="tab-b" onclick="setPath('B')">Pakete ansehen</button>
+      </div>
+
+      <!-- ===== Pfad A: Steuerung ===== -->
+      <div id="path-a-control">
+        <div class="control-card">
+          <div class="control-grid">
+            <div class="control-row">
+              <div class="control-head">
+                <span class="control-name">Budget</span>
+                <span class="control-value" id="a-budget-val">CHF 8'000</span>
+              </div>
+              <input type="range" id="a-budget" min="4000" max="100000" step="500" value="8000">
+              <div class="control-bounds">
+                <span>CHF 4'000</span>
+                <span>CHF 100'000</span>
+              </div>
+            </div>
+            <div class="control-row">
+              <div class="control-head">
+                <span class="control-name">Laufzeit</span>
+                <span class="control-value" id="a-laufzeit-val">21 Tage</span>
+              </div>
+              <input type="range" id="a-laufzeit" min="7" max="35" step="1" value="21">
+              <div class="control-bounds">
+                <span id="a-laufzeit-min">7 Tage</span>
+                <span id="a-laufzeit-max">35 Tage</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Pfad B: Pakete ===== -->
+      <div id="path-b-control" style="display:none">
+        <div class="packages">
+          <div class="pkg" data-pkg="sichtbar" onclick="selectPackage('sichtbar')">
+            <div class="pkg-name"><span>Sichtbar</span><div class="pkg-radio"></div></div>
+            <div class="pkg-budget" id="pkg-sichtbar-budget">CHF 4'000</div>
+            <div class="pkg-meta">
+              <strong id="pkg-sichtbar-tage">14 Tage</strong> · <span id="pkg-sichtbar-fcamp">6×</span> Kontakte<br>
+              Sichtbarkeit aufbauen
+            </div>
+          </div>
+          <div class="pkg selected" data-pkg="praesenz" onclick="selectPackage('praesenz')">
+            <div class="pkg-rec">Empfohlen</div>
+            <div class="pkg-name"><span>Präsenz</span><div class="pkg-radio"></div></div>
+            <div class="pkg-budget" id="pkg-praesenz-budget">CHF 10'000</div>
+            <div class="pkg-meta">
+              <strong id="pkg-praesenz-tage">28 Tage</strong> · <span id="pkg-praesenz-fcamp">20×</span> Kontakte<br>
+              Optimal in Meinungsbildungsphase
+            </div>
+          </div>
+          <div class="pkg" data-pkg="dominanz" onclick="selectPackage('dominanz')">
+            <div class="pkg-name"><span>Dominanz</span><div class="pkg-radio"></div></div>
+            <div class="pkg-budget" id="pkg-dominanz-budget">CHF 33'500</div>
+            <div class="pkg-meta">
+              <strong id="pkg-dominanz-tage">35 Tage</strong> · <span id="pkg-dominanz-fcamp">40×</span> Kontakte<br>
+              Maximale Präsenz
+            </div>
+          </div>
+        </div>
+
+        <!-- Feintuning Akkordeon -->
+        <div class="feintuning" id="feintuning">
+          <div class="feintuning-head" onclick="toggleFeintuning()">
+            <h4>Budget &amp; Laufzeit feintunen</h4>
+            <span class="feintuning-chev">⌄</span>
+          </div>
+          <div class="feintuning-body">
+            <div class="feintuning-grid">
+              <div class="control-row">
+                <div class="control-head">
+                  <span class="control-name">Budget</span>
+                  <span class="control-value" id="b-budget-val">CHF 10'000</span>
+                </div>
+                <input type="range" id="b-budget" min="4000" max="100000" step="500" value="10000">
+                <div class="control-bounds">
+                  <span>CHF 4'000</span>
+                  <span>CHF 100'000</span>
+                </div>
+              </div>
+              <div class="control-row">
+                <div class="control-head">
+                  <span class="control-name">Laufzeit</span>
+                  <span class="control-value" id="b-laufzeit-val">28 Tage</span>
+                </div>
+                <input type="range" id="b-laufzeit" min="14" max="35" step="1" value="28">
+                <div class="control-bounds">
+                  <span id="b-laufzeit-min">14 Tage</span>
+                  <span id="b-laufzeit-max">35 Tage</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Wirkungsindikator (identisch beide Pfade) ===== -->
+      <div class="impact">
+        <div class="impact-label">Deine Botschaft erreicht</div>
+        <div class="impact-hero" id="hero-reach">26'500 – 30'500</div>
+        <div class="impact-hero-sub" id="hero-sub">Zugerinnen und Zuger</div>
+
+        <div class="impact-kpis">
+          <div class="kpi">
+            <div class="kpi-label">Abdeckung</div>
+            <div class="kpi-value" id="kpi-coverage">34 %</div>
+            <div class="kpi-sub">der Stimmberechtigten</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Kontaktdruck</div>
+            <div class="kpi-value" id="kpi-frequency">Ø 5×</div>
+            <div class="kpi-sub" id="kpi-frequency-sub">≈ 1.7× pro Woche</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Zeitraum</div>
+            <div class="kpi-value" id="kpi-period">21 Tage</div>
+            <div class="kpi-sub" id="kpi-period-sub">bis 19. April</div>
+          </div>
+        </div>
+
+        <div class="mix-row">
+          <div class="mix-head">
+            <span>Kanal-Mix</span>
+            <span id="mix-class">Klasse: Voll</span>
+          </div>
+          <div class="mix-bar">
+            <div class="mix-dooh" id="mix-dooh-bar" style="width:70%"></div>
+            <div class="mix-display" id="mix-display-bar" style="width:30%"></div>
+          </div>
+          <div class="mix-legend">
+            <span><strong id="mix-dooh-pct">70%</strong> Digitale Plakate</span>
+            <span><strong id="mix-display-pct">30%</strong> Online-Display</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Hinweis (priorisiert) ===== -->
+      <div id="hint-container"></div>
+
+      <!-- CTA -->
+      <div class="cta-row">
+        <button class="btn-back">← Zurück</button>
+        <button class="btn-next">Weiter zur Zusammenfassung →</button>
+      </div>
+    </div>
+
+    <!-- ========== SIDEBAR (schlank, kein Doppel) ========== -->
+    <aside class="sidebar">
+      <div class="recap">
+        <div class="recap-title">Deine Kampagne</div>
+        <div class="recap-row">
+          <span class="recap-key">Kampagnentyp</span>
+          <span class="recap-val">Politisch</span>
+        </div>
+        <div class="recap-row">
+          <span class="recap-key">Region</span>
+          <span class="recap-val">Zug</span>
+        </div>
+        <div class="recap-row">
+          <span class="recap-key">Abstimmung</span>
+          <span class="recap-val warn">17. Mai 2026</span>
+        </div>
+        <div class="recap-row" id="recap-pkg-row" style="display:none">
+          <span class="recap-key">Paket</span>
+          <span class="recap-val accent" id="recap-pkg">Präsenz</span>
+        </div>
+        <div class="recap-row">
+          <span class="recap-key">Budget</span>
+          <span class="recap-val accent" id="recap-budget">CHF 8'000</span>
+        </div>
+        <div class="recap-row">
+          <span class="recap-key">Laufzeit</span>
+          <span class="recap-val" id="recap-laufzeit">21 Tage</span>
+        </div>
+      </div>
+
+      <div class="help-card">
+        <div class="help-title">Persönliche Beratung</div>
+        <div class="help-text">Unsere Mediaplaner:innen helfen dir, das optimale Paket für deine Kampagne zu finden.</div>
+        <a class="help-btn" href="#">Gespräch buchen →</a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Designer-Notizen -->
+  <div class="annotation">
+    <h3>Designer-Notizen — was im neuen Layout anders ist</h3>
+    <ul>
+      <li><strong>Eine Wirkungsindikator-Komponente, beide Pfade</strong> — identisches Layout, nur Inputs unterscheiden sich. Pfad-Wechsel führt zu keinem Layout-Sprung.</li>
+      <li><strong>Sidebar ist Recap, nicht zweiter Wirkungsindikator</strong> — keine Doppelung von Reichweite oder Frequenz mehr. Sidebar zeigt nur die Stellschrauben (Region, Paket, Budget, Laufzeit) plus Beratung.</li>
+      <li><strong>3 KPI-Boxen mit Mediaplaner-Logik:</strong> <code>Abdeckung %</code> (wer), <code>Kontaktdruck</code> (wie oft, ø/Woche als Sekundärwert), <code>Zeitraum</code> (wann). Reach-Range bleibt Hero darüber.</li>
+      <li><strong>Channel-Mix als Bar in %, NIE in CHF</strong> — Regelkatalog v2 Abschnitt 13 strikt.</li>
+      <li><strong>Strategie-Slider entfernt</strong> — nicht im Regelkatalog v2; Frequenz wird aus Budget × Laufzeit × Pool implizit berechnet, nicht aktiv gesteuert.</li>
+      <li><strong>Pfad B: Feintuning collapsed by default</strong> — Pakete sind die primäre Entscheidung; Feintuning öffnet nur wer wirklich detailliert eingreifen will.</li>
+      <li><strong>Hinweis-System priorisiert</strong> — genau ein prominenter Hinweis nach Priorität aus Regelkatalog Abschnitt 12.5. Beispiele oben mit verschiedenen Pfad-Werten triggern: <code>too_thin</code>, <code>capped_by_region</code>, <code>calendly_nudge_*</code>, <code>screen_class_*</code>.</li>
+      <li><strong>Budget↔Laufzeit-Kopplung mit Exponent 0.75</strong> — wenn du Laufzeit änderst, schlägt das System Budget-Anpassung vor. Slider-Korridor passt sich ans Budget an (Abschnitt 8).</li>
+      <li><strong>Reach-Caps tiered nach Pool-Grösse</strong> aus Abschnitt 6 sauber implementiert. Zug 85'000 → 50k–200k Tier → Sichtbar 8% / Präsenz 15% / Dominanz 25%.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   VIO Preislogik v2.1 — 1:1 aus Regelkatalog
+   ============================================================ */
+
+const REGION = {
+  name: 'Zug',
+  demonym: 'Zugerinnen und Zuger',
+  stimm: 85000,
+  screens: 186,            // theoretisches Inventar
+  screens_politik: 145,    // ≥ 30 → Klasse Voll
+  abstimmung: new Date('2026-05-17')
+};
+
+// Konstanten
+const B_MIN = 4000;
+const B_HARD_MAX = 100000;
+const B_NUDGE_SOFT = 20000;
+const B_NUDGE_STRONG = 30000;
+const DAILY_MIN = 150;
+const F_MIN_WEEKLY = 3;
+const F_REC_WEEKLY = 5;
+const F_MAX_WEEKLY = 10;
+const MAX_REACH_CAP = 0.80;
+const EXPONENT_BL = 0.75;
+
+const PACKAGES = {
+  sichtbar:  { name: 'Sichtbar', f_weekly: 3, days: 14, level: 1 },
+  praesenz:  { name: 'Präsenz',  f_weekly: 5, days: 28, level: 2 },
+  dominanz:  { name: 'Dominanz', f_weekly: 8, days: 35, level: 3 },
+};
+
+function getReachCap(stimm, level) {
+  // level: 1=Sichtbar, 2=Präsenz, 3=Dominanz
+  let caps;
+  if (stimm < 50000)       caps = [0.15, 0.30, 0.45];
+  else if (stimm < 200000) caps = [0.08, 0.15, 0.25];
+  else if (stimm < 500000) caps = [0.04, 0.08, 0.14];
+  else                     caps = [0.02, 0.04, 0.08];
+  return caps[level - 1];
+}
+
+function getChannelSplit(politScreens) {
+  if (politScreens >= 30)  return { dooh: 0.70, display: 0.30, cpm: 39.50, klasse: 'voll' };
+  if (politScreens >= 10)  return { dooh: 0.50, display: 0.50, cpm: 32.50, klasse: 'begrenzt' };
+  return                          { dooh: 0.20, display: 0.80, cpm: 22.00, klasse: 'display-dominant' };
+}
+
+function getUncertaintyBand(politScreens) {
+  if (politScreens < 30)   return 0.20;
+  if (politScreens < 150)  return 0.13;
+  if (politScreens < 500)  return 0.10;
+  return 0.07;
+}
+
+function getLaufzeitCorridor(budget) {
+  if (budget < 6000)   return { min: 7,  max: 21 };
+  if (budget < 15000)  return { min: 14, max: 35 };
+  if (budget < 30000)  return { min: 21, max: 56 };
+  return                      { min: 28, max: 84 };
+}
+
+function applyWearout(reach, weeks) {
+  if (weeks <= 8) return reach;
+  const factor = Math.max(1 - (weeks - 8) * 0.03, 0.80);
+  return reach * factor;
+}
+
+/**
+ * Berechnet die Wirkung einer Kampagne nach Regelkatalog v2.1.
+ * @param {number} budget   CHF
+ * @param {number} days     Tage Laufzeit
+ * @param {object} region   { stimm, screens_politik, ... }
+ * @param {number|null} forcedLevel  bei Pfad B: Reach-Cap-Level des gewählten Pakets
+ */
+function calculateImpact(budget, days, region, forcedLevel = null) {
+  const split   = getChannelSplit(region.screens_politik);
+  const cpm     = split.dooh * 50 + split.display * 15;
+  const totalImp = (budget / cpm) * 1000;
+
+  // Delivery-Faktoren (CALIBRATION)
+  const delivered = totalImp * (split.dooh * 0.75 + split.display * 0.90);
+
+  const weeks = days / 7;
+
+  // Naive Reach (impliziert F_REC_WEEKLY)
+  let reachRaw = delivered / (F_REC_WEEKLY * weeks);
+
+  // Reach-Cap nach Pool-Grösse (für Pfad A nutzen wir Tier 2 = Präsenz als Referenz,
+  // weil Budget-first nicht weiss welches Paket-Niveau)
+  const level   = forcedLevel || 2;
+  const poolCap = getReachCap(region.stimm, level);
+  const maxByPool = region.stimm * poolCap;
+
+  // Hard cap 80%
+  const maxAbsolute = region.stimm * MAX_REACH_CAP;
+
+  let cappedBy = null;
+  if (reachRaw > maxByPool) { reachRaw = maxByPool; cappedBy = 'pool'; }
+  if (reachRaw > maxAbsolute) { reachRaw = maxAbsolute; cappedBy = 'absolute'; }
+
+  // Wearout
+  reachRaw = applyWearout(reachRaw, weeks);
+
+  // Effektive Frequenzen
+  const fWeeklyEff = delivered / (reachRaw * weeks);
+  const fCampaignEff = fWeeklyEff * weeks;
+
+  // Unsicherheits-Band
+  const band = getUncertaintyBand(region.screens_politik);
+  const reachVon = Math.round(reachRaw * (1 - band) / 500) * 500;
+  const reachBis = Math.round(reachRaw * (1 + band) / 500) * 500;
+
+  // Budget-Aufteilung nur intern (NIE anzeigen)
+  const dooh_chf    = budget * split.dooh;
+  const display_chf = budget * split.display;
+  const daily_total = budget / days;
+
+  return {
+    reachAvg: Math.round(reachRaw),
+    reachVon, reachBis,
+    coverage: reachRaw / region.stimm,
+    fWeekly: fWeeklyEff,
+    fCampaign: fCampaignEff,
+    split,
+    cappedBy,
+    daysWeeks: weeks,
+    daily_total,
+  };
+}
+
+function calculatePackageBudget(pkg, region) {
+  const cap        = getReachCap(region.stimm, pkg.level);
+  const targetReach = region.stimm * cap;
+  const impressions = targetReach * pkg.f_weekly * (pkg.days / 7);
+  const split = getChannelSplit(region.screens_politik);
+  const cpm   = split.dooh * 50 + split.display * 15;
+  const raw   = (impressions / 1000) * cpm;
+  // Floor & rounding to 500
+  const rounded = Math.max(Math.round(raw / 500) * 500, B_MIN);
+  return rounded;
+}
+
+/* ============================================================
+   Hinweis-Priorisierung (Abschnitt 12)
+   ============================================================ */
+function getHint(budget, days, impact, region) {
+  // 1. Hard Stop
+  if (budget >= B_HARD_MAX) {
+    return {
+      tone: 'warn',
+      title: 'Persönliche Planung empfohlen',
+      text: 'Kampagnen ab CHF 100\'000 planen wir gemeinsam. ',
+      cta: 'Termin buchen',
+    };
+  }
+  // 2. Below Min (Slider snapt im UI, hier nur safety)
+  if (budget < B_MIN) {
+    return {
+      tone: 'warn',
+      title: 'Mindestbudget CHF 4\'000',
+      text: 'Wir setzen automatisch auf das Minimum.',
+    };
+  }
+  // 3. Frequenz zu dünn
+  if (impact.fWeekly < F_MIN_WEEKLY) {
+    const empfohlenTage = Math.round(days * (impact.fWeekly / F_REC_WEEKLY));
+    return {
+      tone: 'warn',
+      title: 'Budget über zu lange Laufzeit verteilt',
+      text: `Bei ${days} Tagen liegt der Kontaktdruck unter der Wirkungsschwelle. Empfehlung: Laufzeit auf ca. ${empfohlenTage} Tage reduzieren.`,
+    };
+  }
+  // 4. Frequenz Overkill
+  if (impact.fWeekly > F_MAX_WEEKLY) {
+    return {
+      tone: 'warn',
+      title: 'Werbemüdigkeit droht',
+      text: 'Die Frequenz pro Person ist sehr hoch. Empfehlung: Region erweitern oder Budget reduzieren.',
+    };
+  }
+  // 5. Tagesbudget unter Floor
+  if (impact.daily_total < DAILY_MIN) {
+    return {
+      tone: 'warn',
+      title: 'Tagesbudget zu tief für stabile Auslieferung',
+      text: 'Empfohlen: kürzere Laufzeit oder höheres Budget.',
+    };
+  }
+  // 6. Reach-Cap erreicht
+  if (impact.cappedBy) {
+    return {
+      tone: 'info',
+      title: 'Sättigung in Sicht',
+      text: `Bei ${Math.round(impact.coverage * 100)}% Abdeckung erhöht mehr Budget primär die Frequenz, nicht die Reichweite.`,
+    };
+  }
+  // 7. Calendly Nudges
+  if (budget >= B_NUDGE_STRONG) {
+    return {
+      tone: 'violet',
+      title: 'Grosse Kampagne — persönliche Planung sinnvoll',
+      text: 'Ab CHF 30\'000 planen wir gerne gemeinsam. Du kannst aber jederzeit direkt weiterbuchen. ',
+      cta: 'Termin buchen',
+    };
+  }
+  if (budget >= B_NUDGE_SOFT) {
+    return {
+      tone: 'info',
+      title: 'Wir bieten persönliche Beratung',
+      text: 'Ab CHF 20\'000 unterstützen wir dich gerne mit individueller Mediaplanung. ',
+      cta: 'Termin buchen',
+    };
+  }
+  // 8. Screen-Klasse
+  if (impact.split.klasse === 'display-dominant') {
+    return {
+      tone: 'info',
+      title: 'In dieser Region primär online',
+      text: `Digitale Plakate sind in ${region.name} stark begrenzt. Wir setzen den Schwerpunkt auf Online-Display.`,
+    };
+  }
+  if (impact.split.klasse === 'begrenzt') {
+    return {
+      tone: 'info',
+      title: 'Erhöhter Online-Anteil',
+      text: `In ${region.name} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal.`,
+    };
+  }
+  // 9. Sweet Spot
+  return {
+    tone: 'good',
+    title: 'Im Sweet Spot',
+    text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${days}-tägige Kampagne in ${region.name}.`,
+  };
+}
+
+/* ============================================================
+   UI Helpers
+   ============================================================ */
+function fmtCHF(n) {
+  return 'CHF ' + Math.round(n).toLocaleString('de-CH').replace(/,/g, '\u2019');
+}
+function fmtNum(n) {
+  return Math.round(n).toLocaleString('de-CH').replace(/,/g, '\u2019');
+}
+function fmtRange(von, bis) {
+  return fmtNum(von) + ' – ' + fmtNum(bis);
+}
+function fmtDateShort(d) {
+  return d.toLocaleDateString('de-CH', { day: 'numeric', month: 'long' });
+}
+function pkgLevelToLabel(level) {
+  return ({1:'Sichtbar', 2:'Präsenz', 3:'Dominanz'})[level];
+}
+
+/* ============================================================
+   Renderer
+   ============================================================ */
+let currentPath = 'A';
+let selectedPkg = 'praesenz';
+
+function renderHint(hint) {
+  const c = document.getElementById('hint-container');
+  if (!hint) { c.innerHTML = ''; return; }
+  const ctaHtml = hint.cta ? `<span class="hint-cta">${hint.cta} →</span>` : '';
+  const icon = ({warn:'!', info:'i', good:'✓', violet:'★'})[hint.tone];
+  c.innerHTML = `
+    <div class="hint hint-${hint.tone}">
+      <div class="hint-icon">${icon}</div>
+      <div class="hint-body">
+        <div class="hint-title">${hint.title}</div>
+        <div class="hint-text">${hint.text}${ctaHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderImpact(budget, days, level = null) {
+  const impact = calculateImpact(budget, days, REGION, level);
+
+  // Hero
+  document.getElementById('hero-reach').textContent = fmtRange(impact.reachVon, impact.reachBis);
+  document.getElementById('hero-sub').textContent = REGION.demonym;
+
+  // KPIs
+  document.getElementById('kpi-coverage').textContent = Math.round(impact.coverage * 100) + ' %';
+  document.getElementById('kpi-frequency').textContent = 'Ø ' + impact.fCampaign.toFixed(1) + '×';
+  document.getElementById('kpi-frequency-sub').textContent = '≈ ' + impact.fWeekly.toFixed(1) + '× pro Woche';
+  document.getElementById('kpi-period').textContent = days + ' Tage';
+
+  // Datums-Berechnung: Kampagnenende = Abstimmung - 28 Tage (Briefwahl)
+  const ende = new Date(REGION.abstimmung);
+  ende.setDate(ende.getDate() - 28);
+  const start = new Date(ende);
+  start.setDate(start.getDate() - days);
+  document.getElementById('kpi-period-sub').textContent =
+    fmtDateShort(start) + ' bis ' + fmtDateShort(ende);
+
+  // Channel-Mix
+  const doohPct = Math.round(impact.split.dooh * 100);
+  const displayPct = 100 - doohPct;
+  document.getElementById('mix-dooh-bar').style.width = doohPct + '%';
+  document.getElementById('mix-display-bar').style.width = displayPct + '%';
+  document.getElementById('mix-dooh-pct').textContent = doohPct + '%';
+  document.getElementById('mix-display-pct').textContent = displayPct + '%';
+  const klasseLabel = ({voll:'Voll', begrenzt:'Begrenzt', 'display-dominant':'Display-dominant'})[impact.split.klasse];
+  document.getElementById('mix-class').textContent = 'Klasse: ' + klasseLabel;
+
+  // Recap
+  document.getElementById('recap-budget').textContent = fmtCHF(budget);
+  document.getElementById('recap-laufzeit').textContent = days + ' Tage';
+
+  // Hint
+  renderHint(getHint(budget, days, impact, REGION));
+}
+
+/* ===== Pfad A ===== */
+function syncPathA() {
+  const budget = +document.getElementById('a-budget').value;
+  let days     = +document.getElementById('a-laufzeit').value;
+
+  // Korridor an Budget anpassen
+  const corr = getLaufzeitCorridor(budget);
+  const slider = document.getElementById('a-laufzeit');
+  slider.min = corr.min;
+  slider.max = corr.max;
+  if (days < corr.min) { days = corr.min; slider.value = corr.min; }
+  if (days > corr.max) { days = corr.max; slider.value = corr.max; }
+  document.getElementById('a-laufzeit-min').textContent = corr.min + ' Tage';
+  document.getElementById('a-laufzeit-max').textContent = corr.max + ' Tage';
+
+  document.getElementById('a-budget-val').textContent = fmtCHF(budget);
+  document.getElementById('a-laufzeit-val').textContent = days + ' Tage';
+
+  document.getElementById('recap-pkg-row').style.display = 'none';
+  renderImpact(budget, days);
+}
+
+/* ===== Pfad B ===== */
+function selectPackage(pkgKey) {
+  selectedPkg = pkgKey;
+  document.querySelectorAll('.pkg').forEach(el => {
+    el.classList.toggle('selected', el.dataset.pkg === pkgKey);
+  });
+  // Sliders auf Paket-Werte setzen
+  const pkg = PACKAGES[pkgKey];
+  const budget = calculatePackageBudget(pkg, REGION);
+  document.getElementById('b-budget').value = budget;
+  document.getElementById('b-laufzeit').value = pkg.days;
+  syncPathB();
+}
+
+function syncPathB() {
+  const budget = +document.getElementById('b-budget').value;
+  let days     = +document.getElementById('b-laufzeit').value;
+
+  // Korridor an Budget anpassen (auch im Feintuning aktiv)
+  const corr = getLaufzeitCorridor(budget);
+  const slider = document.getElementById('b-laufzeit');
+  slider.min = corr.min;
+  slider.max = corr.max;
+  if (days < corr.min) { days = corr.min; slider.value = corr.min; }
+  if (days > corr.max) { days = corr.max; slider.value = corr.max; }
+  document.getElementById('b-laufzeit-min').textContent = corr.min + ' Tage';
+  document.getElementById('b-laufzeit-max').textContent = corr.max + ' Tage';
+
+  document.getElementById('b-budget-val').textContent = fmtCHF(budget);
+  document.getElementById('b-laufzeit-val').textContent = days + ' Tage';
+
+  // Recap mit Paket
+  document.getElementById('recap-pkg-row').style.display = 'flex';
+  document.getElementById('recap-pkg').textContent = PACKAGES[selectedPkg].name;
+
+  renderImpact(budget, days, PACKAGES[selectedPkg].level);
+}
+
+/* ===== Path Switching ===== */
+function setPath(path) {
+  currentPath = path;
+  document.getElementById('tab-a').classList.toggle('active', path === 'A');
+  document.getElementById('tab-b').classList.toggle('active', path === 'B');
+  document.getElementById('path-a-control').style.display = path === 'A' ? 'block' : 'none';
+  document.getElementById('path-b-control').style.display = path === 'B' ? 'block' : 'none';
+
+  if (path === 'A') {
+    // Beim Wechsel zu A: Budget-Wert vom B übernehmen
+    if (document.getElementById('b-budget').value) {
+      document.getElementById('a-budget').value = document.getElementById('b-budget').value;
+    }
+    syncPathA();
+  } else {
+    // Beim Wechsel zu B: Budget-Wert vom A übernehmen
+    document.getElementById('b-budget').value = document.getElementById('a-budget').value;
+    syncPathB();
+  }
+}
+
+/* ===== Feintuning Toggle ===== */
+function toggleFeintuning() {
+  document.getElementById('feintuning').classList.toggle('open');
+}
+
+/* ===== Init: Pakete-Budgets dynamisch berechnen ===== */
+function initPackageBudgets() {
+  for (const [key, pkg] of Object.entries(PACKAGES)) {
+    const budget = calculatePackageBudget(pkg, REGION);
+    document.getElementById(`pkg-${key}-budget`).textContent = fmtCHF(budget);
+    document.getElementById(`pkg-${key}-tage`).textContent = pkg.days + ' Tage';
+    const fcamp = pkg.f_weekly * (pkg.days / 7);
+    document.getElementById(`pkg-${key}-fcamp`).textContent = Math.round(fcamp) + '×';
+  }
+}
+
+/* ===== Event Listeners ===== */
+document.getElementById('a-budget').addEventListener('input', syncPathA);
+document.getElementById('a-laufzeit').addEventListener('input', syncPathA);
+document.getElementById('b-budget').addEventListener('input', syncPathB);
+document.getElementById('b-laufzeit').addEventListener('input', syncPathB);
+
+/* ===== Boot ===== */
+initPackageBudgets();
+syncPathA();
+</script>
+</body>
+</html>

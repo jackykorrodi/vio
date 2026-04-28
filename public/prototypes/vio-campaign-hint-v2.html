@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO – CampaignHint Prototype v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --violet: #6B4FBB;
+  --violet-dark: #3C3489;
+  --violet-pale: #EEEDFE;
+  --violet-xpale: #F7F5FF;
+  --ink: #2D1F52;
+  --ink-strong: #1A0F3B;
+  --slate: #5A556F;
+  --slate-light: #7A7596;
+  --lavender: #B8A9E8;
+  --bg: #FAFAFA;
+  --white: #FFFFFF;
+  --border: rgba(107, 79, 187, 0.10);
+  --border-strong: rgba(107, 79, 187, 0.22);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Jost', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  padding: 40px 24px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 48px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ink-strong);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.page-header p {
+  font-size: 14px;
+  color: var(--slate);
+  font-weight: 400;
+}
+
+.section {
+  margin-bottom: 48px;
+}
+
+.section-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--slate);
+  margin-bottom: 20px;
+  font-weight: 400;
+}
+
+/* ══════════════════════════════════════════════════════
+   HINT BASE STYLES — verbesserte Lesbarkeit
+   ══════════════════════════════════════════════════════ */
+
+.hint {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  font-family: 'Jost', sans-serif;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hint-marker {
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+.hint-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.hint-text {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.hint-text strong {
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.hint-action {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--violet);
+  color: white;
+  border: none;
+  border-radius: 100px;
+  padding: 10px 20px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+
+.hint-action:hover {
+  background: var(--violet-dark);
+}
+
+.hint-action-secondary {
+  background: transparent;
+  color: var(--violet);
+  border: 1px solid var(--border-strong);
+  margin-left: 8px;
+}
+
+.hint-action-secondary:hover {
+  background: var(--violet-xpale);
+}
+
+/* ══════════════════════════════════════════════════════
+   PRIORITY 1 — BLOCKIEREND
+   ══════════════════════════════════════════════════════ */
+
+.hint--blocking {
+  background: var(--violet-xpale);
+  border-left: 3px solid var(--violet);
+  border-radius: 0 8px 8px 0;
+  padding: 18px 20px 18px 18px;
+}
+
+.hint--blocking .hint-marker {
+  display: none;
+}
+
+.hint--blocking .hint-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-strong);
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+
+.hint--blocking .hint-text {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════
+   PRIORITY 2-3 — EMPFEHLUNG / INFO
+   ══════════════════════════════════════════════════════ */
+
+.hint--recommendation {
+  padding: 16px 0 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.hint--recommendation .hint-marker {
+  width: 5px;
+  height: 5px;
+  background: var(--violet);
+  border-radius: 1px;
+}
+
+.hint--info {
+  padding: 16px 0 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.hint--info .hint-marker {
+  width: 5px;
+  height: 5px;
+  background: var(--lavender);
+  border-radius: 1px;
+}
+
+.hint--info .hint-text {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════
+   PRIORITY 4 — NUDGE (Calendly)
+   ══════════════════════════════════════════════════════ */
+
+.hint--nudge {
+  background: var(--white);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.hint--nudge.hint--nudge-strong {
+  border-color: var(--violet);
+  background: var(--violet-xpale);
+}
+
+.hint--nudge .hint-marker {
+  width: 7px;
+  height: 7px;
+  background: var(--violet);
+  border-radius: 50%;
+  margin-top: 9px;
+}
+
+.hint--nudge .hint-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-strong);
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+
+/* ══════════════════════════════════════════════════════
+   PRIORITY 5 — KONTEXT (Screen-Klasse)
+   ══════════════════════════════════════════════════════ */
+
+.hint--context {
+  padding: 12px 0;
+}
+
+.hint--context .hint-marker {
+  width: 14px;
+  height: 2px;
+  background: var(--lavender);
+  margin-top: 10px;
+  border-radius: 1px;
+}
+
+.hint--context .hint-text {
+  color: var(--slate);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════
+   DEMO CARD
+   ══════════════════════════════════════════════════════ */
+
+.demo-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.demo-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.demo-card-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  color: var(--slate);
+  font-weight: 500;
+}
+
+.demo-card-value {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--violet);
+  letter-spacing: -0.02em;
+}
+
+.demo-card-sub {
+  font-size: 13px;
+  color: var(--slate);
+  margin-bottom: 20px;
+  font-weight: 400;
+}
+
+.hint-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.note {
+  background: rgba(212, 168, 67, 0.08);
+  border-left: 2px solid #D4A843;
+  border-radius: 0 6px 6px 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ink);
+  margin-top: 20px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.note strong {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+}
+
+code {
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 12px;
+  background: var(--violet-xpale);
+  color: var(--violet-dark);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.compare-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 20px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.compare-col h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slate);
+  margin-bottom: 12px;
+}
+
+.compare-v1 {
+  color: #3D3557;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+.compare-v2 {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 500;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="page-header">
+    <h1>CampaignHint Prototype v2</h1>
+    <p>Verbesserte Lesbarkeit: dunklerer Text, kräftigeres Font-Weight (Jost 500), 15px statt 14px Body</p>
+  </div>
+
+  <!-- VORHER/NACHHER VERGLEICH -->
+  <div class="section">
+    <div class="section-title">Vorher/Nachher — direkter Vergleich</div>
+    <div class="compare-box">
+      <div class="compare-col">
+        <h3>v1 · Schwächer</h3>
+        <p class="compare-v1">
+          Dein Budget ist für <strong>8 Wochen zu dünn verteilt</strong>. Empfehlung: Laufzeit auf 4 Wochen reduzieren für mehr Wirkung.
+        </p>
+      </div>
+      <div class="compare-col">
+        <h3>v2 · Lesbarer</h3>
+        <p class="compare-v2">
+          Dein Budget ist für <strong>8 Wochen zu dünn verteilt</strong>. Empfehlung: Laufzeit auf 4 Wochen reduzieren für mehr Wirkung.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIORITY 1 — BLOCKIEREND -->
+
+  <div class="section">
+    <div class="section-title">Priorität 1 · Blockierend</div>
+    <p class="section-desc">Vollständige Card mit violettem Linker-Rand. Hält den User an.</p>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 120'000</span>
+      </div>
+      <div class="demo-card-sub">Präsenz-Paket · Kanton Zürich · 6 Wochen</div>
+
+      <div class="hint hint--blocking">
+        <div class="hint-body">
+          <div class="hint-title">Gesprächstermin erforderlich</div>
+          <div class="hint-text">
+            Kampagnen ab CHF 100'000 planen wir persönlich. Buchung ist nur nach einem kurzen Gespräch möglich — damit wir sicherstellen, dass alles passt.
+          </div>
+          <a href="#" class="hint-action">Termin buchen</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 2'500</span>
+      </div>
+      <div class="demo-card-sub">Stadt Zürich · 3 Wochen</div>
+
+      <div class="hint hint--blocking">
+        <div class="hint-body">
+          <div class="hint-title">Mindestbudget erforderlich</div>
+          <div class="hint-text">
+            Ab CHF 4'000 funktioniert eine Kampagne wirkungsvoll. Wir heben dein Budget automatisch an.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIORITY 2 — EMPFEHLUNG -->
+
+  <div class="section">
+    <div class="section-title">Priorität 2 · Empfehlungen</div>
+    <p class="section-desc">Über horizontaler Linie, kleines violett-Quadrat als Marker.</p>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 4'500</span>
+      </div>
+      <div class="demo-card-sub">Stadt Zürich · 8 Wochen</div>
+
+      <div class="hint hint--recommendation">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            Dein Budget ist für <strong>8 Wochen zu dünn verteilt</strong>. Empfehlung: Laufzeit auf 4 Wochen reduzieren für mehr Wirkung.
+          </div>
+          <button class="hint-action">Anwenden</button>
+          <button class="hint-action hint-action-secondary">Weiter wie bisher</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 18'000</span>
+      </div>
+      <div class="demo-card-sub">Gemeinde Gossau · 2 Wochen</div>
+
+      <div class="hint hint--recommendation">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            Deine Frequenz ist <strong>sehr hoch</strong>. Jede Person sieht deine Botschaft über 15× — das ist oft zu viel. Empfehlung: Budget reduzieren oder Region erweitern.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 5'000</span>
+      </div>
+      <div class="demo-card-sub">Stadt Bern · 8 Wochen</div>
+
+      <div class="hint hint--recommendation">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            Tagesbudget unter CHF 150 — die Ausspielung ist nicht garantiert. Empfehlung: <strong>Kürzere Laufzeit</strong>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIORITY 3 — INFO -->
+
+  <div class="section">
+    <div class="section-title">Priorität 3 · Info</div>
+    <p class="section-desc">Ähnlich wie Empfehlung, lavendelfarbener Marker. Keine Handlungsaufforderung.</p>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Deine Reichweite</span>
+        <span class="demo-card-value">820'000</span>
+      </div>
+      <div class="demo-card-sub">Kanton Zürich · max. erreichbarer Pool</div>
+
+      <div class="hint hint--info">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            Maximale Reichweite in Kanton Zürich erreicht. Mehr Budget bringt keine zusätzlichen Personen — du erreichst bereits 80% der Stimmberechtigten.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIORITY 4 — NUDGES -->
+
+  <div class="section">
+    <div class="section-title">Priorität 4 · Beratungs-Nudge</div>
+    <p class="section-desc">Soft (CHF 20k+) und Strong (CHF 30k+). Mit CTA, nicht blockierend.</p>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 22'000</span>
+      </div>
+      <div class="demo-card-sub">Kanton Bern · 5 Wochen</div>
+
+      <div class="hint hint--nudge">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-title">Persönliche Beratung möglich</div>
+          <div class="hint-text">
+            Ab CHF 20'000 bieten wir persönliche Beratung. Du kannst weiterbuchen oder ein kurzes Gespräch vereinbaren.
+          </div>
+          <a href="#" class="hint-action">Termin buchen</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 35'000</span>
+      </div>
+      <div class="demo-card-sub">Kanton Waadt · 6 Wochen</div>
+
+      <div class="hint hint--nudge hint--nudge-strong">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-title">Grosse Kampagne geplant?</div>
+          <div class="hint-text">
+            Ab CHF 30'000 empfehlen wir ein persönliches Gespräch — um sicherzustellen, dass Timing, Creative und Delivery optimal zusammenpassen. Du kannst aber auch direkt weiterbuchen.
+          </div>
+          <a href="#" class="hint-action">Termin buchen</a>
+          <button class="hint-action hint-action-secondary">Weiter buchen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIORITY 5 — KONTEXT -->
+
+  <div class="section">
+    <div class="section-title">Priorität 5 · Kontext-Info</div>
+    <p class="section-desc">Leiseste Stufe: 14px-Strich-Marker, ruhiger Ton, nicht kursiv. Erklärt den Zusammenhang.</p>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 8'000</span>
+      </div>
+      <div class="demo-card-sub">Stadt Adliswil · 4 Wochen</div>
+
+      <div class="hint hint--context">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            In Adliswil läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 8'000</span>
+      </div>
+      <div class="demo-card-sub">Wädenswil · 3 Wochen</div>
+
+      <div class="hint hint--context">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            In Wädenswil erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 15'000</span>
+      </div>
+      <div class="demo-card-sub">3 Regionen gewählt · 5 Wochen</div>
+
+      <div class="hint hint--context">
+        <div class="hint-marker"></div>
+        <div class="hint-body">
+          <div class="hint-text">
+            In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDGE CASE -->
+
+  <div class="section">
+    <div class="section-title">Edge Case · Mehrere Hinweise gestapelt</div>
+    <p class="section-desc">Realistisches Szenario: 35k Budget, grosse Region, display-dominantes Gebiet.</p>
+
+    <div class="demo-card">
+      <div class="demo-card-header">
+        <span class="demo-card-title">Dein Budget</span>
+        <span class="demo-card-value">CHF 35'000</span>
+      </div>
+      <div class="demo-card-sub">Wädenswil + Horgen · 6 Wochen</div>
+
+      <div class="hint-stack">
+        <div class="hint hint--info">
+          <div class="hint-marker"></div>
+          <div class="hint-body">
+            <div class="hint-text">
+              Maximale Reichweite erreicht. Mehr Budget bringt keine zusätzlichen Personen.
+            </div>
+          </div>
+        </div>
+
+        <div class="hint hint--nudge hint--nudge-strong">
+          <div class="hint-marker"></div>
+          <div class="hint-body">
+            <div class="hint-title">Grosse Kampagne geplant?</div>
+            <div class="hint-text">
+              Ab CHF 30'000 empfehlen wir ein persönliches Gespräch. Du kannst aber auch direkt weiterbuchen.
+            </div>
+            <a href="#" class="hint-action">Termin buchen</a>
+            <button class="hint-action hint-action-secondary">Weiter buchen</button>
+          </div>
+        </div>
+
+        <div class="hint hint--context">
+          <div class="hint-marker"></div>
+          <div class="hint-body">
+            <div class="hint-text">
+              In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Was v2 anders macht</strong> · Haupttext 15px (war 14px) · Font-weight 500 für Body (war 400 regular) · Farbe #2D1F52 direkt (war #3D3557 heller) · Bei Prio 5: nicht mehr kursiv, weight 500 · Titel in Blocking/Nudge von 13px auf 14px · Action-Buttons grösser (10×20px padding, 13px statt 12px) · Antialiasing explizit aktiviert für sauberere Schrift-Renderung · <strong>Alle WCAG AA-Kontrast-Werte erfüllt</strong>
+  </div>
+
+</div>
+
+</body>
+</html>
