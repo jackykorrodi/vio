@@ -173,6 +173,10 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
   const [ddOpen, setDdOpen]           = useState(false);
   const [screenHinweis, setScreenHinweis] = useState<string | null>(null);
 
+  // Tooltip hover state for timeline milestones
+  const [ttKampagneParat, setTtKampagneParat] = useState(false);
+  const [ttUnterlagen, setTtUnterlagen]       = useState(false);
+
   // Q3 state
   const [budget, setBudget]           = useState(briefing.recommendedBudget ?? 15000);
   const [budgetKnown, setBudgetKnown] = useState(!!briefing.recommendedBudget);
@@ -580,21 +584,43 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
                           <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(todayISO())}</div>
                         </div>
 
-                        {/* Node 1: Start */}
+                        {/* Node 1: Kampagne parat */}
                         <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
-                          <div style={{ fontSize: 9, fontWeight: 500, color: MUTED, marginBottom: 2, textAlign: 'center' as const }}>Vorlauf</div>
                           <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2px solid #6B4FBB' }} />
-                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Start</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 6, position: 'relative' as const }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textAlign: 'center' as const }}>Kampagne parat</div>
+                            <span
+                              style={{ color: '#7A7596', cursor: 'help', fontSize: 11, lineHeight: 1, flexShrink: 0 }}
+                              onMouseEnter={() => setTtKampagneParat(true)}
+                              onMouseLeave={() => setTtKampagneParat(false)}
+                            >ⓘ</span>
+                            {ttKampagneParat && (
+                              <div style={{ position: 'absolute' as const, bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', background: '#2D1F52', color: 'white', borderRadius: 8, padding: '8px 12px', fontSize: 12, maxWidth: 260, width: 'max-content', zIndex: 50, lineHeight: 1.5, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+                                DOOH-Screens für politische Kampagnen werden von jedem Betreiber individuell freigegeben — das dauert ca. 10 Tage. Bis zu diesem Datum müssen deine Werbemittel und die Kampagne freigegeben sein. Keine Angst, wir helfen dir dabei!
+                              </div>
+                            )}
+                          </div>
                           <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(tlStart)}</div>
                         </div>
 
-                        {/* Node 2: Unterlagen */}
+                        {/* Node 2: Unterlagen-Versand */}
                         <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
                           <div style={{ fontSize: 9, fontWeight: 500, color: MUTED, marginBottom: 2, textAlign: 'center' as const }}>{diffStartToUnterlagen} Tage</div>
                           <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2px solid rgba(107,79,187,0.35)' }} />
-                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Unterlagen</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 6, position: 'relative' as const }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textAlign: 'center' as const }}>Unterlagen-Versand</div>
+                            <span
+                              style={{ color: '#7A7596', cursor: 'help', fontSize: 11, lineHeight: 1, flexShrink: 0 }}
+                              onMouseEnter={() => setTtUnterlagen(true)}
+                              onMouseLeave={() => setTtUnterlagen(false)}
+                            >ⓘ</span>
+                            {ttUnterlagen && (
+                              <div style={{ position: 'absolute' as const, bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', background: '#2D1F52', color: 'white', borderRadius: 8, padding: '8px 12px', fontSize: 12, maxWidth: 260, width: 'max-content', zIndex: 50, lineHeight: 1.5, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+                                Ca. 4 Wochen vor dem Abstimmungssonntag kommen die Abstimmungsunterlagen ins Haus. Viele Stimmberechtigte entscheiden genau in dieser Phase. Kampagnen, die hier präsent sind, erzielen die höchste Wirkung.
+                              </div>
+                            )}
+                          </div>
                           <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(tlUnterlagenDate)}</div>
-                          <div style={{ fontSize: 9, fontWeight: 400, color: MUTED, marginTop: 1, textAlign: 'center' as const }}>Bereits versendet</div>
                         </div>
 
                         {/* Node 3: Abstimmung */}
