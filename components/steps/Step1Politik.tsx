@@ -555,7 +555,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
 
                 {/* Auto-calculated timeline */}
                 {dateEvent && !dateBlocked && (() => {
-                  const tlStart = todayPlusDaysISO(MIN_SETUP_DAYS);
+                  const tlStart = tlCampaignStart ? addDaysISO(tlCampaignStart, -MIN_SETUP_DAYS) : '';
                   const kampagneDays = Math.max(0, calcDaysUntil(dateEvent) - MIN_SETUP_DAYS);
                   const kampagneWeeks = Math.round(kampagneDays / 7);
                   const diffStartToUnterlagen = Math.round(
