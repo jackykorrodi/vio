@@ -3,7 +3,7 @@
 // Ersetzt schrittweise lib/vio-paketlogik.ts und lib/b2b-paketlogik.ts.
 // Diese Datei wird in Paket B.2/B.3 in die UI-Komponenten eingebunden.
 //
-// Basis: Regelkatalog v2.1 (public/vio-regelkatalog-politik-v2.md)
+// Basis: Regelkatalog v2.2 (public/vio-regelkatalog-politik-v2.md)
 // Erstellt: 22.04.2026
 
 import type { Region } from './regions';
@@ -35,10 +35,6 @@ export const CPM_DISPLAY = 15;
 export const DELIVERY_DOOH = 0.75;
 export const DELIVERY_DISPLAY = 0.90;
 
-export const REACH_CURVE_K = 0.4;   // Hofmans-Steilheit, CH-Politik kalibriert
-export const ER3_BETA = 5.0;        // Effective Reach Heterogenität (Long-Tail)
-export const ER3_OFFSET = 0.5;      // Schwelle avg_freq für >=3 Kontakte
-
 // TODO: mit ersten 10 Splicky-Kampagnen validieren (aktuell CH-DOOH-Branchenschätzung)
 // Splicky CPM = Cost per 1000 Ad Plays (nicht Audience Contacts) → Multiplier nötig
 export const DOOH_OTS_MULTIPLIER = 2.5;
@@ -58,7 +54,8 @@ export type HinweisCode =
   | 'no_dooh_inventory'
   | 'calendly_nudge_soft'
   | 'calendly_nudge_strong'
-  | 'hard_stop_budget';
+  | 'hard_stop_budget'
+  | 'wearout_warning';
 
 export interface Hinweis {
   code: HinweisCode;
@@ -85,19 +82,18 @@ export interface ImpactResult {
 
   // Pool
   stimmTotal: number;
-  poolCap: number;            // effektiv erreichbare Pool-Grösse
+  poolCap: number;            // effektiv erreichbare Pool-Grösse (nach Cap-Level)
 
   // Channel
   doohShare: number;          // z.B. 0.70
   displayShare: number;       // z.B. 0.30
   screenKlasse: 'voll' | 'begrenzt' | 'display-dominant';
 
-  // Hofmans
-  impPerCapita: number;        // Kontakte / Stimmberechtigte
-  reachFactor: number;         // Hofmans-Sättigungsfaktor (0–1)
-  uniqueReachHofmans: number;  // Absolute Unique Reach (vor Pool-Cap)
-  er3Factor: number;           // Effective Reach ≥3 Faktor (0–1)
-  er3Reach: number;            // Absoluter Effective Reach 3+
+  // Decision-Engine
+  capLevel: 1 | 2 | 3;
+  impactLevel: 'sichtbar' | 'praesenz' | 'dominanz';
+  efficiencyStatus: 'too_thin' | 'balanced' | 'overkill' | 'capped';
+  recommendedAction: { action: string; target: number } | null;
 
   // Flags
   cappedByRegion: boolean;
@@ -119,8 +115,6 @@ export interface Paket {
   reachMitte: number;
   reachVonPct: number;
   reachBisPct: number;
-  er3Factor: number;
-  er3Reach: number;
   recommended: boolean;
 }
 
@@ -227,6 +221,7 @@ function buildHinweise(ctx: {
   budget: number;
   frequencyWeekly: number;
   laufzeitDays: number;
+  laufzeitWeeks: number;
   screenKlasse: 'voll' | 'begrenzt' | 'display-dominant';
   cappedByRegion: boolean;
   regionNames: string[];
@@ -333,15 +328,37 @@ function buildHinweise(ctx: {
     });
   }
 
+  // Priorität 6: Laufzeit-Wearout
+  if (ctx.laufzeitWeeks > 8) {
+    hinweise.push({
+      code: 'wearout_warning',
+      text: 'Lange Kampagnen verlieren Effizienz ab Woche 9. Für maximale Wirkung: 4–8 Wochen.',
+      priority: 6,
+    });
+  }
+
   return hinweise.sort((a, b) => a.priority - b.priority);
 }
 
-// ─── Kern: calculateImpact — Pfad A (Budget-first) ───────────────────────────
+// ─── Cap-Level-Inferenz ──────────────────────────────────────────────────────
+
+function inferCapLevel(rawReach: number, stimm: number): 1 | 2 | 3 {
+  const pct = rawReach / stimm;
+  const cap1 = getReachCap(stimm, 1);
+  const cap2 = getReachCap(stimm, 2);
+  if (pct <= cap1) return 1;
+  if (pct <= cap2) return 2;
+  return 3;
+}
+
+// ─── Kern: calculateImpact ───────────────────────────────────────────────────
 
 export function calculateImpact(input: {
   budget: number;
   laufzeitDays: number;
   regions: Region[];
+  mode?: 'budgetFirst' | 'paketLevel';   // default: 'budgetFirst'
+  paketLevel?: 1 | 2 | 3;               // nur bei mode='paketLevel'
 }): ImpactResult {
   const regions = dedupRegions(input.regions);
   const stimmTotal = sumStimm(regions);
@@ -360,7 +377,6 @@ export function calculateImpact(input: {
 
   // Dynamischer Misch-CPM
   const mixedCpm = doohShare * CPM_DOOH + displayShare * CPM_DISPLAY;
-  void mixedCpm; // used indirectly via budget split below
 
   // Total-Kontakte aus Budget (mit Delivery-Faktoren + OTS-Multiplier für DOOH)
   const doohBudget = input.budget * doohShare;
@@ -372,25 +388,25 @@ export function calculateImpact(input: {
   // Laufzeit
   const laufzeitWeeks = input.laufzeitDays / 7;
 
-  // Hofmans-Sättigungskurve
-  const impPerCapita = stimmTotal > 0 ? impressionsEffective / stimmTotal : 0;
-  const reachFactor = 1 - 1 / (1 + REACH_CURVE_K * impPerCapita);
-  const uniqueReachHofmans = stimmTotal * reachFactor;
+  // Reach-Berechnung (linear: Kontakte → Unique Reach bei F_REC_WEEKLY)
+  const rawReach = stimmTotal > 0 && laufzeitWeeks > 0
+    ? impressionsEffective / (F_REC_WEEKLY * laufzeitWeeks)
+    : 0;
 
-  // Pool-Cap
-  const poolCap = stimmTotal * MAX_REACH_CAP;
-  let uniqueReach = Math.min(uniqueReachHofmans, poolCap);
-  const cappedByRegion = uniqueReachHofmans > poolCap;
+  // Cap-Level (Budget-first: inferieren; Paket-Modus: fix)
+  const capLevel: 1 | 2 | 3 = (input.mode === 'paketLevel' && input.paketLevel)
+    ? input.paketLevel
+    : inferCapLevel(rawReach, stimmTotal);
+
+  // Pool-Cap nach Level
+  const poolCap = stimmTotal * getReachCap(stimmTotal, capLevel);
+  let uniqueReach = Math.min(rawReach, poolCap, stimmTotal * MAX_REACH_CAP);
+  const capped = rawReach > poolCap;
 
   // Wearout bei Laufzeit > 8 Wochen
   uniqueReach = uniqueReach * applyWearoutFactor(laufzeitWeeks);
 
-  // Effective Reach 3+
-  const avgFreq = uniqueReach > 0 ? impressionsEffective / uniqueReach : 0;
-  const er3Factor = Math.max(0, 1 - Math.exp(-(avgFreq - ER3_OFFSET) / ER3_BETA));
-  const er3Reach = Math.round(uniqueReach * er3Factor);
-
-  // Effektive Frequenzen (read-only für UI)
+  // Effektive Frequenzen
   const frequencyWeekly = (uniqueReach > 0 && laufzeitWeeks > 0)
     ? impressionsEffective / (uniqueReach * laufzeitWeeks)
     : 0;
@@ -408,13 +424,35 @@ export function calculateImpact(input: {
   const reachVonPct = stimmTotal > 0 ? Math.round((reachVon / stimmTotal) * 100) : 0;
   const reachBisPct = stimmTotal > 0 ? Math.round((reachBis / stimmTotal) * 100) : 0;
 
+  // Decision-Engine-Signale
+  const impactLevel: 'sichtbar' | 'praesenz' | 'dominanz' =
+    capLevel === 1 ? 'sichtbar' : capLevel === 2 ? 'praesenz' : 'dominanz';
+
+  const fWeekly = Math.round(frequencyWeekly * 10) / 10;
+
+  const efficiencyStatus: 'too_thin' | 'balanced' | 'overkill' | 'capped' = capped
+    ? 'capped'
+    : fWeekly < F_MIN_WEEKLY ? 'too_thin'
+    : fWeekly > F_MAX_WEEKLY ? 'overkill'
+    : 'balanced';
+
+  const recommendedAction: { action: string; target: number } | null =
+    efficiencyStatus === 'too_thin'
+      ? { action: 'reduce_laufzeit', target: Math.ceil(impressionsEffective / (F_REC_WEEKLY * poolCap)) }
+      : efficiencyStatus === 'overkill'
+      ? { action: 'reduce_budget', target: Math.round(poolCap * F_REC_WEEKLY * laufzeitWeeks / 1000 * mixedCpm) }
+      : efficiencyStatus === 'capped'
+      ? { action: 'expand_region_or_reduce_budget', target: Math.round(poolCap) }
+      : null;
+
   // Hinweise
   const hinweise = buildHinweise({
     budget: input.budget,
     frequencyWeekly,
     laufzeitDays: input.laufzeitDays,
+    laufzeitWeeks,
     screenKlasse: klass.klasse,
-    cappedByRegion,
+    cappedByRegion: capped,
     regionNames: regions.map(r => r.name),
     multiRegion,
     politScreensTotal,
@@ -430,18 +468,17 @@ export function calculateImpact(input: {
     reachVonPct,
     reachBisPct,
     frequencyCampaign: Math.round(frequencyCampaign * 10) / 10,
-    frequencyWeekly: Math.round(frequencyWeekly * 10) / 10,
+    frequencyWeekly: fWeekly,
     stimmTotal,
     poolCap: Math.round(poolCap),
     doohShare,
     displayShare,
     screenKlasse: klass.klasse,
-    cappedByRegion,
-    impPerCapita: Math.round(impPerCapita * 10) / 10,
-    reachFactor: Math.round(reachFactor * 1000) / 1000,
-    uniqueReachHofmans: Math.round(uniqueReachHofmans),
-    er3Factor: Math.round(er3Factor * 1000) / 1000,
-    er3Reach,
+    capLevel,
+    impactLevel,
+    efficiencyStatus,
+    recommendedAction,
+    cappedByRegion: capped,
     hinweise,
   };
 }
@@ -473,7 +510,7 @@ export function buildPackages(input: {
     const targetReach = stimmTotal * reachCap;
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
-    // Kontakte pro CHF je Kanal (Umkehrung von calculateImpact)
+    // Budget rückwärts lösen (Umkehrung von calculateImpact)
     const doohYield = (1000 / CPM_DOOH) * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
     const displayYield = (1000 / CPM_DISPLAY) * DELIVERY_DISPLAY;
     const mixedYield = klass.split.dooh * doohYield + klass.split.display * displayYield;
@@ -481,20 +518,14 @@ export function buildPackages(input: {
     const rawBudget = totalContactsNeeded / mixedYield;
     const finalBudget = Math.max(PKG_MIN[key], roundBudget(rawBudget));
 
-    // Reach-Range
-    const band = klass.klasse === 'voll' ? 0.07
-      : klass.klasse === 'begrenzt' ? 0.10
-      : 0.13;
-    const reachMitte = Math.round(targetReach);
-    const reachVon = Math.round(Math.max(0, targetReach * (1 - band)) / 500) * 500;
-    const reachBis = Math.round(targetReach * (1 + band) / 500) * 500;
-    const reachVonPct = stimmTotal > 0 ? Math.round((reachVon / stimmTotal) * 100) : 0;
-    const reachBisPct = stimmTotal > 0 ? Math.round((reachBis / stimmTotal) * 100) : 0;
-
-    // Effective Reach 3+ für dieses Paket
-    const pkgAvgFreq = spec.weeklyFreq * laufzeitWeeks;
-    const pkgEr3Factor = Math.max(0, 1 - Math.exp(-(pkgAvgFreq - ER3_OFFSET) / ER3_BETA));
-    const pkgEr3Reach = Math.round(reachMitte * pkgEr3Factor);
+    // Reach via calculateImpact (mode:'paketLevel' fixiert Cap-Level)
+    const imp = calculateImpact({
+      budget: finalBudget,
+      laufzeitDays: spec.laufzeitDays,
+      regions,
+      mode: 'paketLevel',
+      paketLevel: spec.reachCapLevel,
+    });
 
     return {
       key,
@@ -502,15 +533,13 @@ export function buildPackages(input: {
       budget: finalBudget,
       laufzeitDays: spec.laufzeitDays,
       laufzeitWeeks,
-      frequencyCampaign: spec.weeklyFreq * laufzeitWeeks,
-      frequencyWeekly: spec.weeklyFreq,
-      reachVon,
-      reachBis,
-      reachMitte,
-      reachVonPct,
-      reachBisPct,
-      er3Factor: Math.round(pkgEr3Factor * 1000) / 1000,
-      er3Reach: pkgEr3Reach,
+      frequencyCampaign: imp.frequencyCampaign,
+      frequencyWeekly: imp.frequencyWeekly,
+      reachVon: imp.reachVon,
+      reachBis: imp.reachBis,
+      reachMitte: imp.reachMitte,
+      reachVonPct: imp.reachVonPct,
+      reachBisPct: imp.reachBisPct,
       recommended: key === 'praesenz',
     };
   };

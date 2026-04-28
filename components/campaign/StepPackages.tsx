@@ -349,22 +349,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const fCampaign  = impact ? impact.frequencyCampaign.toFixed(1) : '—';
   const fWeekly    = impact ? impact.frequencyWeekly.toFixed(1)   : '—';
 
-  // Campaign mode — derived from weekly frequency
-  const _freqW = impact?.frequencyWeekly ?? 0;
-  const campaignMode: 'awareness' | 'balanced' | 'mobilization' | 'overkill' =
-    _freqW < 2 ? 'awareness' : _freqW < 5 ? 'balanced' : _freqW < 8 ? 'mobilization' : 'overkill';
-  const MODE_LABELS = { awareness: 'Awareness', balanced: 'Standard', mobilization: 'Mobilisierung', overkill: 'Sehr hohe Frequenz' };
-  const MODE_DESCS  = {
-    awareness:    'Maximale Reichweite, geringe Wiederholung — gut für breite Sichtbarkeit.',
-    balanced:     'Ausgewogen — solide Reichweite mit Erinnerungswirkung.',
-    mobilization: 'Hohe Wiederholung — ideal für Mobilisierung und Endspurt.',
-    overkill:     'Sehr hohe Frequenz — Empfehlung: Region erweitern oder Budget reduzieren.',
-  };
-  const modeLabel = MODE_LABELS[campaignMode];
-  const modeDesc  = MODE_DESCS[campaignMode];
-  const er3Factor = impact?.er3Factor ?? 0;
-  const er3Von    = impact ? Math.round(Math.max(0, impact.reachVon * er3Factor) / 500) * 500 : 0;
-  const er3Bis    = impact ? Math.round(impact.reachBis * er3Factor / 500) * 500 : 0;
 
   // ── Sidebar row ─────────────────────────────────────────────────────────────
   const SbRow = ({ label, val, color = T.ink, last = false }: { label: string; val: string; color?: string; last?: boolean }) => (
@@ -512,20 +496,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
                 {impact ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}` : '—'}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: (impact?.er3Reach ?? 0) > 0 ? 10 : 26 }}>{demonym}</div>
-
-              {/* ER3 sub-reach */}
-              {impact && impact.er3Reach > 0 && (
-                <div style={{ color: '#B8A9E8', fontSize: 14, marginBottom: 20 }}>
-                  Davon {fmtNum(er3Von)}–{fmtNum(er3Bis)} mit Erinnerungswirkung (≥3× gesehen)
-                </div>
-              )}
-
-              {/* Mode Badge */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '4px 10px', borderRadius: 6, marginBottom: 6 }}>{modeLabel}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>{modeDesc}</div>
-              </div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
 
               {/* 3 KPIs */}
               <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
