@@ -7,7 +7,34 @@
 
 import type { Region } from './regions';
 import { buildPackages } from './preislogik';
-import type { Step1Output, PackageResult } from './vio-paketlogik';
+
+// Typen inline — kein Import mehr aus vio-paketlogik.ts (Legacy)
+export type PackageResult = {
+  name: string;
+  reachPercent: number;
+  frequency: number;
+  durationDays: number;
+  targetReachPeople: number;
+  impressions: number;
+  rawBudget: number;
+  finalBudget: number;
+  uniqueReachPercent: number;
+  recommendedStartDate: string | null;
+  latestBookingDate: string | null;
+  badge: 'Empfohlen' | null;
+  hinweis: string | null;
+};
+
+export type Step1Output = {
+  eligibleVotersTotal: number;
+  daysUntilVote: number | null;
+  recommendedPackage: 'sichtbar' | 'praesenz' | 'dominanz';
+  packages: {
+    sichtbar: PackageResult;
+    praesenz: PackageResult;
+    dominanz: PackageResult;
+  };
+};
 
 const CAMPAIGN_END_OFFSET_DAYS = 0;
 

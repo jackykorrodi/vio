@@ -1,3 +1,9 @@
+// DEPRECATED — nicht verwenden.
+// Typen (Step1Output, PackageResult) sind nach lib/preislogik-adapter.ts verschoben.
+// Logik (buildVioPackages) ist durch lib/preislogik.ts + lib/preislogik-adapter.ts ersetzt.
+// Einziger verbleibender Import: components/steps/Step2Politik.tsx (ebenfalls DEPRECATED).
+// Löschen sobald Step2Politik.tsx entfernt wird.
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz'

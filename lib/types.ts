@@ -1,4 +1,4 @@
-import type { Step1Output } from './vio-paketlogik';
+import type { Step1Output } from './preislogik-adapter';
 
 export type AlterOption = 'jung' | 'mittel' | 'alt';
 export type WohnlageOption = 'staedtisch' | 'agglo' | 'laendlich';
