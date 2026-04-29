@@ -1,3 +1,9 @@
+// DEPRECATED — nicht verwenden.
+// Dieser Component war der frühere Step 1 (Region-Auswahl) und ist durch
+// components/steps/Step1Politik.tsx ersetzt worden.
+// Importiert noch buildVioPackages aus lib/vio-paketlogik.ts (Legacy).
+// Wird von keinem aktiven Flow verwendet. Entfernen sobald vio-paketlogik.ts gelöscht wird.
+
 'use client';
 
 import { useState, useMemo } from 'react';
