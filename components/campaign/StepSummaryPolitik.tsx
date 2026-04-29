@@ -79,27 +79,19 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const vioData = briefing.vioPackages ?? null;
   const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
 
-  if (!vioData) {
-    return (
-      <section style={{ padding: '80px 20px', textAlign: 'center', color: '#7A7596' }}>
-        Keine Paketdaten vorhanden. Bitte gehe zu Schritt 2 zurück.
-      </section>
-    );
-  }
+  // Step 2 (StepPackages) ist Source of Truth — schreibt budget/laufzeit/freq direkt ins Briefing.
+  // vioPackages (Legacy-Feld aus Step 1) ist optional; Fallbacks greifen auf Briefing-Werte zurück.
+  const pkg = vioData?.packages?.[selectedPkg] ?? null;
 
-  const pkg = vioData.packages[selectedPkg];
-
-  // Step 2 ist Source of Truth: budget/laufzeit/freq werden dort konsistent zum gewählten Paket gesetzt.
-  // Wir übernehmen diese Werte direkt. Fallback nur falls Step 2 noch nie durchlaufen wurde (Edge-Case Resume).
   const initBudget = briefing.budget && briefing.budget > 0
     ? briefing.budget
-    : pkg.finalBudget;
+    : (pkg?.finalBudget ?? 6000);
   const initLaufzeit = briefing.laufzeit && briefing.laufzeit > 0
     ? briefing.laufzeit
-    : Math.round(pkg.durationDays / 7);
+    : (pkg ? Math.round(pkg.durationDays / 7) : 4);
   const initFrequency = briefing.freq && briefing.freq > 0
     ? briefing.freq
-    : (pkg.frequency ?? 5);
+    : (pkg?.frequency ?? 5);
 
   const [budget, setBudget] = useState<number>(initBudget);
   const [laufzeitWeeks, setLaufzeitWeeks] = useState<number>(initLaufzeit);
@@ -141,10 +133,9 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
       })
     : null;
 
-  const customReachPeople = impact?.reachMitte ?? pkg.targetReachPeople;
-  const customReachPct = vioData.eligibleVotersTotal > 0
-    ? customReachPeople / vioData.eligibleVotersTotal
-    : 0;
+  const stimmTotal = vioData?.eligibleVotersTotal ?? briefing.totalStimmber ?? 0;
+  const customReachPeople = impact?.reachMitte ?? pkg?.targetReachPeople ?? 0;
+  const customReachPct = stimmTotal > 0 ? customReachPeople / stimmTotal : 0;
   const displayPersonen = Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
 
   const adjustedBudget = budget;
@@ -164,7 +155,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
       laufzeit:    laufzeitWeeks,
       freq:        frequency,
       startDate:   campaignStartISO || todayISO(),
-      reach:       impact?.reachMitte ?? pkg.targetReachPeople,
+      reach:       impact?.reachMitte ?? pkg?.targetReachPeople ?? 0,
       reachVonPct: impact?.reachVonPct ?? 0,
       reachBisPct: impact?.reachBisPct ?? 0,
       b2bReach:    null,
@@ -205,16 +196,16 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
         {/* Context bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '9px 14px', background: 'white', borderRadius: 12, border: '1px solid rgba(107,79,187,0.10)', marginBottom: 28 }}>
           <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#EEEDFE', color: '#3C3489' }}>Politische Kampagne</span>
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#F5F2FF', color: '#6B4FBB' }}>{pkg.name}</span>
+          {pkg?.name && <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#F5F2FF', color: '#6B4FBB' }}>{pkg.name}</span>}
           {briefing.selectedRegions?.map(r => (
             <span key={r.name} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#F1EFE8', color: '#7A7596' }}>{r.name}</span>
           ))}
-          <span style={{ fontSize: 13, color: '#2D1F52' }}>{vioData.eligibleVotersTotal.toLocaleString('de-CH')} {inhabitants}</span>
+          {stimmTotal > 0 && <span style={{ fontSize: 13, color: '#2D1F52' }}>{stimmTotal.toLocaleString('de-CH')} {inhabitants}</span>}
           <span style={{ flex: 1 }} />
-          {vioData.daysUntilVote != null && (
+          {vioData?.daysUntilVote != null && (
             <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 600, padding: '3px 11px', borderRadius: 20, background: '#FAEEDA', color: '#633806', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF9F27', display: 'inline-block' }} />
-              Abstimmung in {vioData.daysUntilVote} Tagen
+              Abstimmung in {vioData?.daysUntilVote} Tagen
             </span>
           )}
         </div>
@@ -388,7 +379,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#2D1F52', marginBottom: 6 }}>Deine Kampagne</div>
 
 
-            <SbRow label="Paket" value={pkg.name} />
+            <SbRow label="Paket" value={pkg?.name ?? selectedPkg.charAt(0).toUpperCase() + selectedPkg.slice(1)} />
             <SbRow label="Budget" value={fmtCHF(adjustedBudget)} valueColor="#6B4FBB" />
             <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} />
             <SbRow label="Kampagnenstart" value={campaignStartISO ? fmtMed(campaignStartISO) : '—'} />
@@ -399,7 +390,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
           <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: 18 }}>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: '#2D1F52', marginBottom: 6 }}>Deine Zielregion</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#6B4FBB', marginBottom: 2 }}>{regionName}</div>
-            <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 10 }}>{vioData.eligibleVotersTotal.toLocaleString('de-CH')} Stimmberechtigte</div>
+            {stimmTotal > 0 && <div style={{ fontSize: 12, color: '#7A7596', marginBottom: 10 }}>{stimmTotal.toLocaleString('de-CH')} Stimmberechtigte</div>}
             <SbRow label="Polit. Screens" value={doohScreenCount.toLocaleString('de-CH')} />
             <SbRow label="Reichweite" value={`~${Math.round(customReachPct * 100)}%`} last />
             <div style={{ fontSize: 10, color: '#888780', marginTop: 8 }}>Quelle: VIO DOOH-Screendaten & BFS 2023</div>
