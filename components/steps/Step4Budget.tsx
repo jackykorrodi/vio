@@ -936,11 +936,12 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
             </>
           )}
 
-          <div className="fragen">
-            <h3>Fragen?</h3>
-            <p>Unsere Beraterinnen helfen dir, das optimale Paket für deine Kampagne zu finden.</p>
-            <button type="button" className="fragen-btn">Gespräch buchen →</button>
-          </div>
+          {budget >= 20000 && (
+            <div className="fragen">
+              <h3>Fragen?</h3>
+              <button type="button" className="fragen-btn">Gespräch buchen →</button>
+            </div>
+          )}
 
         </div>{/* end sidebar */}
 
