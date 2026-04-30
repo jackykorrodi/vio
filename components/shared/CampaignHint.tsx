@@ -26,10 +26,6 @@ function getVariant(code: HinweisCode): HintVariant {
       return 'recommendation';
     case 'capped_by_region':
       return 'info';
-    case 'calendly_nudge_soft':
-      return 'nudge';
-    case 'calendly_nudge_strong':
-      return 'nudge-strong';
     case 'screen_class_begrenzt':
     case 'screen_class_display_dom':
     case 'screen_class_multi_mixed':
@@ -44,8 +40,6 @@ function getTitle(code: HinweisCode): string | null {
   switch (code) {
     case 'hard_stop_budget': return 'Gesprächstermin erforderlich';
     case 'below_min_budget': return 'Mindestbudget erforderlich';
-    case 'calendly_nudge_soft': return 'Persönliche Beratung möglich';
-    case 'calendly_nudge_strong': return 'Grosse Kampagne geplant?';
     default: return null;
   }
 }

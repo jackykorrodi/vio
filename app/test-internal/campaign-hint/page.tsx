@@ -35,16 +35,6 @@ const ALL_HINTS: Hinweis[] = [
     priority: 3,
   },
   {
-    code: 'calendly_nudge_soft',
-    text: "Ab CHF 20'000 bieten wir persönliche Beratung. Du kannst weiterbuchen oder ein kurzes Gespräch vereinbaren.",
-    priority: 4,
-  },
-  {
-    code: 'calendly_nudge_strong',
-    text: "Ab CHF 30'000 empfehlen wir ein persönliches Gespräch. Du kannst aber auch direkt weiterbuchen.",
-    priority: 4,
-  },
-  {
     code: 'screen_class_begrenzt',
     text: 'In Adliswil läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal.',
     priority: 5,
@@ -73,8 +63,6 @@ const VARIANT_LABELS: Record<string, string> = {
   overkill: 'recommendation',
   daily_below_floor: 'recommendation',
   capped_by_region: 'info',
-  calendly_nudge_soft: 'nudge',
-  calendly_nudge_strong: 'nudge-strong',
   screen_class_begrenzt: 'context',
   screen_class_display_dom: 'context',
   screen_class_multi_mixed: 'context',
@@ -152,7 +140,6 @@ export default function CampaignHintTestPage() {
           <CampaignHint
             hinweise={[
               ALL_HINTS.find(h => h.code === 'too_thin')!,
-              ALL_HINTS.find(h => h.code === 'calendly_nudge_soft')!,
               ALL_HINTS.find(h => h.code === 'screen_class_begrenzt')!,
             ]}
             onApply={handleApply}

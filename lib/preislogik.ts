@@ -52,8 +52,7 @@ export type HinweisCode =
   | 'screen_class_display_dom'
   | 'screen_class_multi_mixed'
   | 'no_dooh_inventory'
-  | 'calendly_nudge_soft'
-  | 'calendly_nudge_strong'
+  | 'sweet_spot'
   | 'hard_stop_budget'
   | 'wearout_warning';
 
@@ -227,6 +226,8 @@ function buildHinweise(ctx: {
   regionNames: string[];
   multiRegion: boolean;
   politScreensTotal: number;
+  stimmTotal: number;
+  reachMitte: number;
 }): Hinweis[] {
   const hinweise: Hinweis[] = [];
 
@@ -282,21 +283,6 @@ function buildHinweise(ctx: {
     });
   }
 
-  // Priorität 4: Nudges
-  if (ctx.budget >= B_NUDGE_STRONG) {
-    hinweise.push({
-      code: 'calendly_nudge_strong',
-      text: 'Grosse Kampagne geplant? Ab CHF 30\'000 empfehlen wir ein persönliches Gespräch. Du kannst aber auch direkt weiterbuchen.',
-      priority: 4,
-    });
-  } else if (ctx.budget >= B_NUDGE_SOFT) {
-    hinweise.push({
-      code: 'calendly_nudge_soft',
-      text: 'Ab CHF 20\'000 bieten wir persönliche Beratung.',
-      priority: 4,
-    });
-  }
-
   // Priorität 5: Kontext (Screen-Klasse)
   if (ctx.politScreensTotal === 0) {
     hinweise.push({
@@ -335,6 +321,26 @@ function buildHinweise(ctx: {
       text: 'Lange Kampagnen verlieren Effizienz ab Woche 9. Für maximale Wirkung: 4–8 Wochen.',
       priority: 6,
     });
+  }
+
+  const dailyBudgetCalc = ctx.budget / ctx.laufzeitDays;
+  const reachPct = ctx.stimmTotal > 0 ? ctx.reachMitte / ctx.stimmTotal : 0;
+  const isSweetSpot =
+    ctx.frequencyWeekly >= 4.0 &&
+    ctx.frequencyWeekly <= 7.0 &&
+    dailyBudgetCalc >= 250 &&
+    reachPct >= 0.25 &&
+    reachPct <= 0.65;
+
+  if (hinweise.length === 0) {
+    if (isSweetSpot) {
+      const text = ctx.screenKlasse === 'display-dominant'
+        ? 'Gut konfiguriert — Kampagne läuft primär digital.'
+        : 'Gut konfiguriert.';
+      hinweise.push({ code: 'sweet_spot', text, priority: 6 });
+    } else {
+      hinweise.push({ code: 'ok', text: 'Konfiguration in Ordnung.', priority: 7 });
+    }
   }
 
   return hinweise.sort((a, b) => a.priority - b.priority);
@@ -456,6 +462,8 @@ export function calculateImpact(input: {
     regionNames: regions.map(r => r.name),
     multiRegion,
     politScreensTotal,
+    stimmTotal,
+    reachMitte,
   });
 
   return {

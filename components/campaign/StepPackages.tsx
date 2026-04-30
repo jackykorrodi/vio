@@ -175,8 +175,6 @@ function hinweisToDisplay(h: Hinweis, days: number, regionName: string): HintDis
   if (code === 'overkill')                return { tone: 'warn',   title: 'Werbemüdigkeit droht',                           text };
   if (code === 'daily_below_floor')       return { tone: 'warn',   title: 'Tagesbudget zu tief für stabile Auslieferung',   text };
   if (code === 'capped_by_region')        return { tone: 'info',   title: 'Sättigung in Sicht',                             text };
-  if (code === 'calendly_nudge_strong')   return { tone: 'violet', title: 'Grosse Kampagne — persönliche Planung sinnvoll', text };
-  if (code === 'calendly_nudge_soft')     return { tone: 'info',   title: 'Wir bieten persönliche Beratung',                text };
   if (code === 'screen_class_display_dom') return { tone: 'info',  title: 'In dieser Region primär online',                 text };
   if (code === 'screen_class_begrenzt')   return { tone: 'info',   title: 'Erhöhter Online-Anteil',                         text };
   if (code === 'no_dooh_inventory')       return { tone: 'info',   title: 'Keine DOOH-Flächen verfügbar',                   text };
@@ -337,7 +335,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   }
 
   // ── Hint ───────────────────────────────────────────────────────────────────
-  const filteredHinweise = impact ? impact.hinweise.filter(h => h.code !== 'calendly_nudge_soft') : [];
+  const filteredHinweise = impact ? impact.hinweise : [];
   const activeHint: HintDisplay =
     filteredHinweise.length > 0
       ? hinweisToDisplay(filteredHinweise[0], effectiveDays, regionName)
