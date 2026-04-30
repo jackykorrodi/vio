@@ -580,7 +580,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             </div>
             {budget >= 20000 && (
               <div style={{ background: T.highlight, borderRadius: 16, padding: '18px 20px' }}>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: T.ink, marginBottom: 6, fontSize: 15 }}>Persönliche Beratung</div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: T.ink, marginBottom: 4, fontSize: 15 }}>Persönliche Beratung</div>
+                <p style={{ color: T.slate, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Wir planen deine Kampagne gemeinsam mit dir — kostenlos und unverbindlich.</p>
                 <a href={process.env.NEXT_PUBLIC_CALENDLY_URL ?? '#'} target="_blank" rel="noopener noreferrer"
                   style={{ display: 'inline-block', background: T.violet, color: 'white', border: 'none', padding: '10px 18px', borderRadius: 999, fontFamily: "'Jost', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
                   Gespräch buchen →
