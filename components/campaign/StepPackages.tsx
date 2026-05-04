@@ -178,6 +178,8 @@ function hinweisToDisplay(h: Hinweis, days: number, regionName: string): HintDis
   if (code === 'screen_class_display_dom') return { tone: 'info',  title: 'In dieser Region primär online',                 text };
   if (code === 'screen_class_begrenzt')   return { tone: 'info',   title: 'Erhöhter Online-Anteil',                         text };
   if (code === 'no_dooh_inventory')       return { tone: 'info',   title: 'Keine DOOH-Flächen verfügbar',                   text };
+  if (code === 'nudge_to_sweet_spot')     return { tone: 'info',   title: 'Fast im Sweet Spot',                             text };
+  if (code === 'sweet_spot')              return { tone: 'good',   title: 'Im Sweet Spot',                                  text };
   return { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${days}-tägige Kampagne in ${regionName}.` };
 }
 
@@ -336,9 +338,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   // ── Hint ───────────────────────────────────────────────────────────────────
   const filteredHinweise = impact ? impact.hinweise : [];
+  const displayHinweise = path === 'B'
+    ? filteredHinweise.filter(h => h.code !== 'nudge_to_sweet_spot' && h.code !== 'sweet_spot')
+    : filteredHinweise;
   const activeHint: HintDisplay =
-    filteredHinweise.length > 0
-      ? hinweisToDisplay(filteredHinweise[0], effectiveDays, regionName)
+    displayHinweise.length > 0
+      ? hinweisToDisplay(displayHinweise[0], effectiveDays, regionName)
       : { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${effectiveDays}-tägige Kampagne in ${regionName}.` };
 
   // ── Wirkungsindikator derived values ───────────────────────────────────────

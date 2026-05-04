@@ -55,6 +55,7 @@ export type HinweisCode =
   | 'sweet_spot'
   | 'hard_stop_budget'
   | 'daily_below_floor_region'
+  | 'nudge_to_sweet_spot'
   | 'wearout_warning';
 
 export interface Hinweis {
@@ -222,6 +223,34 @@ function sumStimm(regions: Region[]): number {
   return regions.reduce((s, r) => s + r.stimm, 0);
 }
 
+// ─── Sweet Spot ──────────────────────────────────────────────────────────────
+
+export function calculateSweetSpot(regions: Region[], laufzeitDays: number): number {
+  const deduped = dedupRegions(regions);
+  const stimmTotal = sumStimm(deduped);
+  if (stimmTotal === 0 || deduped.length === 0) return 0;
+  const laufzeitWeeks = laufzeitDays / 7;
+  const klass = deduped.length > 1
+    ? klassifiziereMehrereRegionen(deduped)
+    : klassifiziereRegion(deduped[0]);
+
+  const capL2 = getReachCap(stimmTotal, 2);
+  const pool = stimmTotal * capL2;
+
+  const TARGET_FREQ = 4.5;
+  const impressionsNeeded = TARGET_FREQ * pool * laufzeitWeeks;
+
+  const doohShare = klass.split.dooh;
+  const displayShare = 1 - doohShare;
+  const mixedCPM = doohShare * CPM_DOOH + displayShare * CPM_DISPLAY;
+  const deliveryBlend = doohShare * DELIVERY_DOOH + displayShare * DELIVERY_DISPLAY;
+
+  const raw = (impressionsNeeded / 1000) * mixedCPM / deliveryBlend;
+
+  const clamped = Math.max(B_MIN * 1.6, Math.min(B_NUDGE_SOFT * 0.75, raw));
+  return Math.round(clamped / 500) * 500;
+}
+
 // ─── Hinweis-Generierung ─────────────────────────────────────────────────────
 
 function buildHinweise(ctx: {
@@ -350,24 +379,30 @@ function buildHinweise(ctx: {
     });
   }
 
-  const dailyBudgetCalc = ctx.budget / ctx.laufzeitDays;
-  const reachPct = ctx.stimmTotal > 0 ? ctx.reachMitte / ctx.stimmTotal : 0;
-  const isSweetSpot =
-    ctx.frequencyWeekly >= 4.0 &&
-    ctx.frequencyWeekly <= 7.0 &&
-    dailyBudgetCalc >= 250 &&
-    reachPct >= 0.25 &&
-    reachPct <= 0.65;
+  // Sweet Spot Logik (budget-basiert via calculateSweetSpot)
+  const ssRegionName = ctx.regionNames.length === 1 ? ctx.regionNames[0] : 'deiner Region';
+  const sweetSpot = ctx.regions.length > 0 ? calculateSweetSpot(ctx.regions, ctx.laufzeitDays) : 0;
+  const hasBlockingHint = hinweise.some(h => h.priority <= 4);
+  if (!hasBlockingHint && sweetSpot > 0) {
+    const budgetRatio = ctx.budget / sweetSpot;
+    const fmtSweetSpot = new Intl.NumberFormat('de-CH').format(sweetSpot);
+    if (budgetRatio < 0.85) {
+      hinweise.push({
+        code: 'nudge_to_sweet_spot',
+        text: `CHF ${fmtSweetSpot} wäre das optimale Budget für ${ssRegionName} bei ${ctx.laufzeitDays} Tagen Laufzeit — ausreichend Frequenz, breite Abdeckung, kein Leerlauf.`,
+        priority: 5.5,
+      });
+    } else if (budgetRatio <= 1.20) {
+      hinweise.push({
+        code: 'sweet_spot',
+        text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${ctx.laufzeitDays}-tägige Kampagne in ${ssRegionName}.`,
+        priority: 9,
+      });
+    }
+  }
 
   if (hinweise.length === 0) {
-    if (isSweetSpot) {
-      const text = ctx.screenKlasse === 'display-dominant'
-        ? 'Gut konfiguriert — Kampagne läuft primär digital.'
-        : 'Gut konfiguriert.';
-      hinweise.push({ code: 'sweet_spot', text, priority: 9 });
-    } else {
-      hinweise.push({ code: 'ok', text: 'Konfiguration in Ordnung.', priority: 10 });
-    }
+    hinweise.push({ code: 'ok', text: 'Konfiguration in Ordnung.', priority: 10 });
   }
 
   return hinweise.sort((a, b) => a.priority - b.priority);

@@ -80,6 +80,7 @@
 - Pakete: Sichtbar / Präsenz / Dominanz
 - Reach basiert auf Hofmans-Saturation (asymptotisch, kein hartes Capping)
 - Frequenz emergent: f_campaign = contacts / unique_reach
+- Sweet Spot: calculateSweetSpot(regions, laufzeitDays) → Cap-Level-2-Pool × 4.5×/Wo → CHF-Zielwert; nudge_to_sweet_spot Hint wenn Budget < 85% davon (nur Pfad A)
 - Berechnung: siehe vio-regelkatalog-politik-v2.md (v2.3)
 
 ### Einkauf-Modell
@@ -116,7 +117,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
-| 04.05.2026 | v2.3 | Hofmans-Saturation (ersetzt lineares Capping); Frequenz emergent (F_REC_WEEKLY entfernt); OTS 2.0→1.8; F_MIN_WEEKLY 3→2.5; Wearout-Floor 0.80→0.70; REACH_CURVE_K=0.4 (NEU); Reach-Caps +50%; Multi-Region-Klasse aus aggregiertem politScreens_total; daily_below_floor_region pro Region (NEU); Laufzeit-Korridor maxDays 35→42 bei Budget <15k |
+| 04.05.2026 | v2.3 | Hofmans-Saturation (ersetzt lineares Capping); Frequenz emergent (F_REC_WEEKLY entfernt); OTS 2.0→1.8; F_MIN_WEEKLY 3→2.5; Wearout-Floor 0.80→0.70; REACH_CURVE_K=0.4 (NEU); Reach-Caps +50%; Multi-Region-Klasse aus aggregiertem politScreens_total; daily_below_floor_region pro Region (NEU); Laufzeit-Korridor maxDays 35→42 bei Budget <15k; Sweet Spot Logik: calculateSweetSpot() + nudge_to_sweet_spot Hint (NEU) |
 | 22.04.2026 | v2.2 | Initiale Version (F_REC_WEEKLY=5, linearer Reach, hartes Capping) |
 
 ### Kampagnen-Timing Politik
