@@ -74,13 +74,13 @@
 
 ## Preislogik (vereinfacht)
 
+**Aktuelle Logik-Version: v2.3 (04.05.2026)**
+
 - Min Budget: CHF 4'000
 - Pakete: Sichtbar / Präsenz / Dominanz
-- Reach basiert auf:
-  - Budget
-  - Region
-  - Laufzeit
-- Berechnung: siehe vio-regelkatalog-politik-v2.md
+- Reach basiert auf Hofmans-Saturation (asymptotisch, kein hartes Capping)
+- Frequenz emergent: f_campaign = contacts / unique_reach
+- Berechnung: siehe vio-regelkatalog-politik-v2.md (v2.3)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -88,18 +88,36 @@
 - Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
 - VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
 
+### Konstanten (v2.3)
+| Konstante | Wert | Hinweis |
+|---|---|---|
+| F_MIN_WEEKLY | 2.5 | Schwelle für too_thin (war 3.0) |
+| DOOH_OTS_MULTIPLIER | 1.8 | Audience Contacts pro Ad Play (war 2.0) |
+| REACH_CURVE_K | 0.4 | Hofmans-Saturation Steilheit (NEU) |
+| WEAROUT_FLOOR | 0.70 | Minimaler Wearout-Faktor (war 0.80) |
+| CPM_DOOH | 50 | unverändert |
+| CPM_DISPLAY | 15 | unverändert |
+
 ### Pakete (Politik + B2B identisch)
 | Paket | Frequenz | Laufzeit | Min-Budget |
 |---|---|---|---|
 | Sichtbar | 3× | 14 Tage | CHF 4'000 |
 | Präsenz  | 5× | 28 Tage | CHF 6'000 |
-| Dominanz | 6× | 42 Tage | CHF 8'000 |
+| Dominanz | 6× | 42 Tage | CHF 9'000 |
 
-### Tiered Reach Caps (nach Stimmberechtigten bzw. Mitarbeitenden)
-- < 50'000: 15 / 30 / 45%
-- 50–200k: 8 / 15 / 25%
-- 200–500k: 4 / 8 / 14%
-- 500k+: 2 / 4 / 8%
+### Tiered Reach Caps (v2.3 — +50% zu v2.2)
+| Stimmberechtigte | Level 1 | Level 2 | Level 3 |
+|---|---|---|---|
+| < 50'000 | 22% | 45% | 65% |
+| 50–200k | 12% | 22% | 38% |
+| 200–500k | 6% | 12% | 21% |
+| > 500k | 3% | 6% | 12% |
+
+### Decision Log
+| Datum | Version | Änderungen |
+|---|---|---|
+| 04.05.2026 | v2.3 | Hofmans-Saturation (ersetzt lineares Capping); Frequenz emergent (F_REC_WEEKLY entfernt); OTS 2.0→1.8; F_MIN_WEEKLY 3→2.5; Wearout-Floor 0.80→0.70; REACH_CURVE_K=0.4 (NEU); Reach-Caps +50%; Multi-Region-Klasse aus aggregiertem politScreens_total; daily_below_floor_region pro Region (NEU); Laufzeit-Korridor maxDays 35→42 bei Budget <15k |
+| 22.04.2026 | v2.2 | Initiale Version (F_REC_WEEKLY=5, linearer Reach, hartes Capping) |
 
 ### Kampagnen-Timing Politik
 - CAMPAIGN_END_OFFSET_DAYS = 0 → alle Pakete enden am Abstimmungstag

@@ -23,6 +23,7 @@ function getVariant(code: HinweisCode): HintVariant {
     case 'too_thin':
     case 'overkill':
     case 'daily_below_floor':
+    case 'daily_below_floor_region':
       return 'recommendation';
     case 'capped_by_region':
       return 'info';

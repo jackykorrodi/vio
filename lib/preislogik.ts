@@ -3,7 +3,7 @@
 // Ersetzt schrittweise lib/vio-paketlogik.ts und lib/b2b-paketlogik.ts.
 // Diese Datei wird in Paket B.2/B.3 in die UI-Komponenten eingebunden.
 //
-// Basis: Regelkatalog v2.2 (public/vio-regelkatalog-politik-v2.md)
+// Basis: Regelkatalog v2.3 (public/vio-regelkatalog-politik-v2.md)
 // Erstellt: 22.04.2026
 
 import type { Region } from './regions';
@@ -20,9 +20,10 @@ export const DAILY_MIN = 150;            // CHF Tagesbudget-Floor (Splicky)
 export const LAUFZEIT_MIN_DAYS = 7;
 export const LAUFZEIT_MAX_DAYS = 84;     // 12 Wochen
 
-export const F_MIN_WEEKLY = 3;           // unter dieser Schwelle: unwirksam
-export const F_REC_WEEKLY = 5;           // VIO-Empfehlung Präsenz
+export const F_MIN_WEEKLY = 2.5;         // unter dieser Schwelle: unwirksam
 export const F_MAX_WEEKLY = 10;          // ab hier Werbemüdigkeit
+export const REACH_CURVE_K = 0.4;        // Hofmans-Saturation Steilheit
+export const WEAROUT_FLOOR = 0.70;       // minimaler Wearout-Faktor
 
 export const MAX_REACH_CAP = 0.80;       // max 80% des Pools erreichbar
 export const EXPONENT_BUDGET_LAUFZEIT = 0.75;  // konkave Kopplung
@@ -35,9 +36,8 @@ export const CPM_DISPLAY = 15;
 export const DELIVERY_DOOH = 0.75;
 export const DELIVERY_DISPLAY = 0.90;
 
-// CH-DOOH Schätzung, konservativer Default — Splicky-Validierung ausstehend (Range 1.8–2.5)
-// Splicky CPM = Cost per 1000 Ad Plays (nicht Audience Contacts) → Multiplier nötig
-export const DOOH_OTS_MULTIPLIER = 2.0;
+// CH-DOOH Schätzung, validiert mit Splicky-Daten (Range 1.8–2.5)
+export const DOOH_OTS_MULTIPLIER = 1.8;
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
@@ -54,6 +54,7 @@ export type HinweisCode =
   | 'no_dooh_inventory'
   | 'sweet_spot'
   | 'hard_stop_budget'
+  | 'daily_below_floor_region'
   | 'wearout_warning';
 
 export interface Hinweis {
@@ -136,22 +137,22 @@ const PAKET_SPECS: Record<PaketKey, {
 }> = {
   sichtbar: { name: 'Sichtbar', weeklyFreq: 3, laufzeitDays: 14, reachCapLevel: 1 },
   praesenz: { name: 'Präsenz', weeklyFreq: 5, laufzeitDays: 28, reachCapLevel: 2 },
-  dominanz: { name: 'Dominanz', weeklyFreq: 8, laufzeitDays: 35, reachCapLevel: 3 },
+  dominanz: { name: 'Dominanz', weeklyFreq: 6, laufzeitDays: 42, reachCapLevel: 3 },
 };
 
 // ─── Reach-Caps nach Pool-Grösse (tiered) ────────────────────────────────────
 
 function getReachCap(stimmTotal: number, level: 1 | 2 | 3): number {
   if (stimmTotal < 50000) {
-    return level === 1 ? 0.15 : level === 2 ? 0.30 : 0.45;
+    return level === 1 ? 0.22 : level === 2 ? 0.45 : 0.65;
   }
   if (stimmTotal < 200000) {
-    return level === 1 ? 0.08 : level === 2 ? 0.15 : 0.25;
+    return level === 1 ? 0.12 : level === 2 ? 0.22 : 0.38;
   }
   if (stimmTotal < 500000) {
-    return level === 1 ? 0.04 : level === 2 ? 0.08 : 0.14;
+    return level === 1 ? 0.06 : level === 2 ? 0.12 : 0.21;
   }
-  return level === 1 ? 0.02 : level === 2 ? 0.04 : 0.08;
+  return level === 1 ? 0.03 : level === 2 ? 0.06 : 0.12;
 }
 
 // ─── Regionen-Dedup (Stadt-in-Kanton-Überlappung) ────────────────────────────
@@ -174,7 +175,7 @@ export function dedupRegions(regions: Region[]): Region[] {
 
 export function getLaufzeitCorridor(budget: number): { minDays: number; maxDays: number } {
   if (budget < 6000) return { minDays: 7, maxDays: 21 };
-  if (budget < 15000) return { minDays: 14, maxDays: 35 };
+  if (budget < 15000) return { minDays: 14, maxDays: 42 };
   if (budget < 30000) return { minDays: 21, maxDays: 56 };
   return { minDays: 28, maxDays: 84 };
 }
@@ -197,7 +198,14 @@ export function coupleBudgetToLaufzeit(
 function applyWearoutFactor(laufzeitWeeks: number): number {
   if (laufzeitWeeks <= 8) return 1.0;
   const factor = 1 - (laufzeitWeeks - 8) * 0.03;
-  return Math.max(factor, 0.80);
+  return Math.max(factor, WEAROUT_FLOOR);
+}
+
+function getUncertaintyBand(politScreens: number): number {
+  if (politScreens < 30) return 0.20;
+  if (politScreens < 150) return 0.15;
+  if (politScreens < 500) return 0.13;
+  return 0.12;
 }
 
 // ─── Budget-Rundung ──────────────────────────────────────────────────────────
@@ -228,6 +236,7 @@ function buildHinweise(ctx: {
   politScreensTotal: number;
   stimmTotal: number;
   reachMitte: number;
+  regions: Region[];
 }): Hinweis[] {
   const hinweise: Hinweis[] = [];
 
@@ -248,47 +257,65 @@ function buildHinweise(ctx: {
     });
   }
 
-  // Priorität 2: Empfehlungen
-  if (ctx.frequencyWeekly < 0.5) {
+  // Priorität 3: daily_below_floor pro Region (nur Multi-Region)
+  if (ctx.regions.length > 1) {
+    const violating = ctx.regions.filter(r => {
+      const share = ctx.stimmTotal > 0 ? r.stimm / ctx.stimmTotal : 1 / ctx.regions.length;
+      return (ctx.budget * share) / ctx.laufzeitDays < DAILY_MIN;
+    });
+    if (violating.length > 0) {
+      const regionList = violating.map(r => r.name).join(', ');
+      hinweise.push({
+        code: 'daily_below_floor_region',
+        text: `In ${regionList} liegt das Tagesbudget unter CHF 150 – Ausspielung dort nicht garantiert. Empfehlung: Region entfernen oder Budget erhöhen.`,
+        priority: 3,
+      });
+    }
+  }
+
+  // Priorität 4: daily_below_floor (global)
+  const dailyBudget = ctx.budget / ctx.laufzeitDays;
+  if (dailyBudget < DAILY_MIN) {
+    hinweise.push({
+      code: 'daily_below_floor',
+      text: 'Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen.',
+      priority: 4,
+    });
+  }
+
+  // Priorität 5: Empfehlungen
+  if (ctx.frequencyWeekly < F_MIN_WEEKLY) {
     const emptohleneWochen = Math.max(1, Math.floor(ctx.laufzeitDays / 7 / 2));
     hinweise.push({
       code: 'too_thin',
       text: `Dein Budget ist für ${Math.round(ctx.laufzeitDays / 7)} Wochen zu dünn verteilt. Empfehlung: Laufzeit auf ${emptohleneWochen} Wochen reduzieren.`,
-      priority: 2,
+      priority: 5,
     });
   }
   if (ctx.frequencyWeekly > F_MAX_WEEKLY) {
     hinweise.push({
       code: 'overkill',
       text: 'Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern.',
-      priority: 2,
-    });
-  }
-  const dailyBudget = ctx.budget / ctx.laufzeitDays;
-  if (dailyBudget < DAILY_MIN) {
-    hinweise.push({
-      code: 'daily_below_floor',
-      text: 'Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen.',
-      priority: 2,
+      priority: 5,
     });
   }
 
-  // Priorität 3: Info
+  // Priorität 6: capped_by_region
   if (ctx.cappedByRegion) {
     const regionText = ctx.regionNames.length === 1 ? ctx.regionNames[0] : 'deiner Auswahl';
     hinweise.push({
       code: 'capped_by_region',
       text: `Maximale Reichweite in ${regionText} erreicht. Mehr Budget bringt keine zusätzlichen Personen.`,
-      priority: 3,
+      priority: 6,
     });
   }
 
-  // Priorität 5: Kontext (Screen-Klasse)
+  // Priorität 8: Kontext (Screen-Klasse)
   if (ctx.politScreensTotal === 0) {
     hinweise.push({
       code: 'no_dooh_inventory',
       text: 'Keine DOOH-Flächen verfügbar. Kampagne läuft zu 100% als Display.',
-      priority: 5,
+      priority: 8,
     });
   } else if (ctx.multiRegion && ctx.screenKlasse !== 'voll') {
     hinweise.push({
@@ -296,30 +323,30 @@ function buildHinweise(ctx: {
       text: ctx.screenKlasse === 'begrenzt'
         ? 'In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.'
         : 'In Teilen deiner Region-Auswahl erreichen wir deine Zielgruppe primär online.',
-      priority: 5,
+      priority: 8,
     });
   } else if (!ctx.multiRegion && ctx.screenKlasse === 'begrenzt') {
     const name = ctx.regionNames[0] ?? 'deiner Region';
     hinweise.push({
       code: 'screen_class_begrenzt',
       text: `In ${name} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal.`,
-      priority: 5,
+      priority: 8,
     });
   } else if (!ctx.multiRegion && ctx.screenKlasse === 'display-dominant') {
     const name = ctx.regionNames[0] ?? 'deiner Region';
     hinweise.push({
       code: 'screen_class_display_dom',
       text: `In ${name} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt.`,
-      priority: 5,
+      priority: 8,
     });
   }
 
-  // Priorität 6: Laufzeit-Wearout
+  // Priorität 9: Laufzeit-Wearout
   if (ctx.laufzeitWeeks > 8) {
     hinweise.push({
       code: 'wearout_warning',
       text: 'Lange Kampagnen verlieren Effizienz ab Woche 9. Für maximale Wirkung: 4–8 Wochen.',
-      priority: 6,
+      priority: 9,
     });
   }
 
@@ -337,9 +364,9 @@ function buildHinweise(ctx: {
       const text = ctx.screenKlasse === 'display-dominant'
         ? 'Gut konfiguriert — Kampagne läuft primär digital.'
         : 'Gut konfiguriert.';
-      hinweise.push({ code: 'sweet_spot', text, priority: 6 });
+      hinweise.push({ code: 'sweet_spot', text, priority: 9 });
     } else {
-      hinweise.push({ code: 'ok', text: 'Konfiguration in Ordnung.', priority: 7 });
+      hinweise.push({ code: 'ok', text: 'Konfiguration in Ordnung.', priority: 10 });
     }
   }
 
@@ -348,13 +375,16 @@ function buildHinweise(ctx: {
 
 // ─── Cap-Level-Inferenz ──────────────────────────────────────────────────────
 
-function inferCapLevel(rawReach: number, stimm: number): 1 | 2 | 3 {
-  const pct = rawReach / stimm;
-  const cap1 = getReachCap(stimm, 1);
-  const cap2 = getReachCap(stimm, 2);
-  if (pct <= cap1) return 1;
-  if (pct <= cap2) return 2;
-  return 3;
+function inferCapLevel(contacts: number, stimm: number, weeks: number): 1 | 2 | 3 {
+  const targetFreqs = { 1: 3, 2: 5, 3: 6 } as const;
+  const distances = ([1, 2, 3] as const).map(level => {
+    const pool = stimm * getReachCap(stimm, level);
+    const sat = 1 - Math.exp(-REACH_CURVE_K * contacts / pool);
+    const reach = Math.min(pool * sat, stimm * MAX_REACH_CAP);
+    const fw = reach > 0 ? contacts / (reach * weeks) : 0;
+    return { level, distance: Math.abs(fw - targetFreqs[level]) };
+  });
+  return distances.sort((a, b) => a.distance - b.distance)[0].level;
 }
 
 // ─── Kern: calculateImpact ───────────────────────────────────────────────────
@@ -394,34 +424,26 @@ export function calculateImpact(input: {
   // Laufzeit
   const laufzeitWeeks = input.laufzeitDays / 7;
 
-  // Reach-Berechnung (linear: Kontakte → Unique Reach bei F_REC_WEEKLY)
-  const rawReach = stimmTotal > 0 && laufzeitWeeks > 0
-    ? impressionsEffective / (F_REC_WEEKLY * laufzeitWeeks)
-    : 0;
-
   // Cap-Level (Budget-first: inferieren; Paket-Modus: fix)
   const capLevel: 1 | 2 | 3 = (input.mode === 'paketLevel' && input.paketLevel)
     ? input.paketLevel
-    : inferCapLevel(rawReach, stimmTotal);
+    : inferCapLevel(impressionsEffective, stimmTotal, laufzeitWeeks);
 
-  // Pool-Cap nach Level
+  // Hofmans-Saturation Reach
   const poolCap = stimmTotal * getReachCap(stimmTotal, capLevel);
-  let uniqueReach = Math.min(rawReach, poolCap, stimmTotal * MAX_REACH_CAP);
-  const capped = rawReach > poolCap;
+  const ratio = poolCap > 0 ? impressionsEffective / poolCap : 0;
+  const saturationFactor = 1 - Math.exp(-REACH_CURVE_K * ratio);
+  let uniqueReach = Math.min(poolCap * saturationFactor, stimmTotal * MAX_REACH_CAP);
+  const capped = saturationFactor > 0.85 || uniqueReach >= stimmTotal * MAX_REACH_CAP * 0.99;
 
   // Wearout bei Laufzeit > 8 Wochen
   uniqueReach = uniqueReach * applyWearoutFactor(laufzeitWeeks);
 
-  // Effektive Frequenzen
-  const frequencyWeekly = (uniqueReach > 0 && laufzeitWeeks > 0)
-    ? impressionsEffective / (uniqueReach * laufzeitWeeks)
-    : 0;
-  const frequencyCampaign = frequencyWeekly * laufzeitWeeks;
+  // Frequenz emergent
+  const frequencyCampaign = uniqueReach > 0 ? impressionsEffective / uniqueReach : 0;
+  const frequencyWeekly = laufzeitWeeks > 0 ? frequencyCampaign / laufzeitWeeks : 0;
 
-  // Unsicherheits-Band je nach Screen-Klasse
-  const band = klass.klasse === 'voll' ? 0.07
-    : klass.klasse === 'begrenzt' ? 0.10
-    : 0.13;
+  const band = getUncertaintyBand(politScreensTotal);
 
   const reachMitte = Math.round(uniqueReach);
   const reachVon = Math.round(Math.max(0, uniqueReach * (1 - band)) / 500) * 500;
@@ -442,11 +464,12 @@ export function calculateImpact(input: {
     : fWeekly > F_MAX_WEEKLY ? 'overkill'
     : 'balanced';
 
+  const targetFreqWeekly = capLevel === 1 ? 3 : capLevel === 2 ? 5 : 6;
   const recommendedAction: { action: string; target: number } | null =
     efficiencyStatus === 'too_thin'
-      ? { action: 'reduce_laufzeit', target: Math.ceil(impressionsEffective / (F_REC_WEEKLY * poolCap)) }
+      ? { action: 'reduce_laufzeit', target: Math.ceil(impressionsEffective / (targetFreqWeekly * poolCap)) }
       : efficiencyStatus === 'overkill'
-      ? { action: 'reduce_budget', target: Math.round(poolCap * F_REC_WEEKLY * laufzeitWeeks / 1000 * mixedCpm) }
+      ? { action: 'reduce_budget', target: Math.round(poolCap * targetFreqWeekly * laufzeitWeeks / 1000 * mixedCpm) }
       : efficiencyStatus === 'capped'
       ? { action: 'expand_region_or_reduce_budget', target: Math.round(poolCap) }
       : null;
@@ -464,6 +487,7 @@ export function calculateImpact(input: {
     politScreensTotal,
     stimmTotal,
     reachMitte,
+    regions,
   });
 
   return {
@@ -518,12 +542,11 @@ export function buildPackages(input: {
     const targetReach = stimmTotal * reachCap;
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
-    // Budget rückwärts lösen (Umkehrung von calculateImpact)
-    const doohYield = (1000 / CPM_DOOH) * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
-    const displayYield = (1000 / CPM_DISPLAY) * DELIVERY_DISPLAY;
-    const mixedYield = klass.split.dooh * doohYield + klass.split.display * displayYield;
-    const totalContactsNeeded = targetReach * spec.weeklyFreq * laufzeitWeeks;
-    const rawBudget = totalContactsNeeded / mixedYield;
+    // Budget rückwärts lösen (v2.3: Saturation-Korrektur 0.7, symmetrisch zu calculateImpact)
+    const targetContacts = spec.weeklyFreq * laufzeitWeeks * targetReach * 0.7;
+    const impsDOOH = (targetContacts * klass.split.dooh) / (DOOH_OTS_MULTIPLIER * DELIVERY_DOOH);
+    const impsDisplay = (targetContacts * klass.split.display) / DELIVERY_DISPLAY;
+    const rawBudget = (impsDOOH / 1000) * CPM_DOOH + (impsDisplay / 1000) * CPM_DISPLAY;
     const finalBudget = Math.max(PKG_MIN[key], roundBudget(rawBudget));
 
     // Reach via calculateImpact (mode:'paketLevel' fixiert Cap-Level)

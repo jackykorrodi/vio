@@ -142,14 +142,15 @@ export function klassifiziereMehrereRegionen(regions: Region[]): Klassifikations
     total_polit += k.politScreens;
     klassen.push(k.klasse);
   }
-  let klasse: ScreenKlasse = 'voll';
-  if (klassen.includes('display-dominant')) klasse = 'display-dominant';
-  else if (klassen.includes('begrenzt')) klasse = 'begrenzt';
-  const hinweis = klasse === 'voll'
+  const klasse: ScreenKlasse = total_polit >= 30 ? 'voll'
+    : total_polit >= 10 ? 'begrenzt'
+    : 'display-dominant';
+  const hasMixedClasses = klassen.some(k => k !== 'voll');
+  const hinweis = !hasMixedClasses
     ? null
-    : klasse === 'begrenzt'
-      ? 'In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.'
-      : 'In Teilen deiner Region-Auswahl erreichen wir deine Zielgruppe primär online.';
+    : klassen.some(k => k === 'display-dominant')
+      ? 'In Teilen deiner Region-Auswahl erreichen wir deine Zielgruppe primär online.'
+      : 'In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.';
   return {
     klasse,
     politScreens: total_polit,
