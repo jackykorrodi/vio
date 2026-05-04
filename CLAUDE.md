@@ -1,94 +1,285 @@
-# Claude Code Rules – VIO
+# Claude Code Rules - VIO
 
 NO FULL REWRITE.
 Patch existing structure only.
-Only read/change explicitly named files unless validation fails.
 Do not refactor unrelated code.
+Do not create new architecture unless explicitly requested.
 
 ---
 
-## Locate & Verify (Pflicht)
+## Core Principle
 
-Für jeden UI- oder Code-Task:
+Code is the only truth for current implementation.
 
-1. Suche nach exakten UI-Strings im Repo
-2. Bestimme die Datei anhand des echten Codes
-3. Verifiziere:
-   - Datei existiert
-   - Code ist tatsächlich dort
-
-Wenn ❌ nicht erfüllt:
-→ IGNORIERE die angegebene Datei
-→ finde die korrekte Datei via Suche
-→ arbeite nur dort
-
-Regel:
-- Datei im Prompt ist eine Hypothese, kein Fakt
-- Code ist die einzige Wahrheit
-
-❌ Niemals Datei anhand von Annahmen wählen  
-❌ Niemals „wahrscheinlich richtige Datei“ verwenden  
+A file name in a prompt is a hypothesis, not a fact.
+A UI description in a prompt is a clue, not proof.
+Always verify against real code before changing anything.
 
 ---
 
-## Scope-Regeln
+## Context Loading Order
 
-- arbeite nur auf den explizit betroffenen Dateien
-- lies keine weiteren Dateien ausser zwingend für Imports
-- keine Refactors ausser explizit verlangt
-- keine strukturellen Verbesserungen ausser gefordert
+Do not read all docs by default.
 
----
+Always read:
 
-## CONTEXT.md Regeln
+1. `CLAUDE.md`
 
-CONTEXT.md ist KEIN Default.
+Read only if needed:
 
-Nur lesen wenn:
-- Logik unklar ist
-- Flow unklar ist
-- mehrere Dateien betroffen sind
+2. `docs/llm/PROJECT-MAP.md` - for file orientation
+3. `docs/llm/LOGIC-SOURCES.md` - for source-of-truth decisions
+4. `CONTEXT.md` - for product/project status
+5. `public/vio-regelkatalog-politik-v2.md` - only for Politik price/reach/budget/bookability logic
 
-Preislogik:
-- einfache Tasks → CONTEXT.md reicht
-- komplexe Berechnung → vio-regelkatalog-politik-v2.md verwenden
-- niemals Annahmen treffen bei Preis-/Reach-Berechnung
+Never read legacy files unless explicitly needed:
+
+- `public/vio-regelkatalog-paketlogik.md`
+- `lib/vio-paketlogik.ts`
+- `lib/b2b-paketlogik.ts`
 
 ---
 
-## Arbeitsweise
+## Locate & Verify
 
-- 80/20, kein Overengineering
-- deterministisch, keine Spekulation
-- minimaler Eingriff, maximaler Effekt
+For every UI or code task:
+
+1. Search exact UI strings, variable names, function names or component names.
+2. Determine the real file based on actual code.
+3. Verify:
+   - file exists
+   - relevant code is actually there
+   - requested change belongs there
+
+If the named file does not contain the relevant code:
+
+- ignore the named file as source of truth
+- locate the correct file via repo search
+- work only in the verified correct file
+- mention the mismatch
+
+Never patch a "probably correct" file.
 
 ---
 
-## Output
+## Scope Rules
 
-- nur umsetzbare Änderungen
-- keine unnötigen Erklärungen
-- direkt ausführbare Prompts für Claude Code
-
----
-
-## Sprache
-
-Deutsch, du-Form, Schweizer Orthografie, CHF
+- Only read/change explicitly named or verified-relevant files.
+- Read additional files only when required for imports, types, shared logic or validation.
+- No unrelated refactors.
+- No formatting-only rewrites.
+- No duplicate logic.
+- Preserve function names, exports, props and public interfaces unless explicitly required.
+- Keep the smallest possible patch that solves the task.
 
 ---
 
-## Standard-Flow
+## Politics Logic Rules
 
-1. UI-Strings oder relevante Variablen suchen
-2. echte Datei bestimmen
-3. Datei verifizieren
-4. Task formulieren
-5. nur dort patchen
+For tasks touching:
+
+- budget
+- reach
+- frequency
+- campaign duration
+- channel split DOOH / Display
+- region bookability
+- Wirkungsindikator
+- packages
+
+Read:
+
+1. `docs/llm/LOGIC-SOURCES.md`
+2. `public/vio-regelkatalog-politik-v2.md`
+3. relevant implementation file only
+
+If rule catalogue and implementation differ:
+
+1. Identify the mismatch.
+2. Do not silently fix it.
+3. Ask whether to align implementation to the rule catalogue.
+4. Wait for confirmation.
+
+---
+
+## Prototype Rule
+
+`public/prototypes/vio-wirkungskonfigurator.html` is UI reference only.
+
+Do not use prototype formulas as source of truth.
+Do not copy prototype logic into production unless explicitly requested.
+
+---
+
+## AskUserQuestion Rule
+
+Use AskUserQuestion when requirements, target behaviour, UX logic or implementation path are unclear.
+
+Use AskUserQuestion for:
+
+- multiple valid solution paths
+- unclear UX decisions
+- unclear wording or tone decisions
+- pricing, reach, frequency, budget or bookability logic
+- contradictory requirements
+- missing success criteria
+- unclear affected file after repo search
+- decisions with product/business impact
+
+Do not use AskUserQuestion for:
+
+- typo fixes
+- exact text replacements
+- simple CSS tweaks
+- obvious import fixes
+- TypeScript errors with a clear fix
+
+Question rules:
+
+- maximum 3-5 questions
+- prefer multiple choice
+- include recommended default option
+- no broad open-ended questions
+- do not ask for things verifiable in code
+
+---
+
+## Plan-before-Code
+
+If the prompt contains:
+
+- "zuerst Plan"
+- "keine Dateien aendern"
+- "nur Analyse"
+- "erst fragen"
+- "Plan before code"
+
+Then:
+
+1. Do not change files.
+2. Search and read only relevant files.
+3. Verify real target files.
+4. Ask targeted questions if needed.
+5. Propose concrete implementation plan.
+6. Name affected files.
+7. List risks or assumptions.
+8. Wait for explicit approval.
+
+Without explicit approval, do not modify files.
+
+---
+
+## Working Style
+
+- 80/20
+- no overengineering
+- deterministic
+- no speculation
+- minimal intervention, maximum effect
+- simple readable code over clever abstraction
+- no new dependencies unless approved
+
+---
+
+## VIO Tone
+
+Language:
+
+- German
+- du-form
+- Swiss orthography
+- CHF
+- use Umlauts
+
+Tone:
+
+- clear
+- calm
+- practical
+- Swiss
+- grounded
+- trustworthy
+- not salesy
+- no SaaS buzzwords
+
+Avoid:
+
+- revolutionaer
+- bahnbrechend
+- entfessle
+- hyperpersonalisiert
+- maximale Performance
+- KI-gestuetzt unless actually relevant
+- marketing fluff
+
+---
+
+## Validation
+
+After code changes run:
+
+```bash
+npm run typecheck
+```
+
+If available also run:
+
+```bash
+npm run lint
+```
+
+If `npm run typecheck` does not exist, run:
+
+```bash
+npx tsc --noEmit
+```
+
+If validation fails:
+
+1. Report exact failure.
+2. Fix only if within task scope.
+3. If unrelated, state clearly and do not refactor.
+
+---
+
+## DONE Format
+
+```text
+DONE
+
+Geaenderte Dateien:
+- ...
+
+Konkrete Aenderungen:
+- ...
+
+Validierung:
+- npm run typecheck: ...
+- npm run lint: ...
+
+Getestete Faelle:
+- ...
+
+Offene Risiken / Annahmen:
+- ...
+```
+
+---
+
+## Git Rules
+
+Do not commit automatically unless explicitly requested.
+
+If asked to commit:
+
+1. Run validation first.
+2. Show changed files.
+3. Commit only task-related files.
+4. Push only if explicitly requested.
 
 ---
 
 ## Wichtigste Regel
 
-Datei ist nie Wahrheit.  
+Datei ist nie Wahrheit.
 Code ist Wahrheit.
