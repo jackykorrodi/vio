@@ -220,3 +220,66 @@ After code changes run:
 
 ```bash
 npm run typecheck
+```
+
+If available also run:
+
+```bash
+npm run lint
+```
+
+If `npm run typecheck` does not exist, run:
+
+```bash
+npx tsc --noEmit
+```
+
+If validation fails:
+
+1. Report exact failure.
+2. Fix only if within task scope.
+3. If unrelated, state clearly and do not refactor.
+
+---
+
+## DONE Format
+
+```text
+DONE
+
+Geaenderte Dateien:
+- ...
+
+Konkrete Aenderungen:
+- ...
+
+Validierung:
+- npm run typecheck: ...
+- npm run lint: ...
+
+Getestete Faelle:
+- ...
+
+Offene Risiken / Annahmen:
+- ...
+```
+
+---
+
+## Git Rules
+
+Do not commit automatically unless explicitly requested.
+
+If asked to commit:
+
+1. Run validation first.
+2. Show changed files.
+3. Commit only task-related files.
+4. Push only if explicitly requested.
+
+---
+
+## Wichtigste Regel
+
+Datei ist nie Wahrheit.
+Code ist Wahrheit.
