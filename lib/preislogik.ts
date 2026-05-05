@@ -225,7 +225,7 @@ function sumStimm(regions: Region[]): number {
 
 // ─── Sweet Spot ──────────────────────────────────────────────────────────────
 
-export function calculateSweetSpot(regions: Region[], laufzeitDays: number): number {
+export function calculateSweetSpot(regions: Region[], laufzeitDays: number): number | null {
   const deduped = dedupRegions(regions);
   const stimmTotal = sumStimm(deduped);
   if (stimmTotal === 0 || deduped.length === 0) return 0;
@@ -247,7 +247,19 @@ export function calculateSweetSpot(regions: Region[], laufzeitDays: number): num
 
   const raw = (impressionsNeeded / 1000) * mixedCPM / deliveryBlend;
 
-  const clamped = Math.max(B_MIN * 1.6, Math.min(B_NUDGE_SOFT * 0.75, raw));
+  // Sättigungsbudget: Budget bei dem poolCap überschritten wird
+  const impressionsAtCap = pool * TARGET_FREQ * laufzeitWeeks / deliveryBlend;
+  const saturationBudget = (impressionsAtCap / 1000) * mixedCPM;
+
+  // Sweet Spot darf nie in Sättigungszone zeigen
+  let adjusted = raw;
+  if (raw >= saturationBudget) {
+    adjusted = saturationBudget * 0.85;
+  }
+
+  const clamped = Math.max(B_MIN * 1.5, Math.min(B_NUDGE_SOFT * 0.75, adjusted));
+  if (clamped <= B_MIN * 1.5) return null;
+
   return Math.round(clamped / 500) * 500;
 }
 
@@ -381,12 +393,12 @@ function buildHinweise(ctx: {
 
   // Sweet Spot Logik (budget-basiert via calculateSweetSpot)
   const ssRegionName = ctx.regionNames.length === 1 ? ctx.regionNames[0] : 'deiner Region';
-  const sweetSpot = ctx.regions.length > 0 ? calculateSweetSpot(ctx.regions, ctx.laufzeitDays) : 0;
+  const sweetSpot = ctx.regions.length > 0 ? calculateSweetSpot(ctx.regions, ctx.laufzeitDays) : null;
   const hasBlockingHint = hinweise.some(h => h.priority <= 4);
-  if (!hasBlockingHint && sweetSpot > 0) {
+  if (!hasBlockingHint && sweetSpot !== null) {
     const budgetRatio = ctx.budget / sweetSpot;
     const fmtSweetSpot = new Intl.NumberFormat('de-CH').format(sweetSpot);
-    if (budgetRatio < 0.85) {
+    if (!ctx.cappedByRegion && budgetRatio < 0.85) {
       hinweise.push({
         code: 'nudge_to_sweet_spot',
         text: `CHF ${fmtSweetSpot} wäre das optimale Budget für ${ssRegionName} bei ${ctx.laufzeitDays} Tagen Laufzeit — ausreichend Frequenz, breite Abdeckung, kein Leerlauf.`,
