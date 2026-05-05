@@ -15,21 +15,6 @@ const ALL_HINTS: Hinweis[] = [
     priority: 1,
   },
   {
-    code: 'too_thin',
-    text: 'Dein Budget ist für 8 Wochen zu dünn verteilt. Empfehlung: Laufzeit auf 4 Wochen reduzieren für mehr Wirkung.',
-    priority: 2,
-  },
-  {
-    code: 'overkill',
-    text: 'Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern.',
-    priority: 2,
-  },
-  {
-    code: 'daily_below_floor',
-    text: 'Tagesbudget unter CHF 150 — Ausspielung nicht garantiert. Empfehlung: Kürzere Laufzeit.',
-    priority: 2,
-  },
-  {
     code: 'capped_by_region',
     text: 'Maximale Reichweite in Kanton Zürich erreicht. Mehr Budget bringt keine zusätzlichen Personen.',
     priority: 3,
@@ -59,9 +44,6 @@ const ALL_HINTS: Hinweis[] = [
 const VARIANT_LABELS: Record<string, string> = {
   hard_stop_budget: 'blocking',
   below_min_budget: 'blocking',
-  too_thin: 'recommendation',
-  overkill: 'recommendation',
-  daily_below_floor: 'recommendation',
   capped_by_region: 'info',
   screen_class_begrenzt: 'context',
   screen_class_display_dom: 'context',
@@ -139,7 +121,7 @@ export default function CampaignHintTestPage() {
           </h2>
           <CampaignHint
             hinweise={[
-              ALL_HINTS.find(h => h.code === 'too_thin')!,
+              ALL_HINTS.find(h => h.code === 'capped_by_region')!,
               ALL_HINTS.find(h => h.code === 'screen_class_begrenzt')!,
             ]}
             onApply={handleApply}

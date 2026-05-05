@@ -20,7 +20,7 @@ export const DAILY_MIN = 150;            // CHF Tagesbudget-Floor (Splicky)
 export const LAUFZEIT_MIN_DAYS = 7;
 export const LAUFZEIT_MAX_DAYS = 84;     // 12 Wochen
 
-export const F_MIN_WEEKLY = 2.5;         // unter dieser Schwelle: unwirksam
+export const F_MIN_WEEKLY = 3;           // unter dieser Schwelle: unwirksam (Krugman-Schwelle)
 export const F_MAX_WEEKLY = 10;          // ab hier Werbemüdigkeit
 export const REACH_CURVE_K = 0.4;        // Hofmans-Saturation Steilheit
 export const WEAROUT_FLOOR = 0.70;       // minimaler Wearout-Faktor
@@ -44,9 +44,6 @@ export const DOOH_OTS_MULTIPLIER = 1.8;
 export type HinweisCode =
   | 'ok'
   | 'below_min_budget'
-  | 'too_thin'
-  | 'overkill'
-  | 'daily_below_floor'
   | 'capped_by_region'
   | 'screen_class_begrenzt'
   | 'screen_class_display_dom'
@@ -55,8 +52,7 @@ export type HinweisCode =
   | 'sweet_spot'
   | 'hard_stop_budget'
   | 'daily_below_floor_region'
-  | 'nudge_to_sweet_spot'
-  | 'wearout_warning';
+  | 'nudge_to_sweet_spot';
 
 export interface Hinweis {
   code: HinweisCode;
@@ -314,33 +310,6 @@ function buildHinweise(ctx: {
     }
   }
 
-  // Priorität 4: daily_below_floor (global)
-  const dailyBudget = ctx.budget / ctx.laufzeitDays;
-  if (dailyBudget < DAILY_MIN) {
-    hinweise.push({
-      code: 'daily_below_floor',
-      text: 'Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen.',
-      priority: 4,
-    });
-  }
-
-  // Priorität 5: Empfehlungen
-  if (ctx.frequencyWeekly < F_MIN_WEEKLY) {
-    const emptohleneWochen = Math.max(1, Math.floor(ctx.laufzeitDays / 7 / 2));
-    hinweise.push({
-      code: 'too_thin',
-      text: `Dein Budget ist für ${Math.round(ctx.laufzeitDays / 7)} Wochen zu dünn verteilt. Empfehlung: Laufzeit auf ${emptohleneWochen} Wochen reduzieren.`,
-      priority: 5,
-    });
-  }
-  if (ctx.frequencyWeekly > F_MAX_WEEKLY) {
-    hinweise.push({
-      code: 'overkill',
-      text: 'Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern.',
-      priority: 5,
-    });
-  }
-
   // Priorität 6: capped_by_region
   if (ctx.cappedByRegion) {
     const regionText = ctx.regionNames.length === 1 ? ctx.regionNames[0] : 'deiner Auswahl';
@@ -379,15 +348,6 @@ function buildHinweise(ctx: {
       code: 'screen_class_display_dom',
       text: `In ${name} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt.`,
       priority: 8,
-    });
-  }
-
-  // Priorität 9: Laufzeit-Wearout
-  if (ctx.laufzeitWeeks > 8) {
-    hinweise.push({
-      code: 'wearout_warning',
-      text: 'Lange Kampagnen verlieren Effizienz ab Woche 9. Für maximale Wirkung: 4–8 Wochen.',
-      priority: 9,
     });
   }
 
@@ -434,11 +394,53 @@ function inferCapLevel(contacts: number, stimm: number, weeks: number): 1 | 2 | 
   return distances.sort((a, b) => a.distance - b.distance)[0].level;
 }
 
+// ─── Pfad-A-Optimizer ───────────────────────────────────────────────────────
+
+export function optimizeLaufzeitForBudget(budget: number, regions: Region[]): number {
+  const CANDIDATES = [14, 28, 42] as const;
+  const deduped = dedupRegions(regions);
+  const stimmTotal = sumStimm(deduped);
+  if (stimmTotal === 0 || deduped.length === 0) return 14;
+
+  const klass = deduped.length > 1
+    ? klassifiziereMehrereRegionen(deduped)
+    : klassifiziereRegion(deduped[0]);
+
+  const doohShare = klass.split.dooh;
+  const displayShare = klass.split.display;
+  const doohBudget = budget * doohShare;
+  const displayBudget = budget * displayShare;
+  const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
+  const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
+  const impressionsEffective = doohContacts + displayContacts;
+
+  type Candidate = { days: number; reach: number; fWeekly: number; capped: boolean };
+
+  const results: Candidate[] = CANDIDATES.map(days => {
+    const weeks = days / 7;
+    const capLevel = inferCapLevel(impressionsEffective, stimmTotal, weeks);
+    const poolCap = stimmTotal * getReachCap(stimmTotal, capLevel);
+    const ratio = poolCap > 0 ? impressionsEffective / poolCap : 0;
+    const satFactor = 1 - Math.exp(-REACH_CURVE_K * ratio);
+    const uniqueReach = Math.min(poolCap * satFactor, stimmTotal * MAX_REACH_CAP);
+    const isCapped = satFactor > 0.85 || uniqueReach >= stimmTotal * MAX_REACH_CAP * 0.99;
+    const fWeekly = uniqueReach > 0 ? (impressionsEffective / uniqueReach) / weeks : 0;
+    return { days, reach: uniqueReach, fWeekly, capped: isCapped };
+  });
+
+  const valid = results.filter(r => r.fWeekly >= F_MIN_WEEKLY);
+  if (valid.length === 0) return 14;
+
+  // Höchste Reichweite; bei Gleichstand (capped) längste Laufzeit
+  valid.sort((a, b) => b.reach - a.reach || b.days - a.days);
+  return valid[0].days;
+}
+
 // ─── Kern: calculateImpact ───────────────────────────────────────────────────
 
 export function calculateImpact(input: {
   budget: number;
-  laufzeitDays: number;
+  laufzeitDays?: number;
   regions: Region[];
   mode?: 'budgetFirst' | 'paketLevel';   // default: 'budgetFirst'
   paketLevel?: 1 | 2 | 3;               // nur bei mode='paketLevel'
@@ -446,6 +448,11 @@ export function calculateImpact(input: {
   const regions = dedupRegions(input.regions);
   const stimmTotal = sumStimm(regions);
   const multiRegion = regions.length > 1;
+
+  // Laufzeit: User-Wert oder Optimizer (budgetFirst ohne explizite Laufzeit)
+  const laufzeitDays: number = input.laufzeitDays !== undefined
+    ? input.laufzeitDays
+    : optimizeLaufzeitForBudget(input.budget, regions);
 
   // Channel-Split via region-buchbarkeit
   const klass = multiRegion
@@ -469,7 +476,7 @@ export function calculateImpact(input: {
   const impressionsEffective = doohContacts + displayContacts;
 
   // Laufzeit
-  const laufzeitWeeks = input.laufzeitDays / 7;
+  const laufzeitWeeks = laufzeitDays / 7;
 
   // Cap-Level (Budget-first: inferieren; Paket-Modus: fix)
   const capLevel: 1 | 2 | 3 = (input.mode === 'paketLevel' && input.paketLevel)
@@ -525,7 +532,7 @@ export function calculateImpact(input: {
   const hinweise = buildHinweise({
     budget: input.budget,
     frequencyWeekly,
-    laufzeitDays: input.laufzeitDays,
+    laufzeitDays: laufzeitDays,
     laufzeitWeeks,
     screenKlasse: klass.klasse,
     cappedByRegion: capped,
@@ -539,7 +546,7 @@ export function calculateImpact(input: {
 
   return {
     budget: input.budget,
-    laufzeitDays: input.laufzeitDays,
+    laufzeitDays: laufzeitDays,
     laufzeitWeeks,
     reachVon,
     reachBis,

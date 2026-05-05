@@ -171,9 +171,6 @@ function hinweisToDisplay(h: Hinweis, days: number, regionName: string): HintDis
   const { code, text } = h;
   if (code === 'hard_stop_budget')        return { tone: 'warn',   title: 'Persönliche Planung empfohlen',                  text };
   if (code === 'below_min_budget')        return { tone: 'warn',   title: "Mindestbudget CHF 4'000",                        text };
-  if (code === 'too_thin')                return { tone: 'warn',   title: 'Budget über zu lange Laufzeit verteilt',          text };
-  if (code === 'overkill')                return { tone: 'warn',   title: 'Werbemüdigkeit droht',                           text };
-  if (code === 'daily_below_floor')       return { tone: 'warn',   title: 'Tagesbudget zu tief für stabile Auslieferung',   text };
   if (code === 'capped_by_region')        return { tone: 'info',   title: 'Sättigung in Sicht',                             text };
   if (code === 'screen_class_display_dom') return { tone: 'info',  title: 'In dieser Region primär online',                 text };
   if (code === 'screen_class_begrenzt')   return { tone: 'info',   title: 'Erhöhter Online-Anteil',                         text };

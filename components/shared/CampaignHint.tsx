@@ -20,9 +20,6 @@ function getVariant(code: HinweisCode): HintVariant {
     case 'hard_stop_budget':
     case 'below_min_budget':
       return 'blocking';
-    case 'too_thin':
-    case 'overkill':
-    case 'daily_below_floor':
     case 'daily_below_floor_region':
       return 'recommendation';
     case 'capped_by_region':
@@ -178,16 +175,6 @@ function HintItem({
           }} />
           <div style={bodyStyle}>
             <div style={textStyle}>{hinweis.text}</div>
-            {variant === 'recommendation' && onApply && hinweis.code === 'too_thin' && (
-              <>
-                <button type="button" onClick={() => onApply(hinweis.code)} style={actionStyle}>
-                  Anwenden
-                </button>
-                <button type="button" style={actionSecondaryStyle}>
-                  Weiter wie bisher
-                </button>
-              </>
-            )}
           </div>
         </div>
       </>
