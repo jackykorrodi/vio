@@ -17,6 +17,65 @@ Always verify against real code before changing anything.
 
 ---
 
+## Skills
+
+Für strukturierte Aufgaben diese Slash-Commands nutzen:
+
+- `/vio-task` – Umsetzung: suchen → verifizieren → planen → freigeben → patchen
+- `/vio-map` – Datei-Orientierung ohne Implementierung
+- `/vio-review` – Review von Änderungen, Diffs oder Dateien
+
+
+---
+
+## Effizienz & Prompt-Disziplin
+
+Claude Code optimiert für minimale Token-Nutzung bei ausreichender Präzision.
+
+### Zielgrössen
+
+- Bugfixes: Ziel <30 Zeilen
+- Refactors: Ziel <50 Zeilen
+- Grössere Architekturarbeiten dürfen ausführlicher sein
+
+### Regeln
+
+- Verlinke Specs statt sie zu kopieren
+- Keine narrativen Erklärungen
+- Keine langen Kontext-Historien
+- Keine detaillierten Such- oder Verifizierungsabläufe
+- Keine hypothetischen Ursachenlisten
+- Max. 3 konkrete Testfälle
+- Fokus auf:
+  - Problem
+  - Ursache
+  - gewünschtes Verhalten
+  - betroffene Dateien
+
+### Erlaubt
+
+Kurze technische Pointer sind erlaubt, wenn:
+
+- mehrere ähnliche Codepfade existieren
+- bekannte Drift-/Regression-Risiken bestehen
+- aktueller Code-State kritisch ist
+
+Beispiel:
+`IN_POOL_FACTOR sitzt aktuell nur im budgetFirst-Zweig (~Zeile 485)`
+
+### Kleine Bugfixes
+
+Format: `/vio-task` mit kurzen Feldern.
+
+Bevorzugt:
+
+- AUFGABE
+- ERFOLGSKRITERIUM
+- BETROFFENE DATEIEN
+- TESTFALL
+
+---
+
 ## Context Loading Order
 
 Do not read all docs by default.
@@ -30,7 +89,8 @@ Read only if needed:
 2. `docs/llm/PROJECT-MAP.md` - for file orientation
 3. `docs/llm/LOGIC-SOURCES.md` - for source-of-truth decisions
 4. `CONTEXT.md` - for product/project status
-5. `public/vio-regelkatalog-politik-v2.md` - only for Politik price/reach/budget/bookability logic
+5. `DESIGN.md` - for all UI/visual/styling tasks
+6. `public/vio-regelkatalog-politik-v2.md` - only for Politik price/reach/budget/bookability logic
 
 Never read legacy files unless explicitly needed:
 
@@ -75,6 +135,16 @@ Never patch a "probably correct" file.
 ---
 
 ## Politics Logic Rules
+
+
+
+Z.B. im KONTEXT-Teil:
+KONTEXT: Bug in IN_POOL_FACTOR-Anwendung (paketLevel-Modus)
+→ siehe LOGIC-SOURCES.md (Politik Preislogik: lib/preislogik.ts)
+→ siehe CONTEXT.md (Decision Log: v3.4c)
+
+Nicht: "Laut LOGIC-SOURCES.md und Regelkatalog sind Pakete
+Sichtbar 3×/14 Tage, Präsenz 5×/28 Tage..." etc.
 
 For tasks touching:
 
@@ -128,12 +198,15 @@ Use AskUserQuestion for:
 
 Do not use AskUserQuestion for:
 
+
+
 - typo fixes
 - exact text replacements
 - simple CSS tweaks
 - obvious import fixes
 - TypeScript errors with a clear fix
-
+- Dinge, die du via Repo-Search selbst verifizieren kannst
+- Redundante Klärungen (wenn du schon 80% sicher bist, frag nicht)
 Question rules:
 
 - maximum 3-5 questions
