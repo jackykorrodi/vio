@@ -325,17 +325,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   const zeitraumDates = useMemo(() => {
     if (!briefing.votingDate) return null;
-    const abstimmung = new Date(briefing.votingDate + 'T00:00:00');
-    const idealEnd   = addDaysToDate(abstimmung, -28);
-    const idealStart = addDaysToDate(idealEnd, -displayDays);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const MIN_SETUP_DAYS = 10;
-    if (idealStart < today) {
-      const start = addDaysToDate(today, MIN_SETUP_DAYS);
-      const end   = addDaysToDate(start, displayDays);
-      return { start: fmtDateShort(start), end: fmtDateShort(end) };
-    }
-    return { start: fmtDateShort(idealStart), end: fmtDateShort(idealEnd) };
+    const end   = new Date(briefing.votingDate + 'T00:00:00');
+    const start = addDaysToDate(end, -displayDays);
+    return { start: fmtDateShort(start), end: fmtDateShort(end) };
   }, [briefing.votingDate, displayDays]);
 
   const votingDateLabel = useMemo(() => {
