@@ -9,7 +9,14 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(copy:*)",
-      "Bash(\"/c/Users/JackyKorrodi/CascadeProjects/vio/lib/demonyms.json\":*)"
+      "Bash(\"/c/Users/JackyKorrodi/CascadeProjects/vio/lib/demonyms.json\":*)",
+      "Bash(not exist *)",
+      "PowerShell(New-Item *)",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const d=require\\('./lib/dooh-screens.json'\\); const a=d.find\\(x=>x.name==='Adliswil'\\); console.log\\(JSON.stringify\\(a\\)\\);\")",
+      "Bash(npx eslint *)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\JackyKorrodi\\\\CascadeProjects\\\\vio\\\\public\\\\vio-regelkatalog-politik-v2.md\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\JackyKorrodi\\\\CascadeProjects\\\\vio\\\\public\\\\vio-regelkatalog-politik-v3-3.md\" -Force)"
     ]
   }
 }

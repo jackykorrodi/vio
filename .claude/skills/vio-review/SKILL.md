@@ -32,7 +32,7 @@ Pruefe auf:
 
 - Widerspruch zu docs/llm/LOGIC-SOURCES.md
 
-- Widerspruch zu public/vio-regelkatalog-politik-v2.md
+- Widerspruch zu public/vio-regelkatalog-politik-v3-4.md
 
 - kaputte Props, Exports oder Funktionsnamen
 
@@ -58,7 +58,7 @@ Lies zusaetzlich:
 
 - docs/llm/LOGIC-SOURCES.md
 
-- public/vio-regelkatalog-politik-v2.md
+- public/vio-regelkatalog-politik-v3-4.md
 
 
 

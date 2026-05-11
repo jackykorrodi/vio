@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import {
   calculateImpact, buildPackages, getLaufzeitCorridor, coupleBudgetToLaufzeit,
+  calculateSweetSpot,
 } from '@/lib/preislogik';
 import type { PaketKey, PakeResult, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
@@ -129,12 +130,15 @@ function PackageCards({ packages, selectedPkg, onChange }: {
 }
 
 // ─── Slider ──────────────────────────────────────────────────────────────────
-function Slider({ label, value, min, max, step, formatVal, onChange, minLabel, maxLabel }: {
+function Slider({ label, value, min, max, step, formatVal, onChange, minLabel, maxLabel, marker }: {
   label: string; value: number; min: number; max: number; step: number;
   formatVal: (v: number) => string; onChange: (v: number) => void;
-  minLabel?: string; maxLabel?: string;
+  minLabel?: string; maxLabel?: string; marker?: number | null;
 }) {
   const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  const markerPct = (marker != null && marker > 0 && marker >= min && marker <= max && max > min)
+    ? ((marker - min) / (max - min)) * 100
+    : null;
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
@@ -143,6 +147,16 @@ function Slider({ label, value, min, max, step, formatVal, onChange, minLabel, m
       </div>
       <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
         <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: T.violet, borderRadius: 999, pointerEvents: 'none' }} />
+        {markerPct != null && (
+          <div style={{
+            position: 'absolute', left: `${markerPct}%`, top: '50%',
+            transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+            display: 'flex', flexDirection: 'column' as const, alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: T.warn, whiteSpace: 'nowrap', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 2 }}>Sweet Spot</span>
+            <div style={{ width: 2, height: 14, background: T.warn, borderRadius: 1 }} />
+          </div>
+        )}
         <input
           type="range" className="vio-range"
           min={min} max={max} step={step} value={value}
@@ -264,9 +278,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // Clamp days to corridor on budget change
   const effectiveDays = Math.min(corridor.maxDays, Math.max(corridor.minDays, days));
 
-  // Pfad B: always show exact package values, not slider-derived state
-  const displayDays   = path === 'B' && packages ? packages[pkg].laufzeitDays : effectiveDays;
-  const displayBudget = path === 'B' && packages ? packages[pkg].budget       : budget;
+  const displayBudget = path === 'B' && packages ? packages[pkg].budget : budget;
 
   const demonym    = getInhabitants(selectedRegionsFull.map(r => r.name));
   const regionName = briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
@@ -284,10 +296,23 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           paketLevel: PKG_CAP_LEVEL[pkg],
         });
       }
-      return calculateImpact({ budget, laufzeitDays: effectiveDays, regions: selectedRegionsFull });
+      return calculateImpact({ budget, regions: selectedRegionsFull });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path, pkg, budget, effectiveDays, selectedRegionsFull.map(r => r.name).join(',')]
+    [path, pkg, budget, selectedRegionsFull.map(r => r.name).join(',')]
+  );
+
+  // Pfad A: Laufzeit kommt vom Optimizer (impact.laufzeitDays), nicht aus lokalem Slider-State
+  const displayDays = path === 'B' && packages
+    ? packages[pkg].laufzeitDays
+    : (impact?.laufzeitDays ?? effectiveDays);
+
+  const sweetSpot = useMemo(
+    () => path === 'A' && selectedRegionsFull.length > 0
+      ? calculateSweetSpot(selectedRegionsFull, impact?.laufzeitDays ?? 28)
+      : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [path, selectedRegionsFull.map(r => r.name).join(','), impact?.laufzeitDays]
   );
 
   const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
@@ -316,7 +341,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   function switchPath(p: 'A' | 'B') {
     if (p === 'B' && packages) {
       setBudgetA(budget);
-      setDaysA(effectiveDays);
+      setDaysA(impact?.laufzeitDays ?? effectiveDays);
       setPkg('praesenz');
       setBudget(packages.praesenz.budget);
       setDays(packages.praesenz.laufzeitDays);
@@ -353,7 +378,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     updateBriefing({
       selectedPackage: path === 'B' ? pkg : undefined,
       budget,
-      laufzeit: Math.round(effectiveDays / 7),
+      laufzeit: Math.round((impact?.laufzeitDays ?? effectiveDays) / 7),
       freq:        Math.round(impact?.frequencyCampaign ?? (packages?.[pkg]?.frequencyCampaign ?? 5)),
       reach:       impact?.reachMitte ?? 0,
       reachVonPct: impact?.reachVonPct ?? 0,
@@ -466,16 +491,25 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               ))}
             </div>
 
-            {/* Pfad A: 2 sliders */}
+            {/* Pfad A: Budget-Slider + Startdatum */}
             {path === 'A' && (
               <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '24px 28px', marginBottom: 18 }}>
-                <div className="vio-ctrl-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                  <Slider label="Budget" value={budget} min={4000} max={100000} step={500}
-                    formatVal={fmtCHF} onChange={handleBudgetChange} />
-                  <Slider label="Laufzeit" value={effectiveDays}
-                    min={corridor.minDays} max={corridor.maxDays} step={1}
-                    formatVal={v => `${v} Tage`} onChange={setDays}
-                    minLabel={`${corridor.minDays} Tage`} maxLabel={`${corridor.maxDays} Tage`} />
+                <Slider label="Budget" value={budget} min={4000} max={100000} step={500}
+                  formatVal={fmtCHF} onChange={handleBudgetChange} marker={sweetSpot} />
+                <div style={{ marginTop: 24 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: T.slate, display: 'block', marginBottom: 6 }}>
+                    Startdatum <span style={{ fontWeight: 400, fontSize: 12 }}>(optional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={briefing.startDate ?? ''}
+                    onChange={e => updateBriefing({ startDate: e.target.value })}
+                    style={{
+                      border: `1px solid ${T.line}`, borderRadius: 8, padding: '8px 12px',
+                      fontSize: 14, color: T.ink, fontFamily: "'Jost', sans-serif",
+                      width: '100%', boxSizing: 'border-box' as const,
+                    }}
+                  />
                 </div>
               </div>
             )}

@@ -60,7 +60,7 @@ Regel: Code ist Wahrheit, nicht der Prompt. Datei ist Hypothese.
 | Präsenz | 5× | 28 Tage | CHF 6'000 |
 | Dominanz | 6× | 42 Tage | CHF 8'000 |
 
-**Preislogik Source of Truth**: `public/vio-regelkatalog-politik-v2.md`
+**Preislogik Source of Truth**: `public/vio-regelkatalog-politik-v3-4.md`
 **Implementierung**: `lib/preislogik.ts`, `lib/region-buchbarkeit.ts`
 **Offene Baustelle**: `lib/preislogik.ts` hat Dominanz noch 8×/35 Tage – Regelkatalog (6×/42) hat Vorrang.
 

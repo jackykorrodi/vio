@@ -81,7 +81,7 @@
 - Reach basiert auf Hofmans-Saturation (asymptotisch, kein hartes Capping)
 - Frequenz emergent: f_campaign = contacts / unique_reach
 - Sweet Spot: calculateSweetSpot(regions, laufzeitDays) → Cap-Level-2-Pool × 4.5×/Wo → CHF-Zielwert (85% des Sättigungsbudgets); gibt null zurück wenn Sättigungsbudget zu nah am B_MIN; nudge_to_sweet_spot nur wenn Budget < 85% des Sweet Spots UND cappedByRegion === false (nur Pfad A)
-- Berechnung: siehe vio-regelkatalog-politik-v2.md (v2.3)
+- Berechnung: siehe vio-regelkatalog-politik-v3-4.md (v2.3)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)

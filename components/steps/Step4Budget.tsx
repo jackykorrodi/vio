@@ -7,6 +7,7 @@ import doohScreens from '@/lib/dooh-screens.json';
 import demonymsRaw from '@/lib/demonyms.json';
 import { getMitarbeitende } from '@/lib/b2b-data';
 import { buildB2BPackages } from '@/lib/b2b-paketlogik';
+import { PAKET_SPECS } from '@/lib/preislogik';
 import ReichweiteKacheln from '@/components/ReichweiteKacheln';
 const DEMONYMS = demonymsRaw as Record<string, string>;
 
@@ -408,7 +409,11 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
   const durationPct = ((duration - 1)    / (8 - 1))        * 100;
 
   // ── Politik-only derived ──
-  const POLITIK_FREQ: Record<PaketId, number> = { sichtbar: 3, praesenz: 4, dominanz: 7 };
+  const POLITIK_FREQ: Record<PaketId, number> = {
+    sichtbar: PAKET_SPECS.sichtbar.weeklyFreq,
+    praesenz: PAKET_SPECS.praesenz.weeklyFreq,
+    dominanz: PAKET_SPECS.dominanz.weeklyFreq,
+  };
 
   const daysToVote = (isPolitik && briefing.votingDate)
     ? Math.round((new Date(briefing.votingDate).getTime() - new Date().setHours(0,0,0,0)) / 86400000)

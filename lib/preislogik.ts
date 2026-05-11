@@ -139,7 +139,7 @@ export interface PakeResult {
 
 // ─── Paket-Definitionen (politisch-stark kalibriert) ─────────────────────────
 
-const PAKET_SPECS: Record<PaketKey, {
+export const PAKET_SPECS: Record<PaketKey, {
   name: string;
   weeklyFreq: number;
   laufzeitDays: number;

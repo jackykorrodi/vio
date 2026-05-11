@@ -156,7 +156,7 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
     const tiers = [
       { rate: 0.14, freq: 3, weeks: 1 },
       { rate: 0.25, freq: 5, weeks: 2 },
-      { rate: 0.35, freq: 7, weeks: 4 },
+      { rate: 0.35, freq: 6, weeks: 4 },
     ].filter(t => t.weeks === 1 || t.weeks * 7 <= days);
     const recommended = tiers[Math.min(1, tiers.length - 1)];
     const targetReach = Math.round(totalStimm * recommended.rate);
