@@ -1,8 +1,8 @@
 # VIO Regelkatalog: Preislogik & Kampagnenplanung – Politik v2
 
-> **Status:** Final (27. April 2026) — v2.2
+> **Status:** Final (4. Mai 2026) — v2.3
 > **Scope:** Politik-Flow. B2B/B2C migrieren später auf dieselbe Logik.
-> **Ersetzt:** `public/vio-regelkatalog-paketlogik.md`
+> **Ersetzt:** v2.2 (28.04.2026)
 > **Zielablage:** `public/vio-regelkatalog-politik-v2.md`
 > **Single Source of Truth für:** `lib/preislogik.ts`, Step2PolitikBudget, Wirkungsindikator
 
@@ -10,7 +10,7 @@
 
 ## 1. Produktprinzip – Zwei Pfade, ein Wirkungsindikator
 
-VIO bietet zwei Einstiegspfade in die Kampagnenplanung. Beide münden im gleichen Wirkungsindikator und nutzen dieselbe Berechnungslogik.
+VIO bietet zwei Einstiegspfade in die Kampagnenplanung. Beide nutzen **dieselbe deterministische Reach-Funktion** und münden im gleichen Wirkungsindikator.
 
 ### Pfad A – Budget-first
 
@@ -18,7 +18,7 @@ User kennt sein Budget und will sofort sehen, was er damit erreicht.
 
 ```
 Input:    Region(en) + Budget + Laufzeit
-Output:   Reichweite-Range + Frequenz + Channel-Split
+Output:   Reichweite-Range + emergente Frequenz + Channel-Split
 ```
 
 ### Pfad B – Pakete mit Feintuning
@@ -34,14 +34,14 @@ Output:   Drei Karten → User wählt → selber Wirkungsindikator wie Pfad A
 
 In Step 1 entscheidet der User implizit über den Pfad:
 
-- Budget-Slider bewegt (oder Wert eingegeben) → **Pfad A** aktiv
-- "Ich weiss es noch nicht"-Toggle aktiv → **Pfad B** aktiv
+- Budget-Slider bewegt → **Pfad A** aktiv
+- Paket gewählt → **Pfad B** aktiv
 
-Wechsel zwischen Pfaden ist jederzeit möglich. Der Budget-Wert wird beim Wechsel übernommen.
+Wechsel zwischen Pfaden ist jederzeit möglich. **Bei gleichem Budget und gleicher Region ist die Reach-Anzeige in beiden Pfaden identisch** — der einzige Unterschied ist das Default-Tupel (Budget × Laufzeit × cap_level), das jedes Paket vorgibt.
 
 ### Was nicht mehr im Flow ist
 
-Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs. Abstimmung ist **komplett entfernt**. Sie hatte keinen Einfluss auf Preis, Reichweite oder Frequenz. Differenzierung erfolgt bei Bedarf im Creative-Step (Headline-Vorschläge).
+Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs. Abstimmung ist komplett entfernt. Differenzierung erfolgt bei Bedarf im Creative-Step.
 
 ---
 
@@ -63,8 +63,7 @@ Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs
 
 | Variable | Wert | Zweck |
 |---|---|---|
-| `F_MIN_WEEKLY` | 3× / Woche | Unter dieser Schwelle: unwirksam |
-| `F_REC_WEEKLY` | 5× / Woche | VIO-Empfehlung Präsenz |
+| `F_MIN_WEEKLY` | **2.5× / Woche** | Unter dieser Schwelle: unwirksam — *abgesenkt von 3.0 in v2.3, damit Sichtbar-Paket (3×) nicht laufend `too_thin` triggert* |
 | `F_MAX_WEEKLY` | 10× / Woche | Ab hier: Werbemüdigkeit |
 
 ### Reach-Konstanten
@@ -73,7 +72,7 @@ Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs
 |---|---|---|
 | `MAX_REACH_CAP` | 80% | Absolute Obergrenze des erreichbaren Pools |
 | `EXPONENT_BUDGET_LAUFZEIT` | 0.75 | Konkave Kopplung Budget↔Laufzeit |
-| `F_REC_WEEKLY` | 5× / Woche | Aktiver Divisor in rawReach-Formel (nicht nur Leitplanke) |
+| `REACH_CURVE_K` | **0.4** | Hofmans-Saturation-Parameter — modelliert ungleichmässige Verteilung in DOOH-Inventar (k=1.0 = Zufallsverteilung; k<1 = Pendler/Standort-Konzentration) |
 
 ### CPM-Tarife
 
@@ -86,9 +85,19 @@ Die Frage nach Kampagnentyp (JA / NEIN / Kandidatur / Mobilisierung) und Wahl vs
 
 | Variable | Wert | Zweck |
 |---|---|---|
-| `DOOH_OTS_MULTIPLIER` | 2.0 | 1 Ad Play = 2.0 Audience Contacts (konservativ, CH-DOOH Branchenbereich 1.8–2.5, Splicky-Validierung ausstehend) |
+| `DOOH_OTS_MULTIPLIER` | **1.8** | 1 Ad Play = 1.8 Audience Contacts — *abgesenkt von 2.0 in v2.3, konservativster Wert der CH-DOOH-Branchen-Range (1.8–2.5), Splicky-Validierung ausstehend* |
 
 Der **Misch-CPM wird dynamisch** pro Kampagne berechnet, nicht als fixer Wert. Formel siehe Abschnitt 7.
+
+### Ziel-Frequenzen pro Paket (kommunikativ + Default-Budget-Kalibrierung)
+
+| Paket | `target_f_weekly` | Laufzeit | `target_f_campaign` |
+|---|---|---|---|
+| Sichtbar | 3× / Woche | 14 Tage (2 Wo) | 6× |
+| Präsenz | 5× / Woche | 28 Tage (4 Wo) | 20× |
+| **Dominanz** | **6× / Woche** | **42 Tage (6 Wo)** | **36×** |
+
+Diese Frequenzen sind **Marketing-Versprechen + Kalibrierungs-Anker für Default-Budgets**. Sie sind NICHT Divisoren in der Reach-Formel — Frequenz wird emergent berechnet (Schritt 8 in §4). Bei Default-Budget des jeweiligen Pakets liegt die emergente `f_weekly` näherungsweise bei diesen Werten.
 
 ---
 
@@ -96,21 +105,21 @@ Der **Misch-CPM wird dynamisch** pro Kampagne berechnet, nicht als fixer Wert. F
 
 ### Primärinputs (User steuert)
 
-1. **Region(en)** – bestimmt Pool, Tier, DOOH-Inventar, Caps
+1. **Region(en)** – bestimmt Pool, Tier, DOOH-Inventar, Cap-Levels
 2. **Budget** – Hauptinput in Pfad A, feintunbar in Pfad B
 3. **Laufzeit** – gekoppelt an Budget (konkav)
 
 ### Abgeleitete Werte (System berechnet)
 
-4. **Frequenz** (implizit aus Budget, Pool, Laufzeit)
+4. **Frequenz** (emergent aus Reach-Berechnung)
 5. **Channel-Split** (dynamisch aus `screens_politik`)
 
 ### Zusammenspiel-Regeln
 
 - Bei jeder Änderung eines Primärinputs werden alle abgeleiteten Werte neu berechnet
 - Bei jeder Änderung wird gegen Leitplanken geprüft (`F_MIN_WEEKLY`, `F_MAX_WEEKLY`, `DAILY_MIN`, `MAX_REACH_CAP`)
-- Bei Leitplanken-Verletzung erscheint ein Hinweis (Abschnitt 11), aber kein Auto-Override
-- Budget↔Laufzeit sind **visuell gekoppelt**: Änderung an einem bewegt den anderen mit (konkav, Exponent 0.75)
+- Bei Leitplanken-Verletzung erscheint ein Hinweis (Abschnitt 12), aber kein Auto-Override
+- Budget↔Laufzeit sind **visuell gekoppelt** (Exponent 0.75)
 
 ---
 
@@ -121,58 +130,79 @@ Der **Misch-CPM wird dynamisch** pro Kampagne berechnet, nicht als fixer Wert. F
 budget           // CHF, >= B_MIN, <= B_HARD_MAX
 laufzeit_days    // Tage, LAUFZEIT_MIN <= x <= LAUFZEIT_MAX
 regions[]        // gewählte Regionen mit stimm + screens_politik
+pkg              // optional: 'sichtbar' | 'praesenz' | 'dominanz' (nur Pfad B)
 
-// Schritt 1 — Pool-Aggregation (mit Überlappungs-Deduplizierung, Abschnitt 9)
+// Schritt 1 — Pool-Aggregation (mit Überlappungs-Deduplizierung, Abschnitt 10)
 stimm_total          = dedupStimm(regions)
-screens_politik_total = sum(regions[i].screens_politik)
+screens_politik_total = sumPolitScreens(regions)
 
 // Schritt 2 — Tier & Split (Abschnitt 7)
 split = getChannelSplit(screens_politik_total)
 mixed_cpm = split.dooh * 50 + split.display * 15
 
-// Schritt 3 — Impressions aus Budget
-total_impressions = (budget / mixed_cpm) * 1000
+// Schritt 3 — Audience Contacts (mit OTS=1.8 für DOOH)
+imps_dooh    = (budget * split.dooh / CPM_DOOH) * 1000
+imps_display = (budget * split.display / CPM_DISPLAY) * 1000
 
-// Schritt 4 — Reach-Cap (Abschnitt 6)
-pool_cap = getReachCapByPoolSize(stimm_total, paket_level)
-max_reachable = stimm_total * pool_cap
-
-// Schritt 5 — Delivered Contacts (Channel-getrennt mit OTS-Multiplikator)
-contacts_dooh    = (budget * split.dooh / CPM_DOOH * 1000) * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER
-contacts_display = (budget * split.display / CPM_DISPLAY * 1000) * DELIVERY_DISPLAY
+contacts_dooh    = imps_dooh    * DELIVERY_DOOH    * DOOH_OTS_MULTIPLIER
+contacts_display = imps_display * DELIVERY_DISPLAY
 contacts_total   = contacts_dooh + contacts_display
 
-// Schritt 6 — rawReach bei Ziel-Frequenz (F_REC_WEEKLY = 5×/Woche als Divisor)
-laufzeit_weeks = laufzeit_days / 7
-raw_reach      = contacts_total / (F_REC_WEEKLY * laufzeit_weeks)
+// Schritt 4 — Cap-Level bestimmen
+// Pfad B: fix aus Paket (1=Sichtbar, 2=Präsenz, 3=Dominanz)
+// Pfad A: inferieren — wähle Level, dessen emergente f_weekly am nächsten
+//          am jeweiligen target_f_weekly liegt (siehe inferCapLevel)
+cap_level = pkg ? capLevelFromPkg(pkg) : inferCapLevel(contacts_total, stimm_total, laufzeit_weeks)
 
-// Schritt 6a — Cap-Level-Inferenz (Pfad A) / fix (Pfad B)
-// Pfad A (budgetFirst):
-reach_pct = raw_reach / stimm_total
-cap_level = reach_pct <= getReachCap(stimm_total, 1) ? 1
-          : reach_pct <= getReachCap(stimm_total, 2) ? 2
-          : 3
-// Pfad B (paketLevel): cap_level fix aus Paket-Spec (1/2/3)
+// Schritt 5 — Pool-Target (asymptotisches Maximum für Saturation)
+pool_target = stimm_total * getReachCap(stimm_total, cap_level)
 
-// Schritt 6b — Cap anwenden
-pool_cap     = stimm_total * getReachCap(stimm_total, cap_level)
-unique_reach = min(raw_reach, pool_cap, stimm_total * MAX_REACH_CAP)
-capped       = raw_reach > pool_cap
+// Schritt 6 — Hofmans-Saturation (ersetzt das harte min() aus v2.2)
+ratio = contacts_total / pool_target
+saturation_factor = 1 - exp(-REACH_CURVE_K * ratio)
+unique_reach = pool_target * saturation_factor
 
-// Schritt 7 — Wearout (>8 Wochen, unverändert)
-// Wearout-Effekt ist im unique_reach sichtbar (nicht versteckt) —
-// UI erklärt ihn via wearout_warning Hinweis (ab Woche 9)
+// Schritt 7 — Hard Floor MAX_REACH_CAP
+unique_reach = min(unique_reach, stimm_total * MAX_REACH_CAP)
+
+// Schritt 8 — Wearout (>8 Wochen, Floor 0.70 in v2.3)
 unique_reach = applyWearoutCurve(unique_reach, laufzeit_weeks)
 
-// Schritt 7b — Effektive Frequenzen (emergent)
-f_weekly   = unique_reach > 0 ? contacts_total / (unique_reach * laufzeit_weeks) : 0
-f_campaign = f_weekly * laufzeit_weeks
+// Schritt 9 — Emergente Frequenz (für UI + Decision-Engine)
+laufzeit_weeks = laufzeit_days / 7
+f_campaign = unique_reach > 0 ? contacts_total / unique_reach : 0
+f_weekly   = f_campaign / laufzeit_weeks
 
-// Schritt 8 — Unsicherheits-Band
+// Schritt 10 — Capped-Status (für UI-Hinweis)
+capped = saturation_factor > 0.85
+       || unique_reach >= stimm_total * MAX_REACH_CAP * 0.99
+
+// Schritt 11 — Unsicherheits-Band (Floor 12% in v2.3)
 band      = getUncertaintyBand(screens_politik_total)
 reach_von = round(unique_reach * (1 - band), 500)
-reach_bis = round(min(pool_cap, unique_reach * (1 + band)), 500)
+reach_bis = round(min(stimm_total * MAX_REACH_CAP, unique_reach * (1 + band)), 500)
 ```
+
+### Cap-Level-Inferenz (Pfad A, Schritt 4)
+
+```typescript
+function inferCapLevel(contacts, stimm, weeks): 1 | 2 | 3 {
+  const targetFreqs = { 1: 3, 2: 5, 3: 6 }  // f_weekly pro Paket
+  const distances = []
+
+  for (const level of [1, 2, 3]) {
+    const pool = stimm * getReachCap(stimm, level)
+    const sat = 1 - Math.exp(-REACH_CURVE_K * contacts / pool)
+    const reach = Math.min(pool * sat, stimm * MAX_REACH_CAP)
+    const fw = reach > 0 ? contacts / (reach * weeks) : 0
+    distances.push({ level, distance: Math.abs(fw - targetFreqs[level]) })
+  }
+
+  return distances.sort((a, b) => a.distance - b.distance)[0].level
+}
+```
+
+**Begründung**: Pfad A wählt das Cap-Level, dessen emergente Wochen-Frequenz am nächsten am Paket-Versprechen liegt. Bei niedrigem Budget tendenziell Sichtbar, bei mittlerem Präsenz, bei hohem Dominanz.
 
 ### Output-Struktur (ImpactResult)
 
@@ -180,13 +210,13 @@ reach_bis = round(min(pool_cap, unique_reach * (1 + band)), 500)
 |---|---|
 | `reachVon / reachBis` | Unique Reach Range (Headline-Zahl im UI) |
 | `reachMitte` | Mittenwert, Haupt-KPI |
-| `frequencyCampaign` | Durchschnittliche Gesamt-Frequenz |
-| `frequencyWeekly` | Durchschnittliche Wochen-Frequenz (intern, Validierung) |
-| `capLevel` | 1 / 2 / 3 — Inferiertes Paket-Niveau (sichtbar / präsenz / dominanz) |
-| `impactLevel` | `'sichtbar'` / `'praesenz'` / `'dominanz'` — Label für UI-Anzeige |
-| `efficiencyStatus` | `'too_thin'` / `'balanced'` / `'overkill'` / `'capped'` — Decision-Engine-Signal |
-| `recommendedAction` | `{ action, target }` / `null` — Konkrete Handlungsempfehlung |
-| `cappedByRegion` | `true` wenn `rawReach > poolCap` |
+| `frequencyCampaign` | Emergente Gesamt-Frequenz |
+| `frequencyWeekly` | Emergente Wochen-Frequenz (intern + UI sekundär) |
+| `capLevel` | 1 / 2 / 3 — Cap-Level (fix in Pfad B, inferiert in Pfad A) |
+| `impactLevel` | `'sichtbar'` / `'praesenz'` / `'dominanz'` — UI-Label |
+| `efficiencyStatus` | `'too_thin'` / `'balanced'` / `'overkill'` / `'capped'` |
+| `recommendedAction` | `{ action, target }` / `null` |
+| `cappedByRegion` | `true` wenn `capped === true` |
 
 ### Budget↔Laufzeit-Kopplung (Exponent 0.75)
 
@@ -197,44 +227,48 @@ Wenn User die Laufzeit ändert, wird Budget automatisch gekoppelt:
 budget_new = budget_reference * (laufzeit_days_new / 28) ^ 0.75
 ```
 
-**Beispiele (Referenz Präsenz CHF 13'500 @ 28 Tage):**
+**Beispiele (Referenz Präsenz CHF 13'500 @ 28 Tage, Stadt Zürich):**
 
-| Laufzeit | Budget | Tagesbudget | F_weekly |
+| Laufzeit | Budget | Tagesbudget | f_weekly emergent |
 |---|---|---|---|
-| 14 Tage | CHF 8'000 | CHF 570 | 5.5× |
-| 21 Tage | CHF 10'900 | CHF 520 | 5.2× |
-| **28 Tage** | **CHF 13'500** | **CHF 480** | **5.0×** |
-| 42 Tage | CHF 17'800 | CHF 425 | 4.5× |
-| 56 Tage | CHF 21'600 | CHF 385 | 4.0× |
-| 84 Tage | CHF 28'500 | CHF 340 | 3.4× |
+| 14 Tage | CHF 8'000 | CHF 570 | ~5.5× |
+| 21 Tage | CHF 10'900 | CHF 520 | ~5.2× |
+| **28 Tage** | **CHF 13'500** | **CHF 480** | **~5.0×** |
+| 42 Tage | CHF 17'800 | CHF 425 | ~5.5× (leichte Wearout-Anhebung) |
+| 56 Tage | CHF 21'600 | CHF 385 | ~5.8× |
+| 84 Tage | CHF 28'500 | CHF 340 | ~6.5× (Wearout greift, Cap näher) |
 
-Die Kopplung ist **überschreibbar**: User kann Budget-Slider nach Laufzeit-Änderung frei bewegen. Beim nächsten Laufzeit-Event wird die Kopplung wiederhergestellt.
+Die emergente Frequenz steigt bei langen Laufzeiten leicht an, weil Wearout den Reach reduziert und so den f_emergent-Quotienten erhöht. Das ist gewolltes Verhalten und kein Bug.
+
+Die Kopplung ist **überschreibbar**: User kann Budget-Slider nach Laufzeit-Änderung frei bewegen.
 
 ---
 
 ## 5. Frequenz-Modell
 
-### Zwei Metriken, gleiche Information
+### Frequenz ist emergent, nicht eingestellt
 
-`F_REC_WEEKLY` (5×/Woche) ist aktiver Divisor in der rawReach-Formel — nicht nur Leitplanke (siehe §4 Schritt 6).
-
-**Intern (Validierung + Splicky-Steuerung):**
+Im neuen Modell (v2.3) wird Frequenz **nicht mehr als Divisor** in der Reach-Formel verwendet. Sie ergibt sich aus Reach und Contacts:
 
 ```
-F_weekly = contacts_total / (unique_reach × laufzeit_weeks)
+f_campaign = contacts_total / unique_reach
+f_weekly   = f_campaign / laufzeit_weeks
 ```
 
-Gegen Leitplanken geprüft:
-- `F_weekly < 3` → `efficiencyStatus: 'too_thin'` → Hinweis + recommendedAction
-- `F_weekly > 10` → `efficiencyStatus: 'overkill'` → Hinweis + recommendedAction
+Das ist mathematisch sauberer und stellt sicher, dass die kommunizierte Frequenz immer mit der berechneten Reach konsistent ist.
 
-**Extern (User-Anzeige):**
+### Paket-Versprechen vs. Realität
 
-```
-F_campaign = F_weekly × laufzeit_weeks
-```
+Die Pakete haben kommunikative Ziel-Frequenzen (3 / 5 / 6 ×/Wo). Die Default-Budgets der Pakete sind so kalibriert, dass die emergente Frequenz **näherungsweise** dem Versprechen entspricht. Bei Saturation-Anschlag (User hat sehr viel Budget für kleine Region gewählt) liegt die emergente Frequenz **über** dem Versprechen — das ist physikalisch korrekt und wird über `capped`-Hinweis kommuniziert.
 
-Angezeigt als:
+### Validierung gegen absolute Leitplanken
+
+- `f_weekly < F_MIN_WEEKLY (2.5)` → `efficiencyStatus: 'too_thin'`
+- `f_weekly > F_MAX_WEEKLY (10)` → `efficiencyStatus: 'overkill'`
+- `capped === true` → `efficiencyStatus: 'capped'`
+- Sonst → `efficiencyStatus: 'balanced'`
+
+### UI-Anzeige
 
 ```
 Ø 20× pro Person während der Kampagne
@@ -243,32 +277,52 @@ Angezeigt als:
 
 Die Wochen-Angabe ist erklärender Kontext, nicht Primärmetrik.
 
-### Warum Wochen-Leitplanken intern
-
-Krugman's Effective-Frequency-Regel (3+) gilt nur innerhalb eines Entscheidungszeitfensters. Eine 12-Wochen-Kampagne mit 4× Gesamt-Frequenz (= 0.33× / Woche) ist nicht wirksam, auch wenn die Summe formal "ausreicht". Die Wochenmetrik fängt das zuverlässig ab. ER3 als separate UI-Metrik entfällt ab v2.2 (ersetzt durch efficiencyStatus).
-
 ---
 
-## 6. Reach-Caps nach Pool-Grösse (tiered)
+## 6. Reach-Caps nach Pool-Grösse (tiered, +50% in v2.3)
 
-Die realistisch erreichbare Reichweite hängt nicht-linear von der Populationsgrösse ab. Je grösser der Pool, desto tiefer der prozentuale Anteil, der mit vernünftigem Budget erreichbar ist.
+Die Caps definieren das **asymptotische Maximum** der Saturation-Kurve pro Paket-Niveau. In v2.3 wurden die Werte um ca. 50% angehoben, um näher an Branchenrealität zu liegen — gleichzeitig wurde das harte Capping durch eine weiche Saturation-Kurve ersetzt (siehe §4 Schritt 6).
 
-| Pool-Grösse (stimm_total) | Sichtbar | Präsenz | Dominanz |
+| Pool-Grösse (`stimm_total`) | Sichtbar (Lvl 1) | Präsenz (Lvl 2) | Dominanz (Lvl 3) |
 |---|---|---|---|
-| < 50'000 | 15% | 30% | 45% |
-| 50'000 – 200'000 | 8% | 15% | 25% |
-| 200'000 – 500'000 | 4% | 8% | 14% |
-| > 500'000 | 2% | 4% | 8% |
+| < 50'000 | **22%** | **45%** | **65%** |
+| 50'000 – 200'000 | **12%** | **22%** | **38%** |
+| 200'000 – 500'000 | **6%** | **12%** | **21%** |
+| > 500'000 | **3%** | **6%** | **12%** |
+
+Vorher (v2.2): 15/30/45 · 8/15/25 · 4/8/14 · 2/4/8.
 
 ### Zusätzlicher harter Cap
 
-`MAX_REACH_CAP = 80%` – niemals höher, auch bei unendlichem Budget.
+`MAX_REACH_CAP = 80%` – niemals höher, auch bei unendlichem Budget. Greift erst nach Saturation und Wearout.
 
-### Wirkung
+### Wirkung der Saturation-Kurve
 
-Die Caps verhindern, dass lineare CPM-Rechnungen unrealistische Reichweiten liefern (z.B. Kanton ZH mit CHF 20'000 = theoretisch 40% Reach, real max 8%).
+Statt `reach = min(raw_reach, pool_cap)` rechnet v2.3:
 
-Bei Cap-Anschlag greift Hinweis `capped_by_region` (Abschnitt 11).
+```
+reach = pool_target × (1 - exp(-0.4 × contacts / pool_target))
+```
+
+**Eigenschaften:**
+
+- Bei wenig Budget (`contacts << pool_target`): Reach steigt fast linear mit Budget
+- Bei mittlerem Budget (`contacts ≈ pool_target`): Reach ≈ 33% des Pools
+- Bei hohem Budget (`contacts ≈ 5× pool_target`): Reach ≈ 86% des Pools
+- Bei sehr hohem Budget: Asymptotische Annäherung an Pool, niemals Überschreitung
+
+Konkrete Werte je `ratio = contacts / pool_target`:
+
+| ratio | saturation_factor | reach / pool |
+|---|---|---|
+| 0.5 | 0.18 | 18% |
+| 1.0 | 0.33 | 33% |
+| 2.0 | 0.55 | 55% |
+| 3.0 | 0.70 | 70% |
+| 5.0 | 0.86 | 86% |
+| 10.0 | 0.98 | 98% |
+
+Die Kurve ist mit `k=0.4` bewusst konservativ kalibriert (DOOH-Inventar ist nicht zufällig verteilt — Pendler treffen gleiche Plakate mehrfach, andere Personen nie). Validierung gegen reale Splicky-Daten nach den ersten 10 Kampagnen.
 
 ---
 
@@ -276,23 +330,17 @@ Bei Cap-Anschlag greift Hinweis `capped_by_region` (Abschnitt 11).
 
 ### 7.1 Grundprinzip
 
-Der DOOH/Display-Split ist **nicht fix**, sondern passt sich der Screen-Verfügbarkeit der Zielregion an. VIO arbeitet mit drei Screen-Klassen, die automatisch den Split und allfällige UI-Hinweise bestimmen.
+Der DOOH/Display-Split ist **nicht fix**, sondern passt sich der Screen-Verfügbarkeit der Zielregion an. Drei Screen-Klassen, automatisch berechnet.
 
 ### 7.2 Berechnung politisch freigegebener Screens
-
-Nicht jeder DOOH-Screen ist standardmässig für politische Werbung freigegeben. Retail-Screens (Apotheken, Shoppingcenter, Kinos etc.) sind meist ausgeschlossen.
-
-**Arbeitshypothese (empirisch validiert auf Basis Schweizer DOOH-Netz):**
 
 ```
 politScreens = max(screens × 0.7, screens_politik aus JSON)
 ```
 
 - `screens` = theoretisches Gesamt-Inventar (aus `dooh-screens.json`)
-- `0.7` = Freigabequote (CH-Schnitt ~78%, konservativ bei 70% angesetzt)
+- `0.7` = konservative Freigabequote (CH-Schnitt ~78%)
 - `screens_politik` = operativ validierter Wert pro Region, falls höher
-
-Die `max()`-Logik ist defensiv-optimistisch: Wenn die Datenbasis für eine Region bereits höhere Werte zeigt, nutzen wir diese.
 
 ### 7.3 Die drei Screen-Klassen
 
@@ -302,7 +350,7 @@ Die `max()`-Logik ist defensiv-optimistisch: Wenn die Datenbasis für eine Regio
 | **Begrenzt** | `politScreens 10–29` | 50% / 50% | CHF 32.50 | dezenter Hinweis |
 | **Display-dominant** | `politScreens < 10` | 20% / 80% | CHF 22.00 | klarer Hinweis |
 
-**Kantone und „Gesamte Schweiz"** sind **immer Klasse Voll** (Aggregat-Inventar ist ausreichend).
+Kantone und „Gesamte Schweiz" sind immer Klasse **Voll**.
 
 ### 7.4 Hinweis-Texte
 
@@ -315,17 +363,23 @@ Die `max()`-Logik ist defensiv-optimistisch: Wenn die Datenbasis für eine Regio
 **Mehrere Regionen mit gemischten Klassen:**
 > „In Teilen deiner Region-Auswahl ist DOOH-Inventar begrenzt — der Online-Anteil wird entsprechend erhöht."
 
-### 7.5 Aggregation bei Mehrfach-Region-Auswahl
+### 7.5 Aggregation bei Mehrfach-Region-Auswahl (geändert in v2.3)
 
 Bei gewählter Kombination mehrerer Regionen:
 
-- **Split:** Gewichteter Durchschnitt nach `stimm`-Anteil jeder Region
-- **Klasse:** Strengste (Display-dominant > Begrenzt > Voll)
-- **Hinweis:** Angepasster Multi-Region-Text (siehe oben)
+- **`screens_politik_total`**: Summe der `politScreens` aller gewählten Regionen
+- **Klasse**: Bestimmt aus dem aggregierten `screens_politik_total` (NICHT mehr „strengste" wie v2.2)
+  - `screens_politik_total ≥ 30` → Voll
+  - `screens_politik_total 10–29` → Begrenzt
+  - `screens_politik_total < 10` → Display-dominant
+- **Split**: Aus der aggregierten Klasse abgeleitet (70/30, 50/50, 20/80)
+- **Hinweise**: Pro Region einzeln zeigen, wenn einzelne Regionen abweichende Klassen haben
+
+**Begründung der Änderung**: Die alte „strengste"-Logik produzierte irreführende Klassifikationen — Stadt Zürich + Kleingemeinde wurde als „Display-dominant" klassifiziert, obwohl 99% des Inventars aus Zürich kommt. Aggregation ist mathematisch korrekter.
 
 ### 7.6 Edge Case: Kein DOOH verfügbar
 
-Wenn `politScreens === 0` (theoretisch möglich, in unserer aktuellen Liste ausgeschlossen): Auto-Split 100% Display. Hinweis `no_dooh_inventory` (Abschnitt 11).
+Wenn `politScreens === 0`: Auto-Split 100% Display. Hinweis `no_dooh_inventory`.
 
 ---
 
@@ -333,77 +387,62 @@ Wenn `politScreens === 0` (theoretisch möglich, in unserer aktuellen Liste ausg
 
 ### Laufzeit-Korridor (angepasst an Budget)
 
-Der Laufzeit-Slider passt seine Grenzen automatisch ans Budget an:
-
 ```typescript
 function getLaufzeitCorridor(budget: number): { min: number; max: number } {
   if (budget < 6000)   return { min: 7,  max: 21 }  // 1–3 Wochen
-  if (budget < 15000)  return { min: 14, max: 35 }  // 2–5 Wochen
+  if (budget < 15000)  return { min: 14, max: 42 }  // 2–6 Wochen — angepasst für Dominanz
   if (budget < 30000)  return { min: 21, max: 56 }  // 3–8 Wochen
   return                 { min: 28, max: 84 }        // 4–12 Wochen
 }
 ```
 
+**Hinweis**: Korridor `< 15000` wurde von max=35 auf max=42 erweitert, damit Dominanz (42 Tage) bei Min-Budget noch buchbar ist.
+
 **Hard Min:** 7 Tage · **Hard Max:** 84 Tage (12 Wochen)
 
-### Wearout-Kurve (>8 Wochen)
-
-Ab Woche 9 verliert jede zusätzliche Impression überproportional an Wirkung – Werbemüdigkeit setzt ein. Modellierung:
+### Wearout-Kurve (>8 Wochen, Floor 0.70 in v2.3)
 
 ```typescript
-function applyWearoutCurve(
-  unique_reach: number,
-  laufzeit_weeks: number
-): number {
+function applyWearoutCurve(unique_reach: number, laufzeit_weeks: number): number {
   if (laufzeit_weeks <= 8) return unique_reach
-
   const wearout_factor = 1 - (laufzeit_weeks - 8) * 0.03
-  const clamped = Math.max(wearout_factor, 0.80)
+  const clamped = Math.max(wearout_factor, 0.70)  // war 0.80 in v2.2
   return unique_reach * clamped
 }
 ```
 
 **Beispiele:**
-- 8 Wochen → Faktor 1.00 (kein Abschlag)
-- 10 Wochen → Faktor 0.94 (6% Abschlag)
-- 12 Wochen → Faktor 0.88 (12% Abschlag)
-- 16 Wochen → Faktor 0.80 (harter Floor, falls doch erlaubt)
+- 8 Wochen → Faktor 1.00
+- 10 Wochen → Faktor 0.94
+- 12 Wochen → Faktor 0.88
+- 16 Wochen → Faktor 0.76
+- 18+ Wochen → Floor 0.70 (war 0.80)
 
-### Status Wearout-Kurve
-
-Modelliert mit konservativen Werten (3% pro Zusatzwoche, Floor 80%). **Nach ersten 20 Kampagnen** gegen reale Delivery-Daten validieren und ggf. justieren.
+**Begründung**: 80% war optimistisch. Branchenliteratur zeigt 60–70% Floor für Long-Run-Kampagnen. 70% ist konservativ ohne unrealistisch zu werden.
 
 ---
 
 ## 9. Buchbarkeit von Regionen
 
-Nicht jede Schweizer Gemeinde wird im VIO-Politik-Flow angeboten. Es gibt eine harte Qualifikations-Regel, die bestimmt, welche Gemeinden in der Auswahl erscheinen.
+(unverändert ggü. v2.2)
 
-### 9.1 Qualifikations-Regel (ODER-Logik)
-
-Eine Gemeinde ist buchbar, wenn:
+### Qualifikations-Regel (ODER-Logik)
 
 ```
 (stimm ≥ 10'000) ODER (politScreens ≥ 20)
 UND NICHT in PERMANENTLY_EXCLUDED
 ```
 
-Die ODER-Verknüpfung stellt sicher, dass **entweder Relevanz (genug Wähler:innen) oder Inventar (genug Screens)** gegeben ist. Beides zusammen ist nicht nötig.
+Kantone und „Gesamte Schweiz" sind immer buchbar.
 
-**Kantone und „Gesamte Schweiz"** sind **immer buchbar**.
+### Permanent ausgeschlossene Gemeinden
 
-### 9.2 Permanent ausgeschlossene Gemeinden
-
-Vier Gemeinden sind unabhängig von den Schwellen ausgeschlossen (0 standardmässig freigegebene Screens):
-
-- Küsnacht (ZH) – **nicht zu verwechseln mit Küssnacht (SZ)**, das buchbar ist
+- Küsnacht (ZH) — nicht zu verwechseln mit Küssnacht (SZ), das buchbar ist
 - Martigny
 - Opfikon
 - Veyrier
 
-### 9.3 Aktuelle Liste
-
-Nach Anwendung der Regel (Stand 22.04.2026):
+### Aktuelle Liste
 
 | Kategorie | Anzahl |
 |---|---|
@@ -413,45 +452,29 @@ Nach Anwendung der Regel (Stand 22.04.2026):
 | Städte/Gemeinden (Klasse Display-dominant) | 10 |
 | **Gesamt buchbar** | **130** (inkl. Schweiz) |
 
-16 ursprünglich gelistete Gemeinden wurden entfernt, weil sie weder die stimm- noch die Screen-Schwelle erreichten.
-
-### 9.4 „Meine Gemeinde fehlt"-Hinweis
-
-Im UI der Regionen-Auswahl erscheint unter dem Suchfeld (oder als Fallback, wenn eine Suche leer zurückkommt):
+### „Meine Gemeinde fehlt"-Hinweis
 
 > „Deine Gemeinde ist nicht in der Liste? Das liegt am Verhältnis zwischen Einwohnerzahl und verfügbaren DOOH-Flächen vor Ort. Melde dich bei uns — wir finden eine Lösung, zum Beispiel über den Kanton oder eine benachbarte Gemeinde."
 
-Konstante im Code: `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` in `lib/region-buchbarkeit.ts`.
+Konstante: `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` in `lib/region-buchbarkeit.ts`.
 
-### 9.5 Implementierung
+### Implementierung
 
-Die Logik ist in `lib/region-buchbarkeit.ts` gekapselt. Exports:
-
-- `isBuchbar(region)` – boolean
-- `filterBuchbareRegionen(regions)` – gefilterte Liste
-- `getPolitScreens(region)` – berechnete Anzahl politischer Screens
-- `klassifiziereRegion(region)` – Klasse + Split + Hinweis
-- `klassifiziereMehrereRegionen(regions)` – aggregiert für Mehrfach-Auswahl
-- `PERMANENTLY_EXCLUDED` – Set der ausgeschlossenen Namen
-- `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` – UI-Text-Konstante
-
-Nicht-buchbare Gemeinden sind **physisch aus der `STAEDTE`-Liste entfernt**, nicht nur zur Laufzeit gefiltert. Dies garantiert, dass die Auswahl immer konsistent mit der Buchbarkeit ist.
+Logik gekapselt in `lib/region-buchbarkeit.ts`. Exports: `isBuchbar`, `filterBuchbareRegionen`, `getPolitScreens`, `klassifiziereRegion`, `klassifiziereMehrereRegionen`, `PERMANENTLY_EXCLUDED`, `GEMEINDE_NICHT_GEFUNDEN_HINWEIS`.
 
 ---
 
 ## 10. Regionen-Kombinations-Regeln
 
-Bei Mehrfachauswahl werden Überlappungen dedupliziert.
+(unverändert ggü. v2.2)
 
 ### Regel 1 – Gesamte Schweiz absorbiert alles
 
-Wenn `Gesamte Schweiz` gewählt: alle anderen Regionen werden ignoriert. Hinweis: `"Gesamte Schweiz deckt alle anderen Auswahlen ab."`
+Wenn `Gesamte Schweiz` gewählt: alle anderen Regionen ignoriert.
 
 ### Regel 2 – Kanton absorbiert enthaltene Städte
 
-Wenn `Kanton X` + `Stadt Y` (in Kanton X) gewählt: Stadt wird absorbiert, aber im UI als "inkludiert" markiert (nicht entfernt).
-
-Beispiel: Kanton ZH + Stadt Zürich + Stadt Winterthur → `stimm_total = Kanton ZH`, UI zeigt "Stadt Zürich und Winterthur sind inkludiert".
+Wenn `Kanton X` + `Stadt Y` (in Kanton X): Stadt absorbiert, im UI als „inkludiert" markiert.
 
 ### Regel 3 – Städte ohne Überlappung werden summiert
 
@@ -459,24 +482,20 @@ Beispiel: Kanton ZH + Stadt Zürich + Stadt Winterthur → `stimm_total = Kanton
 
 ### Regel 4 – Mehrere Kantone
 
-Normale Summierung, keine Überlappung (Kantone sind disjunkt).
+Normale Summierung, keine Überlappung.
 
 ### Implementierung (Pseudocode)
 
 ```typescript
 function dedupStimm(regions: Region[]): number {
-  if (regions.some(r => r.type === 'schweiz')) {
-    return SCHWEIZ.stimm
-  }
+  if (regions.some(r => r.type === 'schweiz')) return SCHWEIZ.stimm
 
   const kantone = regions.filter(r => r.type === 'kanton')
   const staedte_outside = regions.filter(r =>
-    r.type === 'stadt' &&
-    !kantone.some(k => k.kanton === r.kanton)
+    r.type === 'stadt' && !kantone.some(k => k.kanton === r.kanton)
   )
 
-  return sum(kantone.map(r => r.stimm))
-       + sum(staedte_outside.map(r => r.stimm))
+  return sum(kantone.map(r => r.stimm)) + sum(staedte_outside.map(r => r.stimm))
 }
 ```
 
@@ -486,71 +505,58 @@ Analog für `screens_politik_total`.
 
 ## 11. Calibration Constants (DSP-Matching)
 
-Diese Konstanten kalibrieren unsere Prognose gegen reale Splicky/Adform-Delivery. Sie werden nach ersten ~10 Kampagnen justiert.
-
 ```typescript
 const CALIBRATION = {
   dooh: {
     cpm: 50,
-    deliveryFactor: 0.75,     // TBD mit Dani
-    otsMultiplier: 2.0,       // konservativer Default (CH-DOOH Range 1.8–2.5), Splicky-Validierung ausstehend
+    deliveryFactor: 0.75,
+    otsMultiplier: 1.8,           // war 2.0 in v2.2
     uncertaintyBand: 0.10,
   },
   display: {
     cpm: 15,
-    deliveryFactor: 0.90,   // TBD mit Dani
+    deliveryFactor: 0.90,
     uncertaintyBand: 0.05,
+  },
+  reach: {
+    curveK: 0.4,                  // Hofmans-Saturation
+    wearoutFloor: 0.70,           // war 0.80 in v2.2
+    maxCap: 0.80,
   }
 } as const
-
-// Letzter Abgleich: [DATUM von PERSON nach N Kampagnen]
 ```
 
-### Unsicherheits-Band je nach Screen-Dichte
+### Unsicherheits-Band je nach Screen-Dichte (Floor 12% in v2.3)
 
 ```typescript
 function getUncertaintyBand(screens_politik_total: number): number {
   if (screens_politik_total < 30)   return 0.20  // ±20%
-  if (screens_politik_total < 150)  return 0.13  // ±13%
-  if (screens_politik_total < 500)  return 0.10  // ±10%
-  return 0.07                                      // ±7%
+  if (screens_politik_total < 150)  return 0.15  // ±15% (war 13%)
+  if (screens_politik_total < 500)  return 0.13  // ±13% (war 10%)
+  return 0.12                                      // ±12% Floor (war 7%)
 }
 ```
 
-### ImpactResult — Decision-Engine-Felder (ab v2.2)
-
-| Feld | Wertebereich | Beschreibung |
-|---|---|---|
-| `capLevel` | 1 / 2 / 3 | Inferiertes Paket-Niveau (sichtbar / präsenz / dominanz) |
-| `impactLevel` | `'sichtbar'` / `'praesenz'` / `'dominanz'` | Label für UI-Anzeige |
-| `efficiencyStatus` | `'too_thin'` / `'balanced'` / `'overkill'` / `'capped'` | Decision-Engine-Signal |
-| `recommendedAction` | `{ action: string; target: number }` / `null` | Konkrete Handlungsempfehlung (action: reduce_laufzeit / reduce_budget / expand_region_or_reduce_budget) |
+**Begründung der Anhebung**: ±7% suggerierte eine Präzision, die DOOH-Forecasting in der Realität nicht hält (branchentypisch ±15–25%). 12% Floor ist ehrlich und reduziert Reklamationsrisiko.
 
 ### Was der User NIE sieht
 
 - Impressions (weder prognostiziert noch geliefert)
 - CPM-Werte
-- Delivery-Faktoren
+- Delivery-Faktoren, OTS-Multiplikator
 - CHF-Beträge pro Kanal
-- Fill-Rates
+- Saturation-Kurven-Parameter
 
 ### Was der User IMMER sieht
 
 - Reichweite als Range (von–bis)
-- Frequenz pro Kampagne + "≈ pro Woche"
+- Frequenz pro Kampagne + „≈ pro Woche"
 - Laufzeit in Tagen oder Wochen
-- Ungefähre Anzahl erreichter Stimmberechtigter (immer!)
-
-### Offen (TBD)
-
-- Echte Delivery-Faktoren nach ersten 10 Kampagnen validieren
-- Splicky-API-Integration für Post-Campaign-Abgleich (Mittelfristig)
+- Ungefähre Anzahl erreichter Stimmberechtigter
 
 ---
 
 ## 12. Hinweis-System
-
-Alle Hinweise sind **informativ**, kein Auto-Override. Das System zeigt maximal einen prominenten Hinweis gleichzeitig.
 
 ### 12.1 Hinweise zu Budget und Frequenz
 
@@ -558,22 +564,23 @@ Alle Hinweise sind **informativ**, kein Auto-Override. Das System zeigt maximal 
 |---|---|---|
 | `ok` | Alle Checks passieren | (kein Hinweis) |
 | `below_min_budget` | `budget < B_MIN` | „Mindestbudget CHF 4'000 – wir heben automatisch an." + Auto-Snap |
-| `too_thin` | `F_weekly < 3` | „Dein Budget ist für {X} Wochen zu dünn verteilt. Empfehlung: Laufzeit auf {Y} Wochen reduzieren." + Button „Anwenden" |
-| `overkill` | `F_weekly > 10` | „Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern." |
-| `daily_below_floor` | `budget / days < 150` | „Tagesbudget unter CHF 150 – Ausspielung nicht garantiert. Kürzere Laufzeit empfohlen." |
-| `capped_by_region` | `raw_reach > pool_cap` | „Maximale Reichweite in {Region} erreicht. Mehr Budget bringt keine zusätzlichen Personen." |
+| `too_thin` | `f_weekly < 2.5` | „Dein Budget ist für {X} Wochen zu dünn verteilt. Empfehlung: Laufzeit auf {Y} Wochen reduzieren." + Button „Anwenden" |
+| `overkill` | `f_weekly > 10` | „Deine Frequenz ist sehr hoch. Empfehlung: Budget reduzieren oder Region erweitern." |
+| `daily_below_floor_global` | `budget / days < 150` | „Tagesbudget unter CHF 150 – Ausspielung nicht garantiert." |
+| `daily_below_floor_region` | `budget_region_anteil / days < 150` | „In {Region} liegt das Tagesbudget unter CHF 150 – Ausspielung dort nicht garantiert. Empfehlung: Region entfernen oder Budget erhöhen." |
+| `capped_by_region` | `saturation_factor > 0.85` ODER `MAX_REACH_CAP` erreicht | „Maximale Reichweite in {Region} fast erreicht. Mehr Budget bringt nur noch wenig zusätzliche Personen." |
 | `wearout_warning` | `laufzeit_weeks > 8` | „Lange Kampagnen verlieren Effizienz ab Woche 9. Für maximale Wirkung: 4–8 Wochen." |
+
+**Geändert in v2.3**: `daily_below_floor` wurde aufgesplittet in global + pro Region. Bei Multi-Region-Auswahl wird zusätzlich geprüft, ob das anteilige Tagesbudget pro Region über CHF 150 liegt — ohne diese Prüfung würden Kampagnen in Regionen unter dem Floor stillschweigend nicht ausgespielt.
 
 ### 12.2 Hinweise zu Screen-Klassen
 
-Diese Hinweise informieren über die Zusammensetzung der Kampagne basierend auf dem verfügbaren DOOH-Inventar (siehe Abschnitt 7).
-
 | Zustand | Trigger | UI-Text |
 |---|---|---|
-| `screen_class_begrenzt` | Gewählte Region ist Klasse „Begrenzt" | „In {Gemeinde} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal." |
-| `screen_class_display_dom` | Gewählte Region ist Klasse „Display-dominant" | „In {Gemeinde} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt." |
-| `screen_class_multi_mixed` | Mehrere Regionen mit gemischten Klassen | „In Teilen deiner Region-Auswahl ist DOOH-Inventar begrenzt — der Online-Anteil wird entsprechend erhöht." |
-| `no_dooh_inventory` | `politScreens === 0` (Edge Case) | „Keine DOOH-Flächen verfügbar. Kampagne läuft zu 100% als Display." |
+| `screen_class_begrenzt` | Region ist Klasse „Begrenzt" | „In {Gemeinde} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal." |
+| `screen_class_display_dom` | Region ist Klasse „Display-dominant" | „In {Gemeinde} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt." |
+| `screen_class_multi_mixed` | Mehrere Regionen, einzelne abweichend | „In Teilen deiner Region-Auswahl ist DOOH-Inventar begrenzt — der Online-Anteil wird entsprechend erhöht." |
+| `no_dooh_inventory` | `politScreens === 0` | „Keine DOOH-Flächen verfügbar. Kampagne läuft zu 100% als Display." |
 
 ### 12.3 Hinweise zu Budget-Grenzen
 
@@ -587,29 +594,27 @@ Diese Hinweise informieren über die Zusammensetzung der Kampagne basierend auf 
 
 | Zustand | Trigger | UI-Text |
 |---|---|---|
-| `region_overlap` | Überlappung in Auswahl (siehe Abschnitt 10) | „{Stadt X} ist in Kanton {Y} enthalten und wird inkludiert." |
-| `gemeinde_nicht_gefunden` | Info-Baustein in Auswahl-UI | „Deine Gemeinde ist nicht in der Liste? Das liegt am Verhältnis zwischen Einwohnerzahl und verfügbaren DOOH-Flächen vor Ort. Melde dich bei uns — wir finden eine Lösung, zum Beispiel über den Kanton oder eine benachbarte Gemeinde." |
+| `region_overlap` | Überlappung in Auswahl | „{Stadt X} ist in Kanton {Y} enthalten und wird inkludiert." |
+| `gemeinde_nicht_gefunden` | Statisch in Auswahl-UI | siehe §9 |
 
 ### 12.5 Priorität bei mehreren Treffern
 
-Wenn mehrere Hinweise gleichzeitig zutreffen, wird nur einer prominent angezeigt. Priorität (absteigend):
-
 1. `hard_stop_budget` (blockierend)
 2. `below_min_budget` (blockierend)
-3. `too_thin` / `overkill` / `daily_below_floor` (Empfehlung)
-4. `capped_by_region` (Info)
-5. `calendly_nudge_strong` / `calendly_nudge_soft` (Nudge)
-6. `screen_class_*` / `no_dooh_inventory` (Kontext)
-7. `wearout_warning` (Kontext, ab Woche 9)
-8. `region_overlap` (Kontext)
-
-Die Gemeinde-nicht-gefunden-Info ist **kein Trigger-Hinweis**, sondern ein statischer Baustein in der Regionen-Auswahl-Komponente.
+3. `daily_below_floor_region` (blockierend, weil Auslieferung gefährdet)
+4. `daily_below_floor_global` (Empfehlung)
+5. `too_thin` / `overkill` (Empfehlung)
+6. `capped_by_region` (Info)
+7. `calendly_nudge_strong` / `calendly_nudge_soft` (Nudge)
+8. `screen_class_*` / `no_dooh_inventory` (Kontext)
+9. `wearout_warning` (Kontext, ab Woche 9)
+10. `region_overlap` (Kontext)
 
 ### 12.6 Design-Regeln
 
-- Hinweise sind dezent farbig (Violet-Akzent), kein Rot/Ampel-System
+- Dezent farbig (Violet-Akzent), kein Rot/Ampel-System
 - Keine Emojis oder Icons (Ausnahme: ✓ in StepLayout)
-- Tonalität: informativ und lösungsorientiert, nie warnend
+- Tonalität: informativ und lösungsorientiert
 
 ---
 
@@ -617,11 +622,11 @@ Die Gemeinde-nicht-gefunden-Info ist **kein Trigger-Hinweis**, sondern ein stati
 
 ### Allgemein
 
-- **Reichweite immer als Range:** "180'000 – 220'000 Zürcherinnen und Zürcher"
-- **Niemals CPM, Impressions, Delivery-Faktoren, Fill-Rate zeigen**
-- **Niemals absoluten CHF-Split zeigen** (weder DOOH-Anteil in CHF noch Display-Anteil in CHF)
+- **Reichweite immer als Range:** „180'000 – 220'000 Zürcherinnen und Zürcher"
+- **Niemals CPM, Impressions, Delivery-Faktoren, OTS, Saturation-Parameter zeigen**
+- **Niemals absoluten CHF-Split zeigen**
 - **Frequenz primär als Kampagnen-Summe**, Wochen-Wert als sekundärer Kontext
-- **Stimmberechtigte immer mit approximiertem Wert anzeigen** (Transparenz, Basis der Rechnung)
+- **Stimmberechtigte immer mit approximiertem Wert anzeigen**
 
 ### Pfad A (Budget-first)
 
@@ -631,17 +636,14 @@ Dein Budget: CHF 100'000
 Laufzeit: 56 Tage
 [──────────●────]    7 ── 84 Tage
 ┌─ Wirkungsindikator ──────────────────────────────────┐
-│ AWARENESS                                            │
+│ DOMINANZ                                             │
 │                                                      │
-│  310'000 – 355'000                                   │
+│  ca. 310'000 – 400'000                               │
 │  Bernerinnen und Berner                              │
 │                                                      │
-│  Davon 220'000–260'000 mit Erinnerungswirkung        │
-│  (mind. 3× gesehen)                                  │
-│                                                      │
 │  ABDECKUNG     KONTAKTDRUCK     ZEITRAUM             │
-│  40–46%        Ø 5.8×           56 Tage             │
-│  der Stimm.    ≈ 0.7× / Woche   22. Mrz – 17. Mai   │
+│  ~32–41%       Ø 6.0×           56 Tage             │
+│  der Stimm.    ≈ 6× / Woche     22. Mrz – 17. Mai   │
 │                                                      │
 │  KANAL-MIX            KLASSE: VOLL                   │
 │  ████████████░░░░░░                                  │
@@ -653,78 +655,76 @@ Laufzeit: 56 Tage
 
 ```
 ┌─ Sichtbar ──┐  ┌─ Präsenz ✓ ─┐  ┌─ Dominanz ─┐
-│  CHF 4'000  │  │  CHF 13'500 │  │  CHF 27'000 │
-│  2 Wochen   │  │  4 Wochen   │  │  5 Wochen   │
-│  6× gesamt  │  │  20× gesamt │  │  40× gesamt │
+│  CHF 4'000  │  │  CHF 13'500 │  │  CHF 22'000 │
+│  2 Wochen   │  │  4 Wochen   │  │  6 Wochen   │
+│  ca. 6×     │  │  ca. 20×    │  │  ca. 36×    │
 └─────────────┘  └─────────────┘  └─────────────┘
 
 [Ausgewählt: Präsenz]
 
 [Wirkungsindikator identisch zu Pfad A]
-
-Feintuning:
-  Budget:    [────●────]  CHF 13'500
-  Laufzeit:  [──●──]      28 Tage
 ```
 
-### Paket-Slider-Konflikt
-
-Wenn User Paket wählt und Slider ausserhalb der Paket-Range zieht:
-- Paket bleibt visuell aktiv (Haken bleibt)
-- Kleiner Hinweis: "Das entspricht eher {anderes Paket} →" (klickbar)
-- **Keine** automatische Paket-Änderung, **keine** Slider-Snap-Zurück
-
-### Pfad-Wechsel
-
-In beiden Pfaden ist Wechsel möglich:
-- Pfad A → Pfad B: Button "Pakete ansehen" (Budget-Wert als Start übernommen)
-- Pfad B → Pfad A: Button "Eigenes Budget eingeben" (Paket-Budget als Start)
+**Wichtig**: Frequenzen werden mit „ca." kommuniziert, weil sie emergent sind und je nach Region leicht variieren.
 
 ---
 
-## 14. Pakete – Finale Definition
+## 14. Pakete – Finale Definition (v2.3)
 
-Paket-Frequenzen sind politisch-stark kalibriert (high-involvement). Budgets werden dynamisch aus Region + Frequenz + Laufzeit berechnet.
-
-| Paket | F_weekly | Laufzeit | F_campaign | Ziel-Reach |
+| Paket | `target_f_weekly` | Laufzeit | `target_f_campaign` | Cap-Level |
 |---|---|---|---|---|
-| **Sichtbar** | 3× / Woche | 14 Tage | 6× | Reach-Cap Level 1 |
-| **Präsenz** (Empfohlen) | 5× / Woche | 28 Tage | 20× | Reach-Cap Level 2 |
-| **Dominanz** | 8× / Woche | 35 Tage | 40× | Reach-Cap Level 3 |
+| **Sichtbar** | 3× / Woche | 14 Tage | 6× | 1 |
+| **Präsenz** (Empfohlen) | 5× / Woche | 28 Tage | 20× | 2 |
+| **Dominanz** | **6× / Woche** | **42 Tage** | **36×** | 3 |
 
-### Budget-Berechnung pro Paket (nicht mehr fix)
+**Geändert in v2.3**: Dominanz war 8×/35d in v2.2, ist jetzt **6×/42d**. Begründung:
+- Politische Kampagnen profitieren von Dauer mehr als von Spitzen-Frequenz (Briefwahl-Fenster ist 28+ Tage)
+- 6× ist seriöser kommunizierbar als 8× (näher an Werbemüdigkeits-Schwelle 10×)
+- 42 Tage = 6 Wochen = sauberes Vielfaches der Wochen-Logik
+- 35 Tage hat Dominanz-Min-Budget aus dem Laufzeit-Korridor `< 15000` herausfallen lassen — 42 Tage passt in den auf 42 erweiterten Korridor
+
+### Default-Budget-Berechnung pro Paket (mit OTS=1.8 in v2.3)
 
 ```typescript
 function calculatePackageBudget(pkg, regions): number {
-  const reach_cap = getReachCapByPoolSize(stimm_total, pkg.level)
-  const target_reach = stimm_total * reach_cap
-
-  const impressions = target_reach * pkg.f_weekly * (pkg.days / 7)
+  const stimm_total = dedupStimm(regions)
+  const screens_politik_total = sumPolitScreens(regions)
   const split = getChannelSplit(screens_politik_total)
-  const mixed_cpm = split.dooh * 50 + split.display * 15
+  const pool_target = stimm_total * getReachCap(stimm_total, pkg.level)
 
-  const raw_budget = (impressions / 1000) * mixed_cpm
+  // Ziel-Contacts so wählen, dass emergente Frequenz ≈ target_f_campaign
+  // Dafür: contacts ≈ target_f_campaign × pool_target × saturation-Korrektur
+  // Als grobe Approximation: target_contacts = target_f_campaign × pool_target × 0.7
+  // (0.7 berücksichtigt Saturation-Verlust bei k=0.4)
+  const target_contacts = pkg.f_campaign * pool_target * 0.7
+
+  // Aufteilung Contacts → Imps zurück (mit OTS=1.8)
+  const imps_dooh    = (target_contacts * split.dooh)    / 1.8
+  const imps_display = (target_contacts * split.display) / 1.0
+
+  const budget_dooh    = (imps_dooh    / 1000) * 50
+  const budget_display = (imps_display / 1000) * 15
+  const raw_budget = budget_dooh + budget_display
+
   return Math.max(roundBudget(raw_budget), B_MIN)
 }
 ```
 
-Beispiel-Budgets **Stadt Zürich** (stimm 310'000, screens_politik 869):
+### Beispiel-Budgets Stadt Zürich (stimm 310'000, Klasse Voll)
 
-| Paket | Reach-Cap | Ziel-Reach | Impressions | Budget |
+| Paket | Cap-Level | Pool-Target | target_contacts | Budget |
 |---|---|---|---|---|
-| Sichtbar | 4% | 12'400 | 74'400 | CHF 2'900 → **CHF 4'000** (Floor) |
-| Präsenz | 8% | 24'800 | 496'000 | **CHF 19'500** |
-| Dominanz | 14% | 43'400 | 1'736'000 | **CHF 68'400** → überschreitet Self-Service |
+| Sichtbar | 1 (6%) | 18'600 | 78'120 | ~CHF 2'500 → **CHF 4'000** (Floor) |
+| Präsenz | 2 (12%) | 37'200 | 520'800 | **~CHF 13'500** |
+| Dominanz | 3 (21%) | 65'100 | 1'640'520 | **~CHF 42'000** → calendly_nudge_strong |
 
-Für Dominanz-Stadt-ZH greift `calendly_nudge_strong` → prominente Beratungs-Bubble, direkte Buchung bleibt aber möglich.
+Dominanz Stadt Zürich überschreitet `B_NUDGE_STRONG` (CHF 30'000) → prominente Beratungs-Bubble, direkte Buchung bleibt aber möglich.
 
 ### Paket-Empfehlung
 
-Da der Kampagnentyp entfernt wurde, ist die Default-Empfehlung immer **Präsenz**. Keine Datum-basierte Dynamik mehr (Briefwahl-Logik bleibt nur für Startdatums-Berechnung relevant).
+Default-Empfehlung immer **Präsenz**.
 
 ### Briefwahl-Logik (unverändert)
-
-Die Formel für Kampagnenstart bleibt erhalten:
 
 ```
 Kampagnenende   = Abstimmungstag - 28 Tage (Briefwahl)
@@ -741,76 +741,63 @@ Freigabe-Puffer = 10 Kalendertage (7 Werktage) vor Start
 - Präsenz als Default
 - Kein Zeitdruck-Hinweis
 
-### Kampagnenstart in Vergangenheit (optimales Datum verpasst)
+### Kampagnenstart in Vergangenheit
 - Buchung immer möglich
-- UI-Text: "Deine Kampagne startet nach Freigabe (ca. 7 Werktage)."
+- UI-Text: „Deine Kampagne startet nach Freigabe (ca. 7 Werktage)."
 
 ### Region ohne DOOH-Inventar
 - Auto-Split 100% Display
 - Hinweis `no_dooh_inventory`
-- Reach-Band weiter (±20%)
 
-### Extreme Kombinationen (z.B. Gemeinde + CHF 30'000)
-- `capped_by_region` greift
+### Extreme Kombinationen
+- `capped_by_region` greift (Saturation > 0.85)
 - Empfehlung: Budget reduzieren oder Region erweitern
 
 ### User will Budget unter CHF 4'000
 - Slider snappt auf CHF 4'000
-- Hinweis `below_min_budget` kurz eingeblendet
 
 ### User will Laufzeit über 12 Wochen
 - Slider-Max ist hart 84 Tage
-- Kein Hinweis nötig (Slider lässt's nicht zu)
 
-### Ausgeschlossene Gemeinden
-Vier Gemeinden bleiben permanent ausgeschlossen (0 standard-Screens):
-Küsnacht, Martigny, Opfikon, Veyrier.
+### Multi-Region mit ungleichen Daily-Budgets
+- Pro Region wird `budget_region / days >= 150` geprüft
+- Hinweis `daily_below_floor_region` bei Verletzung
 
 ---
 
 ## 16. Migration Plan – Arbeitspakete
 
 ### ✅ Paket A – Datenbereinigung & Buchbarkeit (ERLEDIGT 22.04.2026)
-**Ziel:** Saubere Basisdaten + Buchbarkeits-Logik für Gemeinden.
 
-Umgesetzt:
-- `lib/regions.ts`: Alle 26 Kantone auf BFS-Zahlen Stand 31.12.2024
-- `lib/regions.ts`: 16 nicht-buchbare Gemeinden aus STAEDTE entfernt
-- `lib/region-buchbarkeit.ts` NEU: Buchbarkeits-Logik (ODER-Regel), Screen-Klassen-System (Voll/Begrenzt/Display-dominant), automatischer DOOH/Display-Split, Mehrfach-Region-Aggregation
-- Verteilung nach Umsetzung: 61 Voll, 32 Begrenzt, 10 Display-dominant
+### ✅ Paket B – Preislogik-Konsolidierung v2.2 (ERLEDIGT)
 
-### Paket B – Preislogik-Konsolidierung (NÄCHSTER SCHRITT)
+### Paket E – v2.3-Migration (NÄCHSTER SCHRITT)
 
-**Ziel:** Eine Datei als Single Source of Truth.
+**Ziel:** Alle v2.3-Änderungen in `lib/preislogik.ts` umsetzen.
 
-1. `lib/preislogik.ts` NEU anlegen (ersetzt `vio-paketlogik.ts` und `b2b-paketlogik.ts`)
-2. Import und Verwendung von `klassifiziereRegion()` aus `region-buchbarkeit.ts` für Channel-Split
-3. Calibration Constants, Reach-Caps, Budget-Laufzeit-Kopplung (^0.75), Wearout, Dedup
-4. Export `calculateImpact()` und `buildPackages()`
-5. Alte Dateien als `.DEPRECATED.ts` markieren (nicht sofort löschen)
+Umfang:
+1. Konstanten anpassen: `F_MIN_WEEKLY=2.5`, `DOOH_OTS_MULTIPLIER=1.8`, `REACH_CURVE_K=0.4`, `WEAROUT_FLOOR=0.70`
+2. Reach-Caps anheben (+50%-Tabelle in §6)
+3. `applyHofmansSaturation()` einführen, `min(raw, cap)` ersetzen
+4. `inferCapLevel()` neu schreiben (Pfad A) — Distanz zu paket-Frequenz statt Schwellwert-Inferenz
+5. `calculatePackageBudget()` mit OTS=1.8 anpassen
+6. Dominanz-Spec auf 6×/42d
+7. Multi-Region-Klassen-Aggregation in `region-buchbarkeit.ts` ändern
+8. `daily_below_floor`-Check pro Region erweitern
+9. Uncertainty-Band auf neue Werte (20/15/13/12)
 
 **Geschätzter Aufwand:** 3–4 Prompts
 
 ### Paket C – UI Pfad A / Pfad B
-
-**Ziel:** Neuer Flow mit Wirkungsindikator und integrierten Hinweisen.
-
-1. `Step1Politik.tsx`: Wahl/Abstimmung-Frage entfernen, Pfad-Logik prüfen
-2. `Step2PolitikBudget.tsx`: Pfad A und Pfad B als Varianten
-3. Neue Komponente `<ImpactIndicator />` – wird von beiden Pfaden verwendet
-4. Hinweis-System als Komponente `<CampaignHint />`
-5. Regionen-Auswahl: `filterBuchbareRegionen()` einbauen, `GEMEINDE_NICHT_GEFUNDEN_HINWEIS` anzeigen
-6. Screen-Klassen-Hinweise (Begrenzt / Display-dominant) bei Region-Auswahl live zeigen
-7. Paket-Karten aktualisieren mit neuen Frequenzen
-
-**Geschätzter Aufwand:** 2–3 Prompts
+(unverändert ggü. v2.2-Plan)
 
 ### Paket D – Testing & Kalibrierung (nach Go-Live)
 
 - Erste 10 Kampagnen mit Splicky/Adform tracken
-- Delivery-Faktoren in CALIBRATION justieren
-- Wearout-Kurve validieren
-- Freigabequote 70% gegen reale Partner-Freigaben validieren
+- `REACH_CURVE_K=0.4` validieren — primärer Kalibrierungs-Parameter
+- `DOOH_OTS_MULTIPLIER=1.8` gegen reale Audience-Messungen validieren
+- `WEAROUT_FLOOR=0.70` validieren
+- Reach-Caps validieren — sind +50% gegenüber v2.2 angemessen?
 - B2B/B2C auf dieselbe Logik migrieren
 
 ---
@@ -820,184 +807,22 @@ Umgesetzt:
 | Punkt | Status | Verantwortlich |
 |---|---|---|
 | Delivery-Faktoren DOOH/Display | Arbeitshypothese 0.75/0.90 | Dani, nach ersten 10 Kampagnen |
-| Hofmans-Kalibrierungsparameter k=0.4 validieren | Nach ersten 10 Kampagnen Splicky-Daten abgleichen, ggf. k anpassen | Jacky + Dani |
-| ER3_BETA=5.0 validieren | Effective Reach 3+ gegen reale Delivery testen | Jacky + Dani |
-| Wearout-Kurve validieren | Konservativ modelliert | Beobachten nach Go-Live |
-| Echte BFS-Zahlen Top-20-Städte | Cluster-Schätzungen | Paket A |
-| B2B/B2C Migration | Geplant | Post-Go-Live |
+| `REACH_CURVE_K=0.4` validieren | Wichtigster Kalibrierungs-Parameter | Jacky + Dani |
+| `DOOH_OTS_MULTIPLIER=1.8` validieren | Konservativster Branchenwert | Jacky + Dani |
+| Reach-Caps (+50% in v2.3) validieren | Rückkehr zu v2.2-Werten möglich | Jacky + Dani |
+| Wearout-Floor 0.70 validieren | Konservativ modelliert | Beobachten nach Go-Live |
+| B2B/B2C Migration auf v2.3 | Geplant | Post-Go-Live |
 | Splicky-API Post-Campaign-Abgleich | Nice-to-have | Mittelfristig |
 | **AGB/Impressum Partner-Code-Klausel** | **Offen, vor Partner-Code-Launch zwingend** | **Jacky** |
-| Partner-Code-Auszahlungsschwelle | Vorschlag CHF 200, nicht final | Jacky |
-
-### AGB-Formulierung Partner-Codes (Empfehlung)
-
-Vor Aktivierung des Partner-Code-Systems muss folgende (oder äquivalente) Klausel in AGB und/oder Preisteil verankert sein:
-
-> "Partner-Codes gewähren Preisvorteile gegenüber unseren Standardtarifen. Die Auslieferungskonditionen werden entsprechend der gewährten Konditionen angepasst."
-
-Diese Formulierung schützt vor UWG-Risiken (Art. 3 Abs. 1 lit. b – irreführende Preisangaben) und ist juristisch sauber. Niemals extern mit "10% Rabatt" werben, stattdessen konsequent "Partner-Konditionen" verwenden.
+| Partner-Code-System-Review | Offenes Thema, ausserhalb v2.3 | Jacky |
 
 ---
 
 ## 18. Partner-Code-System
 
-### 18.1 Prinzip
+(unverändert ggü. v2.2 — wird in separater Iteration überarbeitet)
 
-Partner-Codes gewähren registrierten Partnern (Agenturen, Multiplikatoren) die Möglichkeit, ihren Kunden einen Preisvorteil zu vermitteln und gleichzeitig selber eine Provision zu verdienen. Technisch bleibt die VIO-Marge konstant – der CPM wird intern angepasst, faktische Wirkung (Reach) reduziert sich entsprechend.
-
-**Wichtig:** Externe Kommunikation nie mit "Rabatt" werben, stattdessen "Partner-Konditionen". AGB-Formulierung siehe Abschnitt 16 (TBD).
-
-### 18.2 Code-Eigenschaften
-
-- **Ein Code pro Partner** – persönlich, nicht übertragbar
-- **Unbegrenzt gültig**, beliebig oft einsetzbar durch verschiedene Kunden
-- **Rabatt 5–15% konfigurierbar pro Code** – Default 10%
-- **Kommission = gleicher Prozentsatz** wie Rabatt (10% Rabatt → 10% Kommission)
-- **Keine Lifetime-Verfolgung** – Provision fällt nur an, wenn der Code tatsächlich bei der Buchung eingegeben wurde. Ein vermittelter Kunde, der später ohne Code wiederkauft, generiert keine Provision.
-- **Kein Code-Stacking** – pro Buchung ist nur ein Code möglich
-
-### 18.3 UI-Platzierung
-
-Das Code-Feld gehört in **Step 1 Politik, unauffällig und collapsed by default**.
-
-Begründung: Der Code muss vor dem Wirkungsindikator aktiv sein, damit die adjustierte Reichweite-Anzeige im gesamten weiteren Flow konsistent ist. Eine spätere Abfrage würde entlarven, dass der angezeigte "Rabatt" keine echte Leistungsänderung bewirkt.
-
-```
-Step 1 Politik (nach den bestehenden Feldern)
-  ...
-  [ ▾ Hast du einen Partner-Code? ]   ← collapsed
-
-Wenn expandiert:
-  Partner-Code:  [____________]  [Prüfen]
-                 Code wird automatisch validiert
-```
-
-**Niemals prominent platzieren** – das würde Aufmerksamkeit erzeugen und die unauffällige Integration torpedieren.
-
-### 18.4 Berechnungslogik
-
-Die VIO-Netto-Einnahmen müssen identisch sein, ob mit oder ohne Code. Das erreichen wir, indem die Impressions auf Basis des Netto-Budgets (nach Rabatt und Kommission) berechnet werden:
-
-```typescript
-function calculateImpact(input: {
-  budget_displayed: number,
-  partnerCode?: {
-    discount: number,    // 0.05 – 0.15
-    commission: number,  // gleich discount
-  }
-}): ImpactResult {
-
-  const discount = input.partnerCode?.discount ?? 0
-  const commission = input.partnerCode?.commission ?? 0
-
-  // Was der User zahlt (nach Rabatt)
-  const budget_user_pays = input.budget_displayed * (1 - discount)
-
-  // Was VIO netto nach Partner-Auszahlung einnimmt
-  // Kommission wird auf Basis-Budget berechnet (vor Rabatt)
-  const budget_vio_netto = budget_user_pays
-                         - (input.budget_displayed * commission)
-
-  // Impressions und Reichweite basieren auf VIO-Netto, nicht auf User-Zahlung
-  const total_impressions = (budget_vio_netto / mixed_cpm) * 1000
-
-  // ...rest der Logik wie in Abschnitt 4
-}
-```
-
-**Beispiel:**
-
-| Szenario | Ohne Code | Mit Code 10% |
-|---|---|---|
-| Angezeigtes Budget | CHF 10'000 | CHF 10'000 |
-| User-Zahlung | CHF 10'000 | CHF 9'000 |
-| Kommission an Partner | – | CHF 1'000 |
-| VIO-Netto | CHF 10'000 | CHF 8'000 |
-| Impressions (Misch-CPM 39.50) | 253'164 | 202'531 |
-| Reichweite (Präsenz-Split, 4 Wo) | 50'600 | 40'500 |
-
-Der User sieht im UI die Reichweite 40'500 – aber nie die 50'600 zum Vergleich. Die reduzierte Wirkung ist nicht wahrnehmbar, weil keine Baseline vorliegt.
-
-### 18.5 Code-Verwaltung
-
-**Pipedrive als Single Source of Truth** für Code-Definitionen.
-
-Empfohlene Struktur: Custom Entity "Partner-Codes" oder dedizierte Pipeline mit folgenden Feldern:
-
-| Feld | Typ | Zweck |
-|---|---|---|
-| `code_string` | String | z.B. "AG-FRITZ-25" |
-| `owner_name` | String | Name des Partners |
-| `owner_email` | Email | Kontakt für Reports & Auszahlung |
-| `owner_contact_id` | Referenz | Pipedrive-Contact-ID |
-| `discount_pct` | Number | 0.05 – 0.15 |
-| `commission_pct` | Number | 0.05 – 0.15 (meist = discount) |
-| `active` | Boolean | Ein/Aus-Schalter |
-| `usage_count` | Number | Automatisch inkrementiert |
-| `total_commission_owed` | Currency | Aufsummiert, quartalsweise zurückgesetzt |
-| `last_used_at` | Date | Letzte Verwendung |
-| `notes` | Text | Freitextfeld |
-
-### 18.6 n8n-Automationen
-
-Bei jeder Buchung mit Code triggert ein n8n-Flow:
-
-1. **Validierung** des Codes gegen Pipedrive-Record (aktiv? existiert?)
-2. **Deal-Anreicherung:** Partner-Felder im Booking-Deal füllen (siehe 18.8)
-3. **Code-Record Update:** `usage_count +1`, `total_commission_owed += booking_commission`, `last_used_at`
-4. **Email an Partner** (optional, konfigurierbar): "Dein Code wurde verwendet, aktuelle Provision CHF X"
-
-**Quartals-Flow (1. Tag des Quartals):**
-
-1. Alle Codes mit `total_commission_owed > 0` auslesen
-2. Pro Partner: Report generieren (Anzahl Nutzungen, Gesamtbetrag)
-3. Email an Partner: "Bitte stelle uns eine Rechnung über CHF X"
-4. Nach Zahlungseingang manuell zurücksetzen (`total_commission_owed = 0`)
-
-### 18.7 Schutz gegen Missbrauch
-
-- **Frontend-Validierung** nur gegen API-Liste aktiver Codes (`active = true`)
-- **Rate-Limit:** Max 5 ungültige Code-Eingaben pro Session
-- **Code-Format:** 6–12 Zeichen alphanumerisch, Präfix nach Partner-Typ
-  - `AG-` für Agenturen (z.B. `AG-FRITZ-25`)
-  - `PT-` für Parteien (z.B. `PT-GLP-10`)
-  - `VN-` für Verbände und NGOs
-  - `EX-` für Expert:innen / Einzelpersonen
-- **Kein Code-Stacking:** Pro Buchung maximal ein Code
-- **Keine öffentliche Code-Liste:** Codes werden nur direkt an Partner kommuniziert
-
-### 18.8 Pflichtfelder im Booking-Deal (Pipedrive)
-
-Beim Abschluss mit Code werden im Deal zusätzlich gespeichert:
-
-| Feld | Inhalt |
-|---|---|
-| `partner_code_used` | Code-String (leer wenn keiner) |
-| `discount_applied_chf` | Rabatt-Betrag in CHF |
-| `commission_due_chf` | Kommission an Owner in CHF |
-| `partner_owner_id` | Pipedrive-Contact-ID des Code-Owners |
-| `booking_budget_displayed` | Angezeigtes Bruttobudget |
-| `booking_budget_user_paid` | Tatsächlich gezahlter Betrag |
-| `booking_budget_vio_netto` | VIO-Netto nach Kommission |
-
-Damit ist das Controlling jederzeit in der Lage, Partner-Abrechnungen nachzuvollziehen.
-
-### 18.9 Auszahlung
-
-- **Quartalsweise** (4× pro Jahr)
-- Partner stellt VIO eine Rechnung über die kumulierte Provision
-- Mindestauszahlungsschwelle: TBD (Vorschlag CHF 200, darunter Carry-over ins nächste Quartal)
-- Zahlungsziel: 30 Tage nach Rechnungseingang
-
-### 18.10 Status
-
-Partner-Code-System wird **nach Go-Live** aktiviert (Priorität 2). Voraussetzungen vor Aktivierung:
-
-- AGB-Klausel (siehe Abschnitt 17) finalisiert und online
-- Pipedrive-Custom-Entity aufgesetzt
-- n8n-Flows gebaut und getestet
-- Frontend-Integration in Step 1 Politik
-- Mindestens 3 aktive Partner-Codes zur Lancierung
+Inhalt §18.1–§18.10 wie in v2.2. Die Discount/Commission-Logik wird in einer separaten Iteration neu bewertet.
 
 ---
 
@@ -1007,9 +832,10 @@ Partner-Code-System wird **nach Go-Live** aktiviert (Priorität 2). Voraussetzun
 |---|---|---|
 | v1 | – | `vio-regelkatalog-paketlogik.md` – fixe Pakete, lineare Formel |
 | v2 | 21.04.2026 | Hybrid-Flow, dynamischer Split, Wochen-Frequenz-Leitplanken, konkave Budget-Laufzeit-Kopplung, tiered Reach-Caps, Wearout, Dedup, Kampagnentyp entfernt, Partner-Code-System |
-| v2.1 | 22.04.2026 | Drei-Klassen-Screen-System (Voll/Begrenzt/Display-dominant) mit automatischem Channel-Split; neuer Abschnitt 9 Buchbarkeit (ODER-Regel: stimm≥10k ODER politScreens≥20); Kantone auf BFS 2024; 16 nicht-buchbare Gemeinden entfernt; Hinweis-System um Screen-Klassen-Hinweise erweitert; Paket A umgesetzt |
-| v2.2 | 28.04.2026 | Hofmans/ER3 raus; rawReach = contacts/(F_REC_WEEKLY × weeks); Cap-Level-Inferenz (inferCapLevel); Decision-Engine-Signale (capLevel, impactLevel, efficiencyStatus, recommendedAction); wearout_warning Hinweis (Prio 6, ab Woche 9); DOOH_OTS_MULTIPLIER=2.0 (konservativer Default) |
+| v2.1 | 22.04.2026 | Drei-Klassen-Screen-System; Buchbarkeit (ODER-Regel); Kantone auf BFS 2024; 16 nicht-buchbare Gemeinden entfernt; Paket A umgesetzt |
+| v2.2 | 28.04.2026 | Hofmans/ER3 raus; rawReach = contacts/(F_REC_WEEKLY × weeks); Cap-Level-Inferenz; Decision-Engine-Signale; wearout_warning; OTS=2.0 |
+| **v2.3** | **04.05.2026** | **Hofmans-Saturation zurück (k=0.4); Frequenz emergent; Dominanz 6×/42d (war 8×/35d); OTS=1.8 (war 2.0); Reach-Caps +50%; F_MIN_WEEKLY=2.5 (war 3); Wearout-Floor=0.70 (war 0.80); Uncertainty-Band-Floor=12% (war 7%); Multi-Region-Klassifikation aus aggregiertem politScreens_total (war „strengste"); daily_below_floor pro Region; Laufzeit-Korridor `<15000` auf max=42 erweitert; Pfad A/B Reach-Symmetrie hergestellt** |
 
 ---
 
-**Ende Regelkatalog v2.2**
+**Ende Regelkatalog v2.3**

@@ -48,6 +48,7 @@ function addDaysToDate(d: Date, n: number): Date {
 
 // ─── Package cards sub-component ─────────────────────────────────────────────
 const PKG_ORDER: PaketKey[] = ['sichtbar', 'praesenz', 'dominanz'];
+const PKG_CAP_LEVEL: Record<PaketKey, 1 | 2 | 3> = { sichtbar: 1, praesenz: 2, dominanz: 3 };
 const PKG_SUBTITLE: Record<PaketKey, string> = {
   sichtbar: 'Sichtbarkeit aufbauen',
   praesenz: 'Optimal in Meinungsbildungsphase',
@@ -171,12 +172,17 @@ function hinweisToDisplay(h: Hinweis, days: number, regionName: string): HintDis
   const { code, text } = h;
   if (code === 'hard_stop_budget')        return { tone: 'warn',   title: 'Persönliche Planung empfohlen',                  text };
   if (code === 'below_min_budget')        return { tone: 'warn',   title: "Mindestbudget CHF 4'000",                        text };
-  if (code === 'capped_by_region')        return { tone: 'info',   title: 'Sättigung in Sicht',                             text };
-  if (code === 'screen_class_display_dom') return { tone: 'info',  title: 'In dieser Region primär online',                 text };
-  if (code === 'screen_class_begrenzt')   return { tone: 'info',   title: 'Erhöhter Online-Anteil',                         text };
-  if (code === 'no_dooh_inventory')       return { tone: 'info',   title: 'Keine DOOH-Flächen verfügbar',                   text };
-  if (code === 'nudge_to_sweet_spot')     return { tone: 'info',   title: 'Fast im Sweet Spot',                             text };
-  if (code === 'sweet_spot')              return { tone: 'good',   title: 'Im Sweet Spot',                                  text };
+  if (code === 'optimal_28d_standard')          return { tone: 'good', title: 'Empfehlung',                            text };
+  if (code === '28d_broad_reach_low_frequency') return { tone: 'info', title: 'Breite Sichtbarkeit',                       text };
+  if (code === 'sprint_14d_thin_budget')        return { tone: 'info', title: 'Schlussimpuls 14 Tage',                    text };
+  if (code === 'sprint_14d_grosser_pool')       return { tone: 'info', title: 'Schlussimpuls 14 Tage',                    text };
+  if (code === 'sprint_14d_28d_unavailable')    return { tone: 'info', title: 'Schlussimpuls 14 Tage',                    text };
+  if (code === 'aufbau_42d_thin_budget')        return { tone: 'info', title: 'Aufbau 6 Wochen',                          text };
+  if (code === 'aufbau_42d_reach_premium')      return { tone: 'info', title: 'Aufbau 6 Wochen — Reach-Vorteil',          text };
+  if (code === 'aufbau_42d_28d_unavailable')    return { tone: 'info', title: 'Aufbau 6 Wochen',                          text };
+  if (code === 'dominanzmodus')                 return { tone: 'info', title: 'Hohe Präsenz',                             text };
+  if (code === 'dominanzmodus_stark')           return { tone: 'warn', title: 'Sehr hohe Frequenz',                       text };
+  if (code === 'too_thin')                      return { tone: 'warn', title: 'Budget knapp',                             text };
   return { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${days}-tägige Kampagne in ${regionName}.` };
 }
 
@@ -238,6 +244,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [days, setDays]               = useState<number>(
     packages ? packages.praesenz.laufzeitDays : 21
   );
+  // Pfad-A-State-Erhalt: werden beim Wechsel A→B gespeichert und bei B→A wiederhergestellt
+  const [budgetA, setBudgetA] = useState<number>(briefing.budget ?? briefing.recommendedBudget ?? 4000);
+  const [daysA,   setDaysA]   = useState<number>(packages ? packages.praesenz.laufzeitDays : 21);
   const [feintuningOpen, setFeintuning] = useState<boolean>((briefing as any).adjOpen ?? false);
 
   const handleFeintuning = (val: boolean) => {
@@ -255,15 +264,30 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // Clamp days to corridor on budget change
   const effectiveDays = Math.min(corridor.maxDays, Math.max(corridor.minDays, days));
 
+  // Pfad B: always show exact package values, not slider-derived state
+  const displayDays   = path === 'B' && packages ? packages[pkg].laufzeitDays : effectiveDays;
+  const displayBudget = path === 'B' && packages ? packages[pkg].budget       : budget;
+
   const demonym    = getInhabitants(selectedRegionsFull.map(r => r.name));
   const regionName = briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
 
   const impact = useMemo(
-    () => selectedRegionsFull.length > 0
-      ? calculateImpact({ budget, laufzeitDays: effectiveDays, regions: selectedRegionsFull })
-      : null,
+    () => {
+      if (!selectedRegionsFull.length) return null;
+      // Pfad B: paketLevel-Modus damit Indikator mit den Paket-Karten übereinstimmt
+      if (path === 'B' && packages) {
+        return calculateImpact({
+          budget: packages[pkg].budget,
+          laufzeitDays: packages[pkg].laufzeitDays,
+          regions: selectedRegionsFull,
+          mode: 'paketLevel',
+          paketLevel: PKG_CAP_LEVEL[pkg],
+        });
+      }
+      return calculateImpact({ budget, laufzeitDays: effectiveDays, regions: selectedRegionsFull });
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [budget, effectiveDays, selectedRegionsFull.map(r => r.name).join(',')]
+    [path, pkg, budget, effectiveDays, selectedRegionsFull.map(r => r.name).join(',')]
   );
 
   const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
@@ -278,9 +302,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     if (!briefing.votingDate) return null;
     const abstimmung = new Date(briefing.votingDate + 'T00:00:00');
     const end   = addDaysToDate(abstimmung, -28);
-    const start = addDaysToDate(end, -effectiveDays);
+    const start = addDaysToDate(end, -displayDays);
     return { start: fmtDateShort(start), end: fmtDateShort(end) };
-  }, [briefing.votingDate, effectiveDays]);
+  }, [briefing.votingDate, displayDays]);
 
   const votingDateLabel = useMemo(() => {
     if (!briefing.votingDate) return null;
@@ -291,9 +315,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // ── Handlers ───────────────────────────────────────────────────────────────
   function switchPath(p: 'A' | 'B') {
     if (p === 'B' && packages) {
+      setBudgetA(budget);
+      setDaysA(effectiveDays);
       setPkg('praesenz');
       setBudget(packages.praesenz.budget);
       setDays(packages.praesenz.laufzeitDays);
+    }
+    if (p === 'A') {
+      setBudget(budgetA);
+      setDays(daysA);
     }
     setPath(p);
   }
@@ -335,13 +365,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   // ── Hint ───────────────────────────────────────────────────────────────────
   const filteredHinweise = impact ? impact.hinweise : [];
-  const displayHinweise = path === 'B'
-    ? filteredHinweise.filter(h => h.code !== 'nudge_to_sweet_spot' && h.code !== 'sweet_spot')
-    : filteredHinweise;
+  const displayHinweise = filteredHinweise;
   const activeHint: HintDisplay =
     displayHinweise.length > 0
-      ? hinweisToDisplay(displayHinweise[0], effectiveDays, regionName)
-      : { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${effectiveDays}-tägige Kampagne in ${regionName}.` };
+      ? hinweisToDisplay(displayHinweise[0], displayDays, regionName)
+      : { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${displayDays}-tägige Kampagne in ${regionName}.` };
 
   // ── Wirkungsindikator derived values ───────────────────────────────────────
   const doohPct    = impact ? Math.round(impact.doohShare * 100) : 70;
@@ -518,7 +546,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Zeitraum</div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                    {effectiveDays} Tage
+                    {displayDays} Tage
                   </div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
                     {zeitraumDates ? `${zeitraumDates.start} – ${zeitraumDates.end}` : '—'}
@@ -575,8 +603,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               {path === 'B' && packages && (
                 <SbRow label="Paket" val={packages[pkg].name} color={T.violetDeep} />
               )}
-              <SbRow label="Budget" val={fmtCHF(budget)} color={T.violetDeep} />
-              <SbRow label="Laufzeit" val={`${effectiveDays} Tage`} last />
+              <SbRow label="Budget" val={fmtCHF(displayBudget)} color={T.violetDeep} />
+              <SbRow label="Laufzeit" val={`${displayDays} Tage`} last />
             </div>
             {budget >= 20000 && (
               <div style={{ background: T.highlight, borderRadius: 16, padding: '18px 20px' }}>

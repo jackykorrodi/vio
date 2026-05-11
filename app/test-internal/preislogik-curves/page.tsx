@@ -20,7 +20,7 @@ type SollRow = {
 
 type RegionKey = 'zug' | 'bern' | 'waedenswil' | 'adliswil';
 
-// ─── Soll-Daten (aus public/vio-regelkatalog-politik-v3-3.md, Sektion 7) ─────
+// ─── Soll-Daten (aus public/vio-regelkatalog-politik-v3-4.md, Sektion 7) ─────
 
 const SOLL: Record<RegionKey, SollRow[]> = {
   zug: [
@@ -32,28 +32,28 @@ const SOLL: Record<RegionKey, SollRow[]> = {
     { budget: 30000, laufzeit: 28, level: 3, reach_abs: 32220, reach_pct: 37.9, f_weekly:  6.0, status_code: 'optimal_28d_standard' },
   ],
   bern: [
-    { budget:  4000, laufzeit: 14, level: 1, reach_abs: 15819, reach_pct:  2.0, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
-    { budget:  6000, laufzeit: 14, level: 1, reach_abs: 19224, reach_pct:  2.4, f_weekly:  4.0, status_code: 'sprint_14d_thin_budget' },
-    { budget:  8000, laufzeit: 14, level: 2, reach_abs: 31638, reach_pct:  4.0, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
-    { budget: 12000, laufzeit: 14, level: 2, reach_abs: 38447, reach_pct:  4.8, f_weekly:  4.0, status_code: 'sprint_14d_grosser_pool' },
-    { budget: 20000, laufzeit: 14, level: 3, reach_abs: 70996, reach_pct:  8.9, f_weekly:  3.6, status_code: 'sprint_14d_grosser_pool' },
-    { budget: 30000, laufzeit: 14, level: 3, reach_abs: 83239, reach_pct: 10.4, f_weekly:  4.7, status_code: 'sprint_14d_grosser_pool' },
+    { budget:  4000, laufzeit: 14, level: 1, reach_abs: 15595, reach_pct:  2.0, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
+    { budget:  6000, laufzeit: 14, level: 1, reach_abs: 18858, reach_pct:  2.4, f_weekly:  4.1, status_code: 'sprint_14d_thin_budget' },
+    { budget:  8000, laufzeit: 14, level: 2, reach_abs: 31190, reach_pct:  4.0, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
+    { budget: 12000, laufzeit: 14, level: 2, reach_abs: 37715, reach_pct:  4.9, f_weekly:  4.1, status_code: 'sprint_14d_grosser_pool' },
+    { budget: 20000, laufzeit: 14, level: 3, reach_abs: 69806, reach_pct:  9.0, f_weekly:  3.7, status_code: 'sprint_14d_grosser_pool' },
+    { budget: 30000, laufzeit: 14, level: 3, reach_abs: 81417, reach_pct: 10.5, f_weekly:  4.8, status_code: 'sprint_14d_grosser_pool' },
   ],
   waedenswil: [
-    { budget:  4000, laufzeit: 28, level: 2, reach_abs:  9673, reach_pct: 44.0, f_weekly:  3.9, status_code: 'optimal_28d_standard' },
-    { budget:  6000, laufzeit: 28, level: 3, reach_abs: 14017, reach_pct: 63.7, f_weekly:  4.0, status_code: 'optimal_28d_standard' },
-    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 14223, reach_pct: 64.7, f_weekly:  5.3, status_code: 'optimal_28d_standard' },
-    { budget: 12000, laufzeit: 28, level: 3, reach_abs: 14294, reach_pct: 65.0, f_weekly:  7.8, status_code: 'optimal_28d_standard' },
-    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 14300, reach_pct: 65.0, f_weekly:  8.7, status_code: 'aufbau_42d_thin_budget' },
-    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 14300, reach_pct: 65.0, f_weekly: 13.1, status_code: 'dominanzmodus' },
+    { budget:  4000, laufzeit: 28, level: 3, reach_abs: 10114, reach_pct: 63.2, f_weekly:  3.7, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 28, level: 3, reach_abs: 10353, reach_pct: 64.7, f_weekly:  5.4, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 10392, reach_pct: 65.0, f_weekly:  7.2, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 42, level: 3, reach_abs: 10400, reach_pct: 65.0, f_weekly:  7.2, status_code: 'aufbau_42d_thin_budget' },
+    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 10400, reach_pct: 65.0, f_weekly: 12.0, status_code: 'dominanzmodus' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 10400, reach_pct: 65.0, f_weekly: 18.0, status_code: 'dominanzmodus_stark' },
   ],
   adliswil: [
-    { budget:  4000, laufzeit: 28, level: 3, reach_abs: 8780, reach_pct: 62.7, f_weekly:  3.5, status_code: 'optimal_28d_standard' },
-    { budget:  6000, laufzeit: 28, level: 3, reach_abs: 9040, reach_pct: 64.6, f_weekly:  5.1, status_code: 'optimal_28d_standard' },
-    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 9089, reach_pct: 64.9, f_weekly:  6.7, status_code: 'optimal_28d_standard' },
-    { budget: 12000, laufzeit: 42, level: 3, reach_abs: 9100, reach_pct: 65.0, f_weekly:  6.7, status_code: 'aufbau_42d_thin_budget' },
-    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 9100, reach_pct: 65.0, f_weekly: 11.2, status_code: 'dominanzmodus' },
-    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 9100, reach_pct: 65.0, f_weekly: 16.7, status_code: 'dominanzmodus_stark' },
+    { budget:  4000, laufzeit: 28, level: 3, reach_abs: 8220, reach_pct: 63.2, f_weekly:  3.7, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 28, level: 3, reach_abs: 8412, reach_pct: 64.7, f_weekly:  5.4, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 8444, reach_pct: 65.0, f_weekly:  7.2, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly:  7.2, status_code: 'aufbau_42d_thin_budget' },
+    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly: 12.0, status_code: 'dominanzmodus' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly: 18.0, status_code: 'dominanzmodus_stark' },
   ],
 };
 
@@ -73,9 +73,9 @@ const REGION_META: Record<RegionKey, {
   note?: string;
 }> = {
   zug:        { label: 'Kanton Zug',  specPool:  85000, klasse: 'voll' },
-  bern:       { label: 'Kanton Bern', specPool: 800000, klasse: 'voll',             note: 'stimm 775k ≠ Spec-Pool 800k (~3%)' },
-  waedenswil: { label: 'Wädenswil',   specPool:  22000, klasse: 'display-dominant', note: 'stimm 16k ≠ Spec-Pool 22k (~38% — Spec vermutlich pop-basiert)' },
-  adliswil:   { label: 'Adliswil',    specPool:  14000, klasse: 'begrenzt',         note: 'stimm 13k ≠ Spec-Pool 14k (~7%)' },
+  bern:       { label: 'Kanton Bern', specPool: 775000, klasse: 'voll' },
+  waedenswil: { label: 'Wädenswil',   specPool:  16000, klasse: 'display-dom' },
+  adliswil:   { label: 'Adliswil',    specPool:  13000, klasse: 'begrenzt' },
 };
 
 const BUDGETS: number[] = [4000, 6000, 8000, 12000, 20000, 30000];
@@ -96,7 +96,7 @@ function exactDiff(soll: number | string, ist: number | string): string {
 }
 
 function fmt(n: number): string {
-  return new Intl.NumberFormat('de-CH').format(Math.round(n));
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'");
 }
 
 // ─── Ist-Berechnung ───────────────────────────────────────────────────────────
@@ -178,11 +178,11 @@ export default function PreislogikCurves() {
           fontSize: 22, fontWeight: 700, color: '#1A0F3B',
           letterSpacing: '-0.01em', marginBottom: 4,
         }}>
-          Preislogik Sandbox v3.3 — Ist vs. Soll
+          Preislogik Sandbox v3.4 — Ist vs. Soll
         </h1>
         <p style={{ ...base, fontSize: 13, color: '#5A556F', marginBottom: 28, lineHeight: 1.6 }}>
           <code>lib/preislogik.ts</code> (heutige Logik) ↔{' '}
-          <code>public/vio-regelkatalog-politik-v3-3.md</code> (Finale Spec)
+          <code>public/vio-regelkatalog-politik-v3-4.md</code> (Finale Spec)
           <br />
           <code>mode=&apos;budgetFirst&apos;</code>, ohne <code>laufzeitDays</code> → Optimizer aktiv · Diff: 🟢 ≤5% · 🟡 5–15% · 🔴 &gt;15% oder falsch
         </p>
@@ -245,7 +245,7 @@ export default function PreislogikCurves() {
               <tr>
                 <th style={th()}>Budget</th>
                 <th style={th()}>Metrik</th>
-                <th style={th({ color: '#6B7280' })}>Soll v3.3</th>
+                <th style={th({ color: '#6B7280' })}>Soll v3.4</th>
                 <th style={th({ color: '#1A0F3B' })}>Ist heute</th>
                 <th style={th({ textAlign: 'center' })}>Diff</th>
               </tr>
@@ -290,7 +290,7 @@ export default function PreislogikCurves() {
                     label: 'Status',
                     sollVal: soll.status_code,
                     istVal:  ist.status_code,
-                    diff:    '—',
+                    diff:    exactDiff(soll.status_code, ist.status_code),
                   },
                 ];
 

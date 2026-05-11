@@ -74,7 +74,7 @@
 
 ## Preislogik (vereinfacht)
 
-**Aktuelle Logik-Version: v2.3 (04.05.2026)**
+**Aktuelle Logik-Version: v3.4 Konstanten-Phase (07.05.2026)**
 
 - Min Budget: CHF 4'000
 - Pakete: Sichtbar / Präsenz / Dominanz
@@ -89,15 +89,19 @@
 - Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
 - VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
 
-### Konstanten (v2.3)
+### Konstanten (v3.4)
 | Konstante | Wert | Hinweis |
 |---|---|---|
-| F_MIN_WEEKLY | 2.5 | Schwelle für too_thin (war 3.0) |
-| DOOH_OTS_MULTIPLIER | 1.8 | Audience Contacts pro Ad Play (war 2.0) |
-| REACH_CURVE_K | 0.4 | Hofmans-Saturation Steilheit (NEU) |
-| WEAROUT_FLOOR | 0.70 | Minimaler Wearout-Faktor (war 0.80) |
+| F_MIN_WEEKLY | 3 | Krugman-Schwelle (war 2.5) |
+| F_MAX_WEEKLY | 10 | Wearout-Grenze |
+| DOOH_OTS_MULTIPLIER | 1.8 | Audience Contacts pro Ad Play |
+| REACH_CURVE_K | 0.25 | Hofmans-Saturation Steilheit (war 0.4) |
+| IN_POOL_FACTOR | 0.7 | Anteil Kontakte die Pool treffen (NEU v3.4) |
+| WEAROUT_FLOOR | 0.70 | Minimaler Wearout-Faktor |
 | CPM_DOOH | 50 | unverändert |
 | CPM_DISPLAY | 15 | unverändert |
+
+Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARGE_POOL_THRESHOLD=500_000, REACH_PREMIUM_THRESHOLD=1.4
 
 ### Pakete (Politik + B2B identisch)
 | Paket | Frequenz | Laufzeit | Min-Budget |
@@ -117,6 +121,9 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 07.05.2026 | v3.4c | Bug-Fix: buildPackages.buildOne Budget-Rücklösung `* 0.7` → `/ IN_POOL_FACTOR` (Pricing-Korrektur für grosse Regionen). StepPackages Pfad-B-Indikator auf mode='paketLevel' umgestellt (Indikator zeigt jetzt Paket-konforme Werte). Pfad-A-State (Budget/Laufzeit) wird bei Tab-Wechsel A↔B korrekt gespeichert und wiederhergestellt. |
+| 07.05.2026 | v3.4b | Optimizer + Status-Codes: 7-Schritt-Optimizer (optimizeForBudget), 11 neue HinweisCode-Werte (optimal_28d_standard, sprint_14d_*, aufbau_42d_*, dominanzmodus*, too_thin, 28d_broad_reach_low_frequency). Alte Codes entfernt (capped_by_region, screen_class_*, nudge_to_sweet_spot, sweet_spot, no_dooh_inventory). UI-Botschaften in CampaignHint.tsx und StepPackages.tsx migriert. Sandbox Status-Diff aktiv. |
+| 07.05.2026 | v3.4 | Konstanten-Phase: REACH_CURVE_K 0.4→0.25; IN_POOL_FACTOR=0.7 eingeführt (auf impressionsEffective); F_MIN_WEEKLY 2.5→3; 4 neue Konstanten deklariert (F_MIN_TOLERANCE, F_OVERKILL_THRESHOLD, LARGE_POOL_THRESHOLD, REACH_PREMIUM_THRESHOLD) |
 | 04.05.2026 | v2.3 | Hofmans-Saturation (ersetzt lineares Capping); Frequenz emergent (F_REC_WEEKLY entfernt); OTS 2.0→1.8; F_MIN_WEEKLY 3→2.5; Wearout-Floor 0.80→0.70; REACH_CURVE_K=0.4 (NEU); Reach-Caps +50%; Multi-Region-Klasse aus aggregiertem politScreens_total; daily_below_floor_region pro Region (NEU); Laufzeit-Korridor maxDays 35→42 bei Budget <15k; Sweet Spot Logik: calculateSweetSpot() + nudge_to_sweet_spot Hint (NEU) |
 | 22.04.2026 | v2.2 | Initiale Version (F_REC_WEEKLY=5, linearer Reach, hartes Capping) |
 

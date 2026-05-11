@@ -15,40 +15,52 @@ const ALL_HINTS: Hinweis[] = [
     priority: 1,
   },
   {
-    code: 'capped_by_region',
-    text: 'Maximale Reichweite in Kanton Zürich erreicht. Mehr Budget bringt keine zusätzlichen Personen.',
-    priority: 3,
-  },
-  {
-    code: 'screen_class_begrenzt',
-    text: 'In Adliswil läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal.',
+    code: 'optimal_28d_standard',
+    text: 'Empfehlung für deine Kampagne. Die 28-tägige Laufzeit deckt das Entscheidungsfenster rund um den Versand der Stimmunterlagen ab.',
     priority: 5,
   },
   {
-    code: 'screen_class_display_dom',
-    text: 'In Wädenswil erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt.',
+    code: '28d_broad_reach_low_frequency',
+    text: 'Diese Empfehlung setzt stärker auf breite Sichtbarkeit über das politische Entscheidungsfenster. Die durchschnittliche Kontaktfrequenz liegt leicht unter dem Idealwert.',
     priority: 5,
   },
   {
-    code: 'screen_class_multi_mixed',
-    text: 'In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.',
+    code: 'sprint_14d_thin_budget',
+    text: 'Konzentrierter Schlussimpuls über 14 Tage. Für volle 28-Tage-Präsenz wäre das Budget eher knapp.',
     priority: 5,
   },
   {
-    code: 'no_dooh_inventory',
-    text: 'Keine DOOH-Flächen verfügbar. Kampagne läuft zu 100% als Display.',
+    code: 'aufbau_42d_thin_budget',
+    text: '6 Wochen Aufbau — sinnvoll für komplexere Themen oder wenn Bekanntheit aufgebaut werden soll.',
+    priority: 5,
+  },
+  {
+    code: 'dominanzmodus',
+    text: 'Hohe Präsenz: jede erreichte Person sieht die Botschaft sehr oft. Zusätzliches Budget bringt in dieser Region kaum mehr Reichweite, aber stärkere Wiederholung.',
+    priority: 5,
+  },
+  {
+    code: 'dominanzmodus_stark',
+    text: 'Sehr hohe Frequenz pro Person. Ab diesem Budget empfehlen wir ein persönliches Gespräch zur Optimierung — z.B. Region erweitern oder Budget gezielter einsetzen.',
+    priority: 5,
+  },
+  {
+    code: 'too_thin',
+    text: 'Budget reicht in dieser Konstellation nicht für eine wirkungsvolle Kampagne. Empfehlung: Region verkleinern oder Budget erhöhen.',
     priority: 5,
   },
 ];
 
 const VARIANT_LABELS: Record<string, string> = {
-  hard_stop_budget: 'blocking',
-  below_min_budget: 'blocking',
-  capped_by_region: 'info',
-  screen_class_begrenzt: 'context',
-  screen_class_display_dom: 'context',
-  screen_class_multi_mixed: 'context',
-  no_dooh_inventory: 'context',
+  hard_stop_budget:              'blocking',
+  below_min_budget:              'blocking',
+  optimal_28d_standard:          'recommendation',
+  '28d_broad_reach_low_frequency': 'info',
+  sprint_14d_thin_budget:        'info',
+  aufbau_42d_thin_budget:        'info',
+  dominanzmodus:                 'info',
+  dominanzmodus_stark:           'nudge',
+  too_thin:                      'nudge',
 };
 
 export default function CampaignHintTestPage() {
@@ -121,8 +133,8 @@ export default function CampaignHintTestPage() {
           </h2>
           <CampaignHint
             hinweise={[
-              ALL_HINTS.find(h => h.code === 'capped_by_region')!,
-              ALL_HINTS.find(h => h.code === 'screen_class_begrenzt')!,
+              ALL_HINTS.find(h => h.code === 'optimal_28d_standard')!,
+              ALL_HINTS.find(h => h.code === 'dominanzmodus')!,
             ]}
             onApply={handleApply}
             onBookConsult={handleBookConsult}

@@ -22,13 +22,20 @@ function getVariant(code: HinweisCode): HintVariant {
       return 'blocking';
     case 'daily_below_floor_region':
       return 'recommendation';
-    case 'capped_by_region':
+    case 'optimal_28d_standard':
+      return 'recommendation';
+    case '28d_broad_reach_low_frequency':
+    case 'sprint_14d_thin_budget':
+    case 'sprint_14d_grosser_pool':
+    case 'sprint_14d_28d_unavailable':
+    case 'aufbau_42d_thin_budget':
+    case 'aufbau_42d_reach_premium':
+    case 'aufbau_42d_28d_unavailable':
+    case 'dominanzmodus':
       return 'info';
-    case 'screen_class_begrenzt':
-    case 'screen_class_display_dom':
-    case 'screen_class_multi_mixed':
-    case 'no_dooh_inventory':
-      return 'context';
+    case 'dominanzmodus_stark':
+    case 'too_thin':
+      return 'nudge';
     default:
       return 'info';
   }

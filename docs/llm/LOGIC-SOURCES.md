@@ -63,9 +63,10 @@ Bei Paket-, Preis- oder Wirkungslogik immer pruefen:
 - Datums-Gating
 - Abstimmungstag / Startdatum / Unterlagenversand
 
-## Bekannter Konflikt
+## Aufgeloester Konflikt – Dominanz
 
-`CONTEXT.md` nennt Dominanz mit 6x / 42 Tage.
-`lib/preislogik.ts` enthaelt aktuell Dominanz mit 8x / 35 Tage.
+Korrekte Regel: Dominanz = 6x / 42 Tage (gemaess Regelkatalog und CONTEXT.md).
 
-Vor Aenderungen an Paketlogik zuerst entscheiden, welche Variante gelten soll.
+`lib/preislogik.ts` enthaelt noch 8x / 35 Tage — Code muss via /vio-task angepasst werden.
+
+Bis zur Code-Korrektur: Regelkatalog und CONTEXT.md haben Vorrang.
