@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { BriefingData } from '@/lib/types';
 import {
   calculateImpact, buildPackages, getLaufzeitCorridor, coupleBudgetToLaufzeit,
@@ -56,34 +56,38 @@ const PKG_SUBTITLE: Record<PaketKey, string> = {
   dominanz: 'Maximale Präsenz',
 };
 
-function PackageCards({ packages, selectedPkg, onChange }: {
+function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommendedPkg }: {
   packages: PakeResult;
   selectedPkg: PaketKey;
   onChange: (key: PaketKey) => void;
+  disabledPkgs: Set<PaketKey>;
+  recommendedPkg: PaketKey;
 }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 18 }}>
       {PKG_ORDER.map(key => {
         const p = packages[key];
-        const isSel = selectedPkg === key;
-        const isRec = key === 'praesenz';
+        const isDisabled = disabledPkgs.has(key);
+        const isSel = selectedPkg === key && !isDisabled;
+        const isRec = key === recommendedPkg;
         const fCamp = Math.round(p.frequencyCampaign);
         return (
           <div
             key={key}
-            onClick={() => onChange(key)}
+            onClick={isDisabled ? undefined : () => onChange(key)}
             style={{
               position: 'relative',
               background: T.card,
               border: `1.5px solid ${isSel ? T.violet : T.line}`,
               borderRadius: 16,
               padding: '20px 20px 18px',
-              cursor: 'pointer',
+              cursor: isDisabled ? 'default' : 'pointer',
               display: 'flex',
               flexDirection: 'column' as const,
               gap: 12,
               boxShadow: isSel ? '0 4px 24px rgba(107,79,187,0.10)' : 'none',
               transition: 'all 0.18s ease',
+              opacity: isDisabled ? 0.5 : 1,
             }}
           >
             {isRec && (
@@ -116,10 +120,16 @@ function PackageCards({ packages, selectedPkg, onChange }: {
               letterSpacing: '-0.02em', lineHeight: 1,
             }}>{fmtCHF(p.budget)}</div>
             <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12, color: T.slate, fontSize: 13, lineHeight: 1.4 }}>
-              <strong style={{ color: T.ink, fontWeight: 600 }}>{p.laufzeitDays} Tage</strong>
-              {' · '}
-              <span>{fCamp}× Kontakte</span>
-              <br />
+              {isDisabled ? (
+                <span>Mehr Vorlauf nötig · {packages[recommendedPkg].name} ist jetzt die stärkste Option</span>
+              ) : (
+                <>
+                  <strong style={{ color: T.ink, fontWeight: 600 }}>{p.laufzeitDays} Tage</strong>
+                  {' · '}
+                  <span>{fCamp}× Kontakte</span>
+                  <br />
+                </>
+              )}
               <span>{PKG_SUBTITLE[key]}</span>
             </div>
           </div>
@@ -323,6 +333,21 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     return Math.ceil(ms / 86400000);
   }, [briefing.votingDate]);
 
+  const disabledPkgs = useMemo<Set<PaketKey>>(() => {
+    if (daysUntilVote == null || !packages) return new Set<PaketKey>();
+    return new Set(PKG_ORDER.filter(k => packages[k].laufzeitDays > daysUntilVote));
+  }, [daysUntilVote, packages]);
+
+  const candidates = (['sichtbar', 'praesenz'] as PaketKey[]).filter(k => !disabledPkgs.has(k));
+  const recommendedPkg: PaketKey = candidates[candidates.length - 1] ?? 'sichtbar';
+
+  useEffect(() => {
+    if (path === 'B' && disabledPkgs.has(pkg)) {
+      handlePkgChange(recommendedPkg);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, disabledPkgs]);
+
   const zeitraumDates = useMemo(() => {
     if (!briefing.votingDate) return null;
     const end   = new Date(briefing.votingDate + 'T00:00:00');
@@ -341,9 +366,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     if (p === 'B' && packages) {
       setBudgetA(budget);
       setDaysA(impact?.laufzeitDays ?? effectiveDays);
-      setPkg('praesenz');
-      setBudget(packages.praesenz.budget);
-      setDays(packages.praesenz.laufzeitDays);
+      setPkg(recommendedPkg);
+      setBudget(packages[recommendedPkg].budget);
+      setDays(packages[recommendedPkg].laufzeitDays);
     }
     if (p === 'A') {
       setBudget(budgetA);
@@ -517,7 +542,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {path === 'B' && packages && (
               <>
                 <div className="vio-pkgs">
-                  <PackageCards packages={packages} selectedPkg={pkg} onChange={handlePkgChange} />
+                  <PackageCards packages={packages} selectedPkg={pkg} onChange={handlePkgChange} disabledPkgs={disabledPkgs} recommendedPkg={recommendedPkg} />
                 </div>
 
                 {/* Feintuning accordion */}
