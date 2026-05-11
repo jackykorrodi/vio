@@ -3,7 +3,7 @@
 // Ersetzt schrittweise lib/vio-paketlogik.ts und lib/b2b-paketlogik.ts.
 // Diese Datei wird in Paket B.2/B.3 in die UI-Komponenten eingebunden.
 //
-// Basis: Regelkatalog v2.3 (public/vio-regelkatalog-politik-v2.md)
+// Basis: Spec v3.4 (Optimizer + Status-Codes)
 // Erstellt: 22.04.2026
 
 import type { Region } from './regions';
@@ -22,7 +22,7 @@ export const LAUFZEIT_MAX_DAYS = 84;     // 12 Wochen
 
 export const F_MIN_WEEKLY = 3;           // unter dieser Schwelle: unwirksam (Krugman-Schwelle)
 export const F_MAX_WEEKLY = 10;          // ab hier Werbemüdigkeit
-export const REACH_CURVE_K = 0.4;        // Hofmans-Saturation Steilheit
+export const REACH_CURVE_K = 0.25;       // Hofmans-Saturation Steilheit (Spec v3.4)
 export const WEAROUT_FLOOR = 0.70;       // minimaler Wearout-Faktor
 
 export const MAX_REACH_CAP = 0.80;       // max 80% des Pools erreichbar
@@ -39,20 +39,33 @@ export const DELIVERY_DISPLAY = 0.90;
 // CH-DOOH Schätzung, validiert mit Splicky-Daten (Range 1.8–2.5)
 export const DOOH_OTS_MULTIPLIER = 1.8;
 
+// Anteil der Kontakte, die tatsächlich den Zielpool treffen (In-Pool-Faktor, Spec v3.4)
+export const IN_POOL_FACTOR = 0.7;
+
+// Optimizer-Konstanten (Spec v3.4, aktiv)
+export const F_MIN_TOLERANCE = 2.7;          // weicher Boden für Sprint-Override
+export const F_OVERKILL_THRESHOLD = 15;      // harte Wearout-Grenze
+export const LARGE_POOL_THRESHOLD = 500_000; // ab hier Gross-Region-Logik
+export const REACH_PREMIUM_THRESHOLD = 1.4;  // Dominanz-Multiplier-Trigger
+
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
 export type HinweisCode =
   | 'ok'
   | 'below_min_budget'
-  | 'capped_by_region'
-  | 'screen_class_begrenzt'
-  | 'screen_class_display_dom'
-  | 'screen_class_multi_mixed'
-  | 'no_dooh_inventory'
-  | 'sweet_spot'
   | 'hard_stop_budget'
   | 'daily_below_floor_region'
-  | 'nudge_to_sweet_spot';
+  | 'optimal_28d_standard'
+  | '28d_broad_reach_low_frequency'
+  | 'sprint_14d_thin_budget'
+  | 'sprint_14d_grosser_pool'
+  | 'sprint_14d_28d_unavailable'
+  | 'aufbau_42d_thin_budget'
+  | 'aufbau_42d_reach_premium'
+  | 'aufbau_42d_28d_unavailable'
+  | 'dominanzmodus'
+  | 'dominanzmodus_stark'
+  | 'too_thin';
 
 export interface Hinweis {
   code: HinweisCode;
@@ -274,6 +287,7 @@ function buildHinweise(ctx: {
   stimmTotal: number;
   reachMitte: number;
   regions: Region[];
+  optimizerStatusCode?: HinweisCode;
 }): Hinweis[] {
   const hinweise: Hinweis[] = [];
 
@@ -310,67 +324,10 @@ function buildHinweise(ctx: {
     }
   }
 
-  // Priorität 6: capped_by_region
-  if (ctx.cappedByRegion) {
-    const regionText = ctx.regionNames.length === 1 ? ctx.regionNames[0] : 'deiner Auswahl';
-    hinweise.push({
-      code: 'capped_by_region',
-      text: `Maximale Reichweite in ${regionText} erreicht. Mehr Budget bringt keine zusätzlichen Personen.`,
-      priority: 6,
-    });
-  }
-
-  // Priorität 8: Kontext (Screen-Klasse)
-  if (ctx.politScreensTotal === 0) {
-    hinweise.push({
-      code: 'no_dooh_inventory',
-      text: 'Keine DOOH-Flächen verfügbar. Kampagne läuft zu 100% als Display.',
-      priority: 8,
-    });
-  } else if (ctx.multiRegion && ctx.screenKlasse !== 'voll') {
-    hinweise.push({
-      code: 'screen_class_multi_mixed',
-      text: ctx.screenKlasse === 'begrenzt'
-        ? 'In deiner Region-Auswahl ist DOOH-Inventar teilweise begrenzt — der Online-Anteil wird entsprechend erhöht.'
-        : 'In Teilen deiner Region-Auswahl erreichen wir deine Zielgruppe primär online.',
-      priority: 8,
-    });
-  } else if (!ctx.multiRegion && ctx.screenKlasse === 'begrenzt') {
-    const name = ctx.regionNames[0] ?? 'deiner Region';
-    hinweise.push({
-      code: 'screen_class_begrenzt',
-      text: `In ${name} läuft deine Kampagne mit erhöhtem Online-Anteil — das ist für diese Gemeindegrösse normal.`,
-      priority: 8,
-    });
-  } else if (!ctx.multiRegion && ctx.screenKlasse === 'display-dominant') {
-    const name = ctx.regionNames[0] ?? 'deiner Region';
-    hinweise.push({
-      code: 'screen_class_display_dom',
-      text: `In ${name} erreichen wir deine Zielgruppe primär online. Digitale Plakate sind lokal stark begrenzt.`,
-      priority: 8,
-    });
-  }
-
-  // Sweet Spot Logik (budget-basiert via calculateSweetSpot)
-  const ssRegionName = ctx.regionNames.length === 1 ? ctx.regionNames[0] : 'deiner Region';
-  const sweetSpot = ctx.regions.length > 0 ? calculateSweetSpot(ctx.regions, ctx.laufzeitDays) : null;
-  const hasBlockingHint = hinweise.some(h => h.priority <= 4);
-  if (!hasBlockingHint && sweetSpot !== null) {
-    const budgetRatio = ctx.budget / sweetSpot;
-    const fmtSweetSpot = new Intl.NumberFormat('de-CH').format(sweetSpot);
-    if (!ctx.cappedByRegion && budgetRatio < 0.85) {
-      hinweise.push({
-        code: 'nudge_to_sweet_spot',
-        text: `CHF ${fmtSweetSpot} wäre das optimale Budget für ${ssRegionName} bei ${ctx.laufzeitDays} Tagen Laufzeit — ausreichend Frequenz, breite Abdeckung, kein Leerlauf.`,
-        priority: 5.5,
-      });
-    } else if (budgetRatio <= 1.20) {
-      hinweise.push({
-        code: 'sweet_spot',
-        text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${ctx.laufzeitDays}-tägige Kampagne in ${ssRegionName}.`,
-        priority: 9,
-      });
-    }
+  // Priorität 5: Optimizer-Status (primäre Empfehlung)
+  if (ctx.optimizerStatusCode) {
+    const text = OPTIMIZER_STATUS_TEXTS[ctx.optimizerStatusCode] ?? '';
+    hinweise.push({ code: ctx.optimizerStatusCode, text, priority: 5 });
   }
 
   if (hinweise.length === 0) {
@@ -380,7 +337,7 @@ function buildHinweise(ctx: {
   return hinweise.sort((a, b) => a.priority - b.priority);
 }
 
-// ─── Cap-Level-Inferenz ──────────────────────────────────────────────────────
+// ─── Cap-Level-Inferenz (Fallback für user-definierte Laufzeit) ──────────────
 
 function inferCapLevel(contacts: number, stimm: number, weeks: number): 1 | 2 | 3 {
   const targetFreqs = { 1: 3, 2: 5, 3: 6 } as const;
@@ -394,46 +351,154 @@ function inferCapLevel(contacts: number, stimm: number, weeks: number): 1 | 2 | 
   return distances.sort((a, b) => a.distance - b.distance)[0].level;
 }
 
-// ─── Pfad-A-Optimizer ───────────────────────────────────────────────────────
+// ─── Optimizer Status-Texte (Spec v3.4, Sektion 6) ──────────────────────────
 
-export function optimizeLaufzeitForBudget(budget: number, regions: Region[]): number {
-  const CANDIDATES = [14, 28, 42] as const;
+const OPTIMIZER_STATUS_TEXTS: Partial<Record<HinweisCode, string>> = {
+  'optimal_28d_standard':          'Empfehlung für deine Kampagne. Die 28-tägige Laufzeit deckt das Entscheidungsfenster rund um den Versand der Stimmunterlagen ab.',
+  '28d_broad_reach_low_frequency': 'Diese Empfehlung setzt stärker auf breite Sichtbarkeit über das politische Entscheidungsfenster. Die durchschnittliche Kontaktfrequenz liegt leicht unter dem Idealwert. Für mehr Wiederholung pro Person empfehlen wir ein etwas höheres Budget.',
+  'sprint_14d_thin_budget':        'Konzentrierter Schlussimpuls über 14 Tage. Für volle 28-Tage-Präsenz wäre das Budget eher knapp.',
+  'sprint_14d_grosser_pool':       'Bei grossen Regionen wirkt eine konzentrierte 2-Wochen-Phase rund um den Vote stärker als verteilte Auslieferung. Empfohlen: Schlussimpuls in den letzten 2 Wochen vor der Abstimmung.',
+  'sprint_14d_28d_unavailable':    '14-Tage-Schlussimpuls — bei diesem Budget die wirkungsvollste Laufzeit.',
+  'aufbau_42d_thin_budget':        '6 Wochen Aufbau — sinnvoll für komplexere Themen oder wenn Bekanntheit aufgebaut werden soll.',
+  'aufbau_42d_reach_premium':      '6 Wochen Laufzeit lohnt sich hier: deutlich mehr Personen werden erreicht als bei 4 Wochen.',
+  'aufbau_42d_28d_unavailable':    'Längere Laufzeit verteilt das Budget besser über das Entscheidungsfenster.',
+  'dominanzmodus':                 'Hohe Präsenz: jede erreichte Person sieht die Botschaft sehr oft. Zusätzliches Budget bringt in dieser Region kaum mehr Reichweite, aber stärkere Wiederholung.',
+  'dominanzmodus_stark':           'Sehr hohe Frequenz pro Person. Ab diesem Budget empfehlen wir ein persönliches Gespräch zur Optimierung — z.B. Region erweitern oder Budget gezielter einsetzen.',
+  'too_thin':                      'Budget reicht in dieser Konstellation nicht für eine wirkungsvolle Kampagne. Empfehlung: Region verkleinern oder Budget erhöhen.',
+};
+
+// ─── Pfad-A-Optimizer v3.4 (7-Schritt-Algorithmus) ──────────────────────────
+
+type OptimizerOut = {
+  laufzeitDays: 14 | 28 | 42;
+  capLevel: 1 | 2 | 3;
+  statusCode: HinweisCode;
+};
+
+function computeCombo(
+  impressionsEffective: number,
+  stimmTotal: number,
+  level: 1 | 2 | 3,
+  days: 14 | 28 | 42,
+): { days: 14 | 28 | 42; level: 1 | 2 | 3; reach: number; fWeekly: number } {
+  const weeks = days / 7;
+  const poolCap = stimmTotal * getReachCap(stimmTotal, level);
+  const ratio = poolCap > 0 ? impressionsEffective / poolCap : 0;
+  const satFactor = 1 - Math.exp(-REACH_CURVE_K * ratio);
+  const uniqueReach = Math.min(poolCap * satFactor, stimmTotal * MAX_REACH_CAP) * applyWearoutFactor(weeks);
+  const fWeekly = uniqueReach > 0 ? (impressionsEffective / uniqueReach) / weeks : 0;
+  return { days, level, reach: uniqueReach, fWeekly };
+}
+
+export function optimizeForBudget(budget: number, regions: Region[]): OptimizerOut {
   const deduped = dedupRegions(regions);
   const stimmTotal = sumStimm(deduped);
-  if (stimmTotal === 0 || deduped.length === 0) return 14;
+  if (stimmTotal === 0 || deduped.length === 0) {
+    return { laufzeitDays: 14, capLevel: 1, statusCode: 'too_thin' };
+  }
 
   const klass = deduped.length > 1
     ? klassifiziereMehrereRegionen(deduped)
     : klassifiziereRegion(deduped[0]);
-
-  const doohShare = klass.split.dooh;
-  const displayShare = klass.split.display;
-  const doohBudget = budget * doohShare;
-  const displayBudget = budget * displayShare;
+  const doohBudget = budget * klass.split.dooh;
+  const displayBudget = budget * klass.split.display;
   const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
   const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
-  const impressionsEffective = doohContacts + displayContacts;
+  const impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
 
-  type Candidate = { days: number; reach: number; fWeekly: number; capped: boolean };
+  type Combo = { days: 14 | 28 | 42; level: 1 | 2 | 3; reach: number; fWeekly: number };
+  const LAUFZEITEN = [14, 28, 42] as const;
+  const LEVELS = [1, 2, 3] as const;
+  const allCombos: Combo[] = [];
+  for (const days of LAUFZEITEN) {
+    for (const level of LEVELS) {
+      allCombos.push(computeCombo(impressionsEffective, stimmTotal, level, days));
+    }
+  }
 
-  const results: Candidate[] = CANDIDATES.map(days => {
-    const weeks = days / 7;
-    const capLevel = inferCapLevel(impressionsEffective, stimmTotal, weeks);
-    const poolCap = stimmTotal * getReachCap(stimmTotal, capLevel);
-    const ratio = poolCap > 0 ? impressionsEffective / poolCap : 0;
-    const satFactor = 1 - Math.exp(-REACH_CURVE_K * ratio);
-    const uniqueReach = Math.min(poolCap * satFactor, stimmTotal * MAX_REACH_CAP);
-    const isCapped = satFactor > 0.85 || uniqueReach >= stimmTotal * MAX_REACH_CAP * 0.99;
-    const fWeekly = uniqueReach > 0 ? (impressionsEffective / uniqueReach) / weeks : 0;
-    return { days, reach: uniqueReach, fWeekly, capped: isCapped };
-  });
+  const inBand = (c: Combo) => c.fWeekly >= F_MIN_WEEKLY && c.fWeekly <= F_MAX_WEEKLY;
+  const inTolerance = (c: Combo) => c.fWeekly >= F_MIN_TOLERANCE && c.fWeekly < F_MIN_WEEKLY;
+  const maxReach = (cs: Combo[]) =>
+    cs.reduce((best, c) => c.reach > best.reach || (c.reach === best.reach && c.level > best.level) ? c : best);
 
-  const valid = results.filter(r => r.fWeekly >= F_MIN_WEEKLY);
-  if (valid.length === 0) return 14;
+  // Schritt 1: 28d Hauptpfad
+  const inBand28 = allCombos.filter(c => c.days === 28 && inBand(c));
+  if (inBand28.length > 0) {
+    let chosen = maxReach(inBand28);
+    let status: HinweisCode = 'optimal_28d_standard';
 
-  // Höchste Reichweite; bei Gleichstand (capped) längste Laufzeit
-  valid.sort((a, b) => b.reach - a.reach || b.days - a.days);
-  return valid[0].days;
+    // Schritt 2: 28d Toleranz (höheres Level mit Reach-Premium)
+    const tol28 = allCombos.filter(c =>
+      c.days === 28 && c.level > chosen.level && inTolerance(c) && c.reach >= REACH_PREMIUM_THRESHOLD * chosen.reach
+    );
+    if (tol28.length > 0) {
+      chosen = maxReach(tol28);
+      status = '28d_broad_reach_low_frequency';
+    }
+
+    // Schritt 3: Sprint-Override (nur grosse Pools)
+    if (stimmTotal > LARGE_POOL_THRESHOLD) {
+      const inBand14 = allCombos.filter(c => c.days === 14 && inBand(c));
+      if (inBand14.length > 0) {
+        const best14 = maxReach(inBand14);
+        if (best14.reach > REACH_PREMIUM_THRESHOLD * chosen.reach) {
+          return { laufzeitDays: 14, capLevel: best14.level, statusCode: 'sprint_14d_grosser_pool' };
+        }
+      }
+    }
+
+    // Schritt 4: Aufbau-Override 42d
+    const inBand42 = allCombos.filter(c => c.days === 42 && inBand(c));
+    if (inBand42.length > 0) {
+      const best42 = maxReach(inBand42);
+      if (best42.reach > 1.2 * chosen.reach) {
+        return { laufzeitDays: 42, capLevel: best42.level, statusCode: 'aufbau_42d_reach_premium' };
+      }
+    }
+
+    return { laufzeitDays: 28, capLevel: chosen.level, statusCode: status };
+  }
+
+  // Schritt 5: 28d nicht erreichbar — 14d oder 42d
+  const inBand14all = allCombos.filter(c => c.days === 14 && inBand(c));
+  const inBand42all = allCombos.filter(c => c.days === 42 && inBand(c));
+
+  if (inBand14all.length > 0 || inBand42all.length > 0) {
+    if (inBand14all.length > 0 && inBand42all.length === 0) {
+      const best = maxReach(inBand14all);
+      return { laufzeitDays: 14, capLevel: best.level, statusCode: 'sprint_14d_thin_budget' };
+    }
+    if (inBand42all.length > 0 && inBand14all.length === 0) {
+      const best = maxReach(inBand42all);
+      return { laufzeitDays: 42, capLevel: best.level, statusCode: 'aufbau_42d_thin_budget' };
+    }
+    const best14 = maxReach(inBand14all);
+    const best42 = maxReach(inBand42all);
+    if (best14.reach >= best42.reach) {
+      return { laufzeitDays: 14, capLevel: best14.level, statusCode: 'sprint_14d_28d_unavailable' };
+    }
+    return { laufzeitDays: 42, capLevel: best42.level, statusCode: 'aufbau_42d_28d_unavailable' };
+  }
+
+  // Schritt 6: Dominanzmodus (alle Kombis > F_MAX_WEEKLY)
+  if (allCombos.every(c => c.fWeekly > F_MAX_WEEKLY)) {
+    const sorted = [...allCombos].sort((a, b) =>
+      b.reach - a.reach || b.days - a.days || a.fWeekly - b.fWeekly
+    );
+    const best = sorted[0];
+    const statusCode: HinweisCode = best.fWeekly > F_OVERKILL_THRESHOLD ? 'dominanzmodus_stark' : 'dominanzmodus';
+    return { laufzeitDays: best.days, capLevel: best.level, statusCode };
+  }
+
+  // Schritt 7: Too Thin
+  const sorted7 = [...allCombos].sort((a, b) => b.fWeekly - a.fWeekly);
+  const best7 = sorted7[0];
+  return { laufzeitDays: best7.days, capLevel: best7.level, statusCode: 'too_thin' };
+}
+
+// Backward-compat Export (gibt nur laufzeitDays zurück)
+export function optimizeLaufzeitForBudget(budget: number, regions: Region[]): number {
+  return optimizeForBudget(budget, regions).laufzeitDays;
 }
 
 // ─── Kern: calculateImpact ───────────────────────────────────────────────────
@@ -449,10 +514,15 @@ export function calculateImpact(input: {
   const stimmTotal = sumStimm(regions);
   const multiRegion = regions.length > 1;
 
-  // Laufzeit: User-Wert oder Optimizer (budgetFirst ohne explizite Laufzeit)
+  // Optimizer (nur budgetFirst ohne explizite Laufzeit)
+  const optimizerOut = (input.mode !== 'paketLevel' && input.laufzeitDays === undefined)
+    ? optimizeForBudget(input.budget, regions)
+    : null;
+
+  // Laufzeit: User-Wert oder Optimizer
   const laufzeitDays: number = input.laufzeitDays !== undefined
     ? input.laufzeitDays
-    : optimizeLaufzeitForBudget(input.budget, regions);
+    : (optimizerOut?.laufzeitDays ?? 14);
 
   // Channel-Split via region-buchbarkeit
   const klass = multiRegion
@@ -473,15 +543,15 @@ export function calculateImpact(input: {
   const displayBudget = input.budget * displayShare;
   const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
   const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
-  const impressionsEffective = doohContacts + displayContacts;
+  const impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
 
   // Laufzeit
   const laufzeitWeeks = laufzeitDays / 7;
 
-  // Cap-Level (Budget-first: inferieren; Paket-Modus: fix)
+  // Cap-Level (Optimizer bei budgetFirst; fix bei paketLevel; Fallback: inferCapLevel)
   const capLevel: 1 | 2 | 3 = (input.mode === 'paketLevel' && input.paketLevel)
     ? input.paketLevel
-    : inferCapLevel(impressionsEffective, stimmTotal, laufzeitWeeks);
+    : optimizerOut?.capLevel ?? inferCapLevel(impressionsEffective, stimmTotal, laufzeitWeeks);
 
   // Hofmans-Saturation Reach
   const poolCap = stimmTotal * getReachCap(stimmTotal, capLevel);
@@ -542,6 +612,7 @@ export function calculateImpact(input: {
     stimmTotal,
     reachMitte,
     regions,
+    optimizerStatusCode: optimizerOut?.statusCode,
   });
 
   return {
@@ -596,8 +667,8 @@ export function buildPackages(input: {
     const targetReach = stimmTotal * reachCap;
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
-    // Budget rückwärts lösen (v2.3: Saturation-Korrektur 0.7, symmetrisch zu calculateImpact)
-    const targetContacts = spec.weeklyFreq * laufzeitWeeks * targetReach * 0.7;
+    // Budget rückwärts lösen: Zielmenge gross (vor IN_POOL_FACTOR) = effektiv / IN_POOL_FACTOR
+    const targetContacts = spec.weeklyFreq * laufzeitWeeks * targetReach / IN_POOL_FACTOR;
     const impsDOOH = (targetContacts * klass.split.dooh) / (DOOH_OTS_MULTIPLIER * DELIVERY_DOOH);
     const impsDisplay = (targetContacts * klass.split.display) / DELIVERY_DISPLAY;
     const rawBudget = (impsDOOH / 1000) * CPM_DOOH + (impsDisplay / 1000) * CPM_DISPLAY;
