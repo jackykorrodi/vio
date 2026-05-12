@@ -129,10 +129,7 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
           fontWeight: 500,
         }}>
           <span>0</span>
-          <span>
-            {impact.reachVonPct}–{impact.reachBisPct}% von {fmt(impact.stimmTotal)}
-            {impact.cappedByRegion ? ' — Maximum' : ''}
-          </span>
+          <span>Stimmberechtigte erreicht: {impact.reachVonPct}–{impact.reachBisPct}%</span>
           <span>80%</span>
         </div>
       </div>
@@ -165,9 +162,9 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {[
           {
-            label: 'Frequenz',
-            value: `${impact.frequencyCampaign}×`,
-            sub: 'pro Person',
+            label: 'Jede Person sieht es',
+            value: `Ø ${Math.round(impact.frequencyCampaign)}×`,
+            sub: `rund ${Math.round(impact.frequencyWeekly)}× pro Woche`,
           },
           {
             label: 'Laufzeit',

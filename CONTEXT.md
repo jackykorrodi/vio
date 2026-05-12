@@ -146,3 +146,6 @@ Sweet-Spot-Fallback in StepPackages.tsx gegen overkill abgesichert |
 - Dominanz wird nie automatisch empfohlen
 - Schwellen: ≥ 38 Tage → Präsenz, < 38 Tage → Sichtbar
 
+### Backlog
+- **Glossar definieren** (`docs/glossary.md`): einheitliches Otto-Vokabular für Reichweite, Stimmberechtigte erreicht, Jede Person sieht es, Sweet Spot, Zeitraum, Kanal-Mix etc. Anschliessend Cross-Flow-Sync-Pass über Politik + B2B Steps 1–5.
+
