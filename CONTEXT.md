@@ -127,6 +127,8 @@ Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARG
 | 07.05.2026 | v3.4 | Konstanten-Phase: REACH_CURVE_K 0.4→0.25; IN_POOL_FACTOR=0.7 eingeführt (auf impressionsEffective); F_MIN_WEEKLY 2.5→3; 4 neue Konstanten deklariert (F_MIN_TOLERANCE, F_OVERKILL_THRESHOLD, LARGE_POOL_THRESHOLD, REACH_PREMIUM_THRESHOLD) |
 | 04.05.2026 | v2.3 | Hofmans-Saturation (ersetzt lineares Capping); Frequenz emergent (F_REC_WEEKLY entfernt); OTS 2.0→1.8; F_MIN_WEEKLY 3→2.5; Wearout-Floor 0.80→0.70; REACH_CURVE_K=0.4 (NEU); Reach-Caps +50%; Multi-Region-Klasse aus aggregiertem politScreens_total; daily_below_floor_region pro Region (NEU); Laufzeit-Korridor maxDays 35→42 bei Budget <15k; Sweet Spot Logik: calculateSweetSpot() + nudge_to_sweet_spot Hint (NEU) |
 | 22.04.2026 | v2.2 | Initiale Version (F_REC_WEEKLY=5, linearer Reach, hartes Capping) |
+| 12.05.2026 | v2.3 | overkill_frequency Hint ergänzt (priority 2, f_weekly > F_MAX_WEEKLY); 
+Sweet-Spot-Fallback in StepPackages.tsx gegen overkill abgesichert |
 
 ### Kampagnen-Timing Politik
 - CAMPAIGN_END_OFFSET_DAYS = 0 → alle Pakete enden am Abstimmungstag

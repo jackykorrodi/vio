@@ -65,6 +65,7 @@ export type HinweisCode =
   | 'aufbau_42d_28d_unavailable'
   | 'dominanzmodus'
   | 'dominanzmodus_stark'
+  | 'overkill_frequency'
   | 'too_thin';
 
 export interface Hinweis {
@@ -305,6 +306,15 @@ function buildHinweise(ctx: {
       code: 'below_min_budget',
       text: 'Mindestbudget CHF 4\'000 – wir heben automatisch an.',
       priority: 1,
+    });
+  }
+
+  // Priorität 2: Overkill-Frequenz
+  if (ctx.frequencyWeekly > F_MAX_WEEKLY) {
+    hinweise.push({
+      code: 'overkill_frequency',
+      text: `Hohe Kontaktdichte — jede erreichte Person wird Ø ${ctx.frequencyWeekly.toFixed(1)}× pro Woche erreicht. Für breitere Streuung kann eine grössere Zielregion, längere Laufzeit oder ein tieferes Budget sinnvoll sein.`,
+      priority: 2,
     });
   }
 

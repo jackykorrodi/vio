@@ -206,6 +206,7 @@ function hinweisToDisplay(h: Hinweis, days: number, regionName: string): HintDis
   if (code === 'aufbau_42d_28d_unavailable')    return { tone: 'info', title: 'Aufbau 6 Wochen',                          text };
   if (code === 'dominanzmodus')                 return { tone: 'info', title: 'Hohe Präsenz',                             text };
   if (code === 'dominanzmodus_stark')           return { tone: 'warn', title: 'Sehr hohe Frequenz',                       text };
+  if (code === 'overkill_frequency')            return { tone: 'warn', title: 'Hohe Kontaktdichte',                        text };
   if (code === 'too_thin')                      return { tone: 'warn', title: 'Budget knapp',                             text };
   return { tone: 'good', title: 'Im Sweet Spot', text: `Kontaktdruck und Abdeckung sind gut ausbalanciert für eine ${days}-tägige Kampagne in ${regionName}.` };
 }
