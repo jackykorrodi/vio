@@ -141,7 +141,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     : null;
 
   const stimmTotal = vioData?.eligibleVotersTotal ?? briefing.totalStimmber ?? 0;
-  const customReachPeople = impact?.reachMitte ?? pkg?.targetReachPeople ?? 0;
+  const customReachPeople = impact?.reachUniqueAbs ?? pkg?.targetReachPeople ?? 0;
   const displayPersonen = Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
 
   const daysUntilVote = vioData?.daysUntilVote ?? (briefing.votingDate
@@ -151,9 +151,9 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const handleNext = () => {
     updateBriefing({
       startDate:   campaignStartISO || todayISO(),
-      reach:       impact?.reachMitte ?? pkg?.targetReachPeople ?? 0,
-      reachVonPct: impact?.reachVonPct ?? 0,
-      reachBisPct: impact?.reachBisPct ?? 0,
+      reach:       impact?.reachUniqueAbs ?? pkg?.targetReachPeople ?? 0,
+      reachUniqueLowPct: impact?.reachUniqueLowPct ?? 0,
+      reachUniqueHighPct: impact?.reachUniqueHighPct ?? 0,
       b2bReach:    null,
     });
     nextStep();

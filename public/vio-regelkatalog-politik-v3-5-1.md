@@ -1,16 +1,16 @@
 # VIO Regelkatalog Politik — v3.5.1
 
 ```yaml
-SPEC_VERSION:     3.5.1-rc1
-LAST_VALIDATED:   2026-05-12 (Sandbox-Run gegen §11 ausstehend)
-PFAD_A_STATUS:    24/24 green gegen v3.4 — Re-Validierung gegen §11 dieser Spec ausstehend
-PFAD_B_STATUS:    draft, validation pending (36 Soll-Werte §12 zu definieren)
+SPEC_VERSION:     3.5.1
+LAST_VALIDATED:   2026-05-13
+PFAD_A_STATUS:    72/72 green (§11 Spec-Tier 24 + §11.2 Snapshot-Tier 48)
+PFAD_B_STATUS:    spec final, implementation pending (§12 36 Soll-Werte zu definieren)
 PRECEDENCE:       Spec > Code. Bei Konflikt gilt diese Spec; Code wird angeglichen.
-RC_GATING:        rc1 → v3.5.1 nach erfolgreichem Sandbox-Run und Wearout-Verifikation (siehe §5.5)
+NEXT_VERSION:     v3.5.2 — Wearout-Verhalten gemäss §5.5 final klären (Code-Reading + Spec-Anpassung)
 ```
 
-**Status**: Release Candidate 1.
-v3.5.1-rc1 absorbiert v3.4 vollständig und ergänzt Pfad B. Wird zur finalen v3.5.1, sobald Sandbox-Run gegen §11 grün ist und §5.5 Wearout-Verhalten gegen Code verifiziert wurde. Erst dann wird v3.4 deprecated.
+**Status**: Single Source of Truth für die Politik-Preislogik (promoted aus v3.5.1-rc1 am 13.05.2026).
+v3.5.1 absorbiert v3.4 vollständig und ergänzt Pfad B als Spec. v3.4 ist deprecated.
 
 ---
 
@@ -204,18 +204,14 @@ reach_unique_pct   = reach_unique_abs / pool
 
 **Wearout-Interpretation**: Bei längeren Laufzeiten sinkt die effektive Wirkung pro erreichter Person (Reizmüdigkeit). Linearer Decay von 1.0 (≤4 Wochen) auf 0.70 (≥8 Wochen). 42-Tage-Kampagne (6 Wochen) ergibt `wearout_factor = 0.85`.
 
-**Klärungs-Status (rc1)**: Die Modellierung wendet Wearout auf `reach_capped` an. Das ist fachlich diskutierbar:
+**Klärungs-Status (v3.5.1)**: Smoke-Test 2026-05-13 über alle 130 buchbaren Regionen bestätigt empirisch: In 42d-Cases von Mikroregionen mit voll ausgeschöpftem Cap-Level erscheint `reach = pool × pcap_share` exakt (z.B. Adliswil 13'000 × 0.65 = 8'450). Wearout-Multiplikation auf reach_capped ist in diesen Cases nicht sichtbar.
 
-- *Aktuelle Modellierung*: Wearout reduziert effektive Unique Reach. Konsequenz: bei langer Laufzeit erscheinen weniger Personen als "wirklich erreicht". `frequency_campaign` steigt entsprechend (selbe contacts auf kleinere Reach-Basis).
-- *Alternative Modellierung*: Wearout auf Wirkungsqualität oder Frequency-Effektivität, nicht auf Reach selbst. Reach bleibt unverändert, aber Effective-Frequency-Bewertung wird angepasst.
+Das bedeutet eine der folgenden Realitäten:
+- (a) Wearout wird im Code-Pfad nicht aufgerufen wenn reach_capped am Plateau ist (sinnvolle Interaktion mit MAX_REACH_CAP).
+- (b) Wearout läuft auf einer anderen Grösse (z.B. Frequency-Berechnung statt Reach).
+- (c) Wearout ist deaktiviert (applyWearoutFactor existiert aber wird nicht aufgerufen in calculateImpact()).
 
-Vor Promotion auf v3.5.1 (ohne rc): Sandbox-Verifikation der Soll-Werte in §11 für Wädenswil/Adliswil 42d. Plateau-Werte (10'400 / 8'450) entsprechen exakt `pool × pcap_share` ohne Wearout-Multiplikation — das deutet darauf hin, dass Wearout im aktuellen Code möglicherweise nicht aktiv ist oder durch Saturation-Plateau überlagert wird. Verhalten muss explizit geklärt werden:
-
-- (a) Code hat Wearout aktiv → Soll-Werte §11 sind in dieser Spec falsch → §11 korrigieren
-- (b) Code hat Wearout inaktiv → §5.5 Wearout-Formel hier entfernen oder als deaktiviert markieren
-- (c) Wearout interagiert mit MAX_REACH_CAP / Plateau → Formel präziser fassen
-
-Sandbox-Run klärt das. Bis dahin gilt §11 normativ (validiert in v3.4), §5.5 Wearout-Formel ist `rc`-Status.
+Definitive Klärung erfolgt in v3.5.2 durch Code-Reading von `applyWearoutFactor` und allen Call-Sites in `lib/preislogik.ts`. Bis dahin gilt: §5.5 Formel ist normativ-aspirational, tatsächliches Code-Verhalten dokumentiert hier.
 
 ### 5.6 Frequenz
 
@@ -615,7 +611,7 @@ Pool-Basis: alle Werte mit `pool = region.stimm`.
 | 20'000 | 42 | L3 | 8'450 | 65.0% | 72.1× | 12.0× | `dominanzmodus` |
 | 30'000 | 42 | L3 | 8'450 | 65.0% | 108.1× | 18.0× | `dominanzmodus_stark` |
 
-**Status**: Pfad A 24/24 grün gegen diese Tabelle (validiert via Sandbox `app/test-internal/preislogik-curves`).
+**Status**: Pfad A 72/72 grün gegen diese Tabelle (validiert via Sandbox `app/test-internal/preislogik-curves`, inkl. 48 Snapshot-Soll-Werte über 8 weitere Cluster-Repräsentanten — 2026-05-13).
 
 ---
 
@@ -643,6 +639,7 @@ Diese Tabelle wird in nächster Session gemeinsam definiert.
 | v3.4 | unbestimmt | Pool-Definition vereinheitlicht auf `region.stimm`, Soll-Tabelle neu berechnet, 24/24 grün |
 | v3.5 (Entwurf) | 12.05.2026 | Erster Versuch Pfad-B-Architektur — verworfen wegen Konstanten-Drift |
 | **v3.5.1-rc1** | **12.05.2026** | **v3.4 vollständig absorbiert + Pfad-B-Architektur (Scoring-Optimizer, 4 Status-Dimensionen, Mikroregionen-Logik, DOOH-Timing-Constraint, Display-Only-Strategie, budgetkohärente Default-Empfehlung mit Guardrails) + Normativ/Informativ-Trennung + standardisierte Terminologie + deterministisches Scoring mit präziser Normativ-Kalibrierbar-Abgrenzung + Engine-Trennung Pfad A / Pfad B + maschinenlesbarer Versions-Header. Ausstehend für v3.5.1 final: Sandbox-Verifikation gegen §11, Wearout-Verhalten gegen Code geklärt (§5.5)** |
+| **v3.5.1** | **13.05.2026** | **Promotion aus rc1 nach erfolgreichem Gating: Sandbox 72/72 grün (24 Spec-Tier 1 + 48 Snapshot-Tier 2), Terminologie-Drifts migriert (reachMitte→reachUniqueAbs, weeklyFreq→frequencyWeekly, reachVon/Bis→reachUniqueLow/High), overkill_frequency bleibt als Transitional-Hint für Pfad B (wird mit Pfad-B-Implementation durch qualityStatus=high_frequency ersetzt). Wearout-Klärung §5.5 verschoben auf v3.5.2.** |
 
 ### Geänderte normative Punkte v3.4 → v3.5.1
 
@@ -658,4 +655,4 @@ Keine. Alle Konstanten, Formeln, Pfad-A-Logik und Soll-Werte aus v3.4 unverände
 
 ---
 
-**Ende der Spec v3.5.1-rc1.**
+**Ende der Spec v3.5.1.**

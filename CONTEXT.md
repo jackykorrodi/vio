@@ -74,14 +74,14 @@
 
 ## Preislogik (vereinfacht)
 
-**Aktuelle Logik-Version: v3.4 Konstanten-Phase (07.05.2026)**
+**Aktuelle Logik-Version: v3.5.1 Single Source of Truth (13.05.2026)**
 
 - Min Budget: CHF 4'000
 - Pakete: Sichtbar / Präsenz / Dominanz
 - Reach basiert auf Hofmans-Saturation (asymptotisch, kein hartes Capping)
 - Frequenz emergent: f_campaign = contacts / unique_reach
 - Sweet Spot: calculateSweetSpot(regions, laufzeitDays) → Cap-Level-2-Pool × 4.5×/Wo → CHF-Zielwert (85% des Sättigungsbudgets); gibt null zurück wenn Sättigungsbudget zu nah am B_MIN; nudge_to_sweet_spot nur wenn Budget < 85% des Sweet Spots UND cappedByRegion === false (nur Pfad A)
-- Berechnung: siehe vio-regelkatalog-politik-v3-4.md (v2.3)
+- Berechnung: siehe vio-regelkatalog-politik-v3-5-1.md (Single Source of Truth)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -89,7 +89,7 @@
 - Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
 - VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
 
-### Konstanten (v3.4)
+### Konstanten (v3.5.1)
 | Konstante | Wert | Hinweis |
 |---|---|---|
 | F_MIN_WEEKLY | 3 | Krugman-Schwelle (war 2.5) |
@@ -121,6 +121,7 @@ Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARG
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 13.05.2026 | v3.5.1 | **Promotion v3.5.1-rc1 → v3.5.1 (final). Single Source of Truth.** Gating-Kriterien erfüllt: (1) Sandbox 72/72 grün (24 Spec-Tier 1 + 48 Snapshot-Tier 2 über 12 Cluster-Repräsentanten), (2) Terminologie-Drifts migriert (reachMitte/reachVon/reachBis/weeklyFreq → kanonische Terms), (3) overkill_frequency bleibt als Transitional-Hint für Pfad B (kein Promotion-Blocker, wird in Pfad-B-Implementation durch qualityStatus=high_frequency ersetzt), (4) Wearout-Verhalten §5.5 dokumentiert mit Klärungs-Block (Smoke-Test 2026-05-13 bestätigt: Plateau-Cases zeigen keinen sichtbaren Wearout-Decay), definitive Klärung in v3.5.2. v3.4 deprecated. CLAUDE.md aktualisiert. |
 | 12.05.2026 | v3.5.1-rc1 | Release Candidate für neue Single Source of Truth. NICHT produktiv. v3.4 bleibt aktiv bis RC-Promotion. Drift-Audit: 3 Terminologie-Drifts (reachMitte, reachVon/reachBis, weeklyFreq) + 1 obsoleter HinweisCode (overkill_frequency) als Promotion-Blocker dokumentiert. Wearout-Verhalten §5.5 ungeklärt (applyWearoutFactor existiert, Soll-Werte §11 zeigen aber keine Wearout-Multiplikation). Promotion nach: (1) §11 Sandbox 24/24 green ±2%, (2) Wearout-Klärung, (3) 3 Drifts migriert, (4) overkill_frequency entfernt. Bei Fail entsteht rc2. Drift-Audit dokumentiert in public/v3-5-1-rc1-drift-audit.md. |
 | 11.05.2026 | v3.4d | Bug-Fix: StepPackages zeitraumDates zeigte vergangenheitliche Kampagnendaten wenn Briefwahl-Fenster (vote−28 bis vote−28−laufzeit) bereits vergangen. Fallback: start=today+10, end=start+effectiveDays (MIN_SETUP_DAYS=10). Offene Inkonsistenz: StepSummaryPolitik.calcCampaignDates verwendet endISO=votingDate (nicht vote−28) — noch nicht behoben. |
 | 07.05.2026 | v3.4c | Bug-Fix: buildPackages.buildOne Budget-Rücklösung `* 0.7` → `/ IN_POOL_FACTOR` (Pricing-Korrektur für grosse Regionen). StepPackages Pfad-B-Indikator auf mode='paketLevel' umgestellt (Indikator zeigt jetzt Paket-konforme Werte). Pfad-A-State (Budget/Laufzeit) wird bei Tab-Wechsel A↔B korrekt gespeichert und wiederhergestellt. |

@@ -373,10 +373,10 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
       laufzeit:    isB2B ? (b2bPakete?.packages[selectedPkg]?.durationDays ?? currentPaket.weeks * 7) / 7 : currentPaket.weeks,
       startDate,
       reach:       isB2B ? b2bCurPkg.von     : reach.gesamtMitte,
-      reachVon:    isB2B ? b2bCurPkg.von     : reach.von,
-      reachBis:    isB2B ? b2bCurPkg.von     : reach.bis,
-      reachVonPct: isB2B ? undefined          : reach.vonPct,
-      reachBisPct: isB2B ? undefined          : reach.bisPct,
+      reachUniqueLow:    isB2B ? b2bCurPkg.von     : reach.von,
+      reachUniqueHigh:   isB2B ? b2bCurPkg.von     : reach.bis,
+      reachUniqueLowPct: isB2B ? undefined          : reach.vonPct,
+      reachUniqueHighPct: isB2B ? undefined          : reach.bisPct,
       screens:     reach.screens,
       tierSelected: PAKETE.findIndex(p => p.id === selectedPkg),
       b2bReach: isB2B ? { unternehmen: 0, mitarbeiter: b2bCurPkg.von } : null,
@@ -410,9 +410,9 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
 
   // ── Politik-only derived ──
   const POLITIK_FREQ: Record<PaketId, number> = {
-    sichtbar: PAKET_SPECS.sichtbar.weeklyFreq,
-    praesenz: PAKET_SPECS.praesenz.weeklyFreq,
-    dominanz: PAKET_SPECS.dominanz.weeklyFreq,
+    sichtbar: PAKET_SPECS.sichtbar.frequencyWeekly,
+    praesenz: PAKET_SPECS.praesenz.frequencyWeekly,
+    dominanz: PAKET_SPECS.dominanz.frequencyWeekly,
   };
 
   const daysToVote = (isPolitik && briefing.votingDate)

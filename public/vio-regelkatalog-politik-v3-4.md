@@ -1,3 +1,12 @@
+> **DEPRECATED — Stand 13.05.2026**
+>
+> Aktuelle Single Source of Truth: `vio-regelkatalog-politik-v3-5-1.md`
+>
+> v3.5.1 absorbiert v3.4 vollständig (Pfad A unverändert übernommen) und ergänzt Pfad B als Spec.
+> Diese Datei bleibt als historische Detail-Referenz für Pfad-A-Optimizer-Schritte erhalten.
+
+---
+
 # VIO Regelkatalog Politik — v3.4
 
 **Status:** Finale Phase-1-Spec (freigegeben).

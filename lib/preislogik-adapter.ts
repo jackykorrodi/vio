@@ -107,14 +107,14 @@ export function buildVioPackagesV2({
     const isRecommended = key === recommended;
     return {
       name: p.name,
-      reachPercent: voters > 0 ? p.reachMitte / voters : 0,
+      reachPercent: voters > 0 ? p.reachUniqueAbs / voters : 0,
       frequency: p.frequencyWeekly,
       durationDays: p.laufzeitDays,
-      targetReachPeople: p.reachMitte,
-      impressions: Math.round(p.reachMitte * p.frequencyCampaign),
+      targetReachPeople: p.reachUniqueAbs,
+      impressions: Math.round(p.reachUniqueAbs * p.frequencyCampaign),
       rawBudget: p.budget,
       finalBudget: p.budget,
-      uniqueReachPercent: voters > 0 ? p.reachMitte / voters : 0,
+      uniqueReachPercent: voters > 0 ? p.reachUniqueAbs / voters : 0,
       recommendedStartDate: dates?.startDate ?? null,
       latestBookingDate: dates?.bookingDate ?? null,
       badge: isRecommended ? 'Empfohlen' : null,

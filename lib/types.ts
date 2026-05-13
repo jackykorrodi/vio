@@ -74,10 +74,10 @@ export interface BriefingData {
   laufzeit: number;
   startDate: string;
   reach: number;
-  reachVon?: number;
-  reachBis?: number;
-  reachVonPct?: number;
-  reachBisPct?: number;
+  reachUniqueLow?: number;
+  reachUniqueHigh?: number;
+  reachUniqueLowPct?: number;
+  reachUniqueHighPct?: number;
   screens?: number;
   freq?: number;
   tierSelected?: number;

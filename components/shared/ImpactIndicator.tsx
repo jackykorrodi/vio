@@ -65,7 +65,7 @@ const labelStyle: React.CSSProperties = {
 // ─── Vollständige Variante ─────────────────────────────────────────────────
 
 function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionName?: string }) {
-  const barWidth = getBarWidth(impact.reachMitte, impact.stimmTotal);
+  const barWidth = getBarWidth(impact.reachUniqueAbs, impact.stimmTotal);
   const badgeText = getScreenBadgeText(impact.screenKlasse);
   const laufzeitWeeks = Math.round(impact.laufzeitDays / 7);
 
@@ -90,7 +90,7 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
         lineHeight: 1,
         marginBottom: 6,
       }}>
-        ~{fmt(impact.reachMitte)}
+        ~{fmt(impact.reachUniqueAbs)}
       </div>
 
       <div style={{
@@ -99,7 +99,7 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
         color: C.slate,
         marginBottom: 20,
       }}>
-        {fmt(impact.reachVon)}–{fmt(impact.reachBis)}{' '}
+        {fmt(impact.reachUniqueLow)}–{fmt(impact.reachUniqueHigh)}{' '}
         <span style={{ color: C.violet, fontWeight: 600 }}>Stimmberechtigte</span>
         {regionName ? ` in ${regionName}` : ''}
       </div>
@@ -129,7 +129,7 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
           fontWeight: 500,
         }}>
           <span>0</span>
-          <span>Stimmberechtigte erreicht: {impact.reachVonPct}–{impact.reachBisPct}%</span>
+          <span>Stimmberechtigte erreicht: {impact.reachUniqueLowPct}–{impact.reachUniqueHighPct}%</span>
           <span>80%</span>
         </div>
       </div>
@@ -273,7 +273,7 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
 // ─── Kompakte Variante (Step 1 Inline) ───────────────────────────────────
 
 function CompactIndicator({ impact, regionName }: { impact: ImpactResult; regionName?: string }) {
-  const barWidth = getBarWidth(impact.reachMitte, impact.stimmTotal);
+  const barWidth = getBarWidth(impact.reachUniqueAbs, impact.stimmTotal);
 
   return (
     <div style={{ padding: '20px 0 0 0' }}>
@@ -294,7 +294,7 @@ function CompactIndicator({ impact, regionName }: { impact: ImpactResult; region
           color: C.inkStrong,
           letterSpacing: '-0.02em',
         }}>
-          ~{fmt(impact.reachVon)}–{fmt(impact.reachBis)}
+          ~{fmt(impact.reachUniqueLow)}–{fmt(impact.reachUniqueHigh)}
         </div>
         <div style={{ fontSize: 15, color: C.slate, fontWeight: 500 }}>
           Stimmberechtigte

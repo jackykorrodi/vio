@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { calculateImpact } from '@/lib/preislogik';
-import { KANTONE, STAEDTE } from '@/lib/regions';
+import { KANTONE, STAEDTE, SCHWEIZ } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -18,9 +18,12 @@ type SollRow = {
   status_code: string;
 };
 
-type RegionKey = 'zug' | 'bern' | 'waedenswil' | 'adliswil';
+type RegionKey =
+  | 'zug' | 'bern' | 'waedenswil' | 'adliswil'      // Tier 1 — Spec-validiert v3.5.1
+  | 'aarau' | 'sion' | 'uster' | 'glarus'             // Tier 2 — Snapshot 2026-05-13
+  | 'lausanne' | 'zurichstadt' | 'aargau' | 'schweiz'; // Tier 2 — Snapshot 2026-05-13
 
-// ─── Soll-Daten (aus public/vio-regelkatalog-politik-v3-4.md, Sektion 7) ─────
+// ─── Soll-Daten (aus public/vio-regelkatalog-politik-v3-5-1.md, §11) ──────────
 
 const SOLL: Record<RegionKey, SollRow[]> = {
   zug: [
@@ -55,15 +58,88 @@ const SOLL: Record<RegionKey, SollRow[]> = {
     { budget: 20000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly: 12.0, status_code: 'dominanzmodus' },
     { budget: 30000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly: 18.0, status_code: 'dominanzmodus_stark' },
   ],
+  // ── Tier 2 — Snapshot 2026-05-13 (Smoke-Test Code-Snapshot) ─────────────
+  aarau: [
+    { budget:  4000, laufzeit: 28, level: 2, reach_abs:  6803, reach_pct: 43.9, f_weekly:  3.8, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 28, level: 3, reach_abs:  9860, reach_pct: 63.6, f_weekly:  3.9, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 10015, reach_pct: 64.6, f_weekly:  5.2, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 28, level: 3, reach_abs: 10070, reach_pct: 65.0, f_weekly:  7.7, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 10075, reach_pct: 65.0, f_weekly:  8.5, status_code: 'aufbau_42d_thin_budget' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 10075, reach_pct: 65.0, f_weekly: 12.8, status_code: 'dominanzmodus' },
+  ],
+  sion: [
+    { budget:  4000, laufzeit: 28, level: 1, reach_abs:  5450, reach_pct: 21.8, f_weekly:  4.7, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 28, level: 2, reach_abs: 10891, reach_pct: 43.6, f_weekly:  3.6, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 15574, reach_pct: 62.3, f_weekly:  3.3, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 28, level: 3, reach_abs: 16112, reach_pct: 64.4, f_weekly:  4.8, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 28, level: 3, reach_abs: 16244, reach_pct: 65.0, f_weekly:  8.0, status_code: 'optimal_28d_standard' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 16250, reach_pct: 65.0, f_weekly:  7.9, status_code: 'aufbau_42d_thin_budget' },
+  ],
+  uster: [
+    { budget:  4000, laufzeit: 28, level: 2, reach_abs: 10499, reach_pct: 42.0, f_weekly:  2.9, status_code: '28d_broad_reach_low_frequency' },
+    { budget:  6000, laufzeit: 28, level: 2, reach_abs: 11056, reach_pct: 44.2, f_weekly:  4.1, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 15867, reach_pct: 63.5, f_weekly:  3.8, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 28, level: 3, reach_abs: 16191, reach_pct: 64.8, f_weekly:  5.6, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 28, level: 3, reach_abs: 16249, reach_pct: 65.0, f_weekly:  9.4, status_code: 'optimal_28d_standard' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 16250, reach_pct: 65.0, f_weekly:  9.4, status_code: 'aufbau_42d_thin_budget' },
+  ],
+  glarus: [
+    { budget:  4000, laufzeit: 28, level: 1, reach_abs:  5863, reach_pct: 21.7, f_weekly:  4.4, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 28, level: 2, reach_abs: 11649, reach_pct: 43.1, f_weekly:  3.3, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 16626, reach_pct: 61.6, f_weekly:  3.1, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 28, level: 3, reach_abs: 17338, reach_pct: 64.2, f_weekly:  4.5, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 28, level: 3, reach_abs: 17539, reach_pct: 65.0, f_weekly:  7.4, status_code: 'optimal_28d_standard' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 17550, reach_pct: 65.0, f_weekly:  7.4, status_code: 'aufbau_42d_thin_budget' },
+  ],
+  lausanne: [
+    { budget:  4000, laufzeit: 14, level: 2, reach_abs: 15549, reach_pct: 14.8, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
+    { budget:  6000, laufzeit: 28, level: 1, reach_abs: 12018, reach_pct: 11.4, f_weekly:  3.2, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 28, level: 1, reach_abs: 12391, reach_pct: 11.8, f_weekly:  4.2, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 28, level: 2, reach_abs: 22293, reach_pct: 21.2, f_weekly:  3.5, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 28, level: 3, reach_abs: 38332, reach_pct: 36.5, f_weekly:  3.4, status_code: 'optimal_28d_standard' },
+    { budget: 30000, laufzeit: 28, level: 3, reach_abs: 39589, reach_pct: 37.7, f_weekly:  4.9, status_code: 'optimal_28d_standard' },
+  ],
+  zurichstadt: [
+    { budget:  4000, laufzeit: 14, level: 1, reach_abs: 13961, reach_pct:  4.5, f_weekly:  3.7, status_code: 'sprint_14d_thin_budget' },
+    { budget:  6000, laufzeit: 14, level: 2, reach_abs: 24072, reach_pct:  7.8, f_weekly:  3.2, status_code: 'sprint_14d_thin_budget' },
+    { budget:  8000, laufzeit: 14, level: 2, reach_abs: 27922, reach_pct:  9.0, f_weekly:  3.7, status_code: 'sprint_14d_thin_budget' },
+    { budget: 12000, laufzeit: 28, level: 1, reach_abs: 18311, reach_pct:  5.9, f_weekly:  4.2, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 28, level: 2, reach_abs: 36044, reach_pct: 11.6, f_weekly:  3.6, status_code: 'optimal_28d_standard' },
+    { budget: 30000, laufzeit: 28, level: 3, reach_abs: 61779, reach_pct: 19.9, f_weekly:  3.1, status_code: 'optimal_28d_standard' },
+  ],
+  aargau: [
+    { budget:  4000, laufzeit: 14, level: 1, reach_abs: 16916, reach_pct:  3.6, f_weekly:  3.1, status_code: 'sprint_14d_thin_budget' },
+    { budget:  6000, laufzeit: 14, level: 1, reach_abs: 21062, reach_pct:  4.5, f_weekly:  3.7, status_code: 'sprint_14d_thin_budget' },
+    { budget:  8000, laufzeit: 14, level: 2, reach_abs: 33832, reach_pct:  7.2, f_weekly:  3.1, status_code: 'sprint_14d_thin_budget' },
+    { budget: 12000, laufzeit: 14, level: 2, reach_abs: 42125, reach_pct:  9.0, f_weekly:  3.7, status_code: 'sprint_14d_thin_budget' },
+    { budget: 20000, laufzeit: 28, level: 1, reach_abs: 27911, reach_pct:  5.9, f_weekly:  4.6, status_code: 'optimal_28d_standard' },
+    { budget: 30000, laufzeit: 28, level: 2, reach_abs: 54582, reach_pct: 11.6, f_weekly:  3.5, status_code: 'optimal_28d_standard' },
+  ],
+  schweiz: [
+    { budget:  4000, laufzeit: 14, level: 1, reach_abs:  23942, reach_pct: 0.4, f_weekly: 2.2, status_code: 'too_thin' },
+    { budget:  6000, laufzeit: 14, level: 1, reach_abs:  34602, reach_pct: 0.6, f_weekly: 2.2, status_code: 'too_thin' },
+    { budget:  8000, laufzeit: 14, level: 1, reach_abs:  44472, reach_pct: 0.8, f_weekly: 2.3, status_code: 'too_thin' },
+    { budget: 12000, laufzeit: 14, level: 1, reach_abs:  62077, reach_pct: 1.1, f_weekly: 2.5, status_code: 'too_thin' },
+    { budget: 20000, laufzeit: 14, level: 1, reach_abs:  90117, reach_pct: 1.6, f_weekly: 2.9, status_code: 'too_thin' },
+    { budget: 30000, laufzeit: 14, level: 1, reach_abs: 114971, reach_pct: 2.1, f_weekly: 3.4, status_code: 'sprint_14d_thin_budget' },
+  ],
 };
 
 // ─── Regionen ────────────────────────────────────────────────────────────────
 
 const REGIONS: Record<RegionKey, Region> = {
-  zug:        KANTONE.find(k => k.kanton === 'ZG')!,
-  bern:       KANTONE.find(k => k.kanton === 'BE')!,
-  waedenswil: STAEDTE.find(s => s.name === 'Wädenswil')!,
-  adliswil:   STAEDTE.find(s => s.name === 'Adliswil')!,
+  zug:         KANTONE.find(k => k.kanton === 'ZG')!,
+  bern:        KANTONE.find(k => k.kanton === 'BE')!,
+  waedenswil:  STAEDTE.find(s => s.name === 'Wädenswil')!,
+  adliswil:    STAEDTE.find(s => s.name === 'Adliswil')!,
+  aarau:       STAEDTE.find(s => s.name === 'Aarau')!,
+  sion:        STAEDTE.find(s => s.name === 'Sion')!,
+  uster:       STAEDTE.find(s => s.name === 'Uster')!,
+  glarus:      KANTONE.find(k => k.kanton === 'GL')!,
+  lausanne:    STAEDTE.find(s => s.name === 'Lausanne')!,
+  zurichstadt: STAEDTE.find(s => s.name === 'Zürich')!,
+  aargau:      KANTONE.find(k => k.kanton === 'AG')!,
+  schweiz:     SCHWEIZ[0],
 };
 
 const REGION_META: Record<RegionKey, {
@@ -71,15 +147,28 @@ const REGION_META: Record<RegionKey, {
   specPool: number;
   klasse: string;
   note?: string;
+  snapshot?: boolean;
 }> = {
-  zug:        { label: 'Kanton Zug',  specPool:  85000, klasse: 'voll' },
-  bern:       { label: 'Kanton Bern', specPool: 775000, klasse: 'voll' },
-  waedenswil: { label: 'Wädenswil',   specPool:  16000, klasse: 'display-dom' },
-  adliswil:   { label: 'Adliswil',    specPool:  13000, klasse: 'begrenzt' },
+  zug:         { label: 'Kanton Zug',       specPool:   85000, klasse: 'voll' },
+  bern:        { label: 'Kanton Bern',       specPool:  775000, klasse: 'voll' },
+  waedenswil:  { label: 'Wädenswil',         specPool:   16000, klasse: 'display-dom' },
+  adliswil:    { label: 'Adliswil',          specPool:   13000, klasse: 'begrenzt' },
+  aarau:       { label: 'Aarau',             specPool:   15500, klasse: 'voll',     snapshot: true },
+  sion:        { label: 'Sion',              specPool:   25000, klasse: 'voll',     snapshot: true },
+  uster:       { label: 'Uster',             specPool:   25000, klasse: 'begrenzt', snapshot: true },
+  glarus:      { label: 'Kanton Glarus',     specPool:   27000, klasse: 'voll',     snapshot: true },
+  lausanne:    { label: 'Lausanne',          specPool:  105000, klasse: 'voll',     snapshot: true },
+  zurichstadt: { label: 'Zürich Stadt',      specPool:  310000, klasse: 'voll',     snapshot: true },
+  aargau:      { label: 'Kanton Aargau',     specPool:  470000, klasse: 'voll',     snapshot: true },
+  schweiz:     { label: 'Gesamte Schweiz',   specPool: 5600000, klasse: 'voll',     snapshot: true },
 };
 
 const BUDGETS: number[] = [4000, 6000, 8000, 12000, 20000, 30000];
-const ALL_KEYS: RegionKey[] = ['zug', 'bern', 'waedenswil', 'adliswil'];
+const ALL_KEYS: RegionKey[] = [
+  'zug', 'bern', 'waedenswil', 'adliswil',
+  'aarau', 'sion', 'uster', 'glarus',
+  'lausanne', 'zurichstadt', 'aargau', 'schweiz',
+];
 
 // ─── Diff-Helfer ─────────────────────────────────────────────────────────────
 
@@ -106,8 +195,8 @@ function computeIst(budget: number, region: Region) {
   return {
     laufzeit:    r.laufzeitDays,
     level:       r.capLevel,
-    reach_abs:   r.reachMitte,
-    reach_pct:   r.stimmTotal > 0 ? Math.round(r.reachMitte / r.stimmTotal * 1000) / 10 : 0,
+    reach_abs:   r.reachUniqueAbs,
+    reach_pct:   r.stimmTotal > 0 ? Math.round(r.reachUniqueAbs / r.stimmTotal * 1000) / 10 : 0,
     f_weekly:    r.frequencyWeekly,
     status_code: r.hinweise[0]?.code ?? 'ok',
   };
@@ -123,7 +212,7 @@ export default function PreislogikCurves() {
   const sollRows = SOLL[activeKey];
   const istRows  = BUDGETS.map(b => computeIst(b, region));
 
-  // Global match-counter (laufzeit + level exakt, alle 4 Regionen × 6 Budgets = 24)
+  // Global match-counter (laufzeit + level exakt, alle 12 Regionen × 6 Budgets = 72)
   let matchCount = 0;
   ALL_KEYS.forEach(key => {
     BUDGETS.forEach((budget, i) => {
@@ -132,7 +221,7 @@ export default function PreislogikCurves() {
       if (ist.laufzeit === soll.laufzeit && ist.level === soll.level) matchCount++;
     });
   });
-  const matchPct = Math.round(matchCount / 24 * 100);
+  const matchPct = Math.round(matchCount / 72 * 100);
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
@@ -178,13 +267,16 @@ export default function PreislogikCurves() {
           fontSize: 22, fontWeight: 700, color: '#1A0F3B',
           letterSpacing: '-0.01em', marginBottom: 4,
         }}>
-          Preislogik Sandbox v3.4 — Ist vs. Soll
+          Preislogik Sandbox v3.5.1 — Ist vs. Soll
         </h1>
-        <p style={{ ...base, fontSize: 13, color: '#5A556F', marginBottom: 28, lineHeight: 1.6 }}>
+        <p style={{ ...base, fontSize: 13, color: '#5A556F', marginBottom: 8, lineHeight: 1.6 }}>
           <code>lib/preislogik.ts</code> (heutige Logik) ↔{' '}
-          <code>public/vio-regelkatalog-politik-v3-4.md</code> (Finale Spec)
+          <code>public/vio-regelkatalog-politik-v3-5-1.md</code> (Single Source of Truth)
           <br />
           <code>mode=&apos;budgetFirst&apos;</code>, ohne <code>laufzeitDays</code> → Optimizer aktiv · Diff: 🟢 ≤5% · 🟡 5–15% · 🔴 &gt;15% oder falsch
+        </p>
+        <p style={{ ...base, fontSize: 11, color: '#9B8FBF', marginBottom: 24 }}>
+          Spec-Regionen (4): fachlich kalibriert v3.5.1 · Snapshot-Regionen (8): Code-Snapshot Smoke-Test 2026-05-13
         </p>
 
         {/* Region-Tabs */}
@@ -205,6 +297,9 @@ export default function PreislogikCurves() {
                 }}
               >
                 {REGION_META[key].label}
+                {REGION_META[key].snapshot && (
+                  <span style={{ fontSize: 9, marginLeft: 5, opacity: 0.55, fontWeight: 400 }}>Snapshot</span>
+                )}
               </button>
             );
           })}
@@ -245,7 +340,7 @@ export default function PreislogikCurves() {
               <tr>
                 <th style={th()}>Budget</th>
                 <th style={th()}>Metrik</th>
-                <th style={th({ color: '#6B7280' })}>Soll v3.4</th>
+                <th style={th({ color: '#6B7280' })}>Soll v3.5.1</th>
                 <th style={th({ color: '#1A0F3B' })}>Ist heute</th>
                 <th style={th({ textAlign: 'center' })}>Diff</th>
               </tr>
@@ -349,12 +444,12 @@ export default function PreislogikCurves() {
         }}>
           <span style={{
             fontFamily: 'monospace', fontSize: 16, fontWeight: 700,
-            color: matchCount >= 18 ? '#166534' : matchCount >= 10 ? '#92400E' : '#991B1B',
+            color: matchCount >= 54 ? '#166534' : matchCount >= 36 ? '#92400E' : '#991B1B',
           }}>
-            {matchCount}/24 🟢
+            {matchCount}/72 🟢
           </span>
           <span style={{ ...base, fontSize: 13, color: '#5A556F' }}>
-            Zeilen match (Laufzeit + Level exakt) — {matchPct}% Match-Quote über alle 4 Regionen
+            Zeilen match (Laufzeit + Level exakt) — {matchPct}% Match-Quote über alle 12 Regionen
           </span>
         </div>
 

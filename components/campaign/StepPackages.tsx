@@ -405,9 +405,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       budget,
       laufzeit: Math.round((impact?.laufzeitDays ?? effectiveDays) / 7),
       freq:        Math.round(impact?.frequencyCampaign ?? (packages?.[pkg]?.frequencyCampaign ?? 5)),
-      reach:       impact?.reachMitte ?? 0,
-      reachVonPct: impact?.reachVonPct ?? 0,
-      reachBisPct: impact?.reachBisPct ?? 0,
+      reach:       impact?.reachUniqueAbs ?? 0,
+      reachUniqueLowPct: impact?.reachUniqueLowPct ?? 0,
+      reachUniqueHighPct: impact?.reachUniqueHighPct ?? 0,
       b2bReach: null,
     });
     nextStep();
@@ -582,7 +582,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 Deine Botschaft erreicht
               </div>
               <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
-                {impact ? `${fmtNum(impact.reachVon)} – ${fmtNum(impact.reachBis)}` : '—'}
+                {impact ? `${fmtNum(impact.reachUniqueLow)} – ${fmtNum(impact.reachUniqueHigh)}` : '—'}
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
 
@@ -591,7 +591,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Abdeckung</div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                    {impact ? `${Math.round(impact.reachVonPct)}–${Math.round(impact.reachBisPct)} %` : '—'}
+                    {impact ? `${Math.round(impact.reachUniqueLowPct)}–${Math.round(impact.reachUniqueHighPct)} %` : '—'}
                   </div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>der Stimmberechtigten</div>
                 </div>

@@ -81,11 +81,11 @@ export interface ImpactResult {
   laufzeitWeeks: number;
 
   // Reichweite (das was der User sieht)
-  reachVon: number;
-  reachBis: number;
-  reachMitte: number;
-  reachVonPct: number;
-  reachBisPct: number;
+  reachUniqueLow: number;
+  reachUniqueHigh: number;
+  reachUniqueAbs: number;
+  reachUniqueLowPct: number;
+  reachUniqueHighPct: number;
 
   // Frequenz
   frequencyCampaign: number;  // z.B. 20 (= Ø 20× pro Person über die Kampagne)
@@ -121,11 +121,11 @@ export interface Paket {
   laufzeitWeeks: number;
   frequencyCampaign: number;
   frequencyWeekly: number;
-  reachVon: number;
-  reachBis: number;
-  reachMitte: number;
-  reachVonPct: number;
-  reachBisPct: number;
+  reachUniqueLow: number;
+  reachUniqueHigh: number;
+  reachUniqueAbs: number;
+  reachUniqueLowPct: number;
+  reachUniqueHighPct: number;
   recommended: boolean;
 }
 
@@ -142,13 +142,13 @@ export interface PakeResult {
 
 export const PAKET_SPECS: Record<PaketKey, {
   name: string;
-  weeklyFreq: number;
+  frequencyWeekly: number;
   laufzeitDays: number;
   reachCapLevel: 1 | 2 | 3;
 }> = {
-  sichtbar: { name: 'Sichtbar', weeklyFreq: 3, laufzeitDays: 14, reachCapLevel: 1 },
-  praesenz: { name: 'Präsenz', weeklyFreq: 5, laufzeitDays: 28, reachCapLevel: 2 },
-  dominanz: { name: 'Dominanz', weeklyFreq: 6, laufzeitDays: 42, reachCapLevel: 3 },
+  sichtbar: { name: 'Sichtbar', frequencyWeekly: 3, laufzeitDays: 14, reachCapLevel: 1 },
+  praesenz: { name: 'Präsenz', frequencyWeekly: 5, laufzeitDays: 28, reachCapLevel: 2 },
+  dominanz: { name: 'Dominanz', frequencyWeekly: 6, laufzeitDays: 42, reachCapLevel: 3 },
 };
 
 // ─── Reach-Caps nach Pool-Grösse (tiered) ────────────────────────────────────
@@ -286,9 +286,10 @@ function buildHinweise(ctx: {
   multiRegion: boolean;
   politScreensTotal: number;
   stimmTotal: number;
-  reachMitte: number;
+  reachUniqueAbs: number;
   regions: Region[];
   optimizerStatusCode?: HinweisCode;
+  mode?: 'budgetFirst' | 'paketLevel';
 }): Hinweis[] {
   const hinweise: Hinweis[] = [];
 
@@ -309,8 +310,8 @@ function buildHinweise(ctx: {
     });
   }
 
-  // Priorität 2: Overkill-Frequenz
-  if (ctx.frequencyWeekly > F_MAX_WEEKLY) {
+  // Priorität 2: Overkill-Frequenz — nur paketLevel (transitional; Pfad A nutzt dominanzmodus/dominanzmodus_stark)
+  if (ctx.frequencyWeekly > F_MAX_WEEKLY && ctx.mode === 'paketLevel') {
     hinweise.push({
       code: 'overkill_frequency',
       text: `Hohe Kontaktdichte — jede erreichte Person wird Ø ${ctx.frequencyWeekly.toFixed(1)}× pro Woche erreicht. Für breitere Streuung kann eine grössere Zielregion, längere Laufzeit oder ein tieferes Budget sinnvoll sein.`,
@@ -579,12 +580,12 @@ export function calculateImpact(input: {
 
   const band = getUncertaintyBand(politScreensTotal);
 
-  const reachMitte = Math.round(uniqueReach);
-  const reachVon = Math.round(Math.max(0, uniqueReach * (1 - band)) / 500) * 500;
-  const reachBis = Math.round(Math.min(poolCap, uniqueReach * (1 + band)) / 500) * 500;
+  const reachUniqueAbs = Math.round(uniqueReach);
+  const reachUniqueLow = Math.round(Math.max(0, uniqueReach * (1 - band)) / 500) * 500;
+  const reachUniqueHigh = Math.round(Math.min(poolCap, uniqueReach * (1 + band)) / 500) * 500;
 
-  const reachVonPct = stimmTotal > 0 ? Math.round((reachVon / stimmTotal) * 100) : 0;
-  const reachBisPct = stimmTotal > 0 ? Math.round((reachBis / stimmTotal) * 100) : 0;
+  const reachUniqueLowPct = stimmTotal > 0 ? Math.round((reachUniqueLow / stimmTotal) * 100) : 0;
+  const reachUniqueHighPct = stimmTotal > 0 ? Math.round((reachUniqueHigh / stimmTotal) * 100) : 0;
 
   // Decision-Engine-Signale
   const impactLevel: 'sichtbar' | 'praesenz' | 'dominanz' =
@@ -620,20 +621,21 @@ export function calculateImpact(input: {
     multiRegion,
     politScreensTotal,
     stimmTotal,
-    reachMitte,
+    reachUniqueAbs,
     regions,
     optimizerStatusCode: optimizerOut?.statusCode,
+    mode: input.mode,
   });
 
   return {
     budget: input.budget,
     laufzeitDays: laufzeitDays,
     laufzeitWeeks,
-    reachVon,
-    reachBis,
-    reachMitte,
-    reachVonPct,
-    reachBisPct,
+    reachUniqueLow,
+    reachUniqueHigh,
+    reachUniqueAbs,
+    reachUniqueLowPct,
+    reachUniqueHighPct,
     frequencyCampaign: Math.round(frequencyCampaign * 10) / 10,
     frequencyWeekly: fWeekly,
     stimmTotal,
@@ -678,7 +680,7 @@ export function buildPackages(input: {
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
     // Budget rückwärts lösen: Zielmenge gross (vor IN_POOL_FACTOR) = effektiv / IN_POOL_FACTOR
-    const targetContacts = spec.weeklyFreq * laufzeitWeeks * targetReach / IN_POOL_FACTOR;
+    const targetContacts = spec.frequencyWeekly * laufzeitWeeks * targetReach / IN_POOL_FACTOR;
     const impsDOOH = (targetContacts * klass.split.dooh) / (DOOH_OTS_MULTIPLIER * DELIVERY_DOOH);
     const impsDisplay = (targetContacts * klass.split.display) / DELIVERY_DISPLAY;
     const rawBudget = (impsDOOH / 1000) * CPM_DOOH + (impsDisplay / 1000) * CPM_DISPLAY;
@@ -701,11 +703,11 @@ export function buildPackages(input: {
       laufzeitWeeks,
       frequencyCampaign: imp.frequencyCampaign,
       frequencyWeekly: imp.frequencyWeekly,
-      reachVon: imp.reachVon,
-      reachBis: imp.reachBis,
-      reachMitte: imp.reachMitte,
-      reachVonPct: imp.reachVonPct,
-      reachBisPct: imp.reachBisPct,
+      reachUniqueLow: imp.reachUniqueLow,
+      reachUniqueHigh: imp.reachUniqueHigh,
+      reachUniqueAbs: imp.reachUniqueAbs,
+      reachUniqueLowPct: imp.reachUniqueLowPct,
+      reachUniqueHighPct: imp.reachUniqueHighPct,
       recommended: key === 'praesenz',
     };
   };
