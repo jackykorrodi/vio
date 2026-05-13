@@ -49,7 +49,7 @@ function addDaysToDate(d: Date, n: number): Date {
 
 // ─── Package cards sub-component ─────────────────────────────────────────────
 const PKG_ORDER: PaketKey[] = ['sichtbar', 'praesenz', 'dominanz'];
-const PKG_CAP_LEVEL: Record<PaketKey, 1 | 2 | 3> = { sichtbar: 1, praesenz: 2, dominanz: 3 };
+export const PKG_CAP_LEVEL: Record<PaketKey, 1 | 2 | 3> = { sichtbar: 1, praesenz: 2, dominanz: 3 };
 const PKG_SUBTITLE: Record<PaketKey, string> = {
   sichtbar: 'Sichtbarkeit aufbauen',
   praesenz: 'Optimal in Meinungsbildungsphase',
@@ -264,7 +264,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [path, setPath]               = useState<'A' | 'B'>(briefing.budgetKnown === false ? 'B' : 'A');
   const [pkg, setPkg]                 = useState<PaketKey>('praesenz');
   const [budget, setBudget]           = useState<number>(
-    briefing.budget ?? briefing.recommendedBudget ?? 4000
+    briefing.budget ||
+    (briefing.selectedPackage && packages
+      ? packages[briefing.selectedPackage as PaketKey]?.budget
+      : 0) ||
+    packages?.praesenz?.budget ||
+    4000
   );
   const [days, setDays]               = useState<number>(
     packages ? packages.praesenz.laufzeitDays : 21

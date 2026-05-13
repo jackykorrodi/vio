@@ -4,16 +4,17 @@ import { useState, useEffect } from 'react';
 import { BriefingData } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
 import { calculateImpact } from '@/lib/preislogik';
+import type { PaketKey } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import doohScreensRaw from '@/lib/dooh-screens.json';
 import ImpactIndicator from '@/components/shared/ImpactIndicator';
 import CampaignHint from '@/components/shared/CampaignHint';
+import { PKG_CAP_LEVEL } from '@/components/campaign/StepPackages';
 
 type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
 const DOOH_DATA = doohScreensRaw as DoohEntry[];
 
-type PkgKey = 'sichtbar' | 'praesenz' | 'dominanz';
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 const MONTHS_SHORT = ['Jan','Feb','Mrz','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -100,7 +101,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   });
 
   const vioData = briefing.vioPackages ?? null;
-  const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PkgKey;
+  const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PaketKey;
   const pkg = vioData?.packages?.[selectedPkg] ?? null;
 
   // Budget/laufzeit from briefing — Step 2 is source of truth, no local state
@@ -132,11 +133,13 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     ? calcCampaignDates(briefing.votingDate, laufzeitWeeks)
     : { startISO: '', endISO: '' };
 
+  const pkgKey = briefing.selectedPackage as PaketKey | undefined;
   const impact = selectedRegionsFull.length > 0
     ? calculateImpact({
         budget,
         laufzeitDays: laufzeitWeeks * 7,
         regions: selectedRegionsFull,
+        ...(pkgKey ? { mode: 'paketLevel', paketLevel: PKG_CAP_LEVEL[pkgKey] } : {}),
       })
     : null;
 
@@ -222,7 +225,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
           {impact && impact.hinweise.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <CampaignHint
-                hinweise={impact.hinweise}
+                hinweise={impact.hinweise.filter(h => h.code !== 'ok')}
                 onBookConsult={() => { window.open(CALENDLY_URL, '_blank'); }}
               />
             </div>

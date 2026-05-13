@@ -150,4 +150,8 @@ Sweet-Spot-Fallback in StepPackages.tsx gegen overkill abgesichert |
 
 ### Backlog
 - **Glossar definieren** (`docs/glossary.md`): einheitliches Otto-Vokabular für Reichweite, Stimmberechtigte erreicht, Jede Person sieht es, Sweet Spot, Zeitraum, Kanal-Mix etc. Anschliessend Cross-Flow-Sync-Pass über Politik + B2B Steps 1–5.
+- **RC-3: laufzeitDays-Rundung** — Step 2 schreibt `Math.round(impact.laufzeitDays / 7)` in `briefing.laufzeit`, Step 3 multipliziert × 7. Bei Optimizer-Werten ≠ 7-Vielfache Rundungsverlust möglich.
+- **RC-4: 1-Tag-Versatz Start-Datum** — Step 2 `zeitraumDates` vs. Step 3 `calcCampaignDates` mit today-Fallback. Konsolidierung pending.
+- **Architektur-Refactor** — Step 2 serialisiert finalen `impactSnapshot` ins briefing, Step 3 rendert nur. Eliminiert ganze Klasse von State-Drift-Bugs.
+- **Legacy** — `buildVioPackagesV2` + `briefing.vioPackages.finalBudget` — toter Pfad, Quelle des 5000-Fallbacks in RC-1. Bei Architektur-Refactor entfernen.
 
