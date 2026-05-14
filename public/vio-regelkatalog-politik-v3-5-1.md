@@ -2,11 +2,11 @@
 
 ```yaml
 SPEC_VERSION:     3.5.1
-LAST_VALIDATED:   2026-05-13
+LAST_VALIDATED:   2026-05-14
 PFAD_A_STATUS:    72/72 green (§11 Spec-Tier 24 + §11.2 Snapshot-Tier 48)
 PFAD_B_STATUS:    spec final, implementation pending (§12 36 Soll-Werte zu definieren)
 PRECEDENCE:       Spec > Code. Bei Konflikt gilt diese Spec; Code wird angeglichen.
-NEXT_VERSION:     v3.5.2 — Wearout-Verhalten gemäss §5.5 final klären (Code-Reading + Spec-Anpassung)
+NEXT_VERSION:     keine geplant; v3.6 nur bei Live-Kalibrierungs-Bedarf
 ```
 
 **Status**: Single Source of Truth für die Politik-Preislogik (promoted aus v3.5.1-rc1 am 13.05.2026).
@@ -191,27 +191,19 @@ reach_capped       = min(reach_pre_wearout, pool × MAX_REACH_CAP)
 
 # Wearout-Formel
 weeks              = laufzeit_days / 7
-wearout_factor     = if weeks <= 4:
+wearout_factor     = if weeks <= 8:
                        1.0
-                     elif weeks >= 8:
-                       WEAROUT_FLOOR
                      else:
-                       1.0 − (weeks − 4) × ((1.0 − WEAROUT_FLOOR) / 4)
+                       max(1.0 − (weeks − 8) × 0.03, WEAROUT_FLOOR)
+                     # Floor 0.70 erreicht bei ~18 Wochen
 
 reach_unique_abs   = reach_capped × wearout_factor
 reach_unique_pct   = reach_unique_abs / pool
 ```
 
-**Wearout-Interpretation**: Bei längeren Laufzeiten sinkt die effektive Wirkung pro erreichter Person (Reizmüdigkeit). Linearer Decay von 1.0 (≤4 Wochen) auf 0.70 (≥8 Wochen). 42-Tage-Kampagne (6 Wochen) ergibt `wearout_factor = 0.85`.
+**Wearout-Interpretation**: Wearout-Decay greift erst **nach** dem politischen Entscheidungsfenster. Innerhalb der Standard-Laufzeiten (14/28/42d Pfad A) und der Pfad-B-Korridore (max 56d = 8 Wochen) bleibt der Faktor 1.0 — kurzfristige Überpräsenz wird stattdessen über `F_MAX_WEEKLY` / `F_OVERKILL_THRESHOLD` (Frequenz-Limits) modelliert. Ab Woche 9 setzt linearer Decay mit Slope −0.03/Woche ein, gefloort bei `WEAROUT_FLOOR = 0.70` (erreicht bei ~18 Wochen).
 
-**Klärungs-Status (v3.5.1)**: Smoke-Test 2026-05-13 über alle 130 buchbaren Regionen bestätigt empirisch: In 42d-Cases von Mikroregionen mit voll ausgeschöpftem Cap-Level erscheint `reach = pool × pcap_share` exakt (z.B. Adliswil 13'000 × 0.65 = 8'450). Wearout-Multiplikation auf reach_capped ist in diesen Cases nicht sichtbar.
-
-Das bedeutet eine der folgenden Realitäten:
-- (a) Wearout wird im Code-Pfad nicht aufgerufen wenn reach_capped am Plateau ist (sinnvolle Interaktion mit MAX_REACH_CAP).
-- (b) Wearout läuft auf einer anderen Grösse (z.B. Frequency-Berechnung statt Reach).
-- (c) Wearout ist deaktiviert (applyWearoutFactor existiert aber wird nicht aufgerufen in calculateImpact()).
-
-Definitive Klärung erfolgt in v3.5.2 durch Code-Reading von `applyWearoutFactor` und allen Call-Sites in `lib/preislogik.ts`. Bis dahin gilt: §5.5 Formel ist normativ-aspirational, tatsächliches Code-Verhalten dokumentiert hier.
+**Empirische Bestätigung**: Smoke-Test 2026-05-13 über alle 130 buchbaren Regionen zeigt für 42d-Cases (z.B. Adliswil 13'000 × 0.65 = 8'450) exakt `reach = pool × pcap_share` — konsistent mit `wearout_factor = 1.0` bei ≤ 8 Wochen.
 
 ### 5.6 Frequenz
 

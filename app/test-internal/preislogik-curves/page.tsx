@@ -170,6 +170,21 @@ const ALL_KEYS: RegionKey[] = [
   'lausanne', 'zurichstadt', 'aargau', 'schweiz',
 ];
 
+// ─── Wearout-Probes (>8 Wochen) — Regressionsschutz für §5.5 ───────────────
+// Indirekte Messung: gleicher Budget+Level+Region, nur laufzeitDays variiert.
+// reach(t) / reach(baseline=56d) ergibt direkt wearout_factor, weil
+// impressionsEffective + poolCap + saturationFactor laufzeit-unabhängig sind
+// und Cap-Clamp vor Wearout-Multiplikation greift.
+const WEAROUT_PROBES: { laufzeitDays: number; weeks: number; expectedFactor: number }[] = [
+  { laufzeitDays:  56, weeks:  8, expectedFactor: 1.00 }, // Baseline (≤ 8 W → 1.0)
+  { laufzeitDays:  70, weeks: 10, expectedFactor: 0.94 }, // 1.0 − (10−8) × 0.03
+  { laufzeitDays:  91, weeks: 13, expectedFactor: 0.85 }, // 1.0 − (13−8) × 0.03
+  { laufzeitDays: 126, weeks: 18, expectedFactor: 0.70 }, // Floor (WEAROUT_FLOOR)
+];
+const WEAROUT_PROBE_BUDGET = 30000;
+const WEAROUT_PROBE_LEVEL: 1 | 2 | 3 = 3;
+const WEAROUT_PROBE_REGION: RegionKey = 'bern'; // Pool gross genug, kein MAX_REACH_CAP-Plateau
+
 // ─── Diff-Helfer ─────────────────────────────────────────────────────────────
 
 function numDiff(soll: number, ist: number): string {
@@ -222,6 +237,29 @@ export default function PreislogikCurves() {
     });
   });
   const matchPct = Math.round(matchCount / 72 * 100);
+
+  // Wearout-Probes — Reach-Verhältnis gegen Baseline 56d (=8 W, Faktor 1.0)
+  const wearoutRegion = REGIONS[WEAROUT_PROBE_REGION];
+  const wearoutBaseline = calculateImpact({
+    budget:        WEAROUT_PROBE_BUDGET,
+    laufzeitDays:  56,
+    regions:       [wearoutRegion],
+    mode:          'paketLevel',
+    paketLevel:    WEAROUT_PROBE_LEVEL,
+  }).reachUniqueAbs;
+  const wearoutRows = WEAROUT_PROBES.map(p => {
+    const reachIst = calculateImpact({
+      budget:        WEAROUT_PROBE_BUDGET,
+      laufzeitDays:  p.laufzeitDays,
+      regions:       [wearoutRegion],
+      mode:          'paketLevel',
+      paketLevel:    WEAROUT_PROBE_LEVEL,
+    }).reachUniqueAbs;
+    const istFactor = wearoutBaseline > 0 ? reachIst / wearoutBaseline : 0;
+    const deltaAbs  = Math.abs(istFactor - p.expectedFactor);
+    return { ...p, reachIst, istFactor, deltaAbs };
+  });
+  const wearoutAllGreen = wearoutRows.every(r => r.deltaAbs <= 0.01);
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
@@ -451,6 +489,56 @@ export default function PreislogikCurves() {
           <span style={{ ...base, fontSize: 13, color: '#5A556F' }}>
             Zeilen match (Laufzeit + Level exakt) — {matchPct}% Match-Quote über alle 12 Regionen
           </span>
+        </div>
+
+        {/* Wearout-Probes (>8 Wochen) */}
+        <div style={{
+          marginTop: 16, padding: '14px 16px',
+          background: 'white', border: '1px solid rgba(107,79,187,0.10)',
+          borderRadius: 10,
+        }}>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: 13, fontWeight: 700, color: '#1A0F3B',
+              letterSpacing: '-0.005em',
+            }}>
+              §5.5 Wearout-Probes
+            </span>
+            <span style={{ ...base, fontSize: 11, color: '#9B8FBF', marginLeft: 10 }}>
+              Indirekt-Messung: reach(t) / reach(56d) bei {REGION_META[WEAROUT_PROBE_REGION].label}, L{WEAROUT_PROBE_LEVEL}, CHF {fmt(WEAROUT_PROBE_BUDGET)} · Toleranz ±0.01
+            </span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th({ padding: '6px 10px' })}>Laufzeit</th>
+                <th style={th({ padding: '6px 10px' })}>Wochen</th>
+                <th style={th({ padding: '6px 10px', color: '#6B7280' })}>Soll-Faktor</th>
+                <th style={th({ padding: '6px 10px' })}>Ist-Faktor</th>
+                <th style={th({ padding: '6px 10px' })}>Δ</th>
+                <th style={th({ padding: '6px 10px', textAlign: 'center' })}>Diff</th>
+              </tr>
+            </thead>
+            <tbody>
+              {wearoutRows.map(r => (
+                <tr key={r.laufzeitDays}>
+                  <td style={mono({ padding: '5px 10px' })}>{r.laufzeitDays}d</td>
+                  <td style={mono({ padding: '5px 10px', color: '#9B8FBF' })}>{r.weeks} W</td>
+                  <td style={mono({ padding: '5px 10px', color: '#6B7280' })}>{r.expectedFactor.toFixed(2)}</td>
+                  <td style={mono({ padding: '5px 10px', fontWeight: 600 })}>{r.istFactor.toFixed(3)}</td>
+                  <td style={mono({ padding: '5px 10px', color: '#9B8FBF' })}>{r.deltaAbs.toFixed(3)}</td>
+                  <td style={td({ padding: '5px 10px', textAlign: 'center', fontSize: 14 })}>
+                    {r.deltaAbs <= 0.01 ? '🟢' : r.deltaAbs <= 0.03 ? '🟡' : '🔴'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p style={{ ...base, fontSize: 10, color: '#9B8FBF', marginTop: 6, marginBottom: 0 }}>
+            {wearoutAllGreen ? '🟢 ' : '🟡 '}
+            Status: Code-Schwelle ≤ 8 W → Faktor 1.0, danach linearer Decay (slope −0.03/W), Floor 0.70 bei ~18 W. Politik-Standard-Laufzeiten (≤ 42d) sind nie betroffen.
+          </p>
         </div>
 
       </div>
