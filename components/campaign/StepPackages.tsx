@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { BriefingData } from '@/lib/types';
 import {
   calculateImpact, buildPackages, getLaufzeitCorridor, coupleBudgetToLaufzeit,
-  calculateSweetSpot,
+  calculateSweetSpot, buildDisplaySprint, DISPLAY_SPRINT_SWITCH_DAYS,
 } from '@/lib/preislogik';
 import type { PaketKey, PakeResult, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
@@ -339,6 +339,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     return Math.ceil(ms / 86400000);
   }, [briefing.votingDate]);
 
+  const isDisplaySprint = !!briefing.votingDate && daysUntilVote != null && daysUntilVote < DISPLAY_SPRINT_SWITCH_DAYS;
+
+  const sprintData = useMemo(
+    () => isDisplaySprint ? buildDisplaySprint(briefing.budget ?? 4000, stimmTotal || 100000) : null,
+    [isDisplaySprint, briefing.budget, stimmTotal]
+  );
+
   const disabledPkgs = useMemo<Set<PaketKey>>(() => {
     if (daysUntilVote == null || !packages) return new Set<PaketKey>();
     return new Set(PKG_ORDER.filter(k => packages[k].laufzeitDays > daysUntilVote));
@@ -502,7 +509,43 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               Reichweite &amp; Paket
             </div>
 
-            {/* Path toggle pill */}
+            {/* Display Sprint Mode (daysUntilVote < DISPLAY_SPRINT_SWITCH_DAYS) */}
+            {isDisplaySprint && sprintData && (
+              <>
+                <div style={{ background: T.warnBg, border: `1px solid #F0D5A8`, borderRadius: 12, padding: '14px 18px', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+                  <span style={{ fontSize: 14, color: T.warn, lineHeight: 1.5 }}>
+                    Wegen des knappen Vorlaufs ist nur noch Online-Display buchbar — DOOH-Screens benötigen mindestens 10 Tage Freigabezeit.
+                  </span>
+                </div>
+                <div style={{ background: T.card, border: `2px solid ${T.violet}`, borderRadius: 16, padding: '22px 24px' }}>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 4 }}>
+                    Online-Display Sprint · 7 Tage
+                  </div>
+                  <div style={{ fontSize: 13, color: T.slate, marginBottom: 16 }}>Display-only · kein DOOH</div>
+                  <div style={{ display: 'flex', gap: 24 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.slate, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 4 }}>Reichweite</div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.ink }}>
+                        ca. {fmtNum(sprintData.reachVon)} – {fmtNum(sprintData.reachBis)}
+                      </div>
+                      <div style={{ fontSize: 12, color: T.slate }}>Personen</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.slate, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 4 }}>Laufzeit</div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.ink }}>7 Tage</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.slate, textTransform: 'uppercase', letterSpacing: '0.10em', marginBottom: 4 }}>Budget</div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violetDeep }}>{fmtCHF(sprintData.budget)}</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Path toggle + Pakete + Wirkungsindikator (nur normal mode) */}
+            {!isDisplaySprint && (<>
             <div style={{ display: 'inline-flex', background: T.card, border: `1px solid ${T.line}`, borderRadius: 999, padding: 4, marginBottom: 24 }}>
               {(['A', 'B'] as const).map(p => (
                 <button
@@ -637,6 +680,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
             {/* Hint (max 1) */}
             <HintCard hint={activeHint} />
+            </>)}
 
             {/* CTA row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 26 }}>

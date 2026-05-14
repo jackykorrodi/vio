@@ -135,6 +135,11 @@ Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARG
 - CAMPAIGN_END_OFFSET_DAYS = 0 → alle Pakete enden am Abstimmungstag
 - Laufzeit rückwärts vom Vote: 2 / 4 / 6 Wochen
 - Setup-Puffer 10 Tage (DOOH-Freigabe ca. 7 Werktage)
+- `DOOH_CUTOFF_DAYS = 10` — operativer Supply Constraint: DOOH-Freigabe nicht mehr möglich
+- `DISPLAY_SPRINT_SWITCH_DAYS = 24` — Produkt-Switch: `daysUntilVote < 24` → Display Sprint Mode
+  - `buildDisplaySprint(budget, stimmTotal)` → 7 Tage Display-only
+  - Formel: `impressions = budget / CPM_DISPLAY * 1000`; `uniqueReach = impressions * 0.35`; `cappedReach = min(uniqueReach, stimmTotal * 0.40)`; `reachVon/Bis = round500(cappedReach × 0.85/1.15)`
+  - In StepPackages: Amber-Banner + Einzelkarte ersetzt Pfad-A/B + Wirkungsindikator
 
 ### Datums-Gating Step 1 Politik
 - < 10 Tage: Hard Block (Weiter disabled)

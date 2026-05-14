@@ -48,6 +48,10 @@ export const F_OVERKILL_THRESHOLD = 15;      // harte Wearout-Grenze
 export const LARGE_POOL_THRESHOLD = 500_000; // ab hier Gross-Region-Logik
 export const REACH_PREMIUM_THRESHOLD = 1.4;  // Dominanz-Multiplier-Trigger
 
+// Timing-Constraints (Display Sprint)
+export const DOOH_CUTOFF_DAYS = 10;           // operativ: DOOH-Freigabe nicht mehr möglich
+export const DISPLAY_SPRINT_SWITCH_DAYS = 24; // Produkt: Mode-Switch auf Display Sprint
+
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
 export type HinweisCode =
@@ -66,7 +70,8 @@ export type HinweisCode =
   | 'dominanzmodus'
   | 'dominanzmodus_stark'
   | 'overkill_frequency'
-  | 'too_thin';
+  | 'too_thin'
+  | 'display_only_timing';
 
 export interface Hinweis {
   code: HinweisCode;
@@ -723,6 +728,28 @@ export function buildPackages(input: {
 }
 
 // ─── Konstanten-Export für UI ────────────────────────────────────────────────
+
+// ─── Display Sprint ───────────────────────────────────────────────────────────
+
+export function buildDisplaySprint(budget: number, stimmTotal: number): {
+  budget: number;
+  laufzeitDays: 7;
+  reachVon: number;
+  reachBis: number;
+  hinweis: { code: 'display_only_timing'; priority: 1 };
+} {
+  function round500(x: number): number { return Math.round(x / 500) * 500; }
+  const impressions  = budget / CPM_DISPLAY * 1000;
+  const uniqueReach  = impressions * 0.35;
+  const cappedReach  = Math.min(uniqueReach, stimmTotal * 0.40);
+  return {
+    budget,
+    laufzeitDays: 7,
+    reachVon: round500(cappedReach * 0.85),
+    reachBis: round500(cappedReach * 1.15),
+    hinweis: { code: 'display_only_timing', priority: 1 },
+  };
+}
 
 export const GEMEINDE_NICHT_GEFUNDEN_HINWEIS =
   'Deine Gemeinde ist nicht in der Liste? Das liegt am Verhältnis zwischen ' +
