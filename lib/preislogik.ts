@@ -746,7 +746,7 @@ export function buildDisplaySprint(budget: number, stimmTotal: number): {
     budget,
     laufzeitDays: 7,
     reachVon: round500(cappedReach * 0.85),
-    reachBis: round500(cappedReach * 1.15),
+    reachBis: Math.min(round500(cappedReach * 1.15), cappedReach),
     hinweis: { code: 'display_only_timing', priority: 1 },
   };
 }
