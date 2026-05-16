@@ -90,11 +90,14 @@ Read only if needed:
 3. `docs/llm/LOGIC-SOURCES.md` - for source-of-truth decisions
 4. `CONTEXT.md` - for product/project status
 5. `DESIGN.md` - for all UI/visual/styling tasks
-6. `public/vio-regelkatalog-politik-v3-5-1.md` - only for Politik price/reach/budget/bookability logic
+6. `public/vio-regelkatalog-politik-v3-5-3.md` - only for Politik price/reach/budget/bookability logic
 
 Never read legacy files unless explicitly needed:
 
 - `public/vio-regelkatalog-paketlogik.md`
+- `public/vio-regelkatalog-politik-v3-5-2.md` (deprecated, superseded by v3-5-3)
+- `public/vio-regelkatalog-politik-v3-5-1.md` (deprecated)
+- `public/vio-regelkatalog-politik-v3-4.md` (deprecated)
 - `lib/vio-paketlogik.ts`
 - `lib/b2b-paketlogik.ts`
 
@@ -160,7 +163,7 @@ For tasks touching:
 Read:
 
 1. `docs/llm/LOGIC-SOURCES.md`
-2. `public/vio-regelkatalog-politik-v3-5-1.md`
+2. `public/vio-regelkatalog-politik-v3-5-3.md`
 3. relevant implementation file only
 
 If rule catalogue and implementation differ:

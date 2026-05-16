@@ -50,7 +50,12 @@ export const REACH_PREMIUM_THRESHOLD = 1.4;  // Dominanz-Multiplier-Trigger
 
 // Timing-Constraints (Display Sprint)
 export const DOOH_CUTOFF_DAYS = 10;           // operativ: DOOH-Freigabe nicht mehr möglich
-export const DISPLAY_SPRINT_SWITCH_DAYS = 24; // Produkt: Mode-Switch auf Display Sprint
+export const MIN_DISPLAY_ONLY_LAUFZEIT = 7;  // Untergrenze sinnvolle Display-Sprint-Laufzeit
+
+// §7.0 v3.5.3: Granularität — alle buchbaren Standard-Laufzeiten
+export const LAUFZEITEN_BASIS = [14, 21, 28, 35, 42] as const;
+export const AUFBAU_PREMIUM_THRESHOLD = 1.2;  // Schritt 4: Reach-Ratio zum Triggern von 35d/42d
+export const DOMINANZ_CAP_MULTIPLIER = 2.5;   // §8.1: Dominanz-Budget-Deckel relativ zu Präsenz
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
@@ -71,7 +76,11 @@ export type HinweisCode =
   | 'dominanzmodus_stark'
   | 'overkill_frequency'
   | 'too_thin'
-  | 'display_only_timing';
+  | 'display_only_late_window'
+  | 'too_short_for_campaign'
+  | 'vote_passed'
+  | 'sprint_14d_vorlauf_constrained'
+  | 'optimal_28d_vorlauf_constrained';
 
 export interface Hinweis {
   code: HinweisCode;
@@ -132,6 +141,11 @@ export interface Paket {
   reachUniqueLowPct: number;
   reachUniqueHighPct: number;
   recommended: boolean;
+  deliveryMode: 'standard' | 'display_only';
+  availability: 'available' | 'unavailable';
+  qualityStatus: 'balanced' | 'high_frequency' | 'thin';
+  contextFlag?: 'mikro_limited';
+  requiresConsultation: boolean;
 }
 
 export interface PakeResult {
@@ -240,42 +254,27 @@ function sumStimm(regions: Region[]): number {
 
 // ─── Sweet Spot ──────────────────────────────────────────────────────────────
 
-export function calculateSweetSpot(regions: Region[], laufzeitDays: number): number | null {
+export type BudgetMarker = { budget: number; context: 'optimal' | 'constrained' };
+
+const SWEET_SPOT_UNSTABLE = new Set<HinweisCode>([
+  'sprint_14d_thin_budget',
+  'aufbau_42d_thin_budget',
+  'too_thin',
+  'dominanzmodus_stark',
+  'too_short_for_campaign',
+  'vote_passed',
+]);
+
+export function calculateSweetSpot(regions: Region[], daysUntilVote?: number | null): BudgetMarker | null {
   const deduped = dedupRegions(regions);
-  const stimmTotal = sumStimm(deduped);
-  if (stimmTotal === 0 || deduped.length === 0) return 0;
-  const laufzeitWeeks = laufzeitDays / 7;
-  const klass = deduped.length > 1
-    ? klassifiziereMehrereRegionen(deduped)
-    : klassifiziereRegion(deduped[0]);
-
-  const capL2 = getReachCap(stimmTotal, 2);
-  const pool = stimmTotal * capL2;
-
-  const TARGET_FREQ = 4.5;
-  const impressionsNeeded = TARGET_FREQ * pool * laufzeitWeeks;
-
-  const doohShare = klass.split.dooh;
-  const displayShare = 1 - doohShare;
-  const mixedCPM = doohShare * CPM_DOOH + displayShare * CPM_DISPLAY;
-  const deliveryBlend = doohShare * DELIVERY_DOOH + displayShare * DELIVERY_DISPLAY;
-
-  const raw = (impressionsNeeded / 1000) * mixedCPM / deliveryBlend;
-
-  // Sättigungsbudget: Budget bei dem poolCap überschritten wird
-  const impressionsAtCap = pool * TARGET_FREQ * laufzeitWeeks / deliveryBlend;
-  const saturationBudget = (impressionsAtCap / 1000) * mixedCPM;
-
-  // Sweet Spot darf nie in Sättigungszone zeigen
-  let adjusted = raw;
-  if (raw >= saturationBudget) {
-    adjusted = saturationBudget * 0.85;
+  if (deduped.length === 0 || sumStimm(deduped) === 0) return null;
+  for (let budget = B_MIN; budget <= B_HARD_MAX; budget += 500) {
+    const { statusCode } = optimizeForBudget(budget, deduped, daysUntilVote);
+    if (!SWEET_SPOT_UNSTABLE.has(statusCode)) {
+      return { budget, context: statusCode === 'optimal_28d_standard' ? 'optimal' : 'constrained' };
+    }
   }
-
-  const clamped = Math.max(B_MIN * 1.5, Math.min(B_NUDGE_SOFT * 0.75, adjusted));
-  if (clamped <= B_MIN * 1.5) return null;
-
-  return Math.round(clamped / 500) * 500;
+  return null;
 }
 
 // ─── Hinweis-Generierung ─────────────────────────────────────────────────────
@@ -381,12 +380,17 @@ const OPTIMIZER_STATUS_TEXTS: Partial<Record<HinweisCode, string>> = {
   'dominanzmodus':                 'Hohe Präsenz: jede erreichte Person sieht die Botschaft sehr oft. Zusätzliches Budget bringt in dieser Region kaum mehr Reichweite, aber stärkere Wiederholung.',
   'dominanzmodus_stark':           'Sehr hohe Frequenz pro Person. Ab diesem Budget empfehlen wir ein persönliches Gespräch zur Optimierung — z.B. Region erweitern oder Budget gezielter einsetzen.',
   'too_thin':                      'Budget reicht in dieser Konstellation nicht für eine wirkungsvolle Kampagne. Empfehlung: Region verkleinern oder Budget erhöhen.',
+  'display_only_late_window':      'DOOH benötigt 10 Tage Vorlauf zur Freigabe. Bei dieser Abstimmung läuft die Kampagne als reines Online-Display.',
+  'too_short_for_campaign':        'Für eine wirksame Kampagne braucht es mindestens 8 Tage Vorlauf bis zur Abstimmung.',
+  'vote_passed':                   'Diese Abstimmung liegt in der Vergangenheit. Bitte neues Datum wählen.',
+  'sprint_14d_vorlauf_constrained':  'Bei diesem Vorlauf ist 14 Tage die längste DOOH-buchbare Laufzeit. Für volle 28-Tage-Präsenz wäre mehr Zeit nötig.',
+  'optimal_28d_vorlauf_constrained': '28 Tage decken das Entscheidungsfenster ab. Für 6 Wochen Aufbau wäre mehr Vorlauf nötig.',
 };
 
 // ─── Pfad-A-Optimizer v3.4 (7-Schritt-Algorithmus) ──────────────────────────
 
 type OptimizerOut = {
-  laufzeitDays: 14 | 28 | 42;
+  laufzeitDays: number;
   capLevel: 1 | 2 | 3;
   statusCode: HinweisCode;
 };
@@ -395,8 +399,8 @@ function computeCombo(
   impressionsEffective: number,
   stimmTotal: number,
   level: 1 | 2 | 3,
-  days: 14 | 28 | 42,
-): { days: 14 | 28 | 42; level: 1 | 2 | 3; reach: number; fWeekly: number } {
+  days: number,
+): { days: number; level: 1 | 2 | 3; reach: number; fWeekly: number } {
   const weeks = days / 7;
   const poolCap = stimmTotal * getReachCap(stimmTotal, level);
   const ratio = poolCap > 0 ? impressionsEffective / poolCap : 0;
@@ -406,11 +410,17 @@ function computeCombo(
   return { days, level, reach: uniqueReach, fWeekly };
 }
 
-export function optimizeForBudget(budget: number, regions: Region[]): OptimizerOut {
+export function optimizeForBudget(budget: number, regions: Region[], daysUntilVote?: number | null): OptimizerOut {
   const deduped = dedupRegions(regions);
   const stimmTotal = sumStimm(deduped);
   if (stimmTotal === 0 || deduped.length === 0) {
     return { laufzeitDays: 14, capLevel: 1, statusCode: 'too_thin' };
+  }
+
+  // §7.0 DOOH-Vorlauf-Vorfilter
+  if (daysUntilVote != null) {
+    if (daysUntilVote < 1)  return { laufzeitDays: 14, capLevel: 1, statusCode: 'vote_passed' };
+    if (daysUntilVote <= 7) return { laufzeitDays: 14, capLevel: 1, statusCode: 'too_short_for_campaign' };
   }
 
   const klass = deduped.length > 1
@@ -422,11 +432,41 @@ export function optimizeForBudget(budget: number, regions: Region[]): OptimizerO
   const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
   const impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
 
-  type Combo = { days: 14 | 28 | 42; level: 1 | 2 | 3; reach: number; fWeekly: number };
-  const LAUFZEITEN = [14, 28, 42] as const;
+  type Combo = { days: number; level: 1 | 2 | 3; reach: number; fWeekly: number };
   const LEVELS = [1, 2, 3] as const;
+
+  // §7.0: nur buchbare Laufzeiten (DOOH-Vorlauf ≥ DOOH_CUTOFF_DAYS)
+  const gueltigeLaufzeiten = daysUntilVote != null
+    ? LAUFZEITEN_BASIS.filter(d => daysUntilVote - d >= DOOH_CUTOFF_DAYS)
+    : [...LAUFZEITEN_BASIS];
+
+  const filtered35d = !gueltigeLaufzeiten.includes(35);
+  const filtered42d = !gueltigeLaufzeiten.includes(42);
+  const filteredLong = filtered35d && filtered42d;
+  const allLongFiltered = !gueltigeLaufzeiten.some(d => d > 14);
+
+  // §7.3 Display-Only-Modus (keine Laufzeit erfüllt DOOH-Vorlauf)
+  if (gueltigeLaufzeiten.length === 0) {
+    const displayLaufzeit = Math.min(14, daysUntilVote! - 1);
+    const displayImpressions = (budget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY * IN_POOL_FACTOR;
+    const displayCandidates = LEVELS.map(level => {
+      const weeks = displayLaufzeit / 7;
+      const poolCap = stimmTotal * getReachCap(stimmTotal, level);
+      const ratio = poolCap > 0 ? displayImpressions / poolCap : 0;
+      const satFactor = 1 - Math.exp(-REACH_CURVE_K * ratio);
+      const reach = Math.min(poolCap * satFactor, stimmTotal * MAX_REACH_CAP) * applyWearoutFactor(weeks);
+      const fWeekly = reach > 0 ? (displayImpressions / reach) / weeks : 0;
+      return { level, reach, fWeekly };
+    });
+    const inBandDisplay = displayCandidates.filter(c => c.fWeekly >= F_MIN_WEEKLY && c.fWeekly <= F_MAX_WEEKLY);
+    const bestDisplay = inBandDisplay.length > 0
+      ? inBandDisplay.reduce((a, b) => b.reach > a.reach ? b : a)
+      : displayCandidates.reduce((a, b) => b.fWeekly > a.fWeekly ? b : a);
+    return { laufzeitDays: displayLaufzeit, capLevel: bestDisplay.level, statusCode: 'display_only_late_window' };
+  }
+
   const allCombos: Combo[] = [];
-  for (const days of LAUFZEITEN) {
+  for (const days of gueltigeLaufzeiten) {
     for (const level of LEVELS) {
       allCombos.push(computeCombo(impressionsEffective, stimmTotal, level, days));
     }
@@ -435,20 +475,25 @@ export function optimizeForBudget(budget: number, regions: Region[]): OptimizerO
   const inBand = (c: Combo) => c.fWeekly >= F_MIN_WEEKLY && c.fWeekly <= F_MAX_WEEKLY;
   const inTolerance = (c: Combo) => c.fWeekly >= F_MIN_TOLERANCE && c.fWeekly < F_MIN_WEEKLY;
   const maxReach = (cs: Combo[]) =>
-    cs.reduce((best, c) => c.reach > best.reach || (c.reach === best.reach && c.level > best.level) ? c : best);
+    cs.reduce((best, c) => {
+      if (c.reach > best.reach) return c;
+      if (c.reach === best.reach && c.days > best.days) return c;
+      if (c.reach === best.reach && c.days === best.days && c.level > best.level) return c;
+      return best;
+    });
 
-  // Schritt 1: 28d Hauptpfad
-  const inBand28 = allCombos.filter(c => c.days === 28 && inBand(c));
-  if (inBand28.length > 0) {
-    let chosen = maxReach(inBand28);
+  // Schritt 1: Standard-Bucket 21d + 28d (§7.1 v3.5.3)
+  const inBandStd = allCombos.filter(c => (c.days === 21 || c.days === 28) && inBand(c));
+  if (inBandStd.length > 0) {
+    let chosen = maxReach(inBandStd); // tie-break: längere Laufzeit gewinnt
     let status: HinweisCode = 'optimal_28d_standard';
 
-    // Schritt 2: 28d Toleranz (höheres Level mit Reach-Premium)
-    const tol28 = allCombos.filter(c =>
-      c.days === 28 && c.level > chosen.level && inTolerance(c) && c.reach >= REACH_PREMIUM_THRESHOLD * chosen.reach
+    // Schritt 2: Toleranz bei gleicher Laufzeit (höheres Level mit Reach-Premium)
+    const tolStd = allCombos.filter(c =>
+      c.days === chosen.days && c.level > chosen.level && inTolerance(c) && c.reach >= REACH_PREMIUM_THRESHOLD * chosen.reach
     );
-    if (tol28.length > 0) {
-      chosen = maxReach(tol28);
+    if (tolStd.length > 0) {
+      chosen = maxReach(tolStd);
       status = '28d_broad_reach_low_frequency';
     }
 
@@ -463,37 +508,52 @@ export function optimizeForBudget(budget: number, regions: Region[]): OptimizerO
       }
     }
 
-    // Schritt 4: Aufbau-Override 42d
-    const inBand42 = allCombos.filter(c => c.days === 42 && inBand(c));
-    if (inBand42.length > 0) {
-      const best42 = maxReach(inBand42);
-      if (best42.reach > 1.2 * chosen.reach) {
-        return { laufzeitDays: 42, capLevel: best42.level, statusCode: 'aufbau_42d_reach_premium' };
+    // Schritt 4: Aufbau-Override 35d + 42d (§7.1 v3.5.3)
+    const inBandLong4 = allCombos.filter(c => (c.days === 35 || c.days === 42) && inBand(c));
+    if (inBandLong4.length > 0) {
+      const bestLong = maxReach(inBandLong4);
+      if (bestLong.reach > AUFBAU_PREMIUM_THRESHOLD * chosen.reach) {
+        return { laufzeitDays: bestLong.days, capLevel: bestLong.level, statusCode: 'aufbau_42d_reach_premium' };
       }
     }
 
-    return { laufzeitDays: 28, capLevel: chosen.level, statusCode: status };
+    // Schritt 4b: Vorlauf-constrained — Schatten 35d+42d würden Premium triggern
+    if (filteredLong) {
+      const shadowLong = ([35, 42] as const).flatMap(d =>
+        LEVELS.map(level => computeCombo(impressionsEffective, stimmTotal, level, d))
+      ).filter(inBand);
+      if (shadowLong.length > 0) {
+        const bestShadow = maxReach(shadowLong);
+        if (bestShadow.reach > AUFBAU_PREMIUM_THRESHOLD * chosen.reach) {
+          status = 'optimal_28d_vorlauf_constrained';
+        }
+      }
+    }
+
+    return { laufzeitDays: chosen.days, capLevel: chosen.level, statusCode: status };
   }
 
-  // Schritt 5: 28d nicht erreichbar — 14d oder 42d
-  const inBand14all = allCombos.filter(c => c.days === 14 && inBand(c));
-  const inBand42all = allCombos.filter(c => c.days === 42 && inBand(c));
+  // Schritt 5: Standard-Bucket fail — Sprint (14d) oder Long (35d/42d)
+  const inBandSprint = allCombos.filter(c => c.days === 14 && inBand(c));
+  const inBandLong5 = allCombos.filter(c => (c.days === 35 || c.days === 42) && inBand(c));
 
-  if (inBand14all.length > 0 || inBand42all.length > 0) {
-    if (inBand14all.length > 0 && inBand42all.length === 0) {
-      const best = maxReach(inBand14all);
-      return { laufzeitDays: 14, capLevel: best.level, statusCode: 'sprint_14d_thin_budget' };
+  if (inBandSprint.length > 0 || inBandLong5.length > 0) {
+    if (inBandSprint.length > 0 && inBandLong5.length === 0) {
+      const best = maxReach(inBandSprint);
+      const code = allLongFiltered ? 'sprint_14d_vorlauf_constrained' : 'sprint_14d_thin_budget';
+      return { laufzeitDays: 14, capLevel: best.level, statusCode: code };
     }
-    if (inBand42all.length > 0 && inBand14all.length === 0) {
-      const best = maxReach(inBand42all);
-      return { laufzeitDays: 42, capLevel: best.level, statusCode: 'aufbau_42d_thin_budget' };
+    if (inBandLong5.length > 0 && inBandSprint.length === 0) {
+      const best = maxReach(inBandLong5);
+      return { laufzeitDays: best.days, capLevel: best.level, statusCode: 'aufbau_42d_thin_budget' };
     }
-    const best14 = maxReach(inBand14all);
-    const best42 = maxReach(inBand42all);
-    if (best14.reach >= best42.reach) {
-      return { laufzeitDays: 14, capLevel: best14.level, statusCode: 'sprint_14d_28d_unavailable' };
+    const bestSprint = maxReach(inBandSprint);
+    const bestLong = maxReach(inBandLong5);
+    const codeSprint = allLongFiltered ? 'sprint_14d_vorlauf_constrained' : 'sprint_14d_28d_unavailable';
+    if (bestSprint.reach >= bestLong.reach) {
+      return { laufzeitDays: 14, capLevel: bestSprint.level, statusCode: codeSprint };
     }
-    return { laufzeitDays: 42, capLevel: best42.level, statusCode: 'aufbau_42d_28d_unavailable' };
+    return { laufzeitDays: bestLong.days, capLevel: bestLong.level, statusCode: 'aufbau_42d_28d_unavailable' };
   }
 
   // Schritt 6: Dominanzmodus (alle Kombis > F_MAX_WEEKLY)
@@ -525,6 +585,8 @@ export function calculateImpact(input: {
   regions: Region[];
   mode?: 'budgetFirst' | 'paketLevel';   // default: 'budgetFirst'
   paketLevel?: 1 | 2 | 3;               // nur bei mode='paketLevel'
+  daysUntilVote?: number | null;
+  splitOverride?: { dooh: number; display: number }; // §8.7 display_only
 }): ImpactResult {
   const regions = dedupRegions(input.regions);
   const stimmTotal = sumStimm(regions);
@@ -532,7 +594,7 @@ export function calculateImpact(input: {
 
   // Optimizer (nur budgetFirst ohne explizite Laufzeit)
   const optimizerOut = (input.mode !== 'paketLevel' && input.laufzeitDays === undefined)
-    ? optimizeForBudget(input.budget, regions)
+    ? optimizeForBudget(input.budget, regions, input.daysUntilVote)
     : null;
 
   // Laufzeit: User-Wert oder Optimizer
@@ -547,8 +609,9 @@ export function calculateImpact(input: {
       ? klassifiziereRegion(regions[0])
       : { klasse: 'voll' as const, politScreens: 0, split: { dooh: 0.70, display: 0.30 }, hinweis: null };
 
-  const doohShare = klass.split.dooh;
-  const displayShare = klass.split.display;
+  const isDisplayOnly = optimizerOut?.statusCode === 'display_only_late_window';
+  const doohShare = input.splitOverride ? input.splitOverride.dooh : (isDisplayOnly ? 0 : klass.split.dooh);
+  const displayShare = input.splitOverride ? input.splitOverride.display : (isDisplayOnly ? 1.0 : klass.split.display);
   const politScreensTotal = klass.politScreens;
 
   // Dynamischer Misch-CPM
@@ -661,6 +724,7 @@ export function calculateImpact(input: {
 
 export function buildPackages(input: {
   regions: Region[];
+  daysUntilVote?: number | null;
 }): PakeResult {
   const regions = dedupRegions(input.regions);
   const stimmTotal = sumStimm(regions);
@@ -678,27 +742,49 @@ export function buildPackages(input: {
     dominanz: 9000,
   };
 
-  const buildOne = (key: PaketKey): Paket => {
+  const buildOne = (key: PaketKey, praesenzBudgetRef?: number): Paket => {
     const spec = PAKET_SPECS[key];
     const reachCap = getReachCap(stimmTotal, spec.reachCapLevel);
     const targetReach = stimmTotal * reachCap;
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
-    // Budget rückwärts lösen: Zielmenge gross (vor IN_POOL_FACTOR) = effektiv / IN_POOL_FACTOR
+    // §8.6 DOOH-Vorlauf-Constraint
+    const vorlauf = input.daysUntilVote != null ? input.daysUntilVote - spec.laufzeitDays : Infinity;
+    const deliveryMode: 'standard' | 'display_only' = vorlauf >= DOOH_CUTOFF_DAYS ? 'standard' : 'display_only';
+    const availability: 'available' | 'unavailable' = vorlauf < 1 ? 'unavailable' : 'available';
+
+    // §8.7 display_only: Budget rein aus Display berechnen
+    const split = deliveryMode === 'display_only' ? { dooh: 0, display: 1.0 } : klass.split;
+    const splitOverride = deliveryMode === 'display_only' ? { dooh: 0, display: 1.0 } : undefined;
+
+    // Budget rückwärts lösen
     const targetContacts = spec.frequencyWeekly * laufzeitWeeks * targetReach / IN_POOL_FACTOR;
-    const impsDOOH = (targetContacts * klass.split.dooh) / (DOOH_OTS_MULTIPLIER * DELIVERY_DOOH);
-    const impsDisplay = (targetContacts * klass.split.display) / DELIVERY_DISPLAY;
+    const impsDOOH = (targetContacts * split.dooh) / (DOOH_OTS_MULTIPLIER * DELIVERY_DOOH);
+    const impsDisplay = (targetContacts * split.display) / DELIVERY_DISPLAY;
     const rawBudget = (impsDOOH / 1000) * CPM_DOOH + (impsDisplay / 1000) * CPM_DISPLAY;
     const finalBudget = Math.max(PKG_MIN[key], roundBudget(rawBudget));
 
-    // Reach via calculateImpact (mode:'paketLevel' fixiert Cap-Level)
+    // §8.1 Dominanz-Cap (v3.5.3)
+    const requiresConsultation = key === 'dominanz' && praesenzBudgetRef != null
+      && finalBudget > DOMINANZ_CAP_MULTIPLIER * praesenzBudgetRef;
+
     const imp = calculateImpact({
       budget: finalBudget,
       laufzeitDays: spec.laufzeitDays,
       regions,
       mode: 'paketLevel',
       paketLevel: spec.reachCapLevel,
+      splitOverride,
     });
+
+    // §8.8 Qualitätsstatus
+    const fWeekly = imp.frequencyWeekly;
+    const qualityStatus: 'balanced' | 'high_frequency' | 'thin' =
+      fWeekly > F_MAX_WEEKLY ? 'high_frequency'
+      : fWeekly < F_MIN_WEEKLY ? 'thin'
+      : 'balanced';
+    const contextFlag: 'mikro_limited' | undefined =
+      (stimmTotal < 20000 && key === 'sichtbar') ? 'mikro_limited' : undefined;
 
     return {
       key,
@@ -713,41 +799,36 @@ export function buildPackages(input: {
       reachUniqueAbs: imp.reachUniqueAbs,
       reachUniqueLowPct: imp.reachUniqueLowPct,
       reachUniqueHighPct: imp.reachUniqueHighPct,
-      recommended: key === 'praesenz',
+      recommended: false, // set below after all three are built
+      deliveryMode,
+      availability,
+      qualityStatus,
+      contextFlag,
+      requiresConsultation,
     };
   };
 
+  const sichtbar = buildOne('sichtbar');
+  const praesenz  = buildOne('praesenz');
+  const dominanz  = buildOne('dominanz', praesenz.budget);
+
+  // §9.3 Empfehlung: praesenz → sichtbar → dominanz (nach Availability)
+  const recommended: PaketKey =
+    praesenz.availability === 'available' ? 'praesenz'
+    : sichtbar.availability === 'available' ? 'sichtbar'
+    : 'dominanz';
+
+  sichtbar.recommended = 'sichtbar' === recommended;
+  praesenz.recommended  = 'praesenz' === recommended;
+  dominanz.recommended  = 'dominanz' === recommended && !dominanz.requiresConsultation;
+
   return {
-    sichtbar: buildOne('sichtbar'),
-    praesenz: buildOne('praesenz'),
-    dominanz: buildOne('dominanz'),
-    recommended: 'praesenz',
+    sichtbar,
+    praesenz,
+    dominanz,
+    recommended,
     stimmTotal,
     screenKlasse: klass.klasse,
-  };
-}
-
-// ─── Konstanten-Export für UI ────────────────────────────────────────────────
-
-// ─── Display Sprint ───────────────────────────────────────────────────────────
-
-export function buildDisplaySprint(budget: number, stimmTotal: number): {
-  budget: number;
-  laufzeitDays: 7;
-  reachVon: number;
-  reachBis: number;
-  hinweis: { code: 'display_only_timing'; priority: 1 };
-} {
-  function round500(x: number): number { return Math.round(x / 500) * 500; }
-  const impressions  = budget / CPM_DISPLAY * 1000;
-  const uniqueReach  = impressions * 0.35;
-  const cappedReach  = Math.min(uniqueReach, stimmTotal * 0.40);
-  return {
-    budget,
-    laufzeitDays: 7,
-    reachVon: round500(cappedReach * 0.85),
-    reachBis: Math.min(round500(cappedReach * 1.15), cappedReach),
-    hinweis: { code: 'display_only_timing', priority: 1 },
   };
 }
 
