@@ -1,4 +1,6 @@
-# VIO Regelkatalog Politik — v3.5.2
+# VIO Regelkatalog Politik — v3.5.2 (DEPRECATED)
+
+> **DEPRECATED 14.05.2026** — superseded by `vio-regelkatalog-politik-v3-5-3.md`. Diese Datei nicht mehr als Source-of-Truth verwenden. v3.5.3 erweitert Pfad-A-Laufzeit-Granularität auf {14,21,28,35,42} und ergänzt Dominanz-Capping (§8.1). Behalten für History-Kontext.
 
 ```yaml
 SPEC_VERSION:     3.5.2

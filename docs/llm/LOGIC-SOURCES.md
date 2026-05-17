@@ -5,7 +5,7 @@ Diese Datei definiert, welche Quelle fuer welche Art von Logik gilt.
 ## Prioritaet
 
 1. Echter Code ist Wahrheit fuer den aktuellen Zustand.
-2. Fuer fachliche Soll-Logik Politik gilt: `public/vio-regelkatalog-politik-v3-4.md`.
+2. Fuer fachliche Soll-Logik Politik gilt: `public/vio-regelkatalog-politik-v3-5-3.md`.
 3. Wenn Code und Regelkatalog widersprechen: nicht still korrigieren, sondern melden und Entscheidung verlangen.
 4. `CONTEXT.md` ist Projektstatus, nicht Preislogik-Source-of-Truth.
 5. Prototypen sind UI-Referenz, nicht Logik-Source-of-Truth.
@@ -15,7 +15,7 @@ Diese Datei definiert, welche Quelle fuer welche Art von Logik gilt.
 
 Fachliche Source of Truth:
 
-- `public/vio-regelkatalog-politik-v3-4.md`
+- `public/vio-regelkatalog-politik-v3-5-3.md`
 
 Implementation:
 
@@ -63,10 +63,10 @@ Bei Paket-, Preis- oder Wirkungslogik immer pruefen:
 - Datums-Gating
 - Abstimmungstag / Startdatum / Unterlagenversand
 
-## Aufgeloester Konflikt – Dominanz
+## Bekannte Verschiebungen (v3.5.3)
 
-Korrekte Regel: Dominanz = 6x / 42 Tage (gemaess Regelkatalog und CONTEXT.md).
-
-`lib/preislogik.ts` enthaelt noch 8x / 35 Tage — Code muss via /vio-task angepasst werden.
-
-Bis zur Code-Korrektur: Regelkatalog und CONTEXT.md haben Vorrang.
+- Pfad A Laufzeit-Granularitaet erweitert von {14,28,42} auf {14,21,28,35,42}.
+- Statuscodes (`optimal_28d_*`, `sprint_14d_*`, `aufbau_42d_*`) sind semantische Kategorien, nicht fixe Tage.
+- Dominanz-Cap: berechnet Budget > 2.5 × Praesenz → `requiresConsultation = true` → Karte zeigt "Persoenliche Beratung empfohlen".
+- DOOH-Vorlauf-Constraint in beiden Pfaden aktiv (§7.0/§7.3 Pfad A, §8.6/§8.7 Pfad B).
+- `DISPLAY_SPRINT_SWITCH_DAYS` und `buildDisplaySprint()` entfernt — Trigger emergent aus Optimizer-Status `display_only_late_window`.

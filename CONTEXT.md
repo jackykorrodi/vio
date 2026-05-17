@@ -74,14 +74,17 @@
 
 ## Preislogik (vereinfacht)
 
-**Aktuelle Logik-Version: v3.5.1 Single Source of Truth (13.05.2026)**
+**Aktuelle Logik-Version: v3.5.3 Single Source of Truth (14.05.2026)**
 
 - Min Budget: CHF 4'000
 - Pakete: Sichtbar / Präsenz / Dominanz
 - Reach basiert auf Hofmans-Saturation (asymptotisch, kein hartes Capping)
 - Frequenz emergent: f_campaign = contacts / unique_reach
-- Sweet Spot: calculateSweetSpot(regions, laufzeitDays) → Cap-Level-2-Pool × 4.5×/Wo → CHF-Zielwert (85% des Sättigungsbudgets); gibt null zurück wenn Sättigungsbudget zu nah am B_MIN; nudge_to_sweet_spot nur wenn Budget < 85% des Sweet Spots UND cappedByRegion === false (nur Pfad A)
-- Berechnung: siehe vio-regelkatalog-politik-v3-5-1.md (Single Source of Truth)
+- Sweet Spot (§7.4): `calculateSweetSpot(regions, daysUntilVote?)` → niedrigstes Budget bei dem `optimizeForBudget()` einen stabilen Status liefert (NICHT in unstable-Menge {sprint_14d_thin_budget, aufbau_42d_thin_budget, too_thin, dominanzmodus_stark, too_short_for_campaign, vote_passed}). Linear-Scan über `[B_MIN, B_HARD_MAX]` in 500er-Schritten. Rückgabe `{budget, context: 'optimal'|'constrained'} | null`. UI: kein Slider-Marker, dreigeteilter HintCard-Präfix (unter/im/über Sweet Spot, Korridor ×1.3).
+- DOOH-Vorlauf-Constraint in beiden Pfaden aktiv (§7.0/§7.3 Pfad A, §8.6/§8.7 Pfad B).
+- Pfad A Laufzeit-Granularität: {14, 21, 28, 35, 42} (war {14, 28, 42} in v3.5.2).
+- Dominanz-Cap (§8.1): wenn Dominanz.budget > 2.5 × Präsenz.budget → `requiresConsultation = true` → Karte zeigt „Persönliche Beratung empfohlen" klickbar (Calendly), nicht ausgegraut.
+- Berechnung: siehe `public/vio-regelkatalog-politik-v3-5-3.md` (Single Source of Truth)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -89,19 +92,29 @@
 - Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
 - VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
 
-### Konstanten (v3.5.1)
+### Konstanten (v3.5.3)
 | Konstante | Wert | Hinweis |
 |---|---|---|
-| F_MIN_WEEKLY | 3 | Krugman-Schwelle (war 2.5) |
+| F_MIN_WEEKLY | 3 | Krugman-Schwelle |
+| F_MIN_TOLERANCE | 2.7 | Near-F-Min für 28d-broad_reach (aktiv) |
 | F_MAX_WEEKLY | 10 | Wearout-Grenze |
-| DOOH_OTS_MULTIPLIER | 1.8 | Audience Contacts pro Ad Play |
-| REACH_CURVE_K | 0.25 | Hofmans-Saturation Steilheit (war 0.4) |
-| IN_POOL_FACTOR | 0.7 | Anteil Kontakte die Pool treffen (NEU v3.4) |
+| F_OVERKILL_THRESHOLD | 15 | ab hier Beratung empfehlen (aktiv) |
+| OTS_DOOH | 1.8 | Audience Contacts pro DOOH-Play |
+| REACH_CURVE_K | 0.25 | Hofmans-Saturation Steilheit |
+| IN_POOL_FACTOR | 0.7 | Anteil Kontakte die Pool treffen |
 | WEAROUT_FLOOR | 0.70 | Minimaler Wearout-Faktor |
+| LARGE_POOL_THRESHOLD | 500'000 | Schwelle für Sprint-Override Pfad A (aktiv) |
+| REACH_PREMIUM_THRESHOLD | 1.4 | +40% Reach für Sprint/Toleranz-Trigger (aktiv) |
+| AUFBAU_PREMIUM_THRESHOLD | 1.2 | +20% Reach für Aufbau-Override 35d/42d vs 28d (NEU v3.5.3) |
 | CPM_DOOH | 50 | unverändert |
 | CPM_DISPLAY | 15 | unverändert |
+| MIN_VORLAUF_DOOH | 10 | DOOH-Freigabe-Untergrenze (v3.5.2) |
+| MIN_VORLAUF_DISPLAY | 1 | Display-Sprint-Untergrenze (v3.5.2) |
+| MIN_DISPLAY_ONLY_LAUFZEIT | 7 | Untergrenze sinnvolle Display-Sprint-Laufzeit (v3.5.2) |
+| DOMINANZ_CAP_MULTIPLIER | 2.5 | Cap: Dominanz.budget > 2.5×Präsenz → requiresConsultation (NEU v3.5.3) |
+| LAUFZEITEN_BASIS | [14,21,28,35,42] | Pfad-A-Laufzeit-Granularität (v3.5.3 erweitert) |
 
-Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARGE_POOL_THRESHOLD=500_000, REACH_PREMIUM_THRESHOLD=1.4
+**Entfernt in v3.5.2**: `DISPLAY_SPRINT_SWITCH_DAYS = 24` → Trigger emergent aus Optimizer-Status `display_only_late_window`. `buildDisplaySprint()`-Funktion ebenfalls entfernt.
 
 ### Pakete (Politik + B2B identisch)
 | Paket | Frequenz | Laufzeit | Min-Budget |
@@ -121,6 +134,8 @@ Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARG
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 14.05.2026 | **v3.5.3** | **Pfad-A-Laufzeit-Granularität von {14,28,42} auf {14,21,28,35,42} erweitert** (§7.0/§7.1). Statuscodes als semantische Kategorien dokumentiert (§3). Schritte 1+4 in §7.1 testen jetzt 21d+28d (Standard) bzw. 35d+42d (Aufbau). Neue Konstante `AUFBAU_PREMIUM_THRESHOLD = 1.2`. Kein dynamischer max_vorlauf-Kandidat (Mediaplaner-Entscheidung). **Dominanz-Capping bei grossen Regionen**: `requiresConsultation = (Dominanz.budget > 2.5 × Präsenz.budget)` → UI „Persönliche Beratung empfohlen", klickbar (Calendly), nicht ausgegraut (§8.1, §9.2, §9.3 Guardrail). Neue Konstante `DOMINANZ_CAP_MULTIPLIER = 2.5`. |
+| 14.05.2026 | **v3.5.2** | **DOOH-Vorlauf-Constraint in Pfad A** (§7.0/§7.3 analog Pfad B §8.6/§8.7). Sweet-Spot/Budget-Marker formal definiert (§7.4) als niedrigstes Budget mit stabilem Status. Slider-Marker entfällt vollständig, HintCard absorbiert mit dreigeteiltem Präfix (unter/im/über Sweet Spot, Korridor ×1.3). Statuscodes neu: `display_only_late_window`, `too_short_for_campaign`, `vote_passed`, `sprint_14d_vorlauf_constrained`, `optimal_28d_vorlauf_constrained`. Alle stabilen Status durchgängig tone='good', title='Empfehlung'. Intern/Extern-Trennung normativ (§7.2, §9.4). `DISPLAY_SPRINT_SWITCH_DAYS=24` entfernt, `buildDisplaySprint()` entfernt, `TARGET_FREQ=4.5`-Hardcode entfernt. Neue Konstanten: `MIN_VORLAUF_DOOH=10`, `MIN_VORLAUF_DISPLAY=1`, `MIN_DISPLAY_ONLY_LAUFZEIT=7`. **Pfad B**: §8.6/§8.7/§8.8 nachträglich implementiert (war Spec-only Drift). `buildPackages()` respektiert Vorlauf, Pakete werden bei knappem Vorlauf display_only oder unavailable. Pfad-B-HintCard-Mapping via `pkgToHint()` mit §9.2-Tabelle. Generischer „Im Sweet Spot"-Fallback in `hinweisToDisplay()` entfernt. |
 | 14.05.2026 | v3.5.1 (Doku-Korrektur) | **§5.5 Wearout-Schwellen an produktiven Code angeglichen** (weeks ≤ 8 → 1.0, slope −0.03/W, Floor bei ~18 W). Klärungs-Block (a/b/c) entfernt, da Code-Reading von `applyWearoutFactor` in `lib/preislogik.ts` Verhalten eindeutig bestätigt: Funktion ist aktiv, wird in `computeCombo` (Z. 399) und `calculateImpact` (Z. 575) jeweils nach Cap-Clamp multiplikativ angewendet, nicht neutralisiert. KEINE Code-Änderung. KEINE Änderung der §11 Referenzwerte. Sandbox bleibt 72/72 grün. Spec↔Code-Drift war einseitig in der Spec; Code + Soll-Werte waren bereits konsistent. Versionsnummer bleibt v3.5.1 — `documentation correction`, keine `logic revision`. Begründung des Code-Verhaltens: Wearout-Decay greift erst nach Entscheidungsfenster (>8 W); kurzfristige Überpräsenz wird über Frequenz-Limits (`F_MAX_WEEKLY`, `F_OVERKILL_THRESHOLD`) modelliert. Ausnahme von Header-PRECEDENCE-Regel in diesem Einzelfall durch validierten Stand (Code + §11) gerechtfertigt. |
 | 13.05.2026 | v3.5.1 | **Promotion v3.5.1-rc1 → v3.5.1 (final). Single Source of Truth.** Gating-Kriterien erfüllt: (1) Sandbox 72/72 grün (24 Spec-Tier 1 + 48 Snapshot-Tier 2 über 12 Cluster-Repräsentanten), (2) Terminologie-Drifts migriert (reachMitte/reachVon/reachBis/weeklyFreq → kanonische Terms), (3) overkill_frequency bleibt als Transitional-Hint für Pfad B (kein Promotion-Blocker, wird in Pfad-B-Implementation durch qualityStatus=high_frequency ersetzt), (4) Wearout-Verhalten §5.5 dokumentiert mit Klärungs-Block (Smoke-Test 2026-05-13 bestätigt: Plateau-Cases zeigen keinen sichtbaren Wearout-Decay), definitive Klärung in v3.5.2. v3.4 deprecated. CLAUDE.md aktualisiert. |
 | 12.05.2026 | v3.5.1-rc1 | Release Candidate für neue Single Source of Truth. NICHT produktiv. v3.4 bleibt aktiv bis RC-Promotion. Drift-Audit: 3 Terminologie-Drifts (reachMitte, reachVon/reachBis, weeklyFreq) + 1 obsoleter HinweisCode (overkill_frequency) als Promotion-Blocker dokumentiert. Wearout-Verhalten §5.5 ungeklärt (applyWearoutFactor existiert, Soll-Werte §11 zeigen aber keine Wearout-Multiplikation). Promotion nach: (1) §11 Sandbox 24/24 green ±2%, (2) Wearout-Klärung, (3) 3 Drifts migriert, (4) overkill_frequency entfernt. Bei Fail entsteht rc2. Drift-Audit dokumentiert in public/v3-5-1-rc1-drift-audit.md. |
@@ -131,26 +146,26 @@ Deklariert, noch nicht aktiv: F_MIN_TOLERANCE=2.7, F_OVERKILL_THRESHOLD=15, LARG
 | 04.05.2026 | v2.3 | Hofmans-Saturation (ersetzt lineares Capping); Frequenz emergent (F_REC_WEEKLY entfernt); OTS 2.0→1.8; F_MIN_WEEKLY 3→2.5; Wearout-Floor 0.80→0.70; REACH_CURVE_K=0.4 (NEU); Reach-Caps +50%; Multi-Region-Klasse aus aggregiertem politScreens_total; daily_below_floor_region pro Region (NEU); Laufzeit-Korridor maxDays 35→42 bei Budget <15k; Sweet Spot Logik: calculateSweetSpot() + nudge_to_sweet_spot Hint (NEU) |
 | 22.04.2026 | v2.2 | Initiale Version (F_REC_WEEKLY=5, linearer Reach, hartes Capping) |
 
-### Kampagnen-Timing Politik
+### Kampagnen-Timing Politik (v3.5.3)
 - CAMPAIGN_END_OFFSET_DAYS = 0 → alle Pakete enden am Abstimmungstag
-- Laufzeit rückwärts vom Vote: 2 / 4 / 6 Wochen
-- Setup-Puffer 10 Tage (DOOH-Freigabe ca. 7 Werktage)
-- `DOOH_CUTOFF_DAYS = 10` — operativer Supply Constraint: DOOH-Freigabe nicht mehr möglich
-- `DISPLAY_SPRINT_SWITCH_DAYS = 24` — Produkt-Switch: `daysUntilVote < 24` → Display Sprint Mode
-  - `buildDisplaySprint(budget, stimmTotal)` → 7 Tage Display-only
-  - Formel: `impressions = budget / CPM_DISPLAY * 1000`; `uniqueReach = impressions * 0.35`; `cappedReach = min(uniqueReach, stimmTotal * 0.40)`; `reachVon/Bis = round500(cappedReach × 0.85/1.15)`
-  - In StepPackages: Amber-Banner + Einzelkarte ersetzt Pfad-A/B + Wirkungsindikator
+- Laufzeit rückwärts vom Vote: Pfad A {14,21,28,35,42}d, Pfad B paket-spezifisch (§8.3)
+- `MIN_VORLAUF_DOOH = 10` — DOOH-Freigabe-Untergrenze in beiden Pfaden
+- `MIN_VORLAUF_DISPLAY = 1` — Display-Sprint-Untergrenze
+- `MIN_DISPLAY_ONLY_LAUFZEIT = 7` — Untergrenze sinnvolle Display-Sprint-Laufzeit
+- Display-Only-Trigger emergent aus Optimizer-Status `display_only_late_window` (kein hardcoded SWITCH_DAYS mehr).
 
-### Datums-Gating Step 1 Politik
-- < 10 Tage: Hard Block (Weiter disabled)
-- 10–23 Tage: Warning
-- 24–37 Tage: Info (Präsenz nicht mehr machbar)
-- ≥ 38 Tage: kein Hinweis
+### Datums-Gating (emergent aus §7.0)
+- `daysUntilVote < 1` → `vote_passed`, unavailable
+- `daysUntilVote ∈ [1, 7]` → `too_short_for_campaign`, unavailable
+- `daysUntilVote ∈ [8, 23]` → Display-Only-Mode (§7.3 Pfad A, §8.7 Pfad B)
+- `daysUntilVote ≥ 24` → Optimizer findet beste Laufzeit aus `gültige_laufzeiten` (mind. 14d DOOH-buchbar)
 
-### Empfehlungssystem (Variante B)
-- Präsenz immer Default-Empfehlung
-- Dominanz wird nie automatisch empfohlen
-- Schwellen: ≥ 38 Tage → Präsenz, < 38 Tage → Sichtbar
+### Empfehlungssystem (§9.3)
+- Standard → Präsenz
+- Display-only + verfügbares Budget < CHF 9'000 → Präsenz
+- Display-only + verfügbares Budget ≥ CHF 9'000 → Dominanz
+- Mikroregion (pool < 20'000) + Budget < CHF 6'000 → Sichtbar
+- Guardrails: Dominanz `requiresConsultation` → Fallback auf Präsenz; unavailable → nächstes verfügbares; high_frequency → kein Badge
 
 ### Backlog
 - **Glossar definieren** (`docs/glossary.md`): einheitliches Otto-Vokabular für Reichweite, Stimmberechtigte erreicht, Jede Person sieht es, Sweet Spot, Zeitraum, Kanal-Mix etc. Anschliessend Cross-Flow-Sync-Pass über Politik + B2B Steps 1–5.
