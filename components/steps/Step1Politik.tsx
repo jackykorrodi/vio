@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import KampagnenTimeline from './KampagnenTimeline';
 import { BriefingData } from '@/lib/types';
 import { Region, ALL_REGIONS } from '@/lib/regions';
 import { buildVioPackagesV2 } from '@/lib/preislogik-adapter';
@@ -61,20 +62,9 @@ const SHADOW_H= '0 2px 8px rgba(107,79,187,0.12), 0 8px 32px rgba(107,79,187,0.1
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function addDaysISO(iso: string, days: number): string {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function fmtLongDE(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
   return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function fmtPillDE(iso: string): string {
-  const d = new Date(iso + 'T00:00:00');
-  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]}`;
 }
 
 function calcDaysUntil(iso: string): number {
@@ -84,7 +74,6 @@ function calcDaysUntil(iso: string): number {
 }
 
 const MIN_SETUP_DAYS = 10;
-const STIMMUNTERLAGEN_OFFSET = 28;
 
 function todayPlusDaysISO(days: number): string {
   const d = new Date();
@@ -93,48 +82,11 @@ function todayPlusDaysISO(days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function todayISO(): string {
-  return todayPlusDaysISO(0);
-}
-
-function fmt(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('de-CH', { day: 'numeric', month: 'short' });
-}
-
 function getNext2Sundays(): string[] {
   const minDate = todayPlusDaysISO(MIN_SETUP_DAYS);
   return CH_ABSTIMMUNGSSONNTAGE.filter(d => d >= minDate).slice(0, 2);
 }
 
-type DateGate =
-  | { level: 'ok' }
-  | { level: 'info';    message: string }
-  | { level: 'warning'; message: string }
-  | { level: 'error';   message: string }
-
-function getDateGate(dateStr: string): DateGate {
-  if (!dateStr) return { level: 'ok' }
-  const days = calcDaysUntil(dateStr)
-  if (days < MIN_SETUP_DAYS) {
-    return {
-      level: 'error',
-      message: `Zu kurzfristig: Für die DOOH-Freigabe brauchen wir mindestens ${MIN_SETUP_DAYS} Tage Vorlauf. Bei Abstimmung in ${days} Tag${days === 1 ? '' : 'en'} ist eine Kampagne nicht mehr umsetzbar.`,
-    }
-  }
-  if (days < 24) {
-    return {
-      level: 'warning',
-      message: `Sehr knapp: Es bleiben nur noch ${days - MIN_SETUP_DAYS} Tage Laufzeit. Kampagne ist möglich, aber begrenzt wirksam.`,
-    }
-  }
-  if (days < 38) {
-    return {
-      level: 'info',
-      message: `Noch ${days} Tage bis zur Abstimmung — ausreichend für eine kompakte Kampagne.`,
-    }
-  }
-  return { level: 'ok' }
-}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -172,10 +124,6 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
   const [regionQuery, setRegionQuery] = useState('');
   const [ddOpen, setDdOpen]           = useState(false);
   const [screenHinweis, setScreenHinweis] = useState<string | null>(null);
-
-  // Tooltip hover state for timeline milestones
-  const [ttKampagneParat, setTtKampagneParat] = useState(false);
-  const [ttUnterlagen, setTtUnterlagen]       = useState(false);
 
   // Q3 state
   const [budget, setBudget]           = useState(briefing.recommendedBudget ?? 15000);
@@ -245,38 +193,9 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
 
   // ─── Q1 derived state ─────────────────────────────────────────────────────
 
-  const dateGate    = getDateGate(dateEvent);
-  const dateBlocked = dateGate.level === 'error';
-  const q1Valid     = !!dateEvent && !dateBlocked;
-
-  // Auto-computed campaign timeline (default 28-day campaign back from voting day)
-  const tlCampaignEnd   = dateEvent;
-  const tlCampaignStart = dateEvent
-    ? (() => {
-        const raw     = addDaysISO(dateEvent, -28);
-        const minDate = todayPlusDaysISO(MIN_SETUP_DAYS);
-        return raw < minDate ? minDate : raw;
-      })()
-    : '';
-  const tlDurationDays = tlCampaignStart && tlCampaignEnd
-    ? Math.max(0, Math.round(
-        (new Date(tlCampaignEnd + 'T00:00:00').getTime() -
-         new Date(tlCampaignStart + 'T00:00:00').getTime()) / 86400000
-      ))
-    : 0;
   const daysToEvent = dateEvent ? calcDaysUntil(dateEvent) : 0;
-  const tlPkgHint = dateEvent && !dateBlocked
-    ? daysToEvent >= 70 ? 'Paket «Dominanz» (8 Wochen) wäre möglich'
-    : daysToEvent >= 42 ? 'Paket «Präsenz» (4 Wochen) empfohlen'
-    : daysToEvent >= 28 ? 'Paket «Sichtbar» (2 Wochen) möglich'
-    : null
-    : null;
-
-  // Stimmunterlagenversand: CH-Standard = Abstimmungstag − 28 Tage
-  const tlUnterlagenDate         = dateEvent ? addDaysISO(dateEvent, -STIMMUNTERLAGEN_OFFSET) : '';
-  const unterlagenBeforeCampaign = !!(tlCampaignStart && tlUnterlagenDate && tlUnterlagenDate <= tlCampaignStart);
-  const flexStartToUnterlagen    = Math.max(1, tlDurationDays - STIMMUNTERLAGEN_OFFSET);
-  const flexUnterlagenToVote     = STIMMUNTERLAGEN_OFFSET;
+  const dateBlocked = !!dateEvent && daysToEvent < 3;
+  const q1Valid     = !!dateEvent && !dateBlocked;
 
   // Pills for voting day selection
   const next2Sundays = getNext2Sundays();
@@ -517,129 +436,9 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
                   </div>
                 )}
 
-                {/* Date gate alert */}
-                {dateEvent && dateGate.level !== 'ok' && (
-                  <div
-                    style={{
-                      background:
-                        dateGate.level === 'error'   ? '#FFF0F0' :
-                        dateGate.level === 'warning' ? AMBER_BG :
-                                                       V_DIM,
-                      border: `1px solid ${
-                        dateGate.level === 'error'   ? '#FCA5A5' :
-                        dateGate.level === 'warning' ? AMBER :
-                                                       V_DIM2
-                      }`,
-                      borderRadius: 12,
-                      padding: '12px 16px',
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      color:
-                        dateGate.level === 'error'   ? '#991B1B' :
-                        dateGate.level === 'warning' ? AMBER :
-                                                       INK2,
-                      display: 'flex',
-                      gap: 10,
-                      alignItems: 'flex-start',
-                      fontWeight: 500,
-                      marginBottom: 16,
-                      animation: 'sp1-popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
-                    }}
-                  >
-                    <span style={{ flexShrink: 0, fontSize: 15 }}>
-                      {dateGate.level === 'error' ? '⛔' : dateGate.level === 'warning' ? '⚠️' : 'ℹ️'}
-                    </span>
-                    <span>{dateGate.message}</span>
-                  </div>
+                {dateEvent && (
+                  <KampagnenTimeline votingDateISO={dateEvent} daysToEvent={daysToEvent} />
                 )}
-
-                {/* Auto-calculated timeline */}
-                {dateEvent && !dateBlocked && (() => {
-                  const tlStart = tlCampaignStart ? addDaysISO(tlCampaignStart, -MIN_SETUP_DAYS) : '';
-                  const kampagneDays = Math.max(0, calcDaysUntil(dateEvent) - MIN_SETUP_DAYS);
-                  const kampagneWeeks = Math.round(kampagneDays / 7);
-                  const diffStartToUnterlagen = Math.round(
-                    (new Date(tlUnterlagenDate + 'T00:00:00').getTime() - new Date(tlStart + 'T00:00:00').getTime()) / 86400000
-                  );
-                  return (
-                    <div style={{
-                      background: '#F3F0FF', borderRadius: 16, padding: '18px 20px',
-                      border: '1.5px solid rgba(107,79,187,0.14)',
-                      marginBottom: 24,
-                      animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-                    }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' as const, color: '#7A7596', marginBottom: 14 }}>
-                        KAMPAGNEN-TIMELINE
-                      </div>
-
-                      {/* Timeline track */}
-                      <div style={{ position: 'relative' as const, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 28 }}>
-                        {/* Background line */}
-                        <div style={{ position: 'absolute' as const, top: 8, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
-
-                        {/* Node 0: Heute */}
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#6B4FBB', border: '2.5px solid #6B4FBB' }} />
-                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Heute</div>
-                          <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(todayISO())}</div>
-                        </div>
-
-                        {/* Node 1: Kampagne parat */}
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2px solid #6B4FBB' }} />
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 6, position: 'relative' as const }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textAlign: 'center' as const }}>Kampagne parat</div>
-                            <span
-                              style={{ color: '#7A7596', cursor: 'help', fontSize: 11, lineHeight: 1, flexShrink: 0 }}
-                              onMouseEnter={() => setTtKampagneParat(true)}
-                              onMouseLeave={() => setTtKampagneParat(false)}
-                            >ⓘ</span>
-                            {ttKampagneParat && (
-                              <div style={{ position: 'absolute' as const, bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', background: '#2D1F52', color: 'white', borderRadius: 8, padding: '8px 12px', fontSize: 12, maxWidth: 260, width: 'max-content', zIndex: 50, lineHeight: 1.5, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-                                DOOH-Screens für politische Kampagnen werden von jedem Betreiber individuell freigegeben — das dauert ca. 10 Tage. Bis zu diesem Datum müssen deine Werbemittel und die Kampagne freigegeben sein. Keine Angst, wir helfen dir dabei!
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(tlStart)}</div>
-                        </div>
-
-                        {/* Node 2: Unterlagen-Versand */}
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
-                          <div style={{ fontSize: 9, fontWeight: 500, color: MUTED, marginBottom: 2, textAlign: 'center' as const }}>{diffStartToUnterlagen} Tage</div>
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2px solid rgba(107,79,187,0.35)' }} />
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 6, position: 'relative' as const }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, textAlign: 'center' as const }}>Unterlagen-Versand</div>
-                            <span
-                              style={{ color: '#7A7596', cursor: 'help', fontSize: 11, lineHeight: 1, flexShrink: 0 }}
-                              onMouseEnter={() => setTtUnterlagen(true)}
-                              onMouseLeave={() => setTtUnterlagen(false)}
-                            >ⓘ</span>
-                            {ttUnterlagen && (
-                              <div style={{ position: 'absolute' as const, bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', background: '#2D1F52', color: 'white', borderRadius: 8, padding: '8px 12px', fontSize: 12, maxWidth: 260, width: 'max-content', zIndex: 50, lineHeight: 1.5, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-                                Ca. 4 Wochen vor dem Abstimmungssonntag kommen die Abstimmungsunterlagen ins Haus. Viele Stimmberechtigte entscheiden genau in dieser Phase. Kampagnen, die hier präsent sind, erzielen die höchste Wirkung.
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 11, fontWeight: 500, color: INK, marginTop: 1, textAlign: 'center' as const }}>{fmt(tlUnterlagenDate)}</div>
-                        </div>
-
-                        {/* Node 3: Abstimmung */}
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', zIndex: 1, position: 'relative' as const }}>
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: '2.5px solid #6B4FBB' }} />
-                          <div style={{ fontSize: 10, fontWeight: 600, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>Abstimmung</div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B4FBB', marginTop: 1, textAlign: 'center' as const }}>{fmt(dateEvent)}</div>
-                        </div>
-                      </div>
-
-                      {/* Pill row */}
-                      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: V, background: WHITE, border: `1px solid ${BORDER2}`, borderRadius: 99, padding: '3px 10px' }}>
-                          {kampagneDays} Tage · {kampagneWeeks} Wochen
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
                   <button
