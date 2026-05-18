@@ -14,6 +14,7 @@ const V_DIM   = 'rgba(107,79,187,0.09)';
 const V_DIM2  = 'rgba(107,79,187,0.16)';
 
 const STIMMUNTERLAGEN_OFFSET = 28;
+const DOOH_CUTOFF_DAYS = 10;
 const MIN_BULLET_PX = 90;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -47,12 +48,10 @@ function getKampParatDate(daysToEvent: number, versand: string, today: string): 
 }
 
 function getVorlaufHint(days: number): { text: string; bg: string; border: string; color: string } {
-  if (days >= 49) return { text: `${days} Tage — alle Kampagnenlängen möglich, von kompakt bis langfristig.`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days >= 35) return { text: `${days} Tage — komfortabler Vorlauf. Aussenwerbung und Online-Werbung breit kombinierbar.`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days >= 21) return { text: `${days} Tage — Vorlauf reicht für eine kompakte Kampagne mit Aussenwerbung und Online-Werbung.`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days >= 10) return { text: `${days} Tage — Online-Werbung wahrscheinlich. Aussenwerbung braucht mehr Vorlauf.`, bg: AMBER_BG, border: AMBER, color: AMBER };
-  if (days >= 3)  return { text: `Nur ${days} Tage — Last-Minute. Kurze Online-Werbung sinnvoll.`, bg: AMBER_BG, border: AMBER, color: AMBER };
-  return { text: `Nur ${days} Tage — zu kurzfristig, kein Kampagnenaufbau mehr möglich.`, bg: '#FFF0F0', border: '#FCA5A5', color: '#991B1B' };
+  if (days > 56) return { text: `${days} Tage Vorlauf — alle Pakete möglich`, bg: V_DIM, border: V_DIM2, color: INK2 };
+  if (days > 28) return { text: `${days} Tage Vorlauf — Sichtbar oder Präsenz empfohlen`, bg: V_DIM, border: V_DIM2, color: INK2 };
+  if (days > 10) return { text: `Heisse Phase läuft — noch ${days} Tage bis Abstimmung`, bg: V_DIM, border: V_DIM2, color: INK2 };
+  return { text: `Nur noch ${days} Tage — DOOH nicht buchbar`, bg: AMBER_BG, border: AMBER, color: AMBER };
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -87,7 +86,8 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
     Math.max(0, (new Date(iso + 'T00:00:00').getTime() - axisStartMs) / axisSpan * trackW);
 
   const kampParatDate = getKampParatDate(daysToEvent, versand, today);
-  const kampParatGray = daysToEvent < 3;
+  const state = daysToEvent > 56 ? 1 : daysToEvent > 28 ? 2 : daysToEvent > 10 ? 3 : 4;
+  const showKampParat = daysToEvent > DOOH_CUTOFF_DAYS;
   const hint = getVorlaufHint(daysToEvent);
 
   // [versand, heute, kampParat, abstimmung] in raw px
@@ -107,8 +107,8 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
 
   // Phase bar: true proportional (raw px, not adj)
   const versandPct = Math.max(0, Math.min(100, raw[0] / trackW * 100));
-  const daysSinceVersand = versandPast ? daysBetween(versand, today) : 0;
-  const daysVorbPrep     = versandPast ? 0 : daysBetween(today, versand);
+  const daysSinceVersand = state >= 3 ? Math.max(0, daysBetween(versand, today)) : 0;
+  const daysVorbPrep     = state <= 2 ? daysBetween(today, versand) : 0;
 
   const node = (px: number) => ({
     position: 'absolute' as const,
@@ -153,8 +153,8 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
         <div style={{ position: 'absolute' as const, top: 7, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
 
         {/* Unterlagen-Versand */}
-        <div style={node(adj[0])}>
-          <div style={{ width: 14, height: 14, borderRadius: '50%', background: versandPast ? 'rgba(107,79,187,0.15)' : WHITE, border: `2px solid ${versandPast ? 'rgba(107,79,187,0.25)' : 'rgba(107,79,187,0.45)'}`, opacity: versandPast ? 0.6 : 1 }} />
+        <div style={{ ...node(adj[0]), opacity: versandPast ? 0.45 : 1 }}>
+          <div style={{ width: 14, height: 14, borderRadius: '50%', background: versandPast ? 'transparent' : WHITE, border: '2px solid rgba(107,79,187,0.45)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
             <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Unterlagen-Versand</div>
             <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtVersand(true)} onMouseLeave={() => setTtVersand(false)}>ⓘ</span>
@@ -171,15 +171,17 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
         </div>
 
         {/* Kampagne parat */}
-        <div style={node(adj[2])}>
-          <div style={{ width: 14, height: 14, borderRadius: '50%', background: kampParatGray ? 'rgba(107,79,187,0.15)' : WHITE, border: `2px solid ${kampParatGray ? 'rgba(107,79,187,0.25)' : V}` }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
-            <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Kampagne parat</div>
-            <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
-            {ttParat && <div style={ttBox}>DOOH-Screens für politische Kampagnen werden von jedem Betreiber individuell freigegeben — das dauert ca. 10 Tage. Bis zu diesem Datum müssen deine Werbemittel und die Kampagne freigegeben sein. Keine Angst, wir helfen dir dabei!</div>}
+        {showKampParat && (
+          <div style={node(adj[2])}>
+            <div style={{ width: 14, height: 14, borderRadius: '50%', background: WHITE, border: `2px solid ${V}` }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
+              <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Kampagne parat</div>
+              <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
+              {ttParat && <div style={ttBox}>DOOH-Screens für politische Kampagnen werden von jedem Betreiber individuell freigegeben — das dauert ca. 10 Tage. Bis zu diesem Datum müssen deine Werbemittel und die Kampagne freigegeben sein. Keine Angst, wir helfen dir dabei!</div>}
+            </div>
+            <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(kampParatDate)}</div>
           </div>
-          <div style={{ fontSize: 9.5, fontWeight: 500, color: kampParatGray ? MUTED : INK, marginTop: 1 }}>{fmt(kampParatDate)}</div>
-        </div>
+        )}
 
         {/* Abstimmung */}
         <div style={node(adj[3])}>
@@ -189,16 +191,16 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
         </div>
       </div>
 
-      {/* Phase bars — echte Proportion, kein Clamping */}
+      {/* Phase bar */}
       <div>
-        {versandPast ? (
+        {state >= 3 ? (
           <div>
-            <div style={{ height: 4, background: V, borderRadius: 2 }} />
-            <div style={{ marginTop: 7, fontSize: 10, fontWeight: 500, color: INK2 }}>
+            <div style={{ height: 4, background: state === 4 ? AMBER : V, borderRadius: 2 }} />
+            <div style={{ marginTop: 7, fontSize: 10, fontWeight: 500, color: state === 4 ? AMBER : INK2 }}>
               Heisse Phase aktiv seit {daysSinceVersand}d (28d total)
             </div>
           </div>
-        ) : (
+        ) : state === 2 ? (
           <div>
             <div style={{ position: 'relative' as const, height: 4 }}>
               <div style={{ position: 'absolute' as const, left: 0, width: `${versandPct}%`, height: '100%', background: 'rgba(107,79,187,0.28)', borderRadius: '2px 0 0 2px' }} />
@@ -208,11 +210,10 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
               <div style={{ position: 'absolute' as const, left: `${versandPct / 2}%`, transform: 'translateX(-50%)', fontSize: 10, color: MUTED, whiteSpace: 'nowrap' as const }}>
                 {daysVorbPrep} Tage Vorbereitung
               </div>
-              <div style={{ position: 'absolute' as const, left: `${versandPct + (100 - versandPct) / 2}%`, transform: 'translateX(-50%)', fontSize: 10, fontWeight: 500, color: INK2, whiteSpace: 'nowrap' as const }}>
-                {STIMMUNTERLAGEN_OFFSET} Tage Heisse Phase
-              </div>
             </div>
           </div>
+        ) : (
+          <div style={{ height: 4, background: 'rgba(107,79,187,0.28)', borderRadius: 2 }} />
         )}
       </div>
     </div>
