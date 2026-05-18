@@ -47,11 +47,11 @@ function getKampParatDate(daysToEvent: number, versand: string, today: string): 
   return today;
 }
 
-function getVorlaufHint(days: number): { text: string; bg: string; border: string; color: string } {
-  if (days > 56) return { text: `${days} Tage Vorlauf — alle Pakete möglich`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days > 28) return { text: `${days} Tage Vorlauf — Sichtbar oder Präsenz empfohlen`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days > 10) return { text: `Heisse Phase läuft — noch ${days} Tage bis Abstimmung`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  return { text: `Nur noch ${days} Tage — DOOH nicht buchbar`, bg: AMBER_BG, border: AMBER, color: AMBER };
+function getStatusPill(days: number): { text: string; bg: string; border: string; color: string } {
+  if (days > 56) return { text: `${days} Tage bis zur Abstimmung — du hast alle Optionen offen`, bg: V_DIM, border: V_DIM2, color: INK2 };
+  if (days > 28) return { text: `${days} Tage bis zur Abstimmung — jetzt ist ein guter Zeitpunkt`, bg: V_DIM, border: V_DIM2, color: INK2 };
+  if (days > DOOH_CUTOFF_DAYS) return { text: `Stimmzettel sind unterwegs — noch ${days} Tage bis zur Abstimmung`, bg: V_DIM, border: V_DIM2, color: INK2 };
+  return { text: `Nur noch ${days} Tage — Plakatwerbung nicht mehr buchbar, Online-Werbung möglich`, bg: AMBER_BG, border: AMBER, color: AMBER };
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -86,27 +86,39 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
     Math.max(0, (new Date(iso + 'T00:00:00').getTime() - axisStartMs) / axisSpan * trackW);
 
   const kampParatDate = getKampParatDate(daysToEvent, versand, today);
-  const state = daysToEvent > 56 ? 1 : daysToEvent > 28 ? 2 : daysToEvent > 10 ? 3 : 4;
-  const showKampParat = daysToEvent > DOOH_CUTOFF_DAYS;
-  const hint = getVorlaufHint(daysToEvent);
+  const state = daysToEvent > 56 ? 1 : daysToEvent > 28 ? 2 : daysToEvent > DOOH_CUTOFF_DAYS ? 3 : 4;
+  const pill  = getStatusPill(daysToEvent);
 
-  // [versand, heute, kampParat, abstimmung] in raw px
-  const raw = [toPx(versand), toPx(today), toPx(kampParatDate), trackW];
+  // Build node list per state
+  const nVersand    = { id: 'versand'    as const, rawPx: toPx(versand),      past: versandPast };
+  const nHeute      = { id: 'heute'      as const, rawPx: toPx(today),         past: false };
+  const nBuchung    = { id: 'buchung'    as const, rawPx: toPx(kampParatDate), past: false };
+  const nAbstimmung = { id: 'abstimmung' as const, rawPx: trackW,              past: false };
 
-  // Forward min-distance pass on indices 0–2 (abstimmung = index 3 stays fixed)
-  const adj = [...raw];
-  for (let i = 1; i <= 2; i++) {
-    if (adj[i] - adj[i - 1] < MIN_BULLET_PX) adj[i] = adj[i - 1] + MIN_BULLET_PX;
+  const stateNodes = (
+    state === 1 ? [nHeute, nVersand, nAbstimmung] :
+    state === 2 ? [nHeute, nVersand, nBuchung, nAbstimmung] :
+    state === 3 ? [nVersand, nHeute, nBuchung, nAbstimmung] :
+                  [nHeute, nAbstimmung]
+  );
+
+  // Sort chronologically; forward pass pushes right only; abstimmung stays fixed (last)
+  const sorted = [...stateNodes].sort((a, b) => a.rawPx - b.rawPx);
+  const adjPx = sorted.map(n => n.rawPx);
+  for (let i = 1; i < adjPx.length - 1; i++) {
+    if (adjPx[i] - adjPx[i - 1] < MIN_BULLET_PX) adjPx[i] = adjPx[i - 1] + MIN_BULLET_PX;
   }
-  // Overflow: clamp back if kampParat pushed past abstimmung
-  if (adj[2] >= trackW) {
-    adj[2] = trackW - MIN_BULLET_PX;
-    if (adj[1] >= adj[2]) adj[1] = adj[2] - MIN_BULLET_PX;
-    if (adj[0] >= adj[1]) adj[0] = Math.max(0, adj[1] - MIN_BULLET_PX);
+  const secLast = adjPx.length - 2;
+  if (secLast >= 0 && adjPx[secLast] >= trackW - MIN_BULLET_PX) {
+    adjPx[secLast] = trackW - MIN_BULLET_PX;
+    for (let i = secLast - 1; i >= 0; i--) {
+      if (adjPx[i] >= adjPx[i + 1] - MIN_BULLET_PX) adjPx[i] = Math.max(0, adjPx[i + 1] - MIN_BULLET_PX);
+    }
   }
+  const posNodes = sorted.map((n, i) => ({ ...n, adjPx: adjPx[i] }));
 
-  // Phase bar: true proportional (raw px, not adj)
-  const versandPct = Math.max(0, Math.min(100, raw[0] / trackW * 100));
+  // Phase bar metrics (true proportional, raw)
+  const versandPct       = Math.max(0, Math.min(100, toPx(versand) / trackW * 100));
   const daysSinceVersand = state >= 3 ? Math.max(0, daysBetween(versand, today)) : 0;
   const daysVorbPrep     = state <= 2 ? daysBetween(today, versand) : 0;
 
@@ -143,52 +155,54 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
         KAMPAGNEN-TIMELINE
       </div>
 
-      {/* Vorlauf hint */}
-      <div style={{ background: hint.bg, border: `1px solid ${hint.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, fontWeight: 500, color: hint.color, lineHeight: 1.5, marginBottom: 20 }}>
-        {hint.text}
+      {/* Status pill */}
+      <div style={{ background: pill.bg, border: `1px solid ${pill.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, fontWeight: 500, color: pill.color, lineHeight: 1.5, marginBottom: 20 }}>
+        {pill.text}
       </div>
 
       {/* Bullets track */}
       <div ref={trackRef} style={{ position: 'relative' as const, height: 68, marginBottom: 16 }}>
         <div style={{ position: 'absolute' as const, top: 7, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
 
-        {/* Unterlagen-Versand */}
-        <div style={{ ...node(adj[0]), opacity: versandPast ? 0.45 : 1 }}>
-          <div style={{ width: 14, height: 14, borderRadius: '50%', background: versandPast ? 'transparent' : WHITE, border: '2px solid rgba(107,79,187,0.45)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
-            <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Unterlagen-Versand</div>
-            <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtVersand(true)} onMouseLeave={() => setTtVersand(false)}>ⓘ</span>
-            {ttVersand && <div style={ttBox}>Ca. 4 Wochen vor dem Abstimmungssonntag kommen die Abstimmungsunterlagen ins Haus. Viele Stimmberechtigte entscheiden genau in dieser Phase. Kampagnen, die hier präsent sind, erzielen die höchste Wirkung.</div>}
-          </div>
-          <div style={{ fontSize: 9.5, fontWeight: 500, color: MUTED, marginTop: 1 }}>{fmt(versand)}</div>
-        </div>
-
-        {/* Heute */}
-        <div style={node(adj[1])}>
-          <div style={{ width: 16, height: 16, borderRadius: '50%', background: V, border: `2.5px solid ${V}` }} />
-          <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, marginTop: 5, whiteSpace: 'nowrap' as const }}>Heute</div>
-          <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(today)}</div>
-        </div>
-
-        {/* Kampagne parat */}
-        {showKampParat && (
-          <div style={node(adj[2])}>
-            <div style={{ width: 14, height: 14, borderRadius: '50%', background: WHITE, border: `2px solid ${V}` }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
-              <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Kampagne parat</div>
-              <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
-              {ttParat && <div style={ttBox}>DOOH-Screens für politische Kampagnen werden von jedem Betreiber individuell freigegeben — das dauert ca. 10 Tage. Bis zu diesem Datum müssen deine Werbemittel und die Kampagne freigegeben sein. Keine Angst, wir helfen dir dabei!</div>}
+        {posNodes.map((n) => {
+          const s = { ...node(n.adjPx), opacity: n.past ? 0.45 : 1 };
+          if (n.id === 'heute') return (
+            <div key="heute" style={s}>
+              <div style={{ width: 16, height: 16, borderRadius: '50%', background: V, border: `2.5px solid ${V}` }} />
+              <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, marginTop: 5, whiteSpace: 'nowrap' as const }}>Heute</div>
+              <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(today)}</div>
             </div>
-            <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(kampParatDate)}</div>
-          </div>
-        )}
-
-        {/* Abstimmung */}
-        <div style={node(adj[3])}>
-          <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: `2.5px solid ${V}` }} />
-          <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, marginTop: 5, whiteSpace: 'nowrap' as const }}>Abstimmung</div>
-          <div style={{ fontSize: 9.5, fontWeight: 700, color: V, marginTop: 1 }}>{fmt(votingDateISO)}</div>
-        </div>
+          );
+          if (n.id === 'versand') return (
+            <div key="versand" style={s}>
+              <div style={{ width: 14, height: 14, borderRadius: '50%', background: n.past ? 'transparent' : WHITE, border: '2px solid rgba(107,79,187,0.45)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
+                <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Stimmzettel versandt</div>
+                <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtVersand(true)} onMouseLeave={() => setTtVersand(false)}>ⓘ</span>
+                {ttVersand && <div style={ttBox}>Ca. 4 Wochen vor dem Abstimmungssonntag kommen die Stimmunterlagen ins Haus. Viele Stimmberechtigte entscheiden genau in dieser Phase — Kampagnen, die hier präsent sind, erzielen die höchste Wirkung.</div>}
+              </div>
+              <div style={{ fontSize: 9.5, fontWeight: 500, color: MUTED, marginTop: 1 }}>{fmt(versand)}</div>
+            </div>
+          );
+          if (n.id === 'buchung') return (
+            <div key="buchung" style={s}>
+              <div style={{ width: 14, height: 14, borderRadius: '50%', background: WHITE, border: `2px solid ${V}` }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
+                <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Buchungsschluss</div>
+                <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
+                {ttParat && <div style={ttBox}>Bis zu diesem Datum müssen deine Werbemittel bereit und die Kampagne gebucht sein. Politische Plakatwerbung braucht ca. 10 Tage Freigabelauf — wir helfen dir dabei!</div>}
+              </div>
+              <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(kampParatDate)}</div>
+            </div>
+          );
+          return (
+            <div key="abstimmung" style={s}>
+              <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: `2.5px solid ${V}` }} />
+              <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, marginTop: 5, whiteSpace: 'nowrap' as const }}>Abstimmung</div>
+              <div style={{ fontSize: 9.5, fontWeight: 700, color: V, marginTop: 1 }}>{fmt(votingDateISO)}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Phase bar */}
@@ -196,9 +210,11 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
         {state >= 3 ? (
           <div>
             <div style={{ height: 4, background: state === 4 ? AMBER : V, borderRadius: 2 }} />
-            <div style={{ marginTop: 7, fontSize: 10, fontWeight: 500, color: state === 4 ? AMBER : INK2 }}>
-              Heisse Phase aktiv seit {daysSinceVersand}d (28d total)
-            </div>
+            {state === 3 && (
+              <div style={{ marginTop: 7, fontSize: 10, fontWeight: 500, color: INK2 }}>
+                Stimmzettel wurden vor {daysSinceVersand} Tag{daysSinceVersand === 1 ? '' : 'en'} verschickt — jetzt ist der wirksamste Moment.
+              </div>
+            )}
           </div>
         ) : state === 2 ? (
           <div>
