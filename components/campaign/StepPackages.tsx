@@ -460,12 +460,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const activeHint: HintDisplay | null = (() => {
     if (!activeHintRaw) return null;
     if (path !== 'A' || !sweetSpot || activeHintRaw.tone !== 'good') return activeHintRaw;
+    const zoneLow  = sweetSpot.budget * 0.9;
+    const zoneHigh = sweetSpot.budget * 1.2;
     const prefix =
-      budget < sweetSpot.budget
+      budget < zoneLow
         ? `Empfohlenes Budget ab ${fmtCHF(sweetSpot.budget)}. `
-        : budget <= sweetSpot.budget * 1.3
+        : budget <= zoneHigh
           ? 'Im Sweet Spot. '
-          : `Über dem Sweet Spot (Empfehlung ab ${fmtCHF(sweetSpot.budget)}). `;
+          : 'Starke Kampagne — du nutzt das volle Potenzial dieser Region. ';
     return { ...activeHintRaw, text: prefix + activeHintRaw.text };
   })();
 
