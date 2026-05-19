@@ -336,14 +336,15 @@ Engine-Konsistenz, UI-Trennung — siehe v3.5.2 §7.3.
 
 ### 7.4 Budget-Marker (N)
 
-Unverändert v3.5.2 (final-Revision Sprint 2):
+Aktualisiert 19.05.2026 (war: Sprint-2-Final-Revision):
 
 - Marker auf Slider entfällt vollständig.
-- HintCard-Präfix dreigeteilt:
-  - `currentBudget < sweetSpot.budget` → „Empfohlenes Budget ab CHF X. "
-  - `sweetSpot.budget ≤ currentBudget ≤ sweetSpot.budget × 1.3` → „Im Sweet Spot. "
-  - `currentBudget > sweetSpot.budget × 1.3` → „Über dem Sweet Spot (Empfehlung ab CHF X). "
+- HintCard-Präfix dreigeteilt als Zone ±20% um `sweetSpot.budget`:
+  - `currentBudget < sweetSpot.budget × 0.9` → „Empfohlenes Budget ab CHF X. " (CHF-Betrag sichtbar)
+  - `sweetSpot.budget × 0.9 ≤ currentBudget ≤ sweetSpot.budget × 1.2` → „Im Sweet Spot. " (kein CHF)
+  - `currentBudget > sweetSpot.budget × 1.2` → „Starke Kampagne — du nutzt das volle Potenzial dieser Region. " (kein CHF)
 - Präfix nur bei `tone='good'` (stable Status).
+- Ziel: Zone gibt User Sicherheit; positives Wording oberhalb nudgt tendenziell zu höherem Budget.
 
 ---
 
