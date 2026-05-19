@@ -72,6 +72,28 @@
 - Status: Vorhanden, nicht aktiv promoted, kein Go-Live Blocker
 
 
+## Kampagnen-Dashboard
+
+**Architektur-Entscheid:** Ein Token, eine persistente URL `/dashboard/[token]` deckt den gesamten Kampagnen-Lebenszyklus ab: Werbemittel → Pre-Live → Live → Post. Die Phase wird serverseitig per Token-Lookup bestimmt — nicht per URL-Segment.
+
+**Visueller Prototyp:** `docs/prototypes/dashboard-v1.html` — verbindliche Source-of-Truth für Layout, Farben, Strings, Mikrocopy.
+
+**Phase-Switching (Dev-only):** `?preview=werbemittel|preLive|live|post` — keine Tabs im Production-UI.
+
+### Neue Dateien (Phase 1, 19.05.2026)
+- `app/dashboard/[token]/page.tsx` — Route, Server Component, liest searchParams.preview
+- `components/dashboard/DashboardShell.tsx` — Header (Logo, Pill, Meta), Frame
+- `components/dashboard/PhaseWerbemittel.tsx` — Phase 0: Upload-CTA, Checklist, Callout
+- `components/dashboard/PhasePreLive.tsx` — Phase 1: Countdown, Checklist, Creative, Contact
+- `components/dashboard/PhaseLive.tsx` — Phase 2: Stats, Timeline, Screenshots, Channel-Mix (Client Component)
+- `components/dashboard/PhasePost.tsx` — Phase 3: Endresultat, Eckdaten, Screenshots
+- `components/dashboard/atoms.tsx` — Card, Label, KeyValueRow, ProgressBar, Pill, StatCard, Callout, ChecklistItem, ScreenshotGrid, ContactCard, ChannelMixCard, Btn
+- `lib/dashboard/types.ts` — TypeScript-Typen (DashboardData, Phase, Checkpoint, Screenshot, Contact)
+- `lib/dashboard/mock-data.ts` — 4 Mock-Datensätze (Energiezukunft Zürich, CHF 6'000, Paket Präsenz)
+
+**Aktueller Stand:** UI fertig, Mock-Daten, kein Backend. Token-Storage, E-Mail-Versand und Webhook folgen.
+
+
 ## Preislogik (vereinfacht)
 
 **Aktuelle Logik-Version: v3.5.3 Single Source of Truth (14.05.2026)**
@@ -134,6 +156,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 19.05.2026 | feat(dashboard) | **Dashboard-Layer Phase 1: UI-Skelett mit 4 Phasen und Mock-Daten ausgeliefert.** Backend-Sequenz (KV → Token → Magic Link → Webhook) in Planung. Route `/dashboard/[token]`, 9 neue Dateien. |
 | 19.05.2026 | fix(optimizer) | **Saturation-Tie-Break Schritt 4** — bei vollgesättigtem Pool (`bestLong.reach ≥ chosen.reach × 0.99`) UND deutlich tieferer Frequenz (`bestLong.fWeekly < chosen.fWeekly × 0.85`) wird long-Laufzeit (42d/35d) bevorzugt. Trigger-Case: CHF 100k + Bern. `lib/preislogik.ts` ~Zeile 517. |
 | 19.05.2026 | UX-Patch | **Sweet-Spot-Zone statt Punkt** — §7.4: Budget-Marker-Präfix neu als Zone ±20% um `sweetSpot.budget` (×0.9–×1.2). Unterhalb Zone: CHF-Betrag sichtbar. In Zone: „Im Sweet Spot." Über Zone: positiv bestätigend ohne CHF. Änderung in `components/campaign/StepPackages.tsx` (~Zeile 463–469). |
 | 19.05.2026 | Logik-Patch | **Dominanz-Advisory-Schwelle auf CHF 100k vereinfacht** — `lib/preislogik.ts`: `DOMINANZ_CAP_MULTIPLIER = 2.5` (relativ zu Präsenz-Budget) ersetzt durch `DOMINANZ_BUDGET_CAP = 100_000` (absoluter Hard-Cap). `requiresConsultation` greift nur noch bei `dominanz.budget > 100_000`. Vereinheitlicht mit Pfad-A-Slider-Maximum. `praesenzBudgetRef`-Parameter aus `buildOne()` entfernt. |
@@ -172,6 +195,17 @@
 - Guardrails: Dominanz `requiresConsultation` → Fallback auf Präsenz; unavailable → nächstes verfügbares; high_frequency → kein Badge
 
 ### Backlog
+
+**Dashboard-Backend (Sequenz):**
+- **Vercel KV Setup + Token-Schema** `dashboard:[token]` → JSON mit Phase + DashboardData
+- **Token-Generierung im Booking-Flow** — Session-Start oder Werbemittel-Step, UUID als Token
+- **E-Mail-Versand "Dashboard-Link"** ab Werbemittel-Step via Resend (ersetzt/ergänzt send-resume-link)
+- **n8n-Webhook für Status-Updates** — `POST /api/dashboard/[token]/update` → schreibt Phase + Daten in KV
+- **Screenshot-Upload-Flow** — S3-Presigned-URL, n8n-Trigger, Workflow undefiniert
+- **Werbemittel-Vorschau-Renderer** — Format-Branching: Image / HTML5 Banner / MP4
+- **Dynamische Deadline-Logik (Werbemittel-Phase)** — Eskalations-States je nach Restzeit bis DOOH-Cutoff (früh / knapp / kritisch)
+
+**Optimizer / Preislogik:**
 - **Glossar definieren** (`docs/glossary.md`): einheitliches Otto-Vokabular für Reichweite, Stimmberechtigte erreicht, Jede Person sieht es, Sweet Spot, Zeitraum, Kanal-Mix etc. Anschliessend Cross-Flow-Sync-Pass über Politik + B2B Steps 1–5.
 - **RC-3: laufzeitDays-Rundung** — Step 2 schreibt `Math.round(impact.laufzeitDays / 7)` in `briefing.laufzeit`, Step 3 multipliziert × 7. Bei Optimizer-Werten ≠ 7-Vielfache Rundungsverlust möglich.
 - **RC-4: 1-Tag-Versatz Start-Datum** — Step 2 `zeitraumDates` vs. Step 3 `calcCampaignDates` mit today-Fallback. Konsolidierung pending.
