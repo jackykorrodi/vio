@@ -273,6 +273,22 @@ export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Pr
               Beratungsgespräch buchen
             </a>
           )}
+          <button
+            type="button"
+            onClick={() => { window.location.href = `/dashboard/${crypto.randomUUID()}`; }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              background: 'transparent', color: C.primary,
+              border: `1.5px solid ${C.primary}`,
+              borderRadius: '100px', padding: '13px 28px',
+              fontFamily: 'var(--font-sans), sans-serif', fontSize: '15px', fontWeight: 600,
+              cursor: 'pointer', transition: 'all .18s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.pl; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            Dashboard öffnen →
+          </button>
         </div>
 
         <FeedbackCard briefing={briefing} />
