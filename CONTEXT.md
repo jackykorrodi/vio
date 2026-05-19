@@ -111,7 +111,7 @@
 | MIN_VORLAUF_DOOH | 10 | DOOH-Freigabe-Untergrenze (v3.5.2) |
 | MIN_VORLAUF_DISPLAY | 1 | Display-Sprint-Untergrenze (v3.5.2) |
 | MIN_DISPLAY_ONLY_LAUFZEIT | 7 | Untergrenze sinnvolle Display-Sprint-Laufzeit (v3.5.2) |
-| DOMINANZ_CAP_MULTIPLIER | 2.5 | Cap: Dominanz.budget > 2.5×Präsenz → requiresConsultation (NEU v3.5.3) |
+| DOMINANZ_BUDGET_CAP | 100_000 | Hard-Cap CHF: Dominanz.budget > 100k → requiresConsultation (v3.5.3, geändert 19.05.2026) |
 | LAUFZEITEN_BASIS | [14,21,28,35,42] | Pfad-A-Laufzeit-Granularität (v3.5.3 erweitert) |
 
 **Entfernt in v3.5.2**: `DISPLAY_SPRINT_SWITCH_DAYS = 24` → Trigger emergent aus Optimizer-Status `display_only_late_window`. `buildDisplaySprint()`-Funktion ebenfalls entfernt.
@@ -134,6 +134,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 19.05.2026 | Logik-Patch | **Dominanz-Advisory-Schwelle auf CHF 100k vereinfacht** — `lib/preislogik.ts`: `DOMINANZ_CAP_MULTIPLIER = 2.5` (relativ zu Präsenz-Budget) ersetzt durch `DOMINANZ_BUDGET_CAP = 100_000` (absoluter Hard-Cap). `requiresConsultation` greift nur noch bei `dominanz.budget > 100_000`. Vereinheitlicht mit Pfad-A-Slider-Maximum. `praesenzBudgetRef`-Parameter aus `buildOne()` entfernt. |
 | 19.05.2026 | UI-Patch | **StepPackages: Restlaufzeit-Label in Zeitraum-Zelle** — Bedingtes Label „Effektive Kampagnenzeit bis Abstimmung: X Tage" in der ZEITRAUM-KPI-Zelle ergänzt (`components/campaign/StepPackages.tsx`). Erscheint nur wenn `daysUntilVote > displayDays`. Kein neues State-Feld, kein Eingriff in `calculateImpact()` oder `preislogik.ts`. |
 | 14.05.2026 | **v3.5.3** | **Pfad-A-Laufzeit-Granularität von {14,28,42} auf {14,21,28,35,42} erweitert** (§7.0/§7.1). Statuscodes als semantische Kategorien dokumentiert (§3). Schritte 1+4 in §7.1 testen jetzt 21d+28d (Standard) bzw. 35d+42d (Aufbau). Neue Konstante `AUFBAU_PREMIUM_THRESHOLD = 1.2`. Kein dynamischer max_vorlauf-Kandidat (Mediaplaner-Entscheidung). **Dominanz-Capping bei grossen Regionen**: `requiresConsultation = (Dominanz.budget > 2.5 × Präsenz.budget)` → UI „Persönliche Beratung empfohlen", klickbar (Calendly), nicht ausgegraut (§8.1, §9.2, §9.3 Guardrail). Neue Konstante `DOMINANZ_CAP_MULTIPLIER = 2.5`. |
 | 14.05.2026 | **v3.5.2** | **DOOH-Vorlauf-Constraint in Pfad A** (§7.0/§7.3 analog Pfad B §8.6/§8.7). Sweet-Spot/Budget-Marker formal definiert (§7.4) als niedrigstes Budget mit stabilem Status. Slider-Marker entfällt vollständig, HintCard absorbiert mit dreigeteiltem Präfix (unter/im/über Sweet Spot, Korridor ×1.3). Statuscodes neu: `display_only_late_window`, `too_short_for_campaign`, `vote_passed`, `sprint_14d_vorlauf_constrained`, `optimal_28d_vorlauf_constrained`. Alle stabilen Status durchgängig tone='good', title='Empfehlung'. Intern/Extern-Trennung normativ (§7.2, §9.4). `DISPLAY_SPRINT_SWITCH_DAYS=24` entfernt, `buildDisplaySprint()` entfernt, `TARGET_FREQ=4.5`-Hardcode entfernt. Neue Konstanten: `MIN_VORLAUF_DOOH=10`, `MIN_VORLAUF_DISPLAY=1`, `MIN_DISPLAY_ONLY_LAUFZEIT=7`. **Pfad B**: §8.6/§8.7/§8.8 nachträglich implementiert (war Spec-only Drift). `buildPackages()` respektiert Vorlauf, Pakete werden bei knappem Vorlauf display_only oder unavailable. Pfad-B-HintCard-Mapping via `pkgToHint()` mit §9.2-Tabelle. Generischer „Im Sweet Spot"-Fallback in `hinweisToDisplay()` entfernt. |

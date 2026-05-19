@@ -55,7 +55,7 @@ export const MIN_DISPLAY_ONLY_LAUFZEIT = 7;  // Untergrenze sinnvolle Display-Sp
 // §7.0 v3.5.3: Granularität — alle buchbaren Standard-Laufzeiten
 export const LAUFZEITEN_BASIS = [14, 21, 28, 35, 42] as const;
 export const AUFBAU_PREMIUM_THRESHOLD = 1.2;  // Schritt 4: Reach-Ratio zum Triggern von 35d/42d
-export const DOMINANZ_CAP_MULTIPLIER = 2.5;   // §8.1: Dominanz-Budget-Deckel relativ zu Präsenz
+export const DOMINANZ_BUDGET_CAP = 100_000;   // §8.1: Dominanz-Budget Hard-Cap (CHF)
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
@@ -742,7 +742,7 @@ export function buildPackages(input: {
     dominanz: 9000,
   };
 
-  const buildOne = (key: PaketKey, praesenzBudgetRef?: number): Paket => {
+  const buildOne = (key: PaketKey): Paket => {
     const spec = PAKET_SPECS[key];
     const reachCap = getReachCap(stimmTotal, spec.reachCapLevel);
     const targetReach = stimmTotal * reachCap;
@@ -765,8 +765,7 @@ export function buildPackages(input: {
     const finalBudget = Math.max(PKG_MIN[key], roundBudget(rawBudget));
 
     // §8.1 Dominanz-Cap (v3.5.3)
-    const requiresConsultation = key === 'dominanz' && praesenzBudgetRef != null
-      && finalBudget > DOMINANZ_CAP_MULTIPLIER * praesenzBudgetRef;
+    const requiresConsultation = key === 'dominanz' && finalBudget > DOMINANZ_BUDGET_CAP;
 
     const imp = calculateImpact({
       budget: finalBudget,
@@ -810,7 +809,7 @@ export function buildPackages(input: {
 
   const sichtbar = buildOne('sichtbar');
   const praesenz  = buildOne('praesenz');
-  const dominanz  = buildOne('dominanz', praesenz.budget);
+  const dominanz  = buildOne('dominanz');
 
   // §9.3 Empfehlung: praesenz → sichtbar → dominanz (nach Availability)
   const recommended: PaketKey =
