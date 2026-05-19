@@ -660,6 +660,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
                     {zeitraumDates ? `${zeitraumDates.start} – ${zeitraumDates.end}` : '—'}
                   </div>
+                  {daysUntilVote != null && daysUntilVote > displayDays && (
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                      Effektive Kampagnenzeit bis Abstimmung: {daysUntilVote} Tage
+                    </div>
+                  )}
                 </div>
               </div>
 
