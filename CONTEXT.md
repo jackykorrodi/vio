@@ -134,6 +134,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 19.05.2026 | fix(optimizer) | **Saturation-Tie-Break Schritt 4** — bei vollgesättigtem Pool (`bestLong.reach ≥ chosen.reach × 0.99`) UND deutlich tieferer Frequenz (`bestLong.fWeekly < chosen.fWeekly × 0.85`) wird long-Laufzeit (42d/35d) bevorzugt. Trigger-Case: CHF 100k + Bern. `lib/preislogik.ts` ~Zeile 517. |
 | 19.05.2026 | UX-Patch | **Sweet-Spot-Zone statt Punkt** — §7.4: Budget-Marker-Präfix neu als Zone ±20% um `sweetSpot.budget` (×0.9–×1.2). Unterhalb Zone: CHF-Betrag sichtbar. In Zone: „Im Sweet Spot." Über Zone: positiv bestätigend ohne CHF. Änderung in `components/campaign/StepPackages.tsx` (~Zeile 463–469). |
 | 19.05.2026 | Logik-Patch | **Dominanz-Advisory-Schwelle auf CHF 100k vereinfacht** — `lib/preislogik.ts`: `DOMINANZ_CAP_MULTIPLIER = 2.5` (relativ zu Präsenz-Budget) ersetzt durch `DOMINANZ_BUDGET_CAP = 100_000` (absoluter Hard-Cap). `requiresConsultation` greift nur noch bei `dominanz.budget > 100_000`. Vereinheitlicht mit Pfad-A-Slider-Maximum. `praesenzBudgetRef`-Parameter aus `buildOne()` entfernt. |
 | 19.05.2026 | UI-Patch | **StepPackages: Restlaufzeit-Label in Zeitraum-Zelle** — Bedingtes Label „Effektive Kampagnenzeit bis Abstimmung: X Tage" in der ZEITRAUM-KPI-Zelle ergänzt (`components/campaign/StepPackages.tsx`). Erscheint nur wenn `daysUntilVote > displayDays`. Kein neues State-Feld, kein Eingriff in `calculateImpact()` oder `preislogik.ts`. |

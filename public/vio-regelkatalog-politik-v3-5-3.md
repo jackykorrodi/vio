@@ -271,6 +271,7 @@ Status: `sprint_14d_grosser_pool`.
 **Schritt 4 — Aufbau-Override Long (35d / 42d)**
 Berechne 35d und 42d (sofern in `gültige_laufzeiten`) für L1, L2, L3. Wenn beste long-Variante in-Band Reach > AUFBAU_PREMIUM_THRESHOLD (1.2×) × Schritt-1-Reach → wähle die long-Variante. Tie-Break: längere Laufzeit gewinnt (42d vor 35d).
 Status: `aufbau_42d_reach_premium` (semantische Kategorie — gilt für 35d UND 42d).
+Saturation-Tie-Break: Wenn `bestLong.reach ≥ chosen.reach × 0.99` (Pool gesättigt) UND `bestLong.fWeekly < chosen.fWeekly × 0.85` (Frequenz deutlich tiefer) → wähle long. Status: `aufbau_42d_reach_premium` (gleiche Karte, tiefere Frequenz als Begründung).
 
 **Schritt 4b — Vorlauf-constrained Standard (Spiegel zu Schritt 4)**
 Wenn long-Varianten (35d/42d) durch §7.0 (nicht Band-Check) ausgefiltert wurden UND Schattenberechnung long-Reach > AUFBAU_PREMIUM_THRESHOLD × Schritt-1-Reach (Schritt-1 in-Band) → Schritt-1-Kandidat wird gewählt.

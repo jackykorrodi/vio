@@ -515,6 +515,10 @@ export function optimizeForBudget(budget: number, regions: Region[], daysUntilVo
       if (bestLong.reach > AUFBAU_PREMIUM_THRESHOLD * chosen.reach) {
         return { laufzeitDays: bestLong.days, capLevel: bestLong.level, statusCode: 'aufbau_42d_reach_premium' };
       }
+      // Saturation-Tie-Break: Pool gesättigt (Reach gleich) → prefer long für tiefere Frequenz
+      if (bestLong.reach >= chosen.reach * 0.99 && bestLong.fWeekly < chosen.fWeekly * 0.85) {
+        return { laufzeitDays: bestLong.days, capLevel: bestLong.level, statusCode: 'aufbau_42d_reach_premium' };
+      }
     }
 
     // Schritt 4b: Vorlauf-constrained — Schatten 35d+42d würden Premium triggern
