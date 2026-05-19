@@ -275,7 +275,7 @@ export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Pr
           )}
           <button
             type="button"
-            onClick={() => { window.location.href = `/dashboard/${crypto.randomUUID()}`; }}
+            onClick={() => { window.location.href = `/dashboard/${crypto.randomUUID()}?demo=1`; }}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '8px',
               background: 'transparent', color: C.primary,

@@ -1,6 +1,7 @@
 import type { Phase } from '@/lib/dashboard/types';
 import { MOCK_DATA } from '@/lib/dashboard/mock-data';
 import DashboardShell from '@/components/dashboard/DashboardShell';
+import DemoPhaseSwitcher from '@/components/dashboard/DemoPhaseSwitcher';
 import PhaseWerbemittel from '@/components/dashboard/PhaseWerbemittel';
 import PhasePreLive from '@/components/dashboard/PhasePreLive';
 import PhaseLive from '@/components/dashboard/PhaseLive';
@@ -17,20 +18,23 @@ export default async function DashboardPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ preview?: string }>;
+  searchParams: Promise<{ preview?: string; demo?: string }>;
 }) {
-  await params; // token — future: load real data from KV
-
-  const { preview } = await searchParams;
+  const { token } = await params;
+  const { preview, demo } = await searchParams;
   const phase: Phase = isValidPhase(preview) ? preview : 'live';
   const data = MOCK_DATA[phase];
+  const isDemo = demo === '1';
 
   return (
-    <DashboardShell phase={phase} campaignName={data.campaignName}>
-      {phase === 'werbemittel' && <PhaseWerbemittel data={data} />}
-      {phase === 'preLive'     && <PhasePreLive     data={data} />}
-      {phase === 'live'        && <PhaseLive        data={data} />}
-      {phase === 'post'        && <PhasePost        data={data} />}
-    </DashboardShell>
+    <>
+      {isDemo && <DemoPhaseSwitcher token={token} activePhase={phase} />}
+      <DashboardShell phase={phase} campaignName={data.campaignName}>
+        {phase === 'werbemittel' && <PhaseWerbemittel data={data} />}
+        {phase === 'preLive'     && <PhasePreLive     data={data} />}
+        {phase === 'live'        && <PhaseLive        data={data} />}
+        {phase === 'post'        && <PhasePost        data={data} />}
+      </DashboardShell>
+    </>
   );
 }
