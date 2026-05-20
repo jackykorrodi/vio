@@ -135,6 +135,7 @@
 | AUFBAU_PREMIUM_THRESHOLD | 1.2 | +20% Reach für Aufbau-Override 35d/42d vs 28d (NEU v3.5.3) |
 | CPM_DOOH | 50 | unverändert |
 | CPM_DISPLAY | 15 | unverändert |
+| CPM_LIST | 43.89 | Listen-CPM mit 10% Channel-Puffer (= 39.50 / 0.90). Basis für Partnercode-Boost-Faktor. |
 | MIN_VORLAUF_DOOH | 10 | DOOH-Freigabe-Untergrenze (v3.5.2) |
 | MIN_VORLAUF_DISPLAY | 1 | Display-Sprint-Untergrenze (v3.5.2) |
 | MIN_DISPLAY_ONLY_LAUFZEIT | 7 | Untergrenze sinnvolle Display-Sprint-Laufzeit (v3.5.2) |
@@ -161,6 +162,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 20.05.2026 | feat(partnercode) | **Partnercode-System Phase 1 (Mock-Validierung, Politik-Flow).** `lib/partner-codes-mock.ts`: PartnerCode-Typ + 3 Test-Codes (direct/agentur/vermittler) + `validatePartnerCode()` (case-insensitive). `lib/preislogik.ts`: `CPM_LIST = 43.89` + `partnerCodeBoostPct?`-Parameter in `calculateImpact` — Faktor `mixedCpm / (CPM_LIST × (1 − boost/100))` auf `impressionsEffective`. Kein Code → Reach sinkt ~10% ggü. früher (Liste-Puffer); Direct-Code (10%) → identisch zu heute. `components/campaign/StepPackages.tsx`: Partnercode-UI collapsed unter Wirkungsindikator, Validierung, Bestätigungs-Pattern (Boost-Anzeige / Cap-Edge-Case / Hinterlegt), State persistiert via `briefing.partnerCode`. `agenturcode` komplett entfernt (types.ts, Step6Contact, submit-briefing). **⚠ Doku-Update pending:** `docs/partnercode-konzept.md` Sektion 5 schreibt linearen +11%-Boost (Impression-Mathematik), tatsächlich ~5–7% Reach-Boost wegen Hofmans-Saturation. Sektion muss mit «echtem Reach-Delta» und Variabilität je Region präzisiert werden. |
 | 19.05.2026 | feat(dashboard) | **Dashboard-Layer Phase 1 + Bridge-Button + Demo-Modus:** UI-Skelett mit 4 Phasen und Mock-Daten. Politik-Step 7 öffnet Dashboard mit temporärer client-side UUID + `?demo=1`. `DemoPhaseSwitcher` für Phase-Wechsel in Demo. Backend-Sequenz (KV → Token → Magic Link → Webhook) in Planung. |
 | 19.05.2026 | fix(optimizer) | **Saturation-Tie-Break Schritt 4** — bei vollgesättigtem Pool (`bestLong.reach ≥ chosen.reach × 0.99`) UND deutlich tieferer Frequenz (`bestLong.fWeekly < chosen.fWeekly × 0.85`) wird long-Laufzeit (42d/35d) bevorzugt. Trigger-Case: CHF 100k + Bern. `lib/preislogik.ts` ~Zeile 517. |
 | 19.05.2026 | UX-Patch | **Sweet-Spot-Zone statt Punkt** — §7.4: Budget-Marker-Präfix neu als Zone ±20% um `sweetSpot.budget` (×0.9–×1.2). Unterhalb Zone: CHF-Betrag sichtbar. In Zone: „Im Sweet Spot." Über Zone: positiv bestätigend ohne CHF. Änderung in `components/campaign/StepPackages.tsx` (~Zeile 463–469). |

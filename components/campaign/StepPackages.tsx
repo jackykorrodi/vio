@@ -6,6 +6,8 @@ import {
   calculateImpact, buildPackages, getLaufzeitCorridor, coupleBudgetToLaufzeit,
   calculateSweetSpot,
 } from '@/lib/preislogik';
+import { validatePartnerCode } from '@/lib/partner-codes-mock';
+import type { PartnerCode } from '@/lib/partner-codes-mock';
 import type { PaketKey, PakeResult, Paket, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
@@ -45,6 +47,9 @@ function addDaysToDate(d: Date, n: number): Date {
   const r = new Date(d);
   r.setDate(r.getDate() + n);
   return r;
+}
+function round500(n: number): number {
+  return Math.round(n / 500) * 500;
 }
 
 // ─── Package cards sub-component ─────────────────────────────────────────────
@@ -323,6 +328,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     budget: packages ? packages.praesenz.budget : 8000,
     days: packages ? packages.praesenz.laufzeitDays : 21,
   }));
+  const [activeCode, setActiveCode]   = useState<PartnerCode | null>(() =>
+    briefing.partnerCode ? validatePartnerCode(briefing.partnerCode) : null
+  );
+  const [partnerCodeOpen, setPartnerCodeOpen]   = useState<boolean>(false);
+  const [partnerCodeInput, setPartnerCodeInput] = useState<string>('');
+  const [partnerCodeError, setPartnerCodeError] = useState<string | null>(null);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const corridor = getLaufzeitCorridor(budget);
@@ -338,6 +349,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const impact = useMemo(
     () => {
       if (!selectedRegionsFull.length) return null;
+      const boostPct = activeCode?.reachBoostPct ?? 0;
       // Pfad B: paketLevel-Modus damit Indikator mit den Paket-Karten übereinstimmt
       if (path === 'B' && packages) {
         const pkgData = packages[pkg];
@@ -348,13 +360,32 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
           mode: 'paketLevel',
           paketLevel: PKG_CAP_LEVEL[pkg],
           splitOverride: pkgData.deliveryMode === 'display_only' ? { dooh: 0, display: 1 } : undefined,
+          partnerCodeBoostPct: boostPct,
         });
       }
-      return calculateImpact({ budget, regions: selectedRegionsFull, daysUntilVote });
+      return calculateImpact({ budget, regions: selectedRegionsFull, daysUntilVote, partnerCodeBoostPct: boostPct });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path, pkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]
+    [path, pkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote, activeCode?.reachBoostPct]
   );
+
+  // Basis-Impact ohne Code-Boost (für Reach-Delta-Berechnung)
+  const impactBase = useMemo(() => {
+    if (!activeCode || activeCode.reachBoostPct === 0 || !selectedRegionsFull.length) return null;
+    if (path === 'B' && packages) {
+      const pkgData = packages[pkg];
+      return calculateImpact({
+        budget: pkgData.budget,
+        laufzeitDays: pkgData.laufzeitDays,
+        regions: selectedRegionsFull,
+        mode: 'paketLevel',
+        paketLevel: PKG_CAP_LEVEL[pkg],
+        splitOverride: pkgData.deliveryMode === 'display_only' ? { dooh: 0, display: 1 } : undefined,
+      });
+    }
+    return calculateImpact({ budget, regions: selectedRegionsFull, daysUntilVote });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCode, path, pkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]);
 
   // Pfad A: Laufzeit kommt vom Optimizer (impact.laufzeitDays), nicht aus lokalem Slider-State
   const displayDays = path === 'B' && packages
@@ -447,6 +478,24 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       b2bReach: null,
     });
     nextStep();
+  }
+
+  function handlePartnerCodeSubmit() {
+    const validated = validatePartnerCode(partnerCodeInput);
+    if (!validated) {
+      setPartnerCodeError('Dieser Code ist ungültig.');
+      return;
+    }
+    setActiveCode(validated);
+    setPartnerCodeError(null);
+    updateBriefing({ partnerCode: validated.code });
+  }
+
+  function handlePartnerCodeRemove() {
+    setActiveCode(null);
+    setPartnerCodeInput('');
+    setPartnerCodeError(null);
+    updateBriefing({ partnerCode: undefined });
   }
 
   // ── Hint ───────────────────────────────────────────────────────────────────
@@ -685,6 +734,67 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   <span><strong style={{ color: 'white', fontWeight: 600 }}>{displayPct}%</strong> Online-Display</span>
                 </div>
               </div>
+            </div>
+
+            {/* Partnercode */}
+            <div style={{ marginBottom: 14 }}>
+              {!activeCode ? (
+                <>
+                  {!partnerCodeOpen ? (
+                    <button type="button" onClick={() => setPartnerCodeOpen(true)}
+                      style={{ background: 'none', border: 'none', color: T.slate, fontSize: 13, cursor: 'pointer', padding: 0, textDecoration: 'underline', fontFamily: "'Jost', sans-serif" }}>
+                      Partnercode hinzufügen
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' as const }}>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <input
+                          type="text"
+                          value={partnerCodeInput}
+                          onChange={e => { setPartnerCodeInput(e.target.value); setPartnerCodeError(null); }}
+                          onKeyDown={e => e.key === 'Enter' && handlePartnerCodeSubmit()}
+                          placeholder="Code eingeben"
+                          style={{ width: '100%', boxSizing: 'border-box' as const, border: `1px solid ${partnerCodeError ? '#D0624A' : T.line}`, borderRadius: 8, padding: '8px 12px', fontSize: 13, fontFamily: "'Jost', sans-serif", color: T.ink, outline: 'none' }}
+                        />
+                        {partnerCodeError && (
+                          <div style={{ fontSize: 12, color: '#D0624A', marginTop: 4 }}>{partnerCodeError}</div>
+                        )}
+                      </div>
+                      <button type="button" onClick={handlePartnerCodeSubmit}
+                        style={{ background: T.violet, color: 'white', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Jost', sans-serif", whiteSpace: 'nowrap' as const }}>
+                        Bestätigen
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ background: T.goodBg, border: '1px solid #C5DDC5', borderRadius: 12, padding: '12px 16px' }}>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, color: T.good, fontSize: 14, marginBottom: 4 }}>
+                    Partnerkampagne aktiviert
+                  </div>
+                  {activeCode.reachBoostPct === 0 ? (
+                    <div style={{ color: T.slate, fontSize: 13 }}>Code wurde erfolgreich hinterlegt.</div>
+                  ) : (() => {
+                    const deltaReach = (impact?.reachUniqueAbs ?? 0) - (impactBase?.reachUniqueAbs ?? 0);
+                    const deltaPersonen = round500(Math.max(0, deltaReach));
+                    const deltaPct = impactBase && impactBase.reachUniqueAbs > 0
+                      ? Math.round((deltaReach / impactBase.reachUniqueAbs) * 100)
+                      : 0;
+                    return deltaPersonen === 0 ? (
+                      <div style={{ color: T.slate, fontSize: 13 }}>Gesamte Region wird erreicht, kein zusätzlicher Reach-Effekt möglich.</div>
+                    ) : (
+                      <>
+                        <div style={{ color: T.good, fontSize: 13, fontWeight: 500 }}>+{deltaPct}% zusätzliche Reichweite</div>
+                        <div style={{ color: T.slate, fontSize: 13 }}>≈ {deltaPersonen.toLocaleString('de-CH')} zusätzlich erreichte Personen</div>
+                      </>
+                    );
+                  })()}
+                  <button type="button" onClick={handlePartnerCodeRemove}
+                    style={{ background: 'none', border: 'none', color: T.slate, fontSize: 12, cursor: 'pointer', padding: '6px 0 0', textDecoration: 'underline', fontFamily: "'Jost', sans-serif", display: 'block' }}>
+                    Code entfernen
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Hint (max 1) */}

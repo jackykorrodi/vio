@@ -31,6 +31,8 @@ export const EXPONENT_BUDGET_LAUFZEIT = 0.75;  // konkave Kopplung
 // CPM-Tarife (inkl. VIO-Marge)
 export const CPM_DOOH = 50;
 export const CPM_DISPLAY = 15;
+// Listen-CPM (10% Channel-Puffer ggü. echtem Misch-CPM 39.50): 39.50 / 0.90
+export const CPM_LIST = 43.89;
 
 // Delivery-Faktoren (DSP-Kalibrierung) — TBD mit Dani validieren
 export const DELIVERY_DOOH = 0.75;
@@ -591,6 +593,7 @@ export function calculateImpact(input: {
   paketLevel?: 1 | 2 | 3;               // nur bei mode='paketLevel'
   daysUntilVote?: number | null;
   splitOverride?: { dooh: number; display: number }; // §8.7 display_only
+  partnerCodeBoostPct?: number;          // 0–10; wirkt als CPM-Reduktion via CPM_LIST
 }): ImpactResult {
   const regions = dedupRegions(input.regions);
   const stimmTotal = sumStimm(regions);
@@ -626,7 +629,14 @@ export function calculateImpact(input: {
   const displayBudget = input.budget * displayShare;
   const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
   const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
-  const impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
+  let impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
+
+  // Channel-Puffer-Faktor: CPM_LIST enthält 10% Puffer ggü. mixedCpm.
+  // Ohne Code → Faktor ~0.90 (gepufferte Anzeige).
+  // Mit Direct-Code (boost=10) → Faktor 1.0 (heutige Mathematik).
+  const boostPct = input.partnerCodeBoostPct ?? 0;
+  const partnerCodeFactor = mixedCpm / (CPM_LIST * (1 - boostPct / 100));
+  impressionsEffective *= partnerCodeFactor;
 
   // Laufzeit
   const laufzeitWeeks = laufzeitDays / 7;

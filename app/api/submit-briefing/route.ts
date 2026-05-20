@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
               werbemittel:     b.werbemittel,
               abschluss:       b.abschluss,
               sessionId:       b.sessionId,
-              agenturcode:     b.agenturcode,
+              partnerCode:     b.partnerCode,
             }),
             deal_id: dealId,
           }),

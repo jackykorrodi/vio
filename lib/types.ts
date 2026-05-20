@@ -116,11 +116,11 @@ export interface BriefingData {
   totalFirmen?: number;
   totalMA?: number;
   erreichbarFirmen?: number;
+  // Partnercode (eingegeben in Step 2, wirkt auf Reach)
+  partnerCode?: string;
   // Session persistence
   sessionId?: string;
   dealId?: string;
-  // Step 6
-  agenturcode?: string;
   vorname: string;
   nachname: string;
   email: string;

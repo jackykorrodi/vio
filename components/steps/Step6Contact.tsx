@@ -285,18 +285,6 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
             />
           </div>
 
-          {/* Agenturcode */}
-          <div style={{ marginTop: '12px' }}>
-            <div style={hint}>Agenturcode (optional)</div>
-            <input
-              type="text"
-              placeholder="z.B. AWS2024 oder VIO-PARTNER"
-              value={briefing.agenturcode || ''}
-              onChange={e => updateBriefing({ agenturcode: e.target.value })}
-              style={inputStyle()}
-            />
-          </div>
-
           {/* Billing address (buchen only) */}
           {abschluss === 'buchen' && (
             <>
