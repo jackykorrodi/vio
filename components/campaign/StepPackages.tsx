@@ -394,6 +394,19 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
 
+  // Partner-Code Reach-Delta (komponenten-Ebene, nicht in Render-IIFE)
+  const _codeBaseReach = impactBase?.reachUniqueAbs ?? 0;
+  const _codeBoostReach = (activeCode && activeCode.reachBoostPct > 0) ? (impact?.reachUniqueAbs ?? 0) : 0;
+  const deltaPersonen = (activeCode && activeCode.reachBoostPct > 0)
+    ? round500(Math.max(0, _codeBoostReach - _codeBaseReach))
+    : 0;
+  const deltaPct = (activeCode && activeCode.reachBoostPct > 0 && _codeBaseReach > 0)
+    ? Math.round(((_codeBoostReach - _codeBaseReach) / _codeBaseReach) * 100)
+    : 0;
+  // Cap-Edge-Case: Code aktiv mit Boost, aber delta = 0 → Range aus impactBase verwenden
+  const isCapEdgeCase = !!(activeCode && activeCode.reachBoostPct > 0 && deltaPersonen === 0);
+  const displayReachImpact = (isCapEdgeCase && impactBase) ? impactBase : impact;
+
   const sweetSpot = useMemo(
     () => path === 'A' && selectedRegionsFull.length > 0
       ? calculateSweetSpot(selectedRegionsFull, daysUntilVote)
@@ -683,7 +696,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 Deine Botschaft erreicht
               </div>
               <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
-                {impact ? `${fmtNum(impact.reachUniqueLow)} – ${fmtNum(impact.reachUniqueHigh)}` : '—'}
+                {displayReachImpact ? `${fmtNum(displayReachImpact.reachUniqueLow)} – ${fmtNum(displayReachImpact.reachUniqueHigh)}` : '—'}
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
 
@@ -692,7 +705,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Abdeckung</div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                    {impact ? `${Math.round(impact.reachUniqueLowPct)}–${Math.round(impact.reachUniqueHighPct)} %` : '—'}
+                    {displayReachImpact ? `${Math.round(displayReachImpact.reachUniqueLowPct)}–${Math.round(displayReachImpact.reachUniqueHighPct)} %` : '—'}
                   </div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>der Stimmberechtigten</div>
                 </div>
@@ -774,21 +787,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   </div>
                   {activeCode.reachBoostPct === 0 ? (
                     <div style={{ color: T.slate, fontSize: 13 }}>Code wurde erfolgreich hinterlegt.</div>
-                  ) : (() => {
-                    const deltaReach = (impact?.reachUniqueAbs ?? 0) - (impactBase?.reachUniqueAbs ?? 0);
-                    const deltaPersonen = round500(Math.max(0, deltaReach));
-                    const deltaPct = impactBase && impactBase.reachUniqueAbs > 0
-                      ? Math.round((deltaReach / impactBase.reachUniqueAbs) * 100)
-                      : 0;
-                    return deltaPersonen === 0 ? (
-                      <div style={{ color: T.slate, fontSize: 13 }}>Gesamte Region wird erreicht, kein zusätzlicher Reach-Effekt möglich.</div>
-                    ) : (
-                      <>
-                        <div style={{ color: T.good, fontSize: 13, fontWeight: 500 }}>+{deltaPct}% zusätzliche Reichweite</div>
-                        <div style={{ color: T.slate, fontSize: 13 }}>≈ {deltaPersonen.toLocaleString('de-CH')} zusätzlich erreichte Personen</div>
-                      </>
-                    );
-                  })()}
+                  ) : isCapEdgeCase ? (
+                    <div style={{ color: T.slate, fontSize: 13 }}>Gesamte Region wird erreicht, kein zusätzlicher Reach-Effekt möglich.</div>
+                  ) : (
+                    <>
+                      <div style={{ color: T.good, fontSize: 13, fontWeight: 500 }}>+{deltaPct}% zusätzliche Reichweite</div>
+                      <div style={{ color: T.slate, fontSize: 13 }}>≈ {deltaPersonen.toLocaleString('de-CH')} zusätzlich erreichte Personen</div>
+                    </>
+                  )}
                   <button type="button" onClick={handlePartnerCodeRemove}
                     style={{ background: 'none', border: 'none', color: T.slate, fontSize: 12, cursor: 'pointer', padding: '6px 0 0', textDecoration: 'underline', fontFamily: "'Jost', sans-serif", display: 'block' }}>
                     Code entfernen
