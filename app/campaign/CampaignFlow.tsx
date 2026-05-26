@@ -20,7 +20,7 @@ export default function CampaignFlow() {
   }
 
   if (typeParam === 'politik') {
-    return <PolitikFlow resumeData={resumeData} />;
+    return <PolitikFlow resumeData={resumeData} resumeId={resumeParam || undefined} />;
   }
   if (typeParam === 'b2b') {
     return <B2BFlow initialUrl={urlParam} resumeData={resumeData} />;

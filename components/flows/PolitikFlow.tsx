@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { initialBriefing, BriefingData } from '@/lib/types';
+import SaveOverlay from '@/components/shared/SaveOverlay';
 import Step2Politik from '@/components/steps/Step1Politik';
 import Step2PolitikBudget from '@/components/campaign/StepPackages';
 import StepSummaryPolitik from '@/components/campaign/StepSummaryPolitik';
@@ -27,11 +28,15 @@ const C = {
   border:  'rgba(107,79,187,0.12)',
 } as const;
 
+const INACTIVITY_MS = 90_000;
+const COOLDOWN_MS   = 300_000;
+
 interface Props {
   resumeData?: Partial<BriefingData> & { _targetStep?: number };
+  resumeId?:   string;
 }
 
-export default function PolitikFlow({ resumeData }: Props) {
+export default function PolitikFlow({ resumeData, resumeId }: Props) {
   const { _targetStep, ...resumeRest } = resumeData ?? {};
 
   const [currentStep, setCurrentStep] = useState(_targetStep ?? 1);
@@ -39,6 +44,11 @@ export default function PolitikFlow({ resumeData }: Props) {
   const [step1ResumeQ, setStep1ResumeQ] = useState<number>(1);
   const [resumeLoaded] = useState(!!resumeData);
   const [showLabels, setShowLabels] = useState(false);
+  const [showSaveOverlay,      setShowSaveOverlay]      = useState(false);
+  const [supabaseResumeLoaded, setSupabaseResumeLoaded] = useState(false);
+
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastManualCloseRef = useRef<number>(0);
 
   useEffect(() => {
     setShowLabels(window.innerWidth >= 640);
@@ -53,6 +63,31 @@ export default function PolitikFlow({ resumeData }: Props) {
   const updateBriefing = useCallback((data: Partial<BriefingData>) => {
     setBriefing(prev => ({ ...prev, ...data }));
   }, []);
+
+  function handleOverlayClose() {
+    lastManualCloseRef.current = Date.now();
+    setShowSaveOverlay(false);
+  }
+
+  async function handleSave(email: string) {
+    const res = await fetch('/api/save-progress', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        flow:            'politik',
+        currentStep,
+        selectedRegions: briefing.selectedRegions,
+        votingDate:      briefing.votingDate,
+        politikType:     briefing.politikType,
+        selectedPackage: briefing.selectedPackage,
+        budget:          briefing.budget,
+        laufzeit:        briefing.laufzeit,
+      }),
+    });
+    if (!res.ok) throw new Error('save failed');
+    updateBriefing({ email });
+  }
 
   const nextStep = () => setCurrentStep(prev => prev + 1);
 
@@ -75,6 +110,55 @@ export default function PolitikFlow({ resumeData }: Props) {
         setCurrentStep(2);
       }
     } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Inaktivitäts-Timer ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (currentStep < 2) return;
+
+    function resetTimer() {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = setTimeout(() => {
+        if (Date.now() - lastManualCloseRef.current >= COOLDOWN_MS) {
+          setShowSaveOverlay(true);
+        }
+      }, INACTIVITY_MS);
+    }
+
+    resetTimer();
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown',   resetTimer);
+
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown',   resetTimer);
+    };
+  }, [currentStep]);
+
+  // ── Supabase Resume-Fetch ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!resumeId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data, error } = await supabase
+          .from('user_states')
+          .select('state_data')
+          .eq('id', resumeId)
+          .single();
+        if (cancelled || error || !data?.state_data) return;
+        const restored = data.state_data as Partial<BriefingData> & { _targetStep?: number };
+        const { _targetStep: step, ...rest } = restored;
+        setBriefing(prev => ({ ...prev, ...rest }));
+        if (step) setCurrentStep(step);
+        setSupabaseResumeLoaded(true);
+      } catch { /* Fetch-Fehler — Flow startet normal */ }
+    })();
+
+    return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -133,6 +217,22 @@ export default function PolitikFlow({ resumeData }: Props) {
             );
           })}
           <span style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: C.muted, fontWeight: 500, marginLeft: '10px' }}>{displayStep}/{TOTAL_STEPS}</span>
+          {currentStep >= 2 && (
+            <button
+              type="button"
+              onClick={() => setShowSaveOverlay(true)}
+              title="Stand speichern"
+              style={{ marginLeft: '14px', background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: C.primary, display: 'flex', alignItems: 'center', opacity: 0.75, transition: 'opacity .15s' }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '0.75'; }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <polyline points="7 3 7 8 15 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
         </div>
       </nav>
 
@@ -145,8 +245,22 @@ export default function PolitikFlow({ resumeData }: Props) {
         </div>
       )}
 
-      {/* ── Resume banner ── */}
+      {/* ── SaveOverlay ── */}
+      {showSaveOverlay && (
+        <SaveOverlay onSave={handleSave} onClose={handleOverlayClose} />
+      )}
+
+      {/* ── Resume banner (prop-based) ── */}
       {resumeLoaded && (
+        <div style={{ maxWidth: '860px', margin: '12px auto 0', padding: '0 20px' }}>
+          <div style={{ background: '#E8F5F2', border: '1px solid #2A7F7F', borderRadius: '10px', padding: '12px 18px', fontSize: '13px', color: '#2A7F7F', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>✓</span> Willkommen zurück – dein letzter Stand wurde geladen.
+          </div>
+        </div>
+      )}
+
+      {/* ── Resume banner (Supabase) ── */}
+      {supabaseResumeLoaded && (
         <div style={{ maxWidth: '860px', margin: '12px auto 0', padding: '0 20px' }}>
           <div style={{ background: '#E8F5F2', border: '1px solid #2A7F7F', borderRadius: '10px', padding: '12px 18px', fontSize: '13px', color: '#2A7F7F', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>✓</span> Willkommen zurück – dein letzter Stand wurde geladen.

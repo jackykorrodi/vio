@@ -20,6 +20,24 @@
 - Umami (Analytics, DSGVO-konform)
 - n8n (Workflow Engine / Automationen)
 
+### Supabase
+- `lib/supabase.ts` — exportiert `supabase` (createClient-Instance, anon key, RLS aktiv)
+- Env-Vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### Save & Resume Infrastruktur (26.05.2026)
+- `app/konfigurator/page.tsx` — Server Component; leitet `GET /konfigurator?resume={UUID}` → `/campaign?type=politik&resume={UUID}` weiter (ohne Param → `/campaign?type=politik`)
+- `app/api/save-progress/route.ts` — POST-Proxy zu n8n-Webhook; server-only Env-Var `N8N_SAVE_PROGRESS_WEBHOOK_URL`
+- Partner-Resume-Links: `https://joinvio.ch/konfigurator?resume={UUID}`
+- Env-Vars: `N8N_SAVE_PROGRESS_WEBHOOK_URL` (kein NEXT_PUBLIC_-Prefix)
+
+### Save & Resume — PolitikFlow Integration (26.05.2026)
+- `components/shared/SaveOverlay.tsx` — Modal: Email-Input → POST /api/save-progress → Success-State; inline styles, VIO-Design
+- `components/flows/PolitikFlow.tsx` — Inaktivitäts-Timer (90s ab Step 2), Cooldown 300s nach manuellem Close, Save-Icon in Nav (Diskette SVG, sichtbar ab Step >= 2)
+- `app/campaign/CampaignFlow.tsx` — `resumeId` (raw UUID-String) als eigene Prop an PolitikFlow; koexistiert mit bestehendem `resumeData`-Prop (base64-JSON-Pfad)
+- Resume via Supabase: `user_states.state_data` → BriefingData restore; Fehler abgefangen, Flow startet normal
+- Save-Payload: `{ email, flow, currentStep, selectedRegions, votingDate, politikType, selectedPackage, budget, laufzeit }` — keine Bild-Daten
+- Email nach Save in `briefing.email` übernommen (Prefill Step 5)
+
 ### APIs & Services
 - Pipedrive (CRM — ersetzt HubSpot, noch nicht integriert)
 - Resend (E-Mail, Domain: vio.ch — auch für Abandon-Flow Emails)
@@ -162,6 +180,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 21.05.2026 | **v3.6** | v3.6: OTS_DOOH, DELIVERY_DOOH, DELIVERY_DISPLAY aus contacts_*-Formel entfernt. Naming unverändert. EK-CPM mit Operating-Partner preist OTS/Delivery ein. |
 | 20.05.2026 | fix(partnercode) | **Cap-Edge-Case Range-Inkonsistenz behoben.** `isCapEdgeCase` + `displayReachImpact` als component-level derived values in `StepPackages.tsx`. Wenn Code mit Boost aktiv aber `deltaPersonen=0`: Range (Low/High + Abdeckungs-%) aus `impactBase` (ohne Code) statt aus `impact`. Vorher asymmetrisch (Upper am Cap, Lower minimal mitgewandert). |
 | 20.05.2026 | feat(partnercode) | **Partnercode-System Phase 1 (Mock-Validierung, Politik-Flow).** `lib/partner-codes-mock.ts`: PartnerCode-Typ + 3 Test-Codes (direct/agentur/vermittler) + `validatePartnerCode()` (case-insensitive). `lib/preislogik.ts`: `CPM_LIST = 43.89` + `partnerCodeBoostPct?`-Parameter in `calculateImpact` — Faktor `mixedCpm / (CPM_LIST × (1 − boost/100))` auf `impressionsEffective`. Kein Code → Reach sinkt ~10% ggü. früher (Liste-Puffer); Direct-Code (10%) → identisch zu heute. `components/campaign/StepPackages.tsx`: Partnercode-UI collapsed unter Wirkungsindikator, Validierung, Bestätigungs-Pattern (Boost-Anzeige / Cap-Edge-Case / Hinterlegt), State persistiert via `briefing.partnerCode`. `agenturcode` komplett entfernt (types.ts, Step6Contact, submit-briefing). **⚠ Doku-Update pending:** `docs/partnercode-konzept.md` Sektion 5 schreibt linearen +11%-Boost (Impression-Mathematik), tatsächlich ~5–7% Reach-Boost wegen Hofmans-Saturation. Sektion muss mit «echtem Reach-Delta» und Variabilität je Region präzisiert werden. |
 | 19.05.2026 | feat(dashboard) | **Dashboard-Layer Phase 1 + Bridge-Button + Demo-Modus:** UI-Skelett mit 4 Phasen und Mock-Daten. Politik-Step 7 öffnet Dashboard mit temporärer client-side UUID + `?demo=1`. `DemoPhaseSwitcher` für Phase-Wechsel in Demo. Backend-Sequenz (KV → Token → Magic Link → Webhook) in Planung. |
