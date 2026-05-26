@@ -3,7 +3,7 @@
 // Ersetzt schrittweise lib/vio-paketlogik.ts und lib/b2b-paketlogik.ts.
 // Diese Datei wird in Paket B.2/B.3 in die UI-Komponenten eingebunden.
 //
-// Basis: Spec v3.4 (Optimizer + Status-Codes)
+// Basis: Spec v3.6
 // Erstellt: 22.04.2026
 
 import type { Region } from './regions';
@@ -15,6 +15,7 @@ export const B_MIN = 4000;               // CHF Mindestbudget (hard floor)
 export const B_NUDGE_SOFT = 20000;       // CHF dezenter Calendly-Nudge
 export const B_NUDGE_STRONG = 30000;     // CHF prominente Beratungs-Bubble
 export const B_HARD_MAX = 100000;        // CHF absolute Obergrenze (Hard Stop)
+export const PKG_BUDGET_MAX = 99500;     // CHF Paket-Budget-Ceiling (Pfad B, knapp unter Hard Stop)
 
 export const DAILY_MIN = 150;            // CHF Tagesbudget-Floor (Splicky)
 export const LAUFZEIT_MIN_DAYS = 7;
@@ -34,12 +35,6 @@ export const CPM_DISPLAY = 15;
 // Listen-CPM (10% Channel-Puffer ggü. echtem Misch-CPM 39.50): 39.50 / 0.90
 export const CPM_LIST = 43.89;
 
-// Delivery-Faktoren (DSP-Kalibrierung) — TBD mit Dani validieren
-export const DELIVERY_DOOH = 0.75;
-export const DELIVERY_DISPLAY = 0.90;
-
-// CH-DOOH Schätzung, validiert mit Splicky-Daten (Range 1.8–2.5)
-export const DOOH_OTS_MULTIPLIER = 1.8;
 
 // Anteil der Kontakte, die tatsächlich den Zielpool treffen (In-Pool-Faktor, Spec v3.4)
 export const IN_POOL_FACTOR = 0.7;
@@ -430,8 +425,8 @@ export function optimizeForBudget(budget: number, regions: Region[], daysUntilVo
     : klassifiziereRegion(deduped[0]);
   const doohBudget = budget * klass.split.dooh;
   const displayBudget = budget * klass.split.display;
-  const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
-  const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
+  const doohContacts = (doohBudget / CPM_DOOH) * 1000;
+  const displayContacts = (displayBudget / CPM_DISPLAY) * 1000;
   const impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
 
   type Combo = { days: number; level: 1 | 2 | 3; reach: number; fWeekly: number };
@@ -450,7 +445,7 @@ export function optimizeForBudget(budget: number, regions: Region[], daysUntilVo
   // §7.3 Display-Only-Modus (keine Laufzeit erfüllt DOOH-Vorlauf)
   if (gueltigeLaufzeiten.length === 0) {
     const displayLaufzeit = Math.min(14, daysUntilVote! - 1);
-    const displayImpressions = (budget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY * IN_POOL_FACTOR;
+    const displayImpressions = (budget / CPM_DISPLAY) * 1000 * IN_POOL_FACTOR;
     const displayCandidates = LEVELS.map(level => {
       const weeks = displayLaufzeit / 7;
       const poolCap = stimmTotal * getReachCap(stimmTotal, level);
@@ -624,11 +619,11 @@ export function calculateImpact(input: {
   // Dynamischer Misch-CPM
   const mixedCpm = doohShare * CPM_DOOH + displayShare * CPM_DISPLAY;
 
-  // Total-Kontakte aus Budget (mit Delivery-Faktoren + OTS-Multiplier für DOOH)
+  // Total-Kontakte aus Budget (EK-CPM inkl. OTS/Delivery eingepreist, Spec v3.6)
   const doohBudget = input.budget * doohShare;
   const displayBudget = input.budget * displayShare;
-  const doohContacts = (doohBudget / CPM_DOOH) * 1000 * DELIVERY_DOOH * DOOH_OTS_MULTIPLIER;
-  const displayContacts = (displayBudget / CPM_DISPLAY) * 1000 * DELIVERY_DISPLAY;
+  const doohContacts = (doohBudget / CPM_DOOH) * 1000;
+  const displayContacts = (displayBudget / CPM_DISPLAY) * 1000;
   let impressionsEffective = (doohContacts + displayContacts) * IN_POOL_FACTOR;
 
   // Channel-Puffer-Faktor: CPM_LIST enthält 10% Puffer ggü. mixedCpm.
@@ -773,10 +768,10 @@ export function buildPackages(input: {
 
     // Budget rückwärts lösen
     const targetContacts = spec.frequencyWeekly * laufzeitWeeks * targetReach / IN_POOL_FACTOR;
-    const impsDOOH = (targetContacts * split.dooh) / (DOOH_OTS_MULTIPLIER * DELIVERY_DOOH);
-    const impsDisplay = (targetContacts * split.display) / DELIVERY_DISPLAY;
+    const impsDOOH = targetContacts * split.dooh;
+    const impsDisplay = targetContacts * split.display;
     const rawBudget = (impsDOOH / 1000) * CPM_DOOH + (impsDisplay / 1000) * CPM_DISPLAY;
-    const finalBudget = Math.max(PKG_MIN[key], roundBudget(rawBudget));
+    const finalBudget = Math.min(PKG_BUDGET_MAX, Math.max(PKG_MIN[key], roundBudget(rawBudget)));
 
     // §8.1 Dominanz-Cap (v3.5.3)
     const requiresConsultation = key === 'dominanz' && finalBudget > DOMINANZ_BUDGET_CAP;
