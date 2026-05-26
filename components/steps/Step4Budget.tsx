@@ -396,7 +396,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
         if (reach.bisPct >= 55)
           return "Stark: Du erreichst über die Hälfte aller Stimmberechtigten. Maximale Durchdringung.";
         if (reach.bisPct >= 40)
-          return `Gute Durchdringung — bis zu ${reach.bisPct}% der Stimmberechtigten sehen deine Kampagne.`;
+          return "Gute Durchdringung — du erreichst einen wesentlichen Teil der Stimmberechtigten.";
         return "Tipp: Mit etwas mehr Budget lässt sich die Reichweite deutlich steigern.";
       })();
 
@@ -878,12 +878,8 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                   <div style={{ textAlign: 'center', paddingBottom: 16, marginBottom: 14, borderBottom: '1px solid rgba(107,79,187,0.08)' }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 4 }}>Stimmberechtigte erreichbar</div>
                     <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 32, fontWeight: 800, color: '#534AB7', letterSpacing: '-0.02em', lineHeight: 1.1 }}>~{fmtN(reach.von)}–{fmtN(reach.bis)}</div>
-                    <div style={{ fontSize: 12, color: '#7A7596', marginTop: 3 }}>{reach.vonPct}%–{reach.bisPct}% der {einwohner}</div>
                     <div style={{ marginTop: 10, height: 4, background: 'rgba(107,79,187,0.10)', borderRadius: 2 }}>
                       <div style={{ height: 4, background: '#7F77DD', borderRadius: 2, width: `${Math.min(100, reach.bisPct / 80 * 100)}%`, transition: 'width 0.3s' }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#B8A9E8', marginTop: 3 }}>
-                      <span>0%</span><span>{reach.bisPct}%</span><span>80% (max)</span>
                     </div>
                   </div>
                 )}
@@ -913,7 +909,6 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 <div className="rname">{regionName}</div>
                 <div className="rpop">{stimmber.toLocaleString('de-CH')} Stimmberechtigte</div>
                 <div className="sc-row"><span className="sc-l">Polit. Screens</span><span className="sc-r">{fmtN(reach.screens)}</span></div>
-                <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{reach.vonPct}%–{reach.bisPct}%</span></div>
                 <div className="rsrc">Quelle: VIO DOOH-Screendaten &amp; BFS 2023</div>
               </div>
             </>
@@ -935,7 +930,7 @@ export default function Step4Budget({ briefing, updateBriefing, nextStep, prevSt
                 )}
                 <div className="rpop">{isB2B ? `~${fmtN(b2bMitarbeitende)} Mitarbeitende` : `${stimmber.toLocaleString('de-CH')} Einwohner`}</div>
                 <div className="sc-row"><span className="sc-l">DOOH Screens</span><span className="sc-r">~{fmtN(reach.screens)}</span></div>
-                <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">{isB2B ? `~${fmtN(b2bCurPkg.von)}` : `~${reach.vonPct}%–${reach.bisPct}%`}</span></div>
+                {isB2B && <div className="sc-row"><span className="sc-l">Reichweite</span><span className="sc-r">~{fmtN(b2bCurPkg.von)}</span></div>}
                 <div className="rsrc">{isB2B ? 'Quelle: VIO B2B-Branchendaten & BFS 2022' : 'Quelle: VIO DOOH-Screendaten & BFS 2023'}</div>
               </div>
             </>

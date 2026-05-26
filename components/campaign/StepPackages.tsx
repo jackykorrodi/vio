@@ -700,15 +700,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </div>
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
 
-              {/* 3 KPIs */}
-              <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Abdeckung</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                    {displayReachImpact ? `${Math.round(displayReachImpact.reachUniqueLowPct)}–${Math.round(displayReachImpact.reachUniqueHighPct)} %` : '—'}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>der Stimmberechtigten</div>
-                </div>
+              {/* 2 KPIs */}
+              <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
                 <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kontaktdruck</div>
                   <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>

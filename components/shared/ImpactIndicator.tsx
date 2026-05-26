@@ -121,17 +121,6 @@ function FullIndicator({ impact, regionName }: { impact: ImpactResult; regionNam
             transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
           }} />
         </div>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 11,
-          color: C.slateLight,
-          fontWeight: 500,
-        }}>
-          <span>0</span>
-          <span>Stimmberechtigte erreicht: {impact.reachUniqueLowPct}–{impact.reachUniqueHighPct}%</span>
-          <span>80%</span>
-        </div>
       </div>
 
       {/* Capped-Hinweis */}
