@@ -34,6 +34,19 @@ export const MIN_STIMM = 10000;
 export const MIN_SCREENS_QUALIFIER = 20;
 export const FREIGABE_QUOTE = 0.7;
 
+// ─── DOOH-Channel-Mix-Limits nach Screen-Klasse ───────────────────────────────
+//
+// PRELIMINÄR — vor Go-Live final kalibrieren mit Splicky-Inventory-Daten.
+// Klassen-Zuordnung:
+//   voll:             politScreens ≥ SCREENS_THRESHOLD_FULL    (≥ 30)
+//   begrenzt:         politScreens ≥ SCREENS_THRESHOLD_LIMITED (10–29)
+//   display-dominant: politScreens < SCREENS_THRESHOLD_LIMITED (< 10)
+export const SCREENS_THRESHOLD_FULL             = 30;
+export const SCREENS_THRESHOLD_LIMITED          = 10;
+export const MAX_DOOH_SHARE_FULL             = 0.80; // Klasse 'voll'
+export const MAX_DOOH_SHARE_LIMITED          = 0.55; // Klasse 'begrenzt'
+export const MAX_DOOH_SHARE_DISPLAY_DOMINANT = 0.20; // Klasse 'display-dominant'
+
 export const PERMANENTLY_EXCLUDED = new Set([
   'Küsnacht',
   'Martigny',

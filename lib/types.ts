@@ -49,6 +49,16 @@ export interface AnalysisResult {
   fontFamily?: string | null;
 }
 
+export type Wirkungsfokus = 'breit' | 'ausgewogen' | 'verankerung';
+
+export interface CustomConfig {
+  budget: number;        // CHF, min CHF 4'000
+  laufzeitDays: number;  // Tage, min 14
+  freqWeekly: number;    // Wochenkontakte pro Person, range 3.0–10.0 (deprecated, Phase B)
+  doohShare: number;     // DOOH-Anteil, range 0.0–1.0 (deprecated, Phase B)
+  wirkungsfokus?: Wirkungsfokus;
+}
+
 export interface BriefingData {
   // Step 1
   url: string;
@@ -63,6 +73,8 @@ export interface BriefingData {
   recommendedBudget?: number;
   recommendedLaufzeit?: number;
   budgetKnown?: boolean;
+  pfad?: 'paket' | 'custom';
+  customConfig?: CustomConfig;
   selectedRegions?: Array<{ name: string; type: string; stimm: number; kanton?: string }>;
   totalStimmber?: number;
   vioPackages?: Step1Output;
