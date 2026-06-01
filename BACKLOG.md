@@ -15,6 +15,7 @@ Letztes Update: 01.06.2026 (Sprint 3 Phase A Abschluss)
 ## P2 — Wichtig / Nächster Sprint
 
 - **Paket-Rekalibrierung** — Variante a/b/c (Paket-Budget-Anpassung für v3.7) entscheiden und implementieren.
+- **Custom-Pfad Reichweiten-Range (±Band)** — `calculateImpactCustom` liefert nur Punkt-Reach (kein Low/High). Für das Outcome-Panel (Phase B) muss die ±15%-Range analog `getUncertaintyBand()` im Paket-Pfad auch im Custom-Pfad verfügbar werden. `ResolvedImpact` ggf. um `reachLow`/`reachHigh` erweitern.
 - **`calculateImpactCustom` partnerCodeBoostPct-Parameter** — aktuell wird Boost über Budget-Approximation eingerechnet; sauberer wäre direkter `partnerCodeBoostPct`-Parameter analog zu `calculateImpact`.
 - **`reach_collapse`-Schwelle regional-adaptiv** — aktuell fixer Threshold; sollte von Pool-Grösse abhängen.
 - **Sweet-Spot-Re-Kalibrierung mit echten Splicky-Inventardaten** — `SWEET_SPOT_TARGET_SATURATION = 4.0` ist empirisch (13-Cluster-Smoke); nach erstem Live-Test mit realen Daten neu kalibrieren.
