@@ -160,7 +160,52 @@
 | DOMINANZ_BUDGET_CAP | 100_000 | Hard-Cap CHF: Dominanz.budget > 100k → requiresConsultation (v3.5.3, geändert 19.05.2026) |
 | LAUFZEITEN_BASIS | [14,21,28,35,42] | Pfad-A-Laufzeit-Granularität (v3.5.3 erweitert) |
 
-**Entfernt in v3.5.2**: `DISPLAY_SPRINT_SWITCH_DAYS = 24` → Trigger emergent aus Optimizer-Status `display_only_late_window`. `buildDisplaySprint()`-Funktion ebenfalls entfernt.
+**Entfernt in v3.5.2**: `DISPLAY_SPRINT_SWITCH_DAYS = 24`
+
+---
+
+## Custom-Pfad Modell (Sprint 3 Phase A — ab 01.06.2026)
+
+### Pfad-Asymmetrie
+- **Step 1 Q3**: Nutzer wählt Pfad (`paket` | `custom`) → gespeichert in `briefing.pfad`
+- **Step 2**: Single-Path — `StepPackages.tsx` rendert entweder Paket-Cards (Pfad `paket`) oder Custom-Konfigurator (Pfad `custom`). Kein Tab-Switch, kein Mode-Toggle nach Pfad-Wahl.
+
+### Custom-Modell: 3 Hebel, 2 Outputs
+- **Inputs (Nutzer steuert):** Budget (CHF), Kampagnenfenster (Laufzeit in Tagen), Wirkungsfokus (`breit` | `ausgewogen` | `verankerung`)
+- **Outputs (emergent):** Frequenz (aus Wirkungsfokus-Zielwert) + Kanal-Mix (aus DOOH-Inventory-Klassifizierung)
+- Wirkungsfokus-Frequenzwerte: `breit=2.1`, `ausgewogen=3.1`, `verankerung=4.6` (kalibriert, v3.7)
+
+### Reach-Formel
+```
+reachLinear = impressionenImPool / (zielFrequenz × laufzeitWeeks)
+reach       = poolCap × (1 − e^(−K × reachLinear/poolCap))   // Hofmans
+```
+Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere Reach bei gleichem Budget.
+
+### Zeitachsen-Trennung
+- **Wirkungsdauer**: Kalendertage (unverändert für beide Pfade)
+- **DOOH-Setup-Vorlauf**: nur im Custom-Pfad → `SETUP_VORLAUF_WERKTAGE = 10` Werktage via `addBusinessDays()`
+- Paket-Pfad behält `DOOH_CUTOFF_DAYS = 10` (Kalendertage, unverändert)
+
+### DOOH-Zwei-Zustand
+- `available: true` → `channelMix` = Max-DOOH-Anteil aus Screen-Klasse (0.80 / 0.55 / 0.20)
+- `available: false` → Reason `setup_vorlauf` (Vorlauf unterschritten) oder `no_inventory` (0 Screens)
+- Inventar-Copy-Regel: UI zeigt je nach Zustand "im Raum + online" vs. "online-only"
+
+### Sweet-Spot über Sättigungsgrad
+- Ziel-Sättigungsgrad `SWEET_SPOT_TARGET_SATURATION = 4.0` (dimensionslos: reachLinear / poolCap)
+- Empirisch kalibriert via 13-Cluster-Smoke (entspricht ~63% des Pool-Caps)
+- `calculateSweetSpotCustom()` → Budget bei dem Sättigungsgrad = 4.0 erreicht wird, pro Wirkungsfokus
+
+### Outcome-Panel-Konzept (Phase B — noch nicht implementiert)
+- Komponenten: Reichweite + Dot-Grid + Präsenz-Story + Ortsanker
+- Kein Adtech-Vokabular (kein CPM, kein %, keine GRP-Anzeige)
+- Verbindliche UI-Referenz: `docs/prototypes/` (Phase B)
+
+### Phase-Schnitt Sprint 3
+- **Phase A (Logik): ABGESCHLOSSEN** — Custom-Modell, DOOH-Zwei-Zustand, Sweet-Spot, Smoke Tests, Regelkatalog v3.7
+- **Phase B (UI)**: Outcome-Panel, Dot-Grid, Präsenz-Story — offen
+- **Prompt 4 (Coach-Hints + Inventar-Copy)**: offen → Trigger emergent aus Optimizer-Status `display_only_late_window`. `buildDisplaySprint()`-Funktion ebenfalls entfernt.
 
 ### Pakete (Politik + B2B identisch)
 | Paket | Frequenz | Laufzeit | Min-Budget |
@@ -180,6 +225,7 @@
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 01.06.2026 | **v3.7 (SPEC_VERSION 3.7)** | Custom-Pfad-Modell vollständig spezifiziert: Wirkungsfokus-Modell (3 Hebel: Budget, Kampagnenfenster, Wirkungsfokus; Frequenz+Kanal als Outputs), Reach-Formel (reachLinear = impressionenImPool/(zielFrequenz×laufzeitWeeks)), DOOH-Zwei-Zustand (im Raum + online / online-only), SETUP_VORLAUF_WERKTAGE=10 (Custom-Pfad), SWEET_SPOT_TARGET_SATURATION=4.0 (13-Cluster-Smoke kalibriert). Regelkatalog-Dateiname: vio-regelkatalog-politik-v3-6.md. |
 | 21.05.2026 | **v3.6** | v3.6: OTS_DOOH, DELIVERY_DOOH, DELIVERY_DISPLAY aus contacts_*-Formel entfernt. Naming unverändert. EK-CPM mit Operating-Partner preist OTS/Delivery ein. |
 | 20.05.2026 | fix(partnercode) | **Cap-Edge-Case Range-Inkonsistenz behoben.** `isCapEdgeCase` + `displayReachImpact` als component-level derived values in `StepPackages.tsx`. Wenn Code mit Boost aktiv aber `deltaPersonen=0`: Range (Low/High + Abdeckungs-%) aus `impactBase` (ohne Code) statt aus `impact`. Vorher asymmetrisch (Upper am Cap, Lower minimal mitgewandert). |
 | 20.05.2026 | feat(partnercode) | **Partnercode-System Phase 1 (Mock-Validierung, Politik-Flow).** `lib/partner-codes-mock.ts`: PartnerCode-Typ + 3 Test-Codes (direct/agentur/vermittler) + `validatePartnerCode()` (case-insensitive). `lib/preislogik.ts`: `CPM_LIST = 43.89` + `partnerCodeBoostPct?`-Parameter in `calculateImpact` — Faktor `mixedCpm / (CPM_LIST × (1 − boost/100))` auf `impressionsEffective`. Kein Code → Reach sinkt ~10% ggü. früher (Liste-Puffer); Direct-Code (10%) → identisch zu heute. `components/campaign/StepPackages.tsx`: Partnercode-UI collapsed unter Wirkungsindikator, Validierung, Bestätigungs-Pattern (Boost-Anzeige / Cap-Edge-Case / Hinterlegt), State persistiert via `briefing.partnerCode`. `agenturcode` komplett entfernt (types.ts, Step6Contact, submit-briefing). **⚠ Doku-Update pending:** `docs/partnercode-konzept.md` Sektion 5 schreibt linearen +11%-Boost (Impression-Mathematik), tatsächlich ~5–7% Reach-Boost wegen Hofmans-Saturation. Sektion muss mit «echtem Reach-Delta» und Variabilität je Region präzisiert werden. |
@@ -222,6 +268,8 @@
 - Guardrails: Dominanz `requiresConsultation` → Fallback auf Präsenz; unavailable → nächstes verfügbares; high_frequency → kein Badge
 
 ### Backlog
+
+Vollständiges Backlog → siehe `BACKLOG.md` (Root).
 
 **Dashboard-Backend (Sequenz):**
 - **Vercel KV Setup + Token-Schema** `dashboard:[token]` → JSON mit Phase + DashboardData

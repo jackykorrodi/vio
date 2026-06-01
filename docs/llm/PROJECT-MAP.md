@@ -65,7 +65,26 @@ Nicht automatisch alle Dateien lesen. Erst anhand dieser Map entscheiden.
 
 Nur lesen, wenn explizit Legacy-Aufräumen oder Vergleich verlangt wird.
 
+## Custom-Pfad Logik
+
+- `lib/business-days.ts`  
+  addBusinessDays Werktag-Utility (DOOH-Setup-Vorlauf im Custom-Pfad).
+
+- `lib/custom-hints.ts`  
+  Dreistufige Hint-Engine für Custom-Pfad (evaluateCustomConfig).
+
+- `components/campaign/AllocationBar.tsx`  
+  Budget-Aufteilung DOOH/Display Visualisierung.
+
+## Backlog
+
+- `BACKLOG.md` (Root)  
+  Priorisierter Backlog (P1/P2/P3/OFFEN) für alle offenen Arbeiten.
+
 ## Prototyp
 
 - `public/prototypes/vio-wirkungskonfigurator.html`  
   Nur UI-/Interaktionsreferenz. Nicht als Berechnungs-Source-of-Truth verwenden.
+
+- `docs/prototypes/dashboard-v1.html`  
+  Dashboard Phase 1 UI-Prototyp (verbindliche UI-Referenz für Layout/Farben/Strings).
