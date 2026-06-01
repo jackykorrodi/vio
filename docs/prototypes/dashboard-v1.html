@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO Kampagnen-Dashboard · Prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --violet: #6B4FBB;
+  --ink: #2D1F52;
+  --bg: #F5F2FF;
+  --muted: #7A7596;
+  --border: rgba(107,79,187,0.10);
+  --soft: #EEEDFE;
+  --gold: #D4A843;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Jost', system-ui, sans-serif;
+  color: var(--ink);
+  background: #EDE9F7;
+  min-height: 100vh;
+  padding: 32px 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.proto-note {
+  max-width: 720px;
+  margin: 0 auto 16px;
+  padding: 10px 16px;
+  background: rgba(45,31,82,0.04);
+  border-radius: 100px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.frame {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--bg);
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 40px rgba(45,31,82,0.06);
+}
+
+.hdr {
+  background: #FFFFFF;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.logo {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--violet);
+  line-height: 1;
+}
+.hdr-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  margin-top: 6px;
+}
+.meta {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 18px;
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  padding: 7px 13px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1px solid rgba(107,79,187,0.18);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all .15s;
+}
+.tab:hover { border-color: var(--violet); color: var(--violet); }
+.tab.active { background: var(--violet); color: #FFFFFF; border-color: var(--violet); }
+
+.body { padding: 24px; }
+
+.h1 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 6px;
+  line-height: 1.15;
+}
+.sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+
+.card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.card-dark { background: var(--ink); color: #FFFFFF; border: none; }
+.card-violet { background: var(--violet); color: #FFFFFF; border: none; }
+.card-soft { background: var(--soft); border: 1px solid rgba(107,79,187,0.18); }
+
+.label {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.label-w { color: rgba(255,255,255,0.65); }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mb { margin-bottom: 12px; }
+.mb-lg { margin-bottom: 20px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Jost', sans-serif;
+  background: var(--violet);
+  color: #FFFFFF;
+  padding: 11px 22px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .15s;
+}
+.btn:hover { background: var(--ink); }
+.btn-ghost { background: transparent; color: var(--violet); border: 1px solid var(--violet); }
+.btn-ghost:hover { background: var(--soft); color: var(--violet); }
+
+.check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(107,79,187,0.08);
+}
+.check:last-child { border-bottom: none; padding-bottom: 0; }
+.check:first-child { padding-top: 0; }
+.check-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.done { background: var(--violet); color: #FFFFFF; }
+.pending { background: #FAEEDA; color: #BA7517; }
+.todo { background: rgba(107,79,187,0.10); color: var(--muted); }
+.check-body { flex: 1; min-width: 0; }
+.check-t {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.check-s {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.cd-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.cd-num {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 72px;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  color: #FFFFFF;
+}
+.cd-unit {
+  font-size: 24px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  margin-left: 10px;
+}
+.cd-txt {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  margin-top: 14px;
+}
+
+.progress {
+  background: rgba(107,79,187,0.12);
+  border-radius: 100px;
+  height: 8px;
+  overflow: hidden;
+}
+.progress-w { background: rgba(255,255,255,0.18); }
+.progress-fill {
+  height: 100%;
+  background: var(--violet);
+  border-radius: 100px;
+}
+.progress-fill-w { background: #FFFFFF; }
+
+.phase { display: none; }
+.phase.active { display: block; }
+
+.screens {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.screen {
+  aspect-ratio: 4/3;
+  background: linear-gradient(135deg, #1E1530, #16112A);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+}
+.screen-sample { background: linear-gradient(135deg, #6B4FBB, #B8A9E8); color: #FFFFFF; }
+.screen-photo { background: linear-gradient(135deg, #D4A843, #8B6F2A); color: #FFFFFF; }
+.screen-photo2 { background: linear-gradient(135deg, #7B8FD4, #2D1F52); color: #FFFFFF; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 100px;
+  font-family: 'Jost', sans-serif;
+  transition: all .2s;
+}
+.pill-live { background: #EAF3DE; color: #3B6D11; }
+.pill-warn { background: #FAEEDA; color: #BA7517; }
+.pill-prep { background: var(--soft); color: var(--violet); }
+.pill-done { background: rgba(45,31,82,0.08); color: var(--ink); }
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  font-size: 13px;
+  gap: 12px;
+}
+.row + .row { border-top: 1px solid rgba(107,79,187,0.06); }
+.row-lbl { color: var(--muted); font-size: 12px; }
+.row-val {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.contact {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  color: var(--violet);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.contact-n {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+.contact-r {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.creative {
+  aspect-ratio: 16/9;
+  background: linear-gradient(135deg, var(--violet), var(--ink));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  text-align: center;
+  padding: 24px;
+  line-height: 1.2;
+}
+
+.mix-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 100px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.mix-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.mix-l {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+}
+.mix-sq {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+.mix-v {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.callout {
+  background: #FAEEDA;
+  border-left: 3px solid #BA7517;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #854F0B;
+  line-height: 1.55;
+}
+.callout-t {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.stat-num-w {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #FFFFFF;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-sub-w {
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.5;
+}
+
+.share-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.share-t {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.share-s {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.footer-note {
+  max-width: 720px;
+  margin: 16px auto 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* MOBILE */
+@media (max-width: 540px) {
+  body { padding: 16px 8px; }
+  .body { padding: 18px; }
+  .hdr { padding: 14px 18px; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .h1 { font-size: 20px; }
+  .cd-num { font-size: 56px; }
+  .stat-num-w { font-size: 36px !important; }
+  .contact { gap: 10px; }
+  .contact .btn-ghost { width: 100%; }
+  .tabs { padding: 10px 14px; }
+  .tab { font-size: 11px; padding: 6px 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="proto-note">Prototyp · Konzept Kampagnen-Dashboard</div>
+
+<div class="frame">
+
+  <div class="hdr">
+    <div style="min-width: 0; flex: 1;">
+      <div class="logo">VIO</div>
+      <div class="hdr-title" id="hdr-title">Energiezukunft Zürich</div>
+      <div class="meta" id="hdr-meta">Bis 28. Juni · Tag 12 von 28</div>
+    </div>
+    <div style="text-align:right; flex-shrink: 0;">
+      <span class="pill pill-live" id="hdr-pill"><span class="dot"></span><span id="hdr-pill-txt">Live</span></span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab" data-phase="0">1 · Werbemittel</button>
+    <button class="tab" data-phase="1">2 · Pre-Live</button>
+    <button class="tab active" data-phase="2">3 · Live</button>
+    <button class="tab" data-phase="3">4 · Abgeschlossen</button>
+  </div>
+
+  <div class="body">
+
+    <!-- PHASE 0: WERBEMITTEL -->
+    <div class="phase" data-phase="0">
+      <div class="mb-lg">
+        <span class="pill pill-warn"><span class="dot"></span>Werbemittel ausstehend</span>
+        <h1 class="h1" style="margin-top:14px;">Damit deine Kampagne startet, fehlt noch ein Schritt.</h1>
+        <p class="sub">Lade dein Werbemittel hoch oder gestalte es im VIO Ad Creator. Du kannst jederzeit über diesen Link wieder einsteigen.</p>
+        <div class="actions">
+          <a href="#" class="btn">Werbemittel hochladen →</a>
+          <a href="#" class="btn btn-ghost">Im Ad Creator gestalten</a>
+        </div>
+      </div>
+
+      <div class="callout mb">
+        <div class="callout-t">Bitte bis 22. Mai 2026 hochladen</div>
+        Damit deine Kampagne am 1. Juni pünktlich startet — die DOOH-Freigabe kann bis zu 10 Tage dauern.
+      </div>
+
+      <div class="card mb">
+        <div class="label">Fortschritt</div>
+        <div class="check">
+          <div class="check-icon done">✓</div>
+          <div class="check-body">
+            <div class="check-t">Buchung bestätigt</div>
+            <div class="check-s">12. Mai 2026 · Paket Präsenz, CHF 6'000</div>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-icon pending">●</div>
+          <div class="check-body">
+            <div class="check-t">Werbemittel einreichen</div>
+            <div class="check-s">Du bist hier · Upload bis 22. Mai empfohlen</div>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-icon todo">·</div>
+          <div class="check-body">
+            <div class="check-t">Technische Freigabe</div>
+            <div class="check-s">DOOH bis 10 Tage · Display 1–2 Tage</div>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-icon todo">·</div>
+          <div class="check-body">
+            <div class="check-t">Kampagne startet</div>
+            <div class="check-s">1. Juni 2026 · automatisch ausgespielt</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Deine Kampagne</div>
+        <div class="row"><span class="row-lbl">Paket</span><span class="row-val">Präsenz · 5× / 28 Tage</span></div>
+        <div class="row"><span class="row-lbl">Start</span><span class="row-val">1. Juni 2026</span></div>
+        <div class="row"><span class="row-lbl">Region</span><span class="row-val">Stadt Zürich</span></div>
+        <div class="row"><span class="row-lbl">Budget</span><span class="row-val">CHF 6'000</span></div>
+      </div>
+    </div>
+
+    <!-- PHASE 1: PRE-LIVE -->
+    <div class="phase" data-phase="1">
+      <div class="card card-dark mb-lg" style="text-align:center; padding: 32px 22px;">
+        <div class="cd-lbl">Deine Kampagne startet in</div>
+        <div><span class="cd-num">12</span><span class="cd-unit">Tagen</span></div>
+        <div class="cd-txt">am 1. Juni 2026 · Stadt Zürich</div>
+      </div>
+
+      <div class="card mb">
+        <div class="label">Alles bereit</div>
+        <div class="check">
+          <div class="check-icon done">✓</div>
+          <div class="check-body">
+            <div class="check-t">Buchung bestätigt</div>
+            <div class="check-s">12. Mai 2026</div>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-icon done">✓</div>
+          <div class="check-body">
+            <div class="check-t">Werbemittel eingereicht</div>
+            <div class="check-s">15. Mai 2026 · Sujet "Energiezukunft"</div>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-icon done">✓</div>
+          <div class="check-body">
+            <div class="check-t">Technische Freigabe</div>
+            <div class="check-s">DOOH und Display freigegeben am 19. Mai</div>
+          </div>
+        </div>
+        <div class="check">
+          <div class="check-icon pending">●</div>
+          <div class="check-body">
+            <div class="check-t">Kampagne wird vorbereitet</div>
+            <div class="check-s">Startet automatisch am 1. Juni um 6 Uhr</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb">
+        <div class="card">
+          <div class="label">Dein Sujet</div>
+          <div class="creative">Energiezukunft.<br>Jetzt JA stimmen.</div>
+        </div>
+        <div class="card">
+          <div class="label">Deine Kampagne</div>
+          <div class="row"><span class="row-lbl">Paket</span><span class="row-val">Präsenz</span></div>
+          <div class="row"><span class="row-lbl">Laufzeit</span><span class="row-val">28 Tage</span></div>
+          <div class="row"><span class="row-lbl">Reichweite</span><span class="row-val">~125'000</span></div>
+          <div class="row"><span class="row-lbl">Frequenz</span><span class="row-val">5× je Person</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">Deine Ansprechperson</div>
+        <div class="contact">
+          <div class="avatar">SM</div>
+          <div style="flex:1; min-width: 0;">
+            <div class="contact-n">Stefan Müller</div>
+            <div class="contact-r">Kampagnenbetreuung VIO</div>
+          </div>
+          <a href="#" class="btn btn-ghost" style="padding: 8px 16px; font-size: 12px;">Gespräch buchen</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 2: LIVE -->
+    <div class="phase active" data-phase="2">
+      <div class="grid-2 mb">
+        <div class="card card-violet" style="text-align:center; padding: 24px 20px;">
+          <div class="cd-lbl" style="margin-bottom:14px;">Menschen erreicht</div>
+          <div class="stat-num-w" style="font-size: 42px;">87'240</div>
+          <div class="stat-sub-w" style="margin-top:6px;">von ~125'000 möglich · 70%</div>
+          <div class="progress progress-w" style="margin-top:14px;"><div class="progress-fill progress-fill-w" style="width:70%"></div></div>
+        </div>
+        <div class="card card-dark" style="text-align:center; padding: 24px 20px;">
+          <div class="cd-lbl" style="margin-bottom:14px;">Ø gesehen</div>
+          <div class="stat-num-w" style="font-size: 42px;">3.6<span style="font-size:22px; opacity:.7;">×</span></div>
+          <div class="stat-sub-w" style="margin-top:6px;">Ziel 5× · auf Kurs</div>
+          <div class="progress progress-w" style="margin-top:14px;"><div class="progress-fill progress-fill-w" style="width:72%"></div></div>
+        </div>
+      </div>
+
+      <div class="card mb">
+        <div style="display:flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <div class="label" style="margin-bottom:0;">Laufzeit</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:700; font-size:13px; color:var(--violet);">Tag 12 von 28</div>
+        </div>
+        <div class="progress"><div class="progress-fill" style="width:43%"></div></div>
+        <div style="display:flex; justify-content: space-between; margin-top: 10px; font-size: 11px; color: var(--muted);">
+          <span>Start 1. Juni</span><span>noch 16 Tage</span><span>Ende 28. Juni</span>
+        </div>
+      </div>
+
+      <div class="mb">
+        <div style="display:flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px;">
+          <div class="label" style="margin-bottom:0;">Deine Werbung im Einsatz</div>
+          <span style="font-size:11px; color:var(--muted);">4 neue Aufnahmen</span>
+        </div>
+        <div class="screens">
+          <div class="screen screen-photo">Bahnhof Stadelhofen</div>
+          <div class="screen screen-photo2">Tram 11, Bellevue</div>
+          <div class="screen screen-photo">Limmatquai</div>
+          <div class="screen screen-sample">Online · Tages-Anzeiger</div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb">
+        <div class="card">
+          <div class="label">Kanal-Mix</div>
+          <div class="mix-bar"><div style="background:var(--violet); width:70%"></div><div style="background:#B8A9E8; width:30%"></div></div>
+          <div class="mix-row"><span class="mix-l"><span class="mix-sq" style="background:var(--violet)"></span>DOOH Screens</span><span class="mix-v">70%</span></div>
+          <div class="mix-row"><span class="mix-l"><span class="mix-sq" style="background:#B8A9E8"></span>Online Display</span><span class="mix-v">30%</span></div>
+        </div>
+        <div class="card">
+          <div class="label">Regionen</div>
+          <div class="row"><span class="row-lbl">Stadt Zürich</span><span class="row-val">100%</span></div>
+          <div style="font-size:11px; color:var(--muted); margin-top:10px; line-height:1.5;">1'247 Screens aktiv · alle Kreise abgedeckt</div>
+        </div>
+      </div>
+
+      <div class="card card-soft">
+        <div class="share-row">
+          <div>
+            <div class="share-t">Teile dein Dashboard</div>
+            <div class="share-s">Mit Vorstand, Parteikolleg:innen oder Spendern.</div>
+          </div>
+          <a href="#" class="btn">Link kopieren</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHASE 3: ABGESCHLOSSEN -->
+    <div class="phase" data-phase="3">
+      <div class="mb-lg">
+        <span class="pill pill-done"><span class="dot"></span>Kampagne abgeschlossen</span>
+        <h1 class="h1" style="margin-top:14px;">Deine Botschaft ist angekommen.</h1>
+        <p class="sub">Vom 1. bis 28. Juni 2026 lief deine Kampagne in der Stadt Zürich. Hier das Endresultat.</p>
+      </div>
+
+      <div class="grid-2 mb">
+        <div class="card card-violet" style="text-align:center; padding: 24px 20px;">
+          <div class="cd-lbl" style="margin-bottom:14px;">Menschen erreicht</div>
+          <div class="stat-num-w" style="font-size: 46px;">124'800</div>
+          <div class="stat-sub-w" style="margin-top:6px;">Ziel ~125'000 · 100% erreicht ✓</div>
+        </div>
+        <div class="card card-dark" style="text-align:center; padding: 24px 20px;">
+          <div class="cd-lbl" style="margin-bottom:14px;">Ø gesehen</div>
+          <div class="stat-num-w" style="font-size: 46px;">5.2<span style="font-size:22px; opacity:.7;">×</span></div>
+          <div class="stat-sub-w" style="margin-top:6px;">Ziel 5× · übertroffen</div>
+        </div>
+      </div>
+
+      <div class="card mb">
+        <div class="label">Eckdaten</div>
+        <div class="row"><span class="row-lbl">Laufzeit</span><span class="row-val">28 Tage · 1. – 28. Juni 2026</span></div>
+        <div class="row"><span class="row-lbl">Region</span><span class="row-val">Stadt Zürich</span></div>
+        <div class="row"><span class="row-lbl">Kanäle</span><span class="row-val">70% DOOH · 30% Display</span></div>
+        <div class="row"><span class="row-lbl">Budget eingesetzt</span><span class="row-val">CHF 6'000</span></div>
+        <div class="row"><span class="row-lbl">Kontaktfläche total</span><span class="row-val">~649'000 Sichtkontakte</span></div>
+      </div>
+
+      <div class="mb">
+        <div class="label" style="padding-left: 4px;">Highlights aus dem Einsatz</div>
+        <div class="screens">
+          <div class="screen screen-photo">Bahnhof Stadelhofen</div>
+          <div class="screen screen-photo2">Tram 11, Bellevue</div>
+        </div>
+      </div>
+
+      <div class="card card-soft">
+        <div class="share-row">
+          <div>
+            <div class="share-t">Bereit für die nächste Kampagne?</div>
+            <div class="share-s">Mit dem Wissen aus dieser Runde planen wir die nächste in wenigen Minuten.</div>
+          </div>
+          <a href="#" class="btn">Neue Kampagne</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer-note">
+  Interner Konzept-Prototyp · Inhalte und Zahlen sind Beispiele · VIO Swiss
+</div>
+
+<script>
+(function() {
+  const headerStates = [
+    { pillClass: 'pill pill-warn', pillText: 'Werbemittel ausstehend', meta: 'Startet 1. Juni 2026 · in 19 Tagen' },
+    { pillClass: 'pill pill-prep', pillText: 'In Vorbereitung',        meta: 'Startet 1. Juni 2026 · in 12 Tagen' },
+    { pillClass: 'pill pill-live', pillText: 'Live',                   meta: 'Bis 28. Juni · Tag 12 von 28' },
+    { pillClass: 'pill pill-done', pillText: 'Abgeschlossen',          meta: 'Lief 1. – 28. Juni 2026' },
+  ];
+
+  const tabs   = document.querySelectorAll('.tab');
+  const phases = document.querySelectorAll('.phase');
+  const pill   = document.getElementById('hdr-pill');
+  const pillT  = document.getElementById('hdr-pill-txt');
+  const meta   = document.getElementById('hdr-meta');
+
+  function applyPhase(p) {
+    tabs.forEach(x => x.classList.toggle('active', x.dataset.phase === p));
+    phases.forEach(x => x.classList.toggle('active', x.dataset.phase === p));
+    const s = headerStates[+p];
+    if (s) {
+      pill.className = s.pillClass;
+      pillT.textContent = s.pillText;
+      meta.textContent = s.meta;
+    }
+  }
+
+  tabs.forEach(t => t.addEventListener('click', () => applyPhase(t.dataset.phase)));
+})();
+</script>
+
+</body>
+</html>
