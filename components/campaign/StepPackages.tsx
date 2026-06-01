@@ -5,7 +5,7 @@ import { BriefingData } from '@/lib/types';
 import type { CustomConfig } from '@/lib/types';
 import {
   calculateImpact, buildPackages, getLaufzeitCorridor,
-  calculateSweetSpot, calculateImpactCustom,
+  calculateSweetSpot, calculateImpactCustom, PKG_CAP_LEVEL,
 } from '@/lib/preislogik';
 import type { CustomImpactResult } from '@/lib/preislogik';
 import { evaluateCustomConfig, maxDoohShareForRegion } from '@/lib/custom-hints';
@@ -59,7 +59,6 @@ function round500(n: number): number {
 
 // ─── Package cards sub-component ─────────────────────────────────────────────
 const PKG_ORDER: PaketKey[] = ['sichtbar', 'praesenz', 'dominanz'];
-export const PKG_CAP_LEVEL: Record<PaketKey, 1 | 2 | 3> = { sichtbar: 1, praesenz: 2, dominanz: 3 };
 const PKG_SUBTITLE: Record<PaketKey, string> = {
   sichtbar: 'Sichtbarkeit aufbauen',
   praesenz: 'Optimal in Meinungsbildungsphase',

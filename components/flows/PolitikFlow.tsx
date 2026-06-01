@@ -10,6 +10,7 @@ import Step5Creative from '@/components/steps/Step5Creative';
 import Step5AdCreator from '@/components/steps/Step5AdCreator';
 import Step6Contact from '@/components/steps/Step6Contact';
 import Step7Confirmation from '@/components/steps/Step7Confirmation';
+import { resolveCampaign } from '@/lib/resolve-campaign';
 
 // Politik flow: 6 display steps
 // 1 = Region / Wahlkreis / Kampagnentyp (Step2Politik)
@@ -70,6 +71,7 @@ export default function PolitikFlow({ resumeData, resumeId }: Props) {
   }
 
   async function handleSave(email: string) {
+    const rc = resolveCampaign(briefing);
     const res = await fetch('/api/save-progress', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,8 +83,8 @@ export default function PolitikFlow({ resumeData, resumeId }: Props) {
         votingDate:      briefing.votingDate,
         politikType:     briefing.politikType,
         selectedPackage: briefing.selectedPackage,
-        budget:          briefing.budget,
-        laufzeit:        briefing.laufzeit,
+        budget:          rc.budget,
+        laufzeit:        rc.laufzeitWeeks,
       }),
     });
     if (!res.ok) throw new Error('save failed');

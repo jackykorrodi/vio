@@ -4,14 +4,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import type { CustomConfig } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { calculateImpact, calculateImpactCustom } from '@/lib/preislogik';
+import { calculateImpact, calculateImpactCustom, PKG_CAP_LEVEL } from '@/lib/preislogik';
 import type { PaketKey, CustomImpactResult } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import doohScreensRaw from '@/lib/dooh-screens.json';
 import ImpactIndicator from '@/components/shared/ImpactIndicator';
 import CampaignHint from '@/components/shared/CampaignHint';
-import { PKG_CAP_LEVEL } from '@/components/campaign/StepPackages';
+import { resolveCampaign } from '@/lib/resolve-campaign';
 
 type DoohEntry = { type: string; name?: string; kanton: string; screens: number; screens_politik: number; standorte: number; reach: number };
 const DOOH_DATA = doohScreensRaw as DoohEntry[];
@@ -114,13 +114,15 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PaketKey;
   const pkg = vioData?.packages?.[selectedPkg] ?? null;
 
-  // Budget/laufzeit — custom: aus customConfig, paket: aus briefing
-  const budget = isCustom
-    ? customConfig!.budget
-    : (briefing.budget && briefing.budget > 0 ? briefing.budget : (pkg?.finalBudget ?? 6000));
-  const laufzeitWeeks = isCustom
-    ? customConfig!.laufzeitDays / 7
-    : (briefing.laufzeit && briefing.laufzeit > 0 ? briefing.laufzeit : (pkg ? Math.round(pkg.durationDays / 7) : 4));
+  const rc = useMemo(() => resolveCampaign(briefing), [
+    briefing.pfad,
+    briefing.selectedPackage, briefing.budget, briefing.laufzeit,
+    briefing.customConfig?.budget, briefing.customConfig?.laufzeitDays, briefing.customConfig?.wirkungsfokus,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    selectedRegionsFull.map(r => r.name).join(','),
+  ]);
+  const budget = rc.budget;
+  const laufzeitWeeks = rc.laufzeitWeeks;
 
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
@@ -140,16 +142,16 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const doohScreenCount = doohEntry?.screens_politik ?? 0;
 
   const { startISO: campaignStartISO, endISO: campaignEndISO } = briefing.votingDate
-    ? (isCustom && customConfig
-        ? { startISO: addDays(briefing.votingDate, -customConfig.laufzeitDays), endISO: briefing.votingDate }
-        : calcCampaignDates(briefing.votingDate, laufzeitWeeks))
+    ? (isCustom
+        ? { startISO: addDays(briefing.votingDate, -rc.laufzeitDays), endISO: briefing.votingDate }
+        : calcCampaignDates(briefing.votingDate, rc.laufzeitWeeks))
     : { startISO: '', endISO: '' };
 
   const pkgKey = briefing.selectedPackage as PaketKey | undefined;
   const impact = (!isCustom && selectedRegionsFull.length > 0)
     ? calculateImpact({
-        budget,
-        laufzeitDays: laufzeitWeeks * 7,
+        budget: rc.budget,
+        laufzeitDays: rc.laufzeitDays,
         regions: selectedRegionsFull,
         ...(pkgKey ? { mode: 'paketLevel', paketLevel: PKG_CAP_LEVEL[pkgKey] } : {}),
       })
@@ -167,23 +169,10 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     : null);
 
   const handleNext = () => {
-    if (isCustom) {
-      updateBriefing({
-        startDate: campaignStartISO || todayISO(),
-        reach: customImpact?.reach ?? 0,
-        reachUniqueLowPct: 0,
-        reachUniqueHighPct: 0,
-        b2bReach: null,
-      });
-    } else {
-      updateBriefing({
-        startDate:   campaignStartISO || todayISO(),
-        reach:       impact?.reachUniqueAbs ?? pkg?.targetReachPeople ?? 0,
-        reachUniqueLowPct: impact?.reachUniqueLowPct ?? 0,
-        reachUniqueHighPct: impact?.reachUniqueHighPct ?? 0,
-        b2bReach:    null,
-      });
-    }
+    updateBriefing({
+      startDate: campaignStartISO || todayISO(),
+      b2bReach:  null,
+    });
     nextStep();
   };
 

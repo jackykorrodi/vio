@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
+import { resolveCampaign } from '@/lib/resolve-campaign';
 
 const C = {
   primary: '#6B4FBB',
@@ -114,6 +115,7 @@ function FeedbackCard({ briefing }: { briefing: BriefingData }) {
 }
 
 export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Props) {
+  const rc = useMemo(() => resolveCampaign(briefing), [briefing]);
   const POLITIK_TYPE_LABELS: Record<string, string> = {
     ja: 'Ja-Kampagne', nein: 'Nein-Kampagne', kandidat: 'Kandidatur', event: 'Event',
   };
@@ -127,12 +129,12 @@ export default function Step7Confirmation({ briefing, nextStep, stepNumber }: Pr
   const regionLabel     = (briefing.selectedRegions ?? []).map(r => r.name).join(', ') || '—';
   const politikLabel    = POLITIK_TYPE_LABELS[briefing.politikType ?? ''] ?? '—';
   const paketLabel      = PKG_LABELS[briefing.selectedPackage ?? ''] ?? '—';
-  const budgetLabel     = briefing.budget ? `CHF ${briefing.budget.toLocaleString('de-CH')}` : '—';
-  const laufzeitLabel   = briefing.laufzeit ? `${briefing.laufzeit} Wochen` : '—';
+  const budgetLabel     = rc.budget > 0 ? `CHF ${rc.budget.toLocaleString('de-CH')}` : '—';
+  const laufzeitLabel   = rc.laufzeitWeeks > 0 ? `${rc.laufzeitWeeks} Wochen` : '—';
   const datumLabel      = briefing.startDate && briefing.votingDate
     ? `${new Date(briefing.startDate + 'T00:00:00').toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${new Date(briefing.votingDate + 'T00:00:00').toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
     : '—';
-  const reachLabel      = briefing.reach ? briefing.reach.toLocaleString('de-CH') + ' Personen' : '—';
+  const reachLabel      = rc.impact.reach > 0 ? rc.impact.reach.toLocaleString('de-CH') + ' Personen' : '—';
   const werbemittelLabel = WERBEMITTEL_LABELS[briefing.werbemittel ?? ''] ?? '—';
   const abschlussLabel  = (briefing as any).abschluss === 'buchen' ? 'Direktbuchung' : 'Offerte angefordert';
 

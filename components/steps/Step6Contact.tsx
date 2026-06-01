@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import { formatCHF, formatNumber } from '@/lib/calculations';
+import { resolveCampaign, assertRequiredFields } from '@/lib/resolve-campaign';
 
 const C = {
   primary: '#6B4FBB',
@@ -50,6 +51,7 @@ interface Props {
 }
 
 export default function Step6Contact({ briefing, updateBriefing, nextStep, goToStep }: Props) {
+  const rc = useMemo(() => resolveCampaign(briefing), [briefing]);
   const [abschluss, setAbschluss] = useState<'buchen' | 'offerte'>(
     (briefing as any).abschluss ?? 'buchen'
   );
@@ -79,13 +81,20 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    assertRequiredFields(rc);
     setLoading(true);
     setSubmitError('');
     try {
       const res = await fetch('/api/submit-briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...briefing, abschluss }),
+        body: JSON.stringify({
+          ...briefing,
+          budget:  rc.budget,
+          laufzeit: rc.laufzeitWeeks,
+          reach:   rc.impact.reach,
+          abschluss,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -148,10 +157,10 @@ export default function Step6Contact({ briefing, updateBriefing, nextStep, goToS
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: '12px' }}>
             {[
-              ['Budget', formatCHF(briefing.budget)],
-              ['Laufzeit', `${briefing.laufzeit} Wochen`],
+              ['Budget', formatCHF(rc.budget)],
+              ['Laufzeit', `${rc.laufzeitWeeks} Wochen`],
               ['Region', briefing.analysis?.region?.join(', ') || '—'],
-              ['Reichweite', briefing.reach ? `~${formatNumber(briefing.reach)}` : '—'],
+              ['Reichweite', rc.impact.reach > 0 ? `~${formatNumber(rc.impact.reach)}` : '—'],
               ['Werbemittel', wms === 'upload' ? 'Hochgeladen' : wms === 'erstellen' ? 'Erstellt' : wms === 'später' ? 'Nachgereicht' : '—'],
               ['Typ', briefing.campaignType === 'b2c' ? 'B2C' : 'B2B'],
             ].map(([lbl, val]) => (

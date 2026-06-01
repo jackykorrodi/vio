@@ -143,6 +143,9 @@ export interface ImpactResult {
 
 export type PaketKey = 'sichtbar' | 'praesenz' | 'dominanz';
 
+// Cap-Level pro Paket für calculateImpact(mode:'paketLevel').
+export const PKG_CAP_LEVEL: Record<PaketKey, 1 | 2 | 3> = { sichtbar: 1, praesenz: 2, dominanz: 3 };
+
 export interface Paket {
   key: PaketKey;
   name: string;

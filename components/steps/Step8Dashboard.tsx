@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
+import { resolveCampaign } from '@/lib/resolve-campaign';
 
 function FeedbackCard({ briefing }: { briefing: BriefingData }) {
   const [feedbackText, setFeedbackText] = useState('');
@@ -76,7 +77,7 @@ function FeedbackCard({ briefing }: { briefing: BriefingData }) {
     </div>
   );
 }
-import { calculateReach, formatNumber, formatCHF } from '@/lib/calculations';
+import { formatNumber, formatCHF } from '@/lib/calculations';
 
 const C = {
   primary: '#C1666B',
@@ -139,24 +140,30 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
   const [submitError, setSubmitError] = useState('');
 
   const isB2B = briefing.campaignType === 'b2b';
+  const rc = useMemo(() => resolveCampaign(briefing), [briefing]);
+
   const reach = isB2B
     ? (briefing.b2bReach?.mitarbeiter ?? briefing.reach)
-    : (briefing.reach || calculateReach(briefing.budget, briefing.laufzeit).uniquePeople);
+    : rc.impact.reach;
+
+  const effBudget      = isB2B ? (briefing.budget ?? 0) : rc.budget;
+  const effLaufzeitWk  = isB2B ? (briefing.laufzeit ?? 0) : rc.laufzeitWeeks;
+  const effLaufzeitDays = isB2B ? (briefing.laufzeit ?? 0) * 7 : rc.laufzeitDays;
 
   const regions = briefing.analysis?.region ?? [];
-  const durationDays = briefing.laufzeit * 7;
+  const durationDays = effLaufzeitDays;
   const startDateStr = briefing.startDate || todayStr();
   const endDateStr = addDaysToStr(startDateStr, durationDays);
 
   const reachPerRegion = regions.length > 0 ? Math.round(reach / regions.length) : reach;
 
-  const doohBudget = Math.round(briefing.budget * 0.7);
-  const displayBudget = Math.round(briefing.budget * 0.3);
+  const doohBudget = Math.round(effBudget * 0.7);
+  const displayBudget = Math.round(effBudget * 0.3);
 
   const orgName = briefing.analysis?.organisation || briefing.firma || 'Deine Organisation';
 
   const mailtoBody = encodeURIComponent(
-    `Hallo VIO Team,\n\nIch möchte mehr Menschen mit meiner Kampagne erreichen.\n\nKampagnen-Details:\n- Organisation: ${orgName}\n- Aktuelles Budget: ${formatCHF(briefing.budget)}\n- Laufzeit: ${briefing.laufzeit} Wochen\n- Region: ${regions.join(', ')}\n- Typ: ${isB2B ? 'B2B' : 'B2C'}\n\nBitte kontaktiert mich für ein Upgrade-Angebot.\n\nFreundliche Grüsse`
+    `Hallo VIO Team,\n\nIch möchte mehr Menschen mit meiner Kampagne erreichen.\n\nKampagnen-Details:\n- Organisation: ${orgName}\n- Aktuelles Budget: ${formatCHF(effBudget)}\n- Laufzeit: ${effLaufzeitWk} Wochen\n- Region: ${regions.join(', ')}\n- Typ: ${isB2B ? 'B2B' : 'B2C'}\n\nBitte kontaktiert mich für ein Upgrade-Angebot.\n\nFreundliche Grüsse`
   );
   const mailtoHref = `mailto:hello@vio.swiss?subject=${encodeURIComponent('Mehr Reichweite – Kampagne ' + orgName)}&body=${mailtoBody}`;
 
@@ -267,7 +274,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
               {durationDays} Tage
             </div>
             <div style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>
-              {briefing.laufzeit} {briefing.laufzeit === 1 ? 'Woche' : 'Wochen'}
+              {effLaufzeitWk} {effLaufzeitWk === 1 ? 'Woche' : 'Wochen'}
             </div>
           </div>
 
@@ -333,7 +340,7 @@ export default function Step8Dashboard({ briefing, onBack, onSubmitSuccess }: Pr
               Budget
             </div>
             <div style={{ fontFamily: 'var(--font-fraunces), Georgia, serif', fontSize: '28px', color: '#fff', letterSpacing: '-.03em', marginBottom: '2px' }}>
-              {formatCHF(briefing.budget)}
+              {formatCHF(effBudget)}
             </div>
             <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
               Ausgegeben: {formatCHF(0)}
