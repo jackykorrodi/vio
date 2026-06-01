@@ -5,7 +5,7 @@ Diese Datei definiert, welche Quelle fuer welche Art von Logik gilt.
 ## Prioritaet
 
 1. Echter Code ist Wahrheit fuer den aktuellen Zustand.
-2. Fuer fachliche Soll-Logik Politik gilt: `public/vio-regelkatalog-politik-v3-5-3.md`.
+2. Fuer fachliche Soll-Logik Politik gilt: `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.7).
 3. Wenn Code und Regelkatalog widersprechen: nicht still korrigieren, sondern melden und Entscheidung verlangen.
 4. `CONTEXT.md` ist Projektstatus, nicht Preislogik-Source-of-Truth.
 5. Prototypen sind UI-Referenz, nicht Logik-Source-of-Truth.
@@ -15,7 +15,7 @@ Diese Datei definiert, welche Quelle fuer welche Art von Logik gilt.
 
 Fachliche Source of Truth:
 
-- `public/vio-regelkatalog-politik-v3-5-3.md`
+- `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.7)
 
 Implementation:
 

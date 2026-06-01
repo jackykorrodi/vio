@@ -45,7 +45,7 @@ Nicht automatisch alle Dateien lesen. Erst anhand dieser Map entscheiden.
 
 ## Politik Logik
 
-- `public/vio-regelkatalog-politik-v3-4.md`  
+- `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.7)
   Fachliche Source of Truth für Politik-Preislogik.
 
 - `lib/preislogik.ts`  

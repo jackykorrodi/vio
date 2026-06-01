@@ -3,7 +3,7 @@
 # Konsumenten: Claude Code, Prompt-Kontext, Spec-Alignment
 # Scope: Feldnamen, UI-Labels, Status-Codes, Pakete, Region-Klassen, Deprecated Terms
 # Menschliche Version: /docs/glossary.md (Phase 2, abgeleitet aus dieser Datei)
-# Business-Schwellen (Budgets, Frequenz-Ranges): ausschliesslich in public/vio-regelkatalog-politik-v3-5-1.md
+# Business-Schwellen (Budgets, Frequenz-Ranges): ausschliesslich in public/vio-regelkatalog-politik-v3-6.md (SPEC_VERSION 3.7)
 
 ---
 
@@ -49,7 +49,7 @@ CRITICAL:
 | dominanz | Dominanz | siehe Regelkatalog | 42 Tage  |
 
 **Regeln:**
-- Budget-Schwellen und Frequenz-Ranges werden ausschliesslich im Regelkatalog definiert (`public/vio-regelkatalog-politik-v3-5-1.md`)
+- Budget-Schwellen und Frequenz-Ranges werden ausschliesslich im Regelkatalog definiert (`public/vio-regelkatalog-politik-v3-6.md (SPEC_VERSION 3.7)`)
 - Default-Empfehlung: Präsenz
 - UI zeigt nie CHF/CPM-Werte direkt
 
