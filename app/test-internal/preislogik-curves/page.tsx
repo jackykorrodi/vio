@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
-import { calculateImpact } from '@/lib/preislogik';
+import { calculateImpact, calculateImpactCustom } from '@/lib/preislogik';
+import { evaluateCustomConfig } from '@/lib/custom-hints';
 import { KANTONE, STAEDTE, SCHWEIZ } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 
@@ -23,40 +24,40 @@ type RegionKey =
   | 'aarau' | 'sion' | 'uster' | 'glarus'             // Tier 2 — Snapshot 2026-05-13
   | 'lausanne' | 'zurichstadt' | 'aargau' | 'schweiz'; // Tier 2 — Snapshot 2026-05-13
 
-// ─── Soll-Daten (aus public/vio-regelkatalog-politik-v3-5-1.md, §11) ──────────
+// ─── Soll-Daten (Tier-1: public/vio-regelkatalog-politik-v3-6.md · Tier-2: Snapshot v3.5.3) ──
 
 const SOLL: Record<RegionKey, SollRow[]> = {
   zug: [
-    { budget:  4000, laufzeit: 14, level: 2, reach_abs: 14002, reach_pct: 16.5, f_weekly:  3.7, status_code: 'sprint_14d_thin_budget' },
-    { budget:  6000, laufzeit: 28, level: 1, reach_abs:  9971, reach_pct: 11.7, f_weekly:  3.9, status_code: 'optimal_28d_standard' },
-    { budget:  8000, laufzeit: 28, level: 2, reach_abs: 17519, reach_pct: 20.6, f_weekly:  2.9, status_code: '28d_broad_reach_low_frequency' },
-    { budget: 12000, laufzeit: 28, level: 2, reach_abs: 18403, reach_pct: 21.7, f_weekly:  4.2, status_code: 'optimal_28d_standard' },
-    { budget: 20000, laufzeit: 28, level: 3, reach_abs: 31707, reach_pct: 37.3, f_weekly:  4.1, status_code: 'optimal_28d_standard' },
-    { budget: 30000, laufzeit: 28, level: 3, reach_abs: 32220, reach_pct: 37.9, f_weekly:  6.0, status_code: 'optimal_28d_standard' },
+    { budget:  4000, laufzeit: 21, level: 1, reach_abs:  9210, reach_pct: 10.8, f_weekly:  3.4, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 28, level: 1, reach_abs:  9891, reach_pct: 11.6, f_weekly:  3.6, status_code: 'optimal_28d_standard' },
+    { budget:  8000, laufzeit: 21, level: 2, reach_abs: 17233, reach_pct: 20.3, f_weekly:  3.7, status_code: 'optimal_28d_standard' },
+    { budget: 12000, laufzeit: 21, level: 3, reach_abs: 28758, reach_pct: 33.8, f_weekly:  3.3, status_code: 'optimal_28d_standard' },
+    { budget: 20000, laufzeit: 35, level: 3, reach_abs: 31488, reach_pct: 37.0, f_weekly:  3.0, status_code: 'aufbau_42d_reach_premium' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 32171, reach_pct: 37.8, f_weekly:  3.7, status_code: 'aufbau_42d_reach_premium' },
   ],
   bern: [
-    { budget:  4000, laufzeit: 14, level: 1, reach_abs: 15595, reach_pct:  2.0, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
-    { budget:  6000, laufzeit: 14, level: 1, reach_abs: 18858, reach_pct:  2.4, f_weekly:  4.1, status_code: 'sprint_14d_thin_budget' },
-    { budget:  8000, laufzeit: 14, level: 2, reach_abs: 31190, reach_pct:  4.0, f_weekly:  3.3, status_code: 'sprint_14d_thin_budget' },
-    { budget: 12000, laufzeit: 14, level: 2, reach_abs: 37715, reach_pct:  4.9, f_weekly:  4.1, status_code: 'sprint_14d_grosser_pool' },
-    { budget: 20000, laufzeit: 14, level: 3, reach_abs: 69806, reach_pct:  9.0, f_weekly:  3.7, status_code: 'sprint_14d_grosser_pool' },
-    { budget: 30000, laufzeit: 14, level: 3, reach_abs: 81417, reach_pct: 10.5, f_weekly:  4.8, status_code: 'sprint_14d_grosser_pool' },
+    { budget:  4000, laufzeit: 14, level: 1, reach_abs: 14896, reach_pct:  1.9, f_weekly:  3.2, status_code: 'sprint_14d_thin_budget' },
+    { budget:  6000, laufzeit: 14, level: 1, reach_abs: 18243, reach_pct:  2.4, f_weekly:  3.9, status_code: 'sprint_14d_thin_budget' },
+    { budget:  8000, laufzeit: 14, level: 2, reach_abs: 29793, reach_pct:  3.8, f_weekly:  3.2, status_code: 'sprint_14d_grosser_pool' },
+    { budget: 12000, laufzeit: 14, level: 2, reach_abs: 36486, reach_pct:  4.7, f_weekly:  3.9, status_code: 'sprint_14d_grosser_pool' },
+    { budget: 20000, laufzeit: 14, level: 3, reach_abs: 67131, reach_pct:  8.7, f_weekly:  3.5, status_code: 'sprint_14d_grosser_pool' },
+    { budget: 30000, laufzeit: 14, level: 3, reach_abs: 79356, reach_pct: 10.2, f_weekly:  4.5, status_code: 'sprint_14d_grosser_pool' },
   ],
   waedenswil: [
-    { budget:  4000, laufzeit: 28, level: 3, reach_abs: 10114, reach_pct: 63.2, f_weekly:  3.7, status_code: 'optimal_28d_standard' },
-    { budget:  6000, laufzeit: 28, level: 3, reach_abs: 10353, reach_pct: 64.7, f_weekly:  5.4, status_code: 'optimal_28d_standard' },
-    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 10392, reach_pct: 65.0, f_weekly:  7.2, status_code: 'optimal_28d_standard' },
-    { budget: 12000, laufzeit: 42, level: 3, reach_abs: 10400, reach_pct: 65.0, f_weekly:  7.2, status_code: 'aufbau_42d_thin_budget' },
-    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 10400, reach_pct: 65.0, f_weekly: 12.0, status_code: 'dominanzmodus' },
-    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 10400, reach_pct: 65.0, f_weekly: 18.0, status_code: 'dominanzmodus_stark' },
+    { budget:  4000, laufzeit: 35, level: 3, reach_abs: 10180, reach_pct: 63.6, f_weekly:  3.2, status_code: 'aufbau_42d_reach_premium' },
+    { budget:  6000, laufzeit: 42, level: 3, reach_abs: 10368, reach_pct: 64.8, f_weekly:  3.9, status_code: 'aufbau_42d_reach_premium' },
+    { budget:  8000, laufzeit: 42, level: 3, reach_abs: 10395, reach_pct: 65.0, f_weekly:  5.1, status_code: 'aufbau_42d_reach_premium' },
+    { budget: 12000, laufzeit: 42, level: 3, reach_abs: 10399, reach_pct: 65.0, f_weekly:  7.7, status_code: 'aufbau_42d_thin_budget' },
+    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 10399, reach_pct: 65.0, f_weekly: 12.9, status_code: 'dominanzmodus' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 10399, reach_pct: 65.0, f_weekly: 19.3, status_code: 'dominanzmodus_stark' },
   ],
   adliswil: [
-    { budget:  4000, laufzeit: 28, level: 3, reach_abs: 8220, reach_pct: 63.2, f_weekly:  3.7, status_code: 'optimal_28d_standard' },
-    { budget:  6000, laufzeit: 28, level: 3, reach_abs: 8412, reach_pct: 64.7, f_weekly:  5.4, status_code: 'optimal_28d_standard' },
-    { budget:  8000, laufzeit: 28, level: 3, reach_abs: 8444, reach_pct: 65.0, f_weekly:  7.2, status_code: 'optimal_28d_standard' },
-    { budget: 12000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly:  7.2, status_code: 'aufbau_42d_thin_budget' },
-    { budget: 20000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly: 12.0, status_code: 'dominanzmodus' },
-    { budget: 30000, laufzeit: 42, level: 3, reach_abs: 8450, reach_pct: 65.0, f_weekly: 18.0, status_code: 'dominanzmodus_stark' },
+    { budget:  4000, laufzeit: 28, level: 3, reach_abs:  8216, reach_pct: 63.2, f_weekly:  3.7, status_code: 'optimal_28d_standard' },
+    { budget:  6000, laufzeit: 42, level: 3, reach_abs:  8411, reach_pct: 64.7, f_weekly:  3.6, status_code: 'aufbau_42d_reach_premium' },
+    { budget:  8000, laufzeit: 42, level: 3, reach_abs:  8443, reach_pct: 65.0, f_weekly:  4.8, status_code: 'aufbau_42d_reach_premium' },
+    { budget: 12000, laufzeit: 42, level: 3, reach_abs:  8449, reach_pct: 65.0, f_weekly:  7.2, status_code: 'aufbau_42d_thin_budget' },
+    { budget: 20000, laufzeit: 42, level: 3, reach_abs:  8449, reach_pct: 65.0, f_weekly: 12.0, status_code: 'dominanzmodus' },
+    { budget: 30000, laufzeit: 42, level: 3, reach_abs:  8449, reach_pct: 65.0, f_weekly: 17.9, status_code: 'dominanzmodus_stark' },
   ],
   // ── Tier 2 — Snapshot 2026-05-13 (Smoke-Test Code-Snapshot) ─────────────
   aarau: [
@@ -305,16 +306,16 @@ export default function PreislogikCurves() {
           fontSize: 22, fontWeight: 700, color: '#1A0F3B',
           letterSpacing: '-0.01em', marginBottom: 4,
         }}>
-          Preislogik Sandbox v3.5.1 — Ist vs. Soll
+          Preislogik Sandbox v3.6 — Ist vs. Soll
         </h1>
         <p style={{ ...base, fontSize: 13, color: '#5A556F', marginBottom: 8, lineHeight: 1.6 }}>
           <code>lib/preislogik.ts</code> (heutige Logik) ↔{' '}
-          <code>public/vio-regelkatalog-politik-v3-5-1.md</code> (Single Source of Truth)
+          <code>public/vio-regelkatalog-politik-v3-6.md</code> (Single Source of Truth)
           <br />
           <code>mode=&apos;budgetFirst&apos;</code>, ohne <code>laufzeitDays</code> → Optimizer aktiv · Diff: 🟢 ≤5% · 🟡 5–15% · 🔴 &gt;15% oder falsch
         </p>
         <p style={{ ...base, fontSize: 11, color: '#9B8FBF', marginBottom: 24 }}>
-          Spec-Regionen (4): fachlich kalibriert v3.5.1 · Snapshot-Regionen (8): Code-Snapshot Smoke-Test 2026-05-13
+          Spec-Regionen (4): fachlich kalibriert v3.6 · Snapshot-Regionen (8): Code-Snapshot Smoke-Test 2026-05-13
         </p>
 
         {/* Region-Tabs */}
@@ -371,6 +372,18 @@ export default function PreislogikCurves() {
           ))}
         </div>
 
+        {/* Tier-2 Re-Validation Banner */}
+        {meta.snapshot && (
+          <div style={{
+            padding: '8px 14px', marginBottom: 12,
+            background: '#FFF9E6', border: '1px solid rgba(202,138,4,0.30)',
+            borderRadius: 8, fontSize: 12, color: '#92400E',
+            fontFamily: "'Jost', sans-serif",
+          }}>
+            Tier-2 Snapshots auf v3.5.3-Werte — v3.6-Re-Validation ausstehend.
+          </div>
+        )}
+
         {/* Table */}
         <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(107,79,187,0.12)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
@@ -378,7 +391,7 @@ export default function PreislogikCurves() {
               <tr>
                 <th style={th()}>Budget</th>
                 <th style={th()}>Metrik</th>
-                <th style={th({ color: '#6B7280' })}>Soll v3.5.1</th>
+                <th style={th({ color: '#6B7280' })}>Soll v3.6</th>
                 <th style={th({ color: '#1A0F3B' })}>Ist heute</th>
                 <th style={th({ textAlign: 'center' })}>Diff</th>
               </tr>
@@ -541,7 +554,196 @@ export default function PreislogikCurves() {
           </p>
         </div>
 
+        {/* ─── Custom-Pfad Smoke Tests (Sprint 2) ─────────────────────────── */}
+        <CustomSmokeTests base={base} />
+
       </div>
+    </div>
+  );
+}
+
+// ─── Custom-Pfad Smoke Tests ─────────────────────────────────────────────────
+//
+// 4 hartkodierte Konfigurationen für calculateImpactCustom() + evaluateCustomConfig().
+// Spec-Erwartungen und tatsächliche Outputs im Vergleich.
+//
+// Bekannte Kalibrierungs-Abweichungen (dokumentiert):
+//   Case 1: Spec schätzte reachPercent 15–20% für Kanton Bern — tatsächlich ~3%
+//           (Kanton Bern hat 775k Stimm; 15–20% wäre ~120–155k — bräuchte ~50k+ Budget).
+//           saturationPosition='sweet' ist korrekt (saturationRatio ≈ 0.75).
+//           at_sweet_spot-Hint (Trigger: ≥ 0.85) feuert bei 0.75 nicht — Threshold-Abweichung.
+//           reach_collapse kann feuern wenn reachPercent < 3% (Grenzfall).
+//   Case 2: Spec erwartet reach_collapse. Tatsächlicher Hofmans-Reach ≈ 4.6% (≥ 3%).
+//           saturationPosition='unter' ist korrekt.
+//           → Fazit: Spec-Erwartungen basieren auf anderer Kalibrierung. Sprint 3 kalibriert.
+
+function CustomSmokeTests({ base }: { base: import('react').CSSProperties }) {
+  const BERN_K  = KANTONE.find(r => r.name === 'Bern')!;
+  const ZURICH_S = STAEDTE.find(r => r.name === 'Zürich')!;
+  const AARGAU_K = KANTONE.find(r => r.name === 'Aargau')!;
+  const ADLISWIL = STAEDTE.find(r => r.name === 'Adliswil')!;
+
+  const cases = [
+    {
+      id: 1,
+      label: 'Sweet Spot',
+      region: BERN_K,
+      config: { budget: 18000, laufzeitDays: 28, freqWeekly: 5, doohShare: 0.6 },
+      daysToVote: 35,
+      specAsserts: "saturationPosition='sweet' · at_sweet_spot-Hint · kein einschraenkung",
+    },
+    {
+      id: 2,
+      label: 'Frequenz-Kollaps',
+      region: ZURICH_S,
+      config: { budget: 5000, laufzeitDays: 42, freqWeekly: 8, doohShare: 0.5 },
+      daysToVote: 50,
+      specAsserts: "saturationPosition='unter' · reach_collapse-Hint · reachPercent < 5%",
+    },
+    {
+      id: 3,
+      label: 'DOOH-Cutoff',
+      region: AARGAU_K,
+      config: { budget: 12000, laufzeitDays: 14, freqWeekly: 4, doohShare: 0.8 },
+      daysToVote: 7,
+      specAsserts: "dooh_cutoff-Hint · kein Throw",
+    },
+    {
+      id: 4,
+      label: 'Über-Investment',
+      region: ADLISWIL,
+      config: { budget: 25000, laufzeitDays: 28, freqWeekly: 5, doohShare: 0.6 },
+      daysToVote: 35,
+      specAsserts: "saturationRatio > 1.1 · above_sweet_spot-Hint mit CHF-Wert",
+    },
+  ] as const;
+
+  const results = cases.map(c => {
+    const impact = calculateImpactCustom({ ...c.config, regions: [c.region] });
+    const hints  = evaluateCustomConfig(c.config, [c.region], impact, c.daysToVote);
+    return { ...c, impact, hints };
+  });
+
+  return (
+    <div style={{
+      marginTop: 32,
+      padding: '16px',
+      background: 'white',
+      border: '1px solid rgba(107,79,187,0.12)',
+      borderRadius: 10,
+    }}>
+      <div style={{ marginBottom: 12 }}>
+        <span style={{
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontSize: 13, fontWeight: 700, color: '#1A0F3B',
+          letterSpacing: '-0.005em',
+        }}>
+          Custom-Pfad Smoke Tests (Sprint 2)
+        </span>
+        <span style={{ ...base, fontSize: 11, color: '#9B8FBF', marginLeft: 10 }}>
+          calculateImpactCustom() + evaluateCustomConfig() · 4 Cases
+        </span>
+      </div>
+
+      {results.map(r => (
+        <div key={r.id} style={{
+          marginBottom: 16,
+          border: '1px solid rgba(107,79,187,0.08)',
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}>
+          {/* Case-Header */}
+          <div style={{
+            padding: '8px 12px',
+            background: '#F8F7FB',
+            borderBottom: '1px solid rgba(107,79,187,0.08)',
+            display: 'flex', gap: 16, alignItems: 'baseline', flexWrap: 'wrap',
+          }}>
+            <span style={{ ...base, fontWeight: 700, fontSize: 13 }}>
+              Case {r.id} — {r.label}
+            </span>
+            <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#6B7280' }}>
+              {r.region.name} · CHF {r.config.budget.toLocaleString('de-CH')} ·
+              {' '}{r.config.laufzeitDays}d · {r.config.freqWeekly}×/W ·
+              {' '}DOOH {Math.round(r.config.doohShare * 100)}% · daysToVote={r.daysToVote}
+            </span>
+          </div>
+
+          {/* Impact-Kennzahlen */}
+          <div style={{
+            display: 'flex', gap: 0, flexWrap: 'wrap',
+            borderBottom: '1px solid rgba(107,79,187,0.06)',
+          }}>
+            {([
+              ['Reach',        r.impact.reach.toLocaleString('de-CH')],
+              ['Reach %',      `${r.impact.reachPercent.toFixed(1)}%`],
+              ['SatRatio',     r.impact.saturationRatio.toFixed(3)],
+              ['SatPos',       r.impact.saturationPosition],
+              ['GRPs',         r.impact.grps.toFixed(1)],
+              ['CPM eff',      `${r.impact.cpmEffective.toFixed(2)}`],
+              ['Screens',      r.impact.screens.toString()],
+              ['Impr.',        r.impact.impressionsTotal.toLocaleString('de-CH')],
+            ] as [string, string][]).map(([label, val]) => (
+              <div key={label} style={{
+                padding: '8px 14px',
+                borderRight: '1px solid rgba(107,79,187,0.06)',
+                minWidth: 80,
+              }}>
+                <div style={{ ...base, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9B8FBF', marginBottom: 2 }}>
+                  {label}
+                </div>
+                <div style={{
+                  fontFamily: 'monospace', fontSize: 13, fontWeight: 600,
+                  color: label === 'SatPos'
+                    ? (val === 'sweet' ? '#166534' : val === 'ueber' ? '#92400E' : '#991B1B')
+                    : '#1A0F3B',
+                }}>
+                  {val}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hints */}
+          <div style={{ padding: '8px 12px' }}>
+            {r.hints.length === 0 ? (
+              <span style={{ ...base, fontSize: 12, color: '#9B8FBF' }}>Keine Hints</span>
+            ) : r.hints.map(h => (
+              <div key={h.code} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+                marginBottom: 4, fontSize: 12,
+              }}>
+                <span style={{
+                  fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
+                  padding: '1px 5px', borderRadius: 4, whiteSpace: 'nowrap',
+                  background: h.level === 'einschraenkung' ? '#FEE2E2'
+                    : h.level === 'warning' ? '#FEF9C3' : '#DCFCE7',
+                  color: h.level === 'einschraenkung' ? '#991B1B'
+                    : h.level === 'warning' ? '#92400E' : '#166534',
+                }}>
+                  {h.level}
+                </span>
+                <span style={{ ...base, fontSize: 12, color: '#374151' }}>
+                  <strong>{h.code}</strong>: {h.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Spec-Assertions */}
+          <div style={{
+            padding: '5px 12px 8px',
+            borderTop: '1px solid rgba(107,79,187,0.06)',
+          }}>
+            <span style={{ ...base, fontSize: 10, color: '#9B8FBF', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Spec-Erwartung:{' '}
+            </span>
+            <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#6B7280' }}>
+              {r.specAsserts}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
