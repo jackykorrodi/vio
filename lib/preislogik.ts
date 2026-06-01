@@ -7,7 +7,9 @@
 // Erstellt: 22.04.2026
 
 import type { Region } from './regions';
-import { klassifiziereMehrereRegionen, klassifiziereRegion } from './region-buchbarkeit';
+import type { Wirkungsfokus } from './types';
+import { klassifiziereMehrereRegionen, klassifiziereRegion, MAX_DOOH_SHARE_FULL, MAX_DOOH_SHARE_LIMITED, MAX_DOOH_SHARE_DISPLAY_DOMINANT } from './region-buchbarkeit';
+import { addBusinessDays } from './business-days';
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 
@@ -46,13 +48,30 @@ export const LARGE_POOL_THRESHOLD = 500_000; // ab hier Gross-Region-Logik
 export const REACH_PREMIUM_THRESHOLD = 1.4;  // Dominanz-Multiplier-Trigger
 
 // Timing-Constraints (Display Sprint)
-export const DOOH_CUTOFF_DAYS = 10;           // operativ: DOOH-Freigabe nicht mehr möglich
-export const MIN_DISPLAY_ONLY_LAUFZEIT = 7;  // Untergrenze sinnvolle Display-Sprint-Laufzeit
+export const DOOH_CUTOFF_DAYS = 10;            // operativ: DOOH-Freigabe nicht mehr möglich
+export const MIN_DISPLAY_ONLY_LAUFZEIT = 7;   // Untergrenze sinnvolle Display-Sprint-Laufzeit
+export const DISPLAY_SPRINT_SWITCH_DAYS = 24; // ab < 24 Tagen bis Vote: Display-Sprint-Modus
 
 // §7.0 v3.5.3: Granularität — alle buchbaren Standard-Laufzeiten
 export const LAUFZEITEN_BASIS = [14, 21, 28, 35, 42] as const;
 export const AUFBAU_PREMIUM_THRESHOLD = 1.2;  // Schritt 4: Reach-Ratio zum Triggern von 35d/42d
 export const DOMINANZ_BUDGET_CAP = 100_000;   // §8.1: Dominanz-Budget Hard-Cap (CHF)
+
+// ─── Custom-Pfad: Wirkungsfokus-Modell (Regelkatalog v3.7) ───────────────────
+
+export const WIRKUNGSFOKUS_FREQUENZ: Record<Wirkungsfokus, number> = {
+  breit:       2.1,
+  ausgewogen:  3.1,
+  verankerung: 4.6,
+};
+
+// DOOH-Setup-Vorlauf für Custom-Pfad (löst DOOH_CUTOFF_DAYS im Custom-Pfad ab).
+// DOOH_CUTOFF_DAYS bleibt unverändert für Paket-Pfad.
+export const SETUP_VORLAUF_WERKTAGE = 10;
+
+// Ziel-Sättigungsgrad für Sweet-Spot-Schätzung. Kalibrierbar.
+// Empirisch kalibriert (~63% poolCap erreicht, via 13-Cluster-Smoke validiert).
+export const SWEET_SPOT_TARGET_SATURATION = 4.0;
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
@@ -152,6 +171,27 @@ export interface PakeResult {
   recommended: PaketKey;
   stimmTotal: number;
   screenKlasse: 'voll' | 'begrenzt' | 'display-dominant';
+}
+
+// ─── Custom-Pfad: DOOH-Verfügbarkeit (Regelkatalog v3.7) ─────────────────────
+
+export type DoohAvailability =
+  | { available: true;  channelMix: number }
+  | { available: false; reason: 'setup_vorlauf' | 'no_inventory' };
+
+// ─── Custom-Pfad Return-Type (Sprint 2) ──────────────────────────────────────
+
+export interface CustomImpactResult {
+  reach: number;                  // Stimmberechtigte erreicht (unique, gerundet)
+  reachPercent: number;           // % vom regionalen Stimm-Pool (1 Dezimale)
+  grps: number;                   // Gross Rating Points (impressionsTotal / stimmTotal * 100)
+  impressionsTotal: number;       // Total Impressionen über Laufzeit
+  screens: number;                // Anzahl DOOH-Screens in Region(en) (aus Klassifikation)
+  cpmEffective: number;           // gewichteter CPM aus DOOH+Display Mix
+  doohBudget: number;             // CHF auf DOOH
+  displayBudget: number;          // CHF auf Display
+  saturationPosition: 'unter' | 'sweet' | 'ueber'; // relativ zu Sättigungskurve
+  saturationRatio: number;        // reachLinear / poolCap (Wirkungsfokus-basiert)
 }
 
 // ─── Paket-Definitionen (politisch-stark kalibriert) ─────────────────────────
@@ -838,6 +878,175 @@ export function buildPackages(input: {
     stimmTotal,
     screenKlasse: klass.klasse,
   };
+}
+
+// ─── checkDoohAvailability — Custom-Pfad DOOH-Zwei-Zustand (Regelkatalog v3.7) ─
+//
+// Prüft Setup-Vorlauf (10 Werktage) und Inventar-Klassifizierung.
+// Wenn campaignStart undefined: Vorlauf-Check wird übersprungen (Rückwärtskompatibilität).
+// Gibt channelMix = Klassen-Max-Schwelle zurück (aus region-buchbarkeit.ts).
+// Multi-Region: klassifiziereMehrereRegionen() aggregiert (1:1 wiederverwenden).
+
+export function checkDoohAvailability(
+  regions: Region[],
+  campaignStart: Date | undefined,
+  today: Date = new Date(),
+): DoohAvailability {
+  if (campaignStart !== undefined) {
+    const fruehesterStart = addBusinessDays(today, SETUP_VORLAUF_WERKTAGE);
+    if (campaignStart < fruehesterStart) {
+      return { available: false, reason: 'setup_vorlauf' };
+    }
+  }
+
+  const klass = regions.length > 1
+    ? klassifiziereMehrereRegionen(regions)
+    : regions[0]
+      ? klassifiziereRegion(regions[0])
+      : { klasse: 'voll' as const, politScreens: 0, split: { dooh: 0.70, display: 0.30 }, hinweis: null };
+
+  if (klass.klasse === 'display-dominant' && klass.politScreens === 0) {
+    return { available: false, reason: 'no_inventory' };
+  }
+
+  const channelMix =
+    klass.klasse === 'voll'     ? MAX_DOOH_SHARE_FULL :
+    klass.klasse === 'begrenzt' ? MAX_DOOH_SHARE_LIMITED :
+    MAX_DOOH_SHARE_DISPLAY_DOMINANT;
+
+  return { available: true, channelMix };
+}
+
+// ─── calculateImpactCustom — Custom-Pfad Wirkungsfokus-Modell (Regelkatalog v3.7) ─
+//
+// Simulation ohne Optimizer: Wirkungsfokus bestimmt Ziel-Frequenz (invers in Reach).
+// DOOH-Anteil wird intern aus Region-Klassifizierung bestimmt (nicht config.doohShare).
+// freqWeekly/doohShare bleiben im Param für Rückwärtskompatibilität (deprecated, Phase B).
+//
+// Reach-Formel:
+//   laufzeitWochen = laufzeitDays / 7   (Kalendertage, KEINE Werktage)
+//   reachLinear    = impressionenImPool / (zielFrequenz × laufzeitWochen)
+//   poolCap        = stimmTotal × getReachCap(stimmTotal, capLevel)
+//   reach          = poolCap × (1 − e^(−k × reachLinear / poolCap))
+//
+// saturationRatio = reachLinear / poolCap (kann > 1.0 sein)
+
+export function calculateImpactCustom({
+  budget,
+  laufzeitDays,
+  freqWeekly: _freqWeekly,
+  doohShare: _doohShare,
+  regions,
+  wirkungsfokus,
+  campaignStart,
+}: {
+  budget: number;
+  laufzeitDays: number;
+  freqWeekly: number;
+  doohShare: number;
+  regions: Region[];
+  wirkungsfokus?: Wirkungsfokus;
+  campaignStart?: Date;
+}): CustomImpactResult {
+  const deduped = dedupRegions(regions);
+  const stimmTotal = sumStimm(deduped);
+  // Kalendertage für Wirkungsdauer (Regelkatalog v3.7: Zeitachsen-Trennung)
+  const laufzeitWeeks = laufzeitDays / 7;
+
+  // Ziel-Frequenz aus Wirkungsfokus (Default: ausgewogen)
+  const zielFrequenz = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus ?? 'ausgewogen'];
+
+  // DOOH-Verfügbarkeit → doohAnteil
+  const doohAvail = checkDoohAvailability(deduped, campaignStart);
+  const doohAnteil = doohAvail.available ? doohAvail.channelMix : 0;
+
+  // Channel-Mix
+  const cpmEffective = doohAnteil * CPM_DOOH + (1 - doohAnteil) * CPM_DISPLAY;
+  const impressionsTotal = budget > 0 && cpmEffective > 0
+    ? (budget * 1000) / cpmEffective
+    : 0;
+  const doohBudget    = budget * doohAnteil;
+  const displayBudget = budget * (1 - doohAnteil);
+
+  // In-Pool-Impressionen
+  const impressionsInPool = impressionsTotal * IN_POOL_FACTOR;
+
+  // GRPs (Gross Rating Points)
+  const grps = stimmTotal > 0 ? (impressionsTotal / stimmTotal) * 100 : 0;
+
+  // DOOH-Screens aus Region-Klassifikation
+  const klass = deduped.length > 1
+    ? klassifiziereMehrereRegionen(deduped)
+    : deduped[0]
+      ? klassifiziereRegion(deduped[0])
+      : { klasse: 'voll' as const, politScreens: 0, split: { dooh: 0.70, display: 0.30 }, hinweis: null };
+  const screens = klass.politScreens;
+
+  // Pool-Cap
+  const capLevel: 1 | 2 | 3 = (stimmTotal > 0 && impressionsInPool > 0 && laufzeitWeeks > 0)
+    ? inferCapLevel(impressionsInPool, stimmTotal, laufzeitWeeks)
+    : 1;
+  const poolCap = stimmTotal > 0 ? stimmTotal * getReachCap(stimmTotal, capLevel) : 0;
+
+  // Reach via Wirkungsfokus-Modell: Frequenz koppelt invers in die Reach
+  let reach = 0;
+  let reachLinear = 0;
+  if (poolCap > 0 && zielFrequenz > 0 && laufzeitWeeks > 0) {
+    reachLinear = impressionsInPool / (zielFrequenz * laufzeitWeeks);
+    reach = poolCap * (1 - Math.exp(-REACH_CURVE_K * reachLinear / poolCap));
+  }
+  const reachPercent = stimmTotal > 0 ? (reach / stimmTotal) * 100 : 0;
+
+  // Sättigungs-Positionierung
+  const saturationRatio = poolCap > 0 ? reachLinear / poolCap : 0;
+  const saturationPosition: 'unter' | 'sweet' | 'ueber' =
+    saturationRatio < 0.4  ? 'unter' :
+    saturationRatio <= 1.0 ? 'sweet' :
+    'ueber';
+
+  return {
+    reach:             Math.round(reach),
+    reachPercent:      Math.round(reachPercent * 10) / 10,
+    grps:              Math.round(grps * 10) / 10,
+    impressionsTotal:  Math.round(impressionsTotal),
+    screens,
+    cpmEffective:      Math.round(cpmEffective * 100) / 100,
+    doohBudget,
+    displayBudget,
+    saturationPosition,
+    saturationRatio:   Math.round(saturationRatio * 1000) / 1000,
+  };
+}
+
+// ─── calculateSweetSpotCustom — Inverse Sweet-Spot-Schätzung (Regelkatalog v3.7) ─
+//
+// Findet das Budget, das reachLinear / poolCap = SWEET_SPOT_TARGET_SATURATION ergibt.
+// Inverse Berechnung: Sättigungsgrad → reachLinear → impressionenImPool → Budget.
+// Verwendet Cap-Level 1 (konservativ; Funktion ist Schätzung, nicht harte Wahrheit).
+// Reach-Rückgabe: poolCap × (1 − e^(−k × SWEET_SPOT_TARGET_SATURATION)).
+
+export function calculateSweetSpotCustom(
+  regions: Region[],
+  wirkungsfokus: Wirkungsfokus,
+  laufzeitDays: number,
+  doohAnteil: number,
+): { budget: number; reach: number } {
+  const deduped = dedupRegions(regions);
+  const stimmTotal = sumStimm(deduped);
+  if (stimmTotal === 0) return { budget: 0, reach: 0 };
+
+  const laufzeitWeeks = laufzeitDays / 7;
+  const zielFrequenz  = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus];
+  const poolCap       = stimmTotal * getReachCap(stimmTotal, 1);
+
+  const reachLinearTarget    = SWEET_SPOT_TARGET_SATURATION * poolCap;
+  const impressionenImPool   = reachLinearTarget * (zielFrequenz * laufzeitWeeks);
+  const impressionen         = impressionenImPool / IN_POOL_FACTOR;
+  const mischCPM             = doohAnteil * CPM_DOOH + (1 - doohAnteil) * CPM_DISPLAY;
+  const budget               = mischCPM > 0 ? (impressionen * mischCPM) / 1000 : 0;
+  const reach                = poolCap * (1 - Math.exp(-REACH_CURVE_K * SWEET_SPOT_TARGET_SATURATION));
+
+  return { budget: Math.round(budget), reach: Math.round(reach) };
 }
 
 export const GEMEINDE_NICHT_GEFUNDEN_HINWEIS =
