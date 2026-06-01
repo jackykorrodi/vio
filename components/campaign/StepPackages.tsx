@@ -2,16 +2,21 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { BriefingData } from '@/lib/types';
+import type { CustomConfig } from '@/lib/types';
 import {
-  calculateImpact, buildPackages, getLaufzeitCorridor, coupleBudgetToLaufzeit,
-  calculateSweetSpot,
+  calculateImpact, buildPackages, getLaufzeitCorridor,
+  calculateSweetSpot, calculateImpactCustom,
 } from '@/lib/preislogik';
+import type { CustomImpactResult } from '@/lib/preislogik';
+import { evaluateCustomConfig, maxDoohShareForRegion } from '@/lib/custom-hints';
+import type { CustomHint } from '@/lib/custom-hints';
 import { validatePartnerCode } from '@/lib/partner-codes-mock';
 import type { PartnerCode } from '@/lib/partner-codes-mock';
 import type { PaketKey, PakeResult, Paket, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
+import AllocationBar from '@/components/campaign/AllocationBar';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -66,11 +71,13 @@ const PKG_SUBTITLE_DISPLAY: Record<PaketKey, string> = {
   dominanz: 'Intensive Endphasen-Mobilisierung',
 };
 
+const CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK = 60; // Wenn voteDate nicht gesetzt
+
 const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL ?? 'https://calendly.com/vio-media';
 
 function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommendedPkg }: {
   packages: PakeResult;
-  selectedPkg: PaketKey;
+  selectedPkg: PaketKey | null;
   onChange: (key: PaketKey) => void;
   disabledPkgs: Set<PaketKey>;
   recommendedPkg: PaketKey;
@@ -90,11 +97,15 @@ function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommend
         return (
           <div
             key={key}
+            role="button"
+            tabIndex={isDisabled ? -1 : 0}
+            className="vio-pkg-card"
             onClick={handleClick}
+            onKeyDown={e => { if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleClick?.(); } }}
             style={{
               position: 'relative',
-              background: T.card,
-              border: `1.5px solid ${isSel ? T.violet : T.line}`,
+              background: isSel ? 'rgba(107,79,187,0.06)' : T.card,
+              border: isSel ? `2px solid ${T.violet}` : `1.5px solid ${T.line}`,
               borderRadius: 16,
               padding: '20px 20px 18px',
               cursor: isDisabled ? 'default' : 'pointer',
@@ -205,6 +216,15 @@ const HINT_META: Record<HintTone, { bg: string; border: string; iconBg: string; 
   violet: { bg: T.highlight, border: T.lineStrong, iconBg: T.violet, titleColor: T.violetDeep, icon: '★' },
 };
 
+// ─── Custom-Pfad Hint-Mapping ─────────────────────────────────────────────────
+// Separates Mapping für dreistufige CustomHint-Engine (Sprint 2).
+// Bestehende HINT_META für Pfad 'paket' bleibt 1:1.
+const CUSTOM_HINT_META: Record<CustomHint['level'], { bg: string; border: string; iconBg: string; titleColor: string; icon: string }> = {
+  einschraenkung: { bg: '#FEF2F2', border: '#C84B4B', iconBg: '#991B1B', titleColor: '#991B1B', icon: '!' },
+  warning:        { bg: '#FEF3E2', border: '#D97706', iconBg: '#D97706', titleColor: '#92400E', icon: '⚠' },
+  insight:        { bg: '#EFF6FF', border: '#3B82F6', iconBg: '#3B82F6', titleColor: '#1E40AF', icon: 'i' },
+} as const;
+
 function hinweisToDisplay(h: Hinweis, _days: number, _regionName: string): HintDisplay | null {
   const { code, text } = h;
   if (code === 'hard_stop_budget')        return { tone: 'warn',   title: 'Persönliche Planung empfohlen',                  text };
@@ -302,32 +322,23 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   );
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [path, setPath]               = useState<'A' | 'B'>(briefing.budgetKnown === false ? 'B' : 'A');
-  const [pkg, setPkg]                 = useState<PaketKey>('praesenz');
+  const [mode, setMode]               = useState<'paket' | 'custom'>(() => briefing.pfad ?? 'custom');
+  const [selectedPkg, setSelectedPkg] = useState<PaketKey | null>(briefing.selectedPackage ?? null);
   const [budget, setBudget]           = useState<number>(
     briefing.budget ||
-    (briefing.selectedPackage && packages
-      ? packages[briefing.selectedPackage as PaketKey]?.budget
-      : 0) ||
     packages?.praesenz?.budget ||
     4000
   );
   const [days, setDays]               = useState<number>(
     packages ? packages.praesenz.laufzeitDays : 21
   );
-  // Pfad-A-State-Erhalt: werden beim Wechsel A→B gespeichert und bei B→A wiederhergestellt
-  const [budgetA, setBudgetA] = useState<number>(briefing.budget ?? briefing.recommendedBudget ?? 4000);
-  const [daysA,   setDaysA]   = useState<number>(packages ? packages.praesenz.laufzeitDays : 21);
-  const [feintuningOpen, setFeintuning] = useState<boolean>((briefing as any).adjOpen ?? false);
-
-  const handleFeintuning = (val: boolean) => {
-    setFeintuning(val);
-    updateBriefing({ adjOpen: val } as any);
-  };
-  const [budgetRef]                   = useState(() => ({
-    budget: packages ? packages.praesenz.budget : 8000,
-    days: packages ? packages.praesenz.laufzeitDays : 21,
-  }));
+  const [customConfig, setCustomConfig] = useState<CustomConfig>(() => {
+    if (briefing.customConfig) return briefing.customConfig;
+    const safeDays = daysUntilVote != null
+      ? Math.max(14, Math.min(CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK, daysUntilVote - 10))
+      : 28;
+    return { budget: 8000, laufzeitDays: safeDays, freqWeekly: 5, doohShare: 0.6 };
+  });
   const [activeCode, setActiveCode]   = useState<PartnerCode | null>(() =>
     briefing.partnerCode ? validatePartnerCode(briefing.partnerCode) : null
   );
@@ -341,7 +352,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // Clamp days to corridor on budget change
   const effectiveDays = Math.min(corridor.maxDays, Math.max(corridor.minDays, days));
 
-  const displayBudget = path === 'B' && packages ? packages[pkg].budget : budget;
+  const displayBudget = mode === 'paket' && packages && selectedPkg
+    ? packages[selectedPkg].budget
+    : mode === 'custom' ? customConfig.budget : budget;
 
   const demonym    = getInhabitants(selectedRegionsFull.map(r => r.name));
   const regionName = briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
@@ -350,70 +363,119 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     () => {
       if (!selectedRegionsFull.length) return null;
       const boostPct = activeCode?.reachBoostPct ?? 0;
-      // Pfad B: paketLevel-Modus damit Indikator mit den Paket-Karten übereinstimmt
-      if (path === 'B' && packages) {
-        const pkgData = packages[pkg];
+      // Pfad 'paket': paketLevel-Modus, nur wenn Paket gewählt
+      if (mode === 'paket' && packages && selectedPkg) {
+        const pkgData = packages[selectedPkg];
         return calculateImpact({
           budget: pkgData.budget,
           laufzeitDays: pkgData.laufzeitDays,
           regions: selectedRegionsFull,
           mode: 'paketLevel',
-          paketLevel: PKG_CAP_LEVEL[pkg],
+          paketLevel: PKG_CAP_LEVEL[selectedPkg],
           splitOverride: pkgData.deliveryMode === 'display_only' ? { dooh: 0, display: 1 } : undefined,
           partnerCodeBoostPct: boostPct,
         });
       }
-      return calculateImpact({ budget, regions: selectedRegionsFull, daysUntilVote, partnerCodeBoostPct: boostPct });
+      if (mode === 'custom') return null; // custom mode uses calculateImpactCustom via customImpact
+      return null;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path, pkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote, activeCode?.reachBoostPct]
+    [mode, selectedPkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote, activeCode?.reachBoostPct]
   );
 
   // Basis-Impact ohne Code-Boost (für Reach-Delta-Berechnung)
   const impactBase = useMemo(() => {
     if (!activeCode || activeCode.reachBoostPct === 0 || !selectedRegionsFull.length) return null;
-    if (path === 'B' && packages) {
-      const pkgData = packages[pkg];
+    if (mode === 'paket' && packages && selectedPkg) {
+      const pkgData = packages[selectedPkg];
       return calculateImpact({
         budget: pkgData.budget,
         laufzeitDays: pkgData.laufzeitDays,
         regions: selectedRegionsFull,
         mode: 'paketLevel',
-        paketLevel: PKG_CAP_LEVEL[pkg],
+        paketLevel: PKG_CAP_LEVEL[selectedPkg],
         splitOverride: pkgData.deliveryMode === 'display_only' ? { dooh: 0, display: 1 } : undefined,
       });
     }
     return calculateImpact({ budget, regions: selectedRegionsFull, daysUntilVote });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCode, path, pkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]);
+  }, [activeCode, mode, selectedPkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]);
 
-  // Pfad A: Laufzeit kommt vom Optimizer (impact.laufzeitDays), nicht aus lokalem Slider-State
-  const displayDays = path === 'B' && packages
-    ? packages[pkg].laufzeitDays
-    : (impact?.laufzeitDays ?? effectiveDays);
+  // Pfad 'custom': Laufzeit kommt vom Optimizer; Pfad 'paket': aus gewähltem Paket
+  const displayDays = mode === 'paket' && packages && selectedPkg
+    ? packages[selectedPkg].laufzeitDays
+    : mode === 'custom' ? customConfig.laufzeitDays : (impact?.laufzeitDays ?? effectiveDays);
 
   const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
 
-  // Partner-Code Reach-Delta (komponenten-Ebene, nicht in Render-IIFE)
-  const _codeBaseReach = impactBase?.reachUniqueAbs ?? 0;
-  const _codeBoostReach = (activeCode && activeCode.reachBoostPct > 0) ? (impact?.reachUniqueAbs ?? 0) : 0;
-  const deltaPersonen = (activeCode && activeCode.reachBoostPct > 0)
-    ? round500(Math.max(0, _codeBoostReach - _codeBaseReach))
-    : 0;
-  const deltaPct = (activeCode && activeCode.reachBoostPct > 0 && _codeBaseReach > 0)
-    ? Math.round(((_codeBoostReach - _codeBaseReach) / _codeBaseReach) * 100)
-    : 0;
-  // Cap-Edge-Case: Code aktiv mit Boost, aber delta = 0 → Range aus impactBase verwenden
-  const isCapEdgeCase = !!(activeCode && activeCode.reachBoostPct > 0 && deltaPersonen === 0);
-  const displayReachImpact = (isCapEdgeCase && impactBase) ? impactBase : impact;
-
   const sweetSpot = useMemo(
-    () => path === 'A' && selectedRegionsFull.length > 0
+    () => mode === 'custom' && selectedRegionsFull.length > 0
       ? calculateSweetSpot(selectedRegionsFull, daysUntilVote)
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]
+    [mode, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]
   );
+
+  // ── Custom-Pfad derived values ──────────────────────────────────────────────
+  const customBudgetMax = useMemo(() =>
+    sweetSpot ? Math.ceil(sweetSpot.budget * 1.5 / 1000) * 1000 : 100000,
+    [sweetSpot]
+  );
+
+  const customLaufzeitMax = useMemo(() =>
+    daysUntilVote != null
+      ? Math.max(14, Math.min(CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK, daysUntilVote - 10))
+      : CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK,
+    [daysUntilVote]
+  );
+
+  const customMaxDoohShare = useMemo(() =>
+    maxDoohShareForRegion(selectedRegionsFull, customConfig.laufzeitDays),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRegionsFull.map(r => r.name).join(','), customConfig.laufzeitDays]
+  );
+
+  const customImpact: CustomImpactResult | null = useMemo(() => {
+    if (!selectedRegionsFull.length) return null;
+    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRegionsFull.map(r => r.name).join(','), customConfig]);
+
+  const customHints = useMemo(() => {
+    if (!customImpact) return [] as ReturnType<typeof evaluateCustomConfig>;
+    return evaluateCustomConfig(customConfig, selectedRegionsFull, customImpact, daysUntilVote ?? 999);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customImpact, daysUntilVote]);
+
+  // Pfad 'custom': Boosted-Variante für Partner-Code-Delta.
+  // calculateImpactCustom hat kein partnerCodeBoostPct-Param → Budget-Multiplikator als Approximation.
+  const customImpactBoosted: CustomImpactResult | null = useMemo(() => {
+    if (mode !== 'custom' || !activeCode || activeCode.reachBoostPct === 0
+        || !selectedRegionsFull.length) return null;
+    const boostedBudget = customConfig.budget * (1 + activeCode.reachBoostPct / 100);
+    return calculateImpactCustom({ ...customConfig, budget: boostedBudget, regions: selectedRegionsFull });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selectedRegionsFull.map(r => r.name).join(','), customConfig, activeCode?.reachBoostPct]);
+
+  // Partner-Code Reach-Delta — Pfad 'paket' (calculateImpact-basiert, 1:1 unverändert)
+  const _codeBaseReach  = impactBase?.reachUniqueAbs ?? 0;
+  const _codeBoostReach = (activeCode && activeCode.reachBoostPct > 0) ? (impact?.reachUniqueAbs ?? 0) : 0;
+  // Partner-Code Reach-Delta — Pfad 'custom' (Budget-Multiplikator-Approximation)
+  const _customBaseReach  = customImpact?.reach ?? 0;
+  const _customBoostReach = (activeCode && activeCode.reachBoostPct > 0 && customImpactBoosted)
+    ? customImpactBoosted.reach : 0;
+  // Aktiven Modus wählen
+  const _baseReach  = mode === 'custom' ? _customBaseReach  : _codeBaseReach;
+  const _boostReach = mode === 'custom' ? _customBoostReach : _codeBoostReach;
+  const deltaPersonen = (activeCode && activeCode.reachBoostPct > 0)
+    ? round500(Math.max(0, _boostReach - _baseReach))
+    : 0;
+  const deltaPct = (activeCode && activeCode.reachBoostPct > 0 && _baseReach > 0)
+    ? Math.round(((_boostReach - _baseReach) / _baseReach) * 100)
+    : 0;
+  // Cap-Edge-Case: Code aktiv mit Boost, aber delta = 0 → Sättigung erreicht
+  const isCapEdgeCase = !!(activeCode && activeCode.reachBoostPct > 0 && deltaPersonen === 0);
+  const displayReachImpact = (isCapEdgeCase && impactBase) ? impactBase : impact;
 
   const disabledPkgs = useMemo<Set<PaketKey>>(() => {
     if (!packages) return new Set<PaketKey>();
@@ -423,11 +485,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const recommendedPkg: PaketKey = packages?.recommended ?? 'praesenz';
 
   useEffect(() => {
-    if (path === 'B' && disabledPkgs.has(pkg)) {
+    if (mode === 'paket' && selectedPkg !== null && disabledPkgs.has(selectedPkg)) {
       handlePkgChange(recommendedPkg);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, disabledPkgs]);
+  }, [mode, disabledPkgs]);
 
   const zeitraumDates = useMemo(() => {
     if (!briefing.votingDate) return null;
@@ -443,27 +505,20 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   }, [briefing.votingDate]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  function switchPath(p: 'A' | 'B') {
-    if (p === 'B' && packages) {
-      setBudgetA(budget);
-      setDaysA(impact?.laufzeitDays ?? effectiveDays);
-      setPkg(recommendedPkg);
-      setBudget(packages[recommendedPkg].budget);
-      setDays(packages[recommendedPkg].laufzeitDays);
-    }
-    if (p === 'A') {
-      setBudget(budgetA);
-      setDays(daysA);
-    }
-    setPath(p);
+  function handleCustomConfigChange(patch: Partial<CustomConfig>) {
+    const next = { ...customConfig, ...patch };
+    setCustomConfig(next);
+    updateBriefing({ customConfig: next });
+  }
+
+  function handleSwitchToCustom() {
+    setMode('custom');
+    // Falls noch kein customConfig im briefing: aktuelle (Default-)Werte persistieren
+    updateBriefing({ pfad: 'custom', ...(!briefing.customConfig ? { customConfig } : {}) });
   }
 
   function handlePkgChange(key: PaketKey) {
-    setPkg(key);
-    if (packages) {
-      setBudget(packages[key].budget);
-      setDays(packages[key].laufzeitDays);
-    }
+    setSelectedPkg(key);
   }
 
   function handleBudgetChange(newBudget: number) {
@@ -473,19 +528,19 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     else if (effectiveDays > c.maxDays) setDays(c.maxDays);
   }
 
-  function handleDaysChange(newDays: number) {
-    setDays(newDays);
-    const coupled = coupleBudgetToLaufzeit(budgetRef.budget, budgetRef.days, newDays);
-    setBudget(coupled);
-  }
-
   function handleNext() {
+    // Pfad 'custom': customConfig ist bereits per Slider-onChange synchronisiert
+    if (mode === 'custom') {
+      nextStep();
+      return;
+    }
+    const budgetToSave = selectedPkg && packages ? packages[selectedPkg].budget : budget;
     updateBriefing({
-      selectedPackage: path === 'B' ? pkg : undefined,
-      budget,
+      selectedPackage: selectedPkg ?? undefined,
+      budget: budgetToSave,
       laufzeit: Math.round((impact?.laufzeitDays ?? effectiveDays) / 7),
-      freq:        Math.round(impact?.frequencyCampaign ?? (packages?.[pkg]?.frequencyCampaign ?? 5)),
-      reach:       impact?.reachUniqueAbs ?? 0,
+      freq:     Math.round(impact?.frequencyCampaign ?? (selectedPkg && packages ? packages[selectedPkg].frequencyCampaign : 5)),
+      reach:    impact?.reachUniqueAbs ?? 0,
       reachUniqueLowPct: impact?.reachUniqueLowPct ?? 0,
       reachUniqueHighPct: impact?.reachUniqueHighPct ?? 0,
       b2bReach: null,
@@ -513,15 +568,15 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   // ── Hint ───────────────────────────────────────────────────────────────────
   const filteredHinweise = impact ? impact.hinweise : [];
-  // Pfad B: Hint aus Paket-Dimensionen (§9.2); Pfad A: aus Optimizer-Hinweisen
-  const activeHintRaw: HintDisplay | null = path === 'B' && packages
-    ? pkgToHint(packages[pkg], regionName)
+  // Pfad 'paket': Hint aus Paket-Dimensionen (§9.2); Pfad 'custom': aus Optimizer-Hinweisen
+  const activeHintRaw: HintDisplay | null = mode === 'paket' && packages && selectedPkg
+    ? pkgToHint(packages[selectedPkg], regionName)
     : filteredHinweise.length > 0
       ? hinweisToDisplay(filteredHinweise[0], displayDays, regionName)
       : null;
   const activeHint: HintDisplay | null = (() => {
     if (!activeHintRaw) return null;
-    if (path !== 'A' || !sweetSpot || activeHintRaw.tone !== 'good') return activeHintRaw;
+    if (mode !== 'custom' || !sweetSpot || activeHintRaw.tone !== 'good') return activeHintRaw;
     const zoneLow  = sweetSpot.budget * 0.9;
     const zoneHigh = sweetSpot.budget * 1.2;
     const prefix =
@@ -560,12 +615,16 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .vio-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; background: white; border: 3px solid #6B4FBB; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px rgba(107,79,187,0.30); transition: transform .12s; }
         .vio-range::-webkit-slider-thumb:hover { transform: scale(1.1); }
         .vio-range::-moz-range-thumb { width: 22px; height: 22px; background: white; border: 3px solid #6B4FBB; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px rgba(107,79,187,0.30); }
+        .vio-pkg-card:focus-visible { outline: 2px solid #6B4FBB; outline-offset: 2px; }
+        .vio-pkg-card:not([tabindex="-1"]):hover { border-color: #9181CC !important; box-shadow: 0 2px 12px rgba(107,79,187,0.14) !important; }
         @media (max-width: 700px) {
           .vio-stage { grid-template-columns: 1fr !important; }
           .vio-sidebar { position: relative !important; top: 0 !important; }
-          .vio-ctrl-grid { grid-template-columns: 1fr !important; gap: 22px !important; }
           .vio-kpis { grid-template-columns: 1fr !important; }
           .vio-pkgs { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .vio-ctrl-grid { grid-template-columns: 1fr !important; gap: 22px !important; }
         }
       `}</style>
 
@@ -609,138 +668,217 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               Reichweite &amp; Paket
             </div>
 
-            {/* Path toggle + Pakete + Wirkungsindikator */}
-            <>
-            <div style={{ display: 'inline-flex', background: T.card, border: `1px solid ${T.line}`, borderRadius: 999, padding: 4, marginBottom: 24 }}>
-              {(['A', 'B'] as const).map(p => (
-                <button
-                  key={p} type="button" onClick={() => switchPath(p)}
-                  style={{
-                    border: 'none', padding: '9px 22px',
-                    fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 600,
-                    borderRadius: 999, cursor: 'pointer', transition: 'all 0.18s ease',
-                    background: path === p ? T.violet : 'transparent',
-                    color: path === p ? 'white' : T.slate,
-                    boxShadow: path === p ? '0 2px 8px rgba(107,79,187,0.25)' : 'none',
-                  }}
-                >
-                  {p === 'A' ? 'Eigenes Budget' : 'Pakete ansehen'}
-                </button>
-              ))}
-            </div>
-
-            {/* Pfad A: Budget-Slider + Startdatum */}
-            {path === 'A' && (
+            {/* Pfad 'custom': Vier-Slider-Cockpit */}
+            {mode === 'custom' && (
               <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '24px 28px', marginBottom: 18 }}>
-                <Slider label="Budget" value={budget} min={4000} max={100000} step={500}
-                  formatVal={fmtCHF} onChange={handleBudgetChange}
-                  marker={sweetSpot?.budget ?? null} />
-                <div style={{ marginTop: 24 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: T.slate, display: 'block', marginBottom: 6 }}>
-                    Startdatum <span style={{ fontWeight: 400, fontSize: 12 }}>(optional)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={briefing.startDate ?? ''}
-                    onChange={e => updateBriefing({ startDate: e.target.value })}
-                    style={{
-                      border: `1px solid ${T.line}`, borderRadius: 8, padding: '8px 12px',
-                      fontSize: 14, color: T.ink, fontFamily: "'Jost', sans-serif",
-                      width: '100%', boxSizing: 'border-box' as const,
-                    }}
+
+                {/* Primary Tier: Budget */}
+                <Slider
+                  label="Budget"
+                  value={customConfig.budget}
+                  min={4000}
+                  max={customBudgetMax}
+                  step={500}
+                  formatVal={fmtCHF}
+                  onChange={v => handleCustomConfigChange({ budget: v })}
+                />
+
+                {/* Primary Tier: Laufzeit */}
+                <div style={{ marginTop: 28 }}>
+                  <Slider
+                    label="Laufzeit"
+                    value={customConfig.laufzeitDays}
+                    min={14}
+                    max={customLaufzeitMax}
+                    step={1}
+                    formatVal={v => `${v} Tage`}
+                    onChange={v => handleCustomConfigChange({ laufzeitDays: v })}
                   />
-                </div>
-              </div>
-            )}
-
-            {/* Pfad B: package cards + feintuning */}
-            {path === 'B' && packages && (
-              <>
-                <div className="vio-pkgs">
-                  <PackageCards packages={packages} selectedPkg={pkg} onChange={handlePkgChange} disabledPkgs={disabledPkgs} recommendedPkg={recommendedPkg} />
-                </div>
-
-                {/* Feintuning accordion */}
-                <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 14, marginBottom: 18, overflow: 'hidden' }}>
-                  <div
-                    onClick={() => handleFeintuning(!feintuningOpen)}
-                    style={{ padding: '14px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' as const }}
-                  >
-                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 600, color: T.ink }}>Budget &amp; Laufzeit feintunen</span>
-                    <span style={{ color: T.slate, fontSize: 18, display: 'inline-block', transition: 'transform 0.2s', transform: feintuningOpen ? 'rotate(180deg)' : 'none' }}>⌄</span>
-                  </div>
-                  {feintuningOpen && (
-                    <div style={{ padding: '4px 20px 22px' }}>
-                      <div className="vio-ctrl-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, paddingTop: 14, borderTop: `1px solid ${T.line}` }}>
-                        <Slider label="Budget" value={budget} min={4000} max={100000} step={500}
-                          formatVal={fmtCHF} onChange={handleBudgetChange} />
-                        <Slider label="Laufzeit" value={effectiveDays}
-                          min={corridor.minDays} max={corridor.maxDays} step={1}
-                          formatVal={v => `${v} Tage`} onChange={handleDaysChange}
-                          minLabel={`${corridor.minDays} Tage`} maxLabel={`${corridor.maxDays} Tage`} />
+                  {briefing.votingDate && (() => {
+                    const voteD  = new Date(briefing.votingDate + 'T00:00:00');
+                    const startD = addDaysToDate(voteD, -customConfig.laufzeitDays);
+                    const d = startD.getDate().toString().padStart(2, '0');
+                    const m = (startD.getMonth() + 1).toString().padStart(2, '0');
+                    const y = startD.getFullYear();
+                    return (
+                      <div style={{ fontSize: 12, color: T.slate, fontWeight: 400, marginTop: 4 }}>
+                        Kampagne startet am {d}.{m}.{y}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
-              </>
+
+                {/* Secondary Tier: Frequenz + Kanal-Mix */}
+                <div className="vio-ctrl-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 28 }}>
+
+                  {/* Frequenz-Slider */}
+                  <div>
+                    <Slider
+                      label="Wochenfrequenz"
+                      value={customConfig.freqWeekly}
+                      min={3.0}
+                      max={10.0}
+                      step={0.1}
+                      formatVal={v => `${v.toFixed(1)}× /Woche`}
+                      onChange={v => handleCustomConfigChange({ freqWeekly: Math.round(v * 10) / 10 })}
+                    />
+                    <div style={{ fontSize: 12, color: T.slate, fontWeight: 500, marginTop: 4 }}>
+                      {customConfig.freqWeekly < 4.0
+                        ? 'Wahrnehmungs-Schwelle'
+                        : customConfig.freqWeekly <= 6.5
+                          ? 'Stabile Erinnerung'
+                          : 'Hochfrequenz · Wearout-Risiko'}
+                    </div>
+                  </div>
+
+                  {/* Kanal-Mix (AllocationBar) */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.slate, marginBottom: 10 }}>Kanal-Mix</div>
+                    <AllocationBar
+                      doohShare={customConfig.doohShare}
+                      onChange={v => handleCustomConfigChange({ doohShare: v })}
+                      maxDoohShare={customMaxDoohShare}
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
-            {/* Wirkungsindikator — identisch beide Pfade */}
-            <div style={{
-              background: T.ink, borderRadius: 18, padding: '32px 32px 28px',
-              color: 'white', marginBottom: 18, position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{ position: 'absolute', top: 0, right: 0, width: 240, height: 240, background: 'radial-gradient(circle at top right, rgba(107,79,187,0.5), transparent 60%)', pointerEvents: 'none' }} />
-
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
-                Deine Botschaft erreicht
+            {/* Pfad 'paket': Paket-Karten */}
+            {mode === 'paket' && packages && (
+              <div className="vio-pkgs">
+                <PackageCards packages={packages} selectedPkg={selectedPkg} onChange={handlePkgChange} disabledPkgs={disabledPkgs} recommendedPkg={recommendedPkg} />
               </div>
-              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
-                {displayReachImpact ? `${fmtNum(displayReachImpact.reachUniqueLow)} – ${fmtNum(displayReachImpact.reachUniqueHigh)}` : '—'}
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
+            )}
 
-              {/* 2 KPIs */}
-              <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kontaktdruck</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                    Ø {fCampaign}×
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>≈ {fWeekly}× / Woche</div>
+            {/* Wirkungsindikator — nur Pfad 'paket' mit Auswahl */}
+            {mode === 'paket' && selectedPkg !== null && (
+              <div style={{
+                background: T.ink, borderRadius: 18, padding: '32px 32px 28px',
+                color: 'white', marginBottom: 18, position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', top: 0, right: 0, width: 240, height: 240, background: 'radial-gradient(circle at top right, rgba(107,79,187,0.5), transparent 60%)', pointerEvents: 'none' }} />
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 14 }}>
+                  Deine Botschaft erreicht
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Zeitraum</div>
-                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                    {displayDays} Tage
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-                    {zeitraumDates ? `${zeitraumDates.start} – ${zeitraumDates.end}` : '—'}
-                  </div>
-                  {daysUntilVote != null && daysUntilVote > displayDays && (
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
-                      Effektive Kampagnenzeit bis Abstimmung: {daysUntilVote} Tage
+                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
+                  {displayReachImpact ? `${fmtNum(displayReachImpact.reachUniqueLow)} – ${fmtNum(displayReachImpact.reachUniqueHigh)}` : '—'}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
+
+                {/* 2 KPIs */}
+                <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+                  <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kontaktdruck</div>
+                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
+                      Ø {fCampaign}×
                     </div>
-                  )}
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>≈ {fWeekly}× / Woche</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Zeitraum</div>
+                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
+                      {displayDays} Tage
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+                      {zeitraumDates ? `${zeitraumDates.start} – ${zeitraumDates.end}` : '—'}
+                    </div>
+                    {daysUntilVote != null && daysUntilVote > displayDays && (
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                        Effektive Kampagnenzeit bis Abstimmung: {daysUntilVote} Tage
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Channel Mix Bar */}
-              <div style={{ marginTop: 22, position: 'relative', zIndex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
-                  <span>Kanal-Mix</span>
-                  <span>Klasse: {klasseLabel}</span>
-                </div>
-                <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden', display: 'flex', gap: 2 }}>
-                  <div style={{ width: `${doohPct}%`, background: '#B8A2F0', borderRadius: '999px 0 0 999px', transition: 'width 0.3s ease' }} />
-                  <div style={{ width: `${displayPct}%`, background: T.violet, borderRadius: '0 999px 999px 0', transition: 'width 0.3s ease' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-                  <span><strong style={{ color: 'white', fontWeight: 600 }}>{doohPct}%</strong> Digitale Plakate</span>
-                  <span><strong style={{ color: 'white', fontWeight: 600 }}>{displayPct}%</strong> Online-Display</span>
+                {/* Channel Mix Bar */}
+                <div style={{ marginTop: 22, position: 'relative', zIndex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>
+                    <span>Kanal-Mix</span>
+                    <span>Klasse: {klasseLabel}</span>
+                  </div>
+                  <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden', display: 'flex', gap: 2 }}>
+                    <div style={{ width: `${doohPct}%`, background: '#B8A2F0', borderRadius: '999px 0 0 999px', transition: 'width 0.3s ease' }} />
+                    <div style={{ width: `${displayPct}%`, background: T.violet, borderRadius: '0 999px 999px 0', transition: 'width 0.3s ease' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+                    <span><strong style={{ color: 'white', fontWeight: 600 }}>{doohPct}%</strong> Digitale Plakate</span>
+                    <span><strong style={{ color: 'white', fontWeight: 600 }}>{displayPct}%</strong> Online-Display</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Zone 2: Outcome-Panel (nur Pfad 'custom') */}
+            {mode === 'custom' && customImpact && (() => {
+              const satRatio     = customImpact.saturationRatio;
+              const reachCollapse = customImpact.reachPercent < 3;
+              const reachColor   = (reachCollapse || satRatio < 0.4) ? T.slate : T.violet;
+              const reachWeight  = satRatio >= 0.85 ? 800 : satRatio >= 0.4 ? 700 : 600;
+              const markerPct    = Math.min(satRatio, 1.5) / 1.5 * 100;
+              const satLabel     = customImpact.saturationPosition === 'unter'
+                ? 'Unter-investiert'
+                : customImpact.saturationPosition === 'sweet'
+                  ? 'Sweet Spot'
+                  : 'Über-investiert';
+              // Saturation bar: slate 0–26.7% · violet 26.7–66.7% · orange 66.7–100%
+              // corresponding to satRatio zones [0–0.4] [0.4–1.0] [1.0–1.5]
+              const satGradient = `linear-gradient(to right,
+                ${T.slate} 26.7%, ${T.violet} 26.7%, ${T.violet} 66.7%, ${T.warn} 66.7%
+              )`;
+              return (
+                <div style={{
+                  background: T.card,
+                  border: `1px solid ${reachCollapse ? 'rgba(200,75,75,0.5)' : T.line}`,
+                  borderRadius: 16, padding: '24px 28px', marginBottom: 18,
+                }}>
+                  {/* Reach Hauptzahl */}
+                  <div style={{
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    fontSize: 38, fontWeight: reachWeight, color: reachColor,
+                    letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 2,
+                  }}>
+                    {fmtNum(customImpact.reach)} Stimmberechtigte
+                  </div>
+                  <div style={{ fontSize: 15, color: reachColor, fontWeight: 500, marginBottom: 20, opacity: 0.8 }}>
+                    ({customImpact.reachPercent.toFixed(1)}%)
+                  </div>
+
+                  {/* Saturation-Indicator */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ position: 'relative', paddingTop: 3, paddingBottom: 3, marginBottom: 6 }}>
+                      <div style={{ height: 8, borderRadius: 4, background: satGradient }} />
+                      <div style={{
+                        position: 'absolute', top: 0,
+                        left: `${markerPct}%`,
+                        transform: 'translateX(-50%)',
+                        width: 14, height: 14, borderRadius: '50%',
+                        background: 'white',
+                        border: `2.5px solid ${T.violet}`,
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                        pointerEvents: 'none',
+                      }} />
+                    </div>
+                    <div style={{ fontSize: 12, color: T.slate, textAlign: 'center' as const, fontWeight: 500 }}>
+                      {satLabel}
+                    </div>
+                  </div>
+
+                  {/* Secondary stats */}
+                  <div style={{
+                    fontSize: reachCollapse ? 11 : 12,
+                    color: T.slate,
+                    opacity: reachCollapse ? 0.65 : 0.85,
+                    marginTop: 8,
+                  }}>
+                    GRPs: {Math.round(customImpact.grps)}
+                    {' · '}Impressionen: {fmtNum(customImpact.impressionsTotal)}
+                    {' · '}Screens: {customImpact.screens}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Partnercode */}
             <div style={{ marginBottom: 14 }}>
@@ -796,27 +934,78 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               )}
             </div>
 
-            {/* Hint (max 1) */}
-            {activeHint && <HintCard hint={activeHint} />}
-            </>
+            {/* Hint-Karten: nur Pfad 'paket' mit Auswahl */}
+            {mode === 'paket' && selectedPkg !== null && activeHint && (
+              <HintCard hint={activeHint} />
+            )}
+
+            {/* Zone 3: Custom-Hints — dreistufige Hint-Engine (einschraenkung → warning → insight) */}
+            {mode === 'custom' && customHints.length > 0 && (
+              <div style={{ marginBottom: 4 }}>
+                {customHints.map(h => {
+                  const s = CUSTOM_HINT_META[h.level];
+                  return (
+                    <div key={h.code} style={{
+                      borderRadius: 14, padding: '14px 18px', marginBottom: 10,
+                      display: 'flex', gap: 14, alignItems: 'flex-start',
+                      background: s.bg, border: `1px solid ${s.border}`,
+                      fontSize: 14, lineHeight: 1.5, fontFamily: "'Jost', sans-serif",
+                    }}>
+                      <div style={{
+                        width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: s.iconBg, color: 'white', fontSize: 14, fontWeight: 700, marginTop: 1,
+                      }}>{s.icon}</div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: s.titleColor, marginBottom: 2 }}>{h.title}</div>
+                        <div style={{ color: T.slate }}>{h.text}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* CTA row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 26 }}>
-              <button type="button" onClick={() => window.history.back()}
-                style={{ background: 'transparent', border: 'none', color: T.slate, fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: '10px 4px' }}>
-                ← Zurück
-              </button>
-              <button type="button" onClick={handleNext} disabled={budget >= 100000}
-                style={{
-                  background: budget >= 100000 ? '#9A90BB' : T.violet,
-                  color: 'white', border: 'none', padding: '14px 28px', borderRadius: 999,
-                  fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 600,
-                  cursor: budget >= 100000 ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 14px rgba(107,79,187,0.3)', transition: 'all 0.15s ease',
-                }}>
-                Weiter zur Zusammenfassung →
-              </button>
-            </div>
+            {(() => {
+              const nextDisabled = mode === 'paket' ? selectedPkg === null : false;
+              return (
+                <div style={{ marginTop: 26 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button type="button" onClick={() => window.history.back()}
+                      style={{ background: 'transparent', border: 'none', color: T.slate, fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: '10px 4px' }}>
+                      ← Zurück
+                    </button>
+                    <button type="button" onClick={handleNext} disabled={nextDisabled}
+                      style={{
+                        background: nextDisabled ? '#9A90BB' : T.violet,
+                        color: 'white', border: 'none', padding: '14px 28px', borderRadius: 999,
+                        fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 600,
+                        cursor: nextDisabled ? 'not-allowed' : 'pointer',
+                        boxShadow: nextDisabled ? 'none' : '0 4px 14px rgba(107,79,187,0.3)', transition: 'all 0.15s ease',
+                      }}>
+                      Weiter zur Zusammenfassung →
+                    </button>
+                  </div>
+                  {nextDisabled && mode === 'paket' && (
+                    <div style={{ fontSize: 13, color: T.slate, marginTop: 6, textAlign: 'right' as const }}>
+                      Bitte wähle ein Paket aus.
+                    </div>
+                  )}
+                  {mode === 'paket' && (
+                    <div style={{ textAlign: 'right' as const, marginTop: 10 }}>
+                      <button
+                        type="button"
+                        onClick={handleSwitchToCustom}
+                        style={{ background: 'none', border: 'none', color: T.slate, fontSize: 13, cursor: 'pointer', padding: 0, fontFamily: "'Jost', sans-serif" }}
+                      >
+                        Erweiterte Einstellungen →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* SIDEBAR */}
@@ -826,8 +1015,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               <SbRow label="Kampagnentyp" val="Politisch" />
               <SbRow label="Region" val={regionName} />
               {votingDateLabel && <SbRow label="Abstimmung" val={votingDateLabel} color={T.warn} />}
-              {path === 'B' && packages && (
-                <SbRow label="Paket" val={packages[pkg].name} color={T.violetDeep} />
+              {mode === 'paket' && packages && selectedPkg && (
+                <SbRow label="Paket" val={packages[selectedPkg].name} color={T.violetDeep} />
               )}
               <SbRow label="Budget" val={fmtCHF(displayBudget)} color={T.violetDeep} />
               <SbRow label="Laufzeit" val={`${displayDays} Tage`} last />

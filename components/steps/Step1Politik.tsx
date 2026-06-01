@@ -35,9 +35,9 @@ const SIDEBAR: Record<number, { title: string; text: string; tip: string }> = {
     tip:   '<strong>Tipp:</strong> Du kannst Kantone und Gemeinden kombinieren. Wir fassen alles zu einer einzigen Kampagne zusammen.',
   },
   3: {
-    title: 'Kein fixes Budget? Kein Problem.',
-    text:  'Viele starten ohne genaue Zahl. Du kannst einen Richtwert angeben – oder das Budget im nächsten Schritt mit dem Reichweiten-Tool bestimmen.',
-    tip:   "<strong>Mindestbudget:</strong> CHF 4'000 für DOOH + Display. Empfohlen: CHF 7'500–15'000 für spürbare Wirkung.",
+    title: 'Paket oder individuelle Planung?',
+    text:  'VIO-Pakete sind schnell gebucht: vorkonfigurierte Laufzeiten, Reichweiten und Budgets. Mit individueller Planung hast du volle Kontrolle über jede Einstellung.',
+    tip:   '<strong>Empfehlung:</strong> Starte mit einem VIO-Paket – optimal abgestimmt und in wenigen Klicks buchbar.',
   },
 };
 
@@ -126,8 +126,7 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
   const [screenHinweis, setScreenHinweis] = useState<string | null>(null);
 
   // Q3 state
-  const [budget, setBudget]           = useState(briefing.recommendedBudget ?? 15000);
-  const [budgetKnown, setBudgetKnown] = useState(!!briefing.recommendedBudget);
+  const [pfad, setPfad] = useState<'paket' | 'custom' | null>(briefing.pfad ?? null);
 
   // Summary pills (accumulated as user progresses)
   const [pills, setPills] = useState<string[]>([]);
@@ -220,17 +219,11 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
       politikRegion:     regions[0]?.name ?? '',
       politikRegionType: (regions[0]?.type as 'kanton' | 'stadt' | 'schweiz') ?? 'kanton',
       vioPackages:       vioData,
-      recommendedBudget:    budgetKnown ? budget : 0,
-      recommendedLaufzeit:  Math.round(rec.durationDays / 7),
-      budgetKnown,
-      ...(budgetKnown ? { budget } : {}),
+      recommendedLaufzeit: Math.round(rec.durationDays / 7),
+      pfad:              pfad!,
     });
     onComplete();
   };
-
-  // ─── Budget slider fill % ─────────────────────────────────────────────────
-
-  const budgetPct = Math.round(((budget - 4000) / (50000 - 4000)) * 100);
 
   // ─── Current sidebar content ──────────────────────────────────────────────
 
@@ -276,6 +269,9 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
         .sp1-region-opt:hover { background:${V_DIM}; }
         .sp1-date-pill { transition: all 0.18s; cursor: pointer; }
         .sp1-date-pill:hover { border-color: ${BORDER2} !important; box-shadow: ${SHADOW_H} !important; transform: translateY(-1px); }
+        .sp1-path-card { transition: all 0.18s; cursor: pointer; user-select: none; }
+        .sp1-path-card:hover { box-shadow: ${SHADOW_H} !important; }
+        .sp1-path-card:focus-visible { outline: 2px solid ${V}; outline-offset: 2px; }
       `}</style>
 
       <div style={{
@@ -616,86 +612,122 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
               </div>
             )}
 
-            {/* ────── Q3: Budget ────────────────────────────────────────────── */}
+            {/* ────── Q3: Pfad-Wahl ─────────────────────────────────────── */}
             {curQ === 3 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6 }}>Frage 3 von 3</div>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Hast du schon ein Budget?</div>
-                <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Wenn ja, gib uns einen Richtwert. Wenn nicht, kein Problem – du legst das im nächsten Schritt fest.</div>
+                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 21, fontWeight: 800, color: INK, letterSpacing: -0.3, marginBottom: 5, lineHeight: 1.25 }}>Wie möchtest du deine Kampagne planen?</div>
+                <div style={{ fontSize: 14, color: MUTED, marginBottom: 22, lineHeight: 1.55 }}>Wähle, wie du starten möchtest.</div>
 
-                {/* Budget display */}
-                <div style={{ marginBottom: 20 }}>
-                  {budgetKnown ? (
-                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 44, fontWeight: 800, color: V, letterSpacing: -2, lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      <span style={{ fontSize: 20, fontWeight: 600, color: MUTED, letterSpacing: 0 }}>CHF</span>
-                      <span>{budget.toLocaleString('de-CH').replace(/\./g, "'")}</span>
+                {/* Karte 1: Paket */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="sp1-path-card"
+                  onClick={() => setPfad('paket')}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPfad('paket'); } }}
+                  style={{
+                    position: 'relative' as const,
+                    background: pfad === 'paket' ? 'rgba(107,79,187,0.06)' : WHITE,
+                    border: `2px solid ${V}`,
+                    borderRadius: 14,
+                    padding: '16px 20px',
+                    marginBottom: 10,
+                    boxShadow: pfad === 'paket' ? `0 0 0 3px ${V_DIM}, ${SHADOW}` : SHADOW,
+                  }}
+                >
+                  {/* Empfohlen-Badge */}
+                  <div style={{
+                    position: 'absolute' as const, top: -10, right: 16,
+                    background: V, color: WHITE,
+                    fontSize: 10, fontWeight: 700, letterSpacing: 1,
+                    textTransform: 'uppercase' as const,
+                    padding: '4px 10px', borderRadius: 999,
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}>Empfohlen</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                      border: `2px solid ${pfad === 'paket' ? V : BORDER2}`,
+                      background: pfad === 'paket' ? V : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}>
+                      {pfad === 'paket' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: WHITE }} />}
                     </div>
-                  ) : (
-                    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 44, fontWeight: 800, color: MUTED, letterSpacing: -2, lineHeight: 1 }}>
-                      Noch offen
+                    <div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 800, color: INK, marginBottom: 3 }}>
+                        VIO empfiehlt mir ein passendes Paket
+                      </div>
+                      <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
+                        Schnell starten mit vorkonfigurierten Laufzeiten, Reichweiten und Budgets.
+                      </div>
                     </div>
-                  )}
-                  <div style={{ fontSize: 13, color: MUTED, marginTop: 4, opacity: budgetKnown ? 1 : 0.4 }}>Mindestbudget: CHF 4&apos;000</div>
-                </div>
-
-                {/* Slider */}
-                <div style={{
-                  transition: 'opacity 0.3s, max-height 0.3s',
-                  maxHeight: budgetKnown ? 200 : 0,
-                  overflow: 'hidden',
-                  opacity: budgetKnown ? 1 : 0.3,
-                  pointerEvents: budgetKnown ? 'auto' : 'none',
-                }}>
-                  <input
-                    type="range"
-                    className="sp1-range"
-                    min={4000}
-                    max={50000}
-                    step={500}
-                    value={budget}
-                    onChange={e => setBudget(Number(e.target.value))}
-                    style={{
-                      background: `linear-gradient(to right, ${V} ${budgetPct}%, ${BORDER} ${budgetPct}%)`,
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: MUTED, marginBottom: 20 }}>
-                    <span>CHF 4&apos;000</span>
-                    <span>CHF 50&apos;000+</span>
                   </div>
                 </div>
 
-                {/* "Ich weiss es noch nicht" toggle */}
-                <button
-                  onClick={() => setBudgetKnown(k => !k)}
-                  className={`sp1-nob${!budgetKnown ? ' active' : ''}`}
+                {/* Karte 2: Custom */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="sp1-path-card"
+                  onClick={() => setPfad('custom')}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPfad('custom'); } }}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 99,
-                    border: `1.5px dashed ${BORDER2}`, background: 'transparent',
-                    fontFamily: "'Jost', sans-serif", fontSize: 13, fontWeight: 500, color: MUTED,
-                    cursor: 'pointer', transition: 'all 0.18s', marginBottom: 24,
+                    background: pfad === 'custom' ? 'rgba(107,79,187,0.06)' : WHITE,
+                    border: pfad === 'custom' ? `2px solid ${V}` : `1px solid ${BORDER}`,
+                    borderRadius: 14,
+                    padding: '16px 20px',
+                    marginBottom: 24,
+                    boxShadow: pfad === 'custom' ? `0 0 0 3px ${V_DIM}, ${SHADOW}` : SHADOW,
                   }}
                 >
-                  {budgetKnown ? 'Ich weiss es noch nicht' : 'Budget doch eingeben'}
-                </button>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 2,
+                      border: `2px solid ${pfad === 'custom' ? V : BORDER2}`,
+                      background: pfad === 'custom' ? V : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}>
+                      {pfad === 'custom' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: WHITE }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 800, color: INK, marginBottom: 3 }}>
+                        Kampagne individuell planen
+                      </div>
+                      <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
+                        Budget, Laufzeit und Reichweite selber festlegen. Für erfahrene Planer.
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
                   <button onClick={back} className="sp1-btn-back" style={{ padding: '11px 18px', borderRadius: 10, border: `1.5px solid ${BORDER}`, background: WHITE, fontFamily: "'Jost', sans-serif", fontSize: 14, fontWeight: 500, color: MUTED, cursor: 'pointer', transition: 'all 0.18s', flexShrink: 0 }}>← Zurück</button>
-                  <button
-                    onClick={finish}
-                    style={{
-                      flex: 1, padding: '13px 24px', borderRadius: 10, border: 'none',
-                      background: V,
-                      fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700,
-                      color: WHITE,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 18px rgba(107,79,187,0.28)',
-                      transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    }}
-                    className="sp1-btn-next"
-                  >
-                    Zum Budget &amp; Reichweite →
-                  </button>
+                  <div style={{ flex: 1 }}>
+                    <button
+                      onClick={finish}
+                      disabled={pfad === null}
+                      style={{
+                        width: '100%', padding: '13px 24px', borderRadius: 10, border: 'none',
+                        background: pfad === null ? BORDER : V,
+                        fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700,
+                        color: pfad === null ? MUTED : WHITE,
+                        cursor: pfad === null ? 'not-allowed' : 'pointer',
+                        boxShadow: pfad === null ? 'none' : '0 4px 18px rgba(107,79,187,0.28)',
+                        transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}
+                      className="sp1-btn-next"
+                    >
+                      Weiter →
+                    </button>
+                    {pfad === null && (
+                      <div style={{ fontSize: 13, color: MUTED, marginTop: 6, textAlign: 'center' as const }}>
+                        Bitte wähle eine Option.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

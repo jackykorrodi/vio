@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
+import type { CustomConfig } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { calculateImpact } from '@/lib/preislogik';
-import type { PaketKey } from '@/lib/preislogik';
+import { calculateImpact, calculateImpactCustom } from '@/lib/preislogik';
+import type { PaketKey, CustomImpactResult } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import doohScreensRaw from '@/lib/dooh-screens.json';
@@ -100,17 +101,26 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
     };
   });
 
+  const isCustom = briefing.pfad === 'custom' && !!briefing.customConfig;
+  const customConfig: CustomConfig | null = isCustom ? (briefing.customConfig ?? null) : null;
+  const customImpact: CustomImpactResult | null = useMemo(() => {
+    if (!isCustom || !customConfig || !selectedRegionsFull.length) return null;
+    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCustom, selectedRegionsFull.map(r => r.name).join(','),
+    customConfig?.budget, customConfig?.laufzeitDays, customConfig?.freqWeekly, customConfig?.doohShare]);
+
   const vioData = briefing.vioPackages ?? null;
   const selectedPkg = (briefing.selectedPackage ?? vioData?.recommendedPackage ?? 'praesenz') as PaketKey;
   const pkg = vioData?.packages?.[selectedPkg] ?? null;
 
-  // Budget/laufzeit from briefing — Step 2 is source of truth, no local state
-  const budget = briefing.budget && briefing.budget > 0
-    ? briefing.budget
-    : (pkg?.finalBudget ?? 6000);
-  const laufzeitWeeks = briefing.laufzeit && briefing.laufzeit > 0
-    ? briefing.laufzeit
-    : (pkg ? Math.round(pkg.durationDays / 7) : 4);
+  // Budget/laufzeit — custom: aus customConfig, paket: aus briefing
+  const budget = isCustom
+    ? customConfig!.budget
+    : (briefing.budget && briefing.budget > 0 ? briefing.budget : (pkg?.finalBudget ?? 6000));
+  const laufzeitWeeks = isCustom
+    ? customConfig!.laufzeitDays / 7
+    : (briefing.laufzeit && briefing.laufzeit > 0 ? briefing.laufzeit : (pkg ? Math.round(pkg.durationDays / 7) : 4));
 
   const fmtCHF = (n: number) => `CHF ${Math.round(n).toLocaleString('de-CH')}`;
   const inhabitants = getInhabitants((briefing.selectedRegions ?? []).map(r => r.name));
@@ -130,11 +140,13 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const doohScreenCount = doohEntry?.screens_politik ?? 0;
 
   const { startISO: campaignStartISO, endISO: campaignEndISO } = briefing.votingDate
-    ? calcCampaignDates(briefing.votingDate, laufzeitWeeks)
+    ? (isCustom && customConfig
+        ? { startISO: addDays(briefing.votingDate, -customConfig.laufzeitDays), endISO: briefing.votingDate }
+        : calcCampaignDates(briefing.votingDate, laufzeitWeeks))
     : { startISO: '', endISO: '' };
 
   const pkgKey = briefing.selectedPackage as PaketKey | undefined;
-  const impact = selectedRegionsFull.length > 0
+  const impact = (!isCustom && selectedRegionsFull.length > 0)
     ? calculateImpact({
         budget,
         laufzeitDays: laufzeitWeeks * 7,
@@ -143,22 +155,35 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
       })
     : null;
 
-  const stimmTotal = vioData?.eligibleVotersTotal ?? briefing.totalStimmber ?? 0;
+  const stimmTotal = vioData?.eligibleVotersTotal ?? briefing.totalStimmber
+    ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
   const customReachPeople = impact?.reachUniqueAbs ?? pkg?.targetReachPeople ?? 0;
-  const displayPersonen = Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
+  const displayPersonen = isCustom
+    ? Math.round((customImpact?.reach ?? 0) * (1 - (customConfig?.doohShare ?? 0.3)))
+    : Math.round(customReachPeople * (impact?.displayShare ?? 0.3));
 
   const daysUntilVote = vioData?.daysUntilVote ?? (briefing.votingDate
     ? Math.ceil((new Date(briefing.votingDate + 'T00:00:00').getTime() - new Date().getTime()) / 86400000)
     : null);
 
   const handleNext = () => {
-    updateBriefing({
-      startDate:   campaignStartISO || todayISO(),
-      reach:       impact?.reachUniqueAbs ?? pkg?.targetReachPeople ?? 0,
-      reachUniqueLowPct: impact?.reachUniqueLowPct ?? 0,
-      reachUniqueHighPct: impact?.reachUniqueHighPct ?? 0,
-      b2bReach:    null,
-    });
+    if (isCustom) {
+      updateBriefing({
+        startDate: campaignStartISO || todayISO(),
+        reach: customImpact?.reach ?? 0,
+        reachUniqueLowPct: 0,
+        reachUniqueHighPct: 0,
+        b2bReach: null,
+      });
+    } else {
+      updateBriefing({
+        startDate:   campaignStartISO || todayISO(),
+        reach:       impact?.reachUniqueAbs ?? pkg?.targetReachPeople ?? 0,
+        reachUniqueLowPct: impact?.reachUniqueLowPct ?? 0,
+        reachUniqueHighPct: impact?.reachUniqueHighPct ?? 0,
+        b2bReach:    null,
+      });
+    }
     nextStep();
   };
 
@@ -202,10 +227,47 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
         {/* ── MAIN ── */}
         <div style={{ flex: 1, minWidth: 0 }}>
 
-          {/* Hero: Wirkungsindikator */}
-          {impact && (
+          {/* Hero: Wirkungsindikator (paket only) */}
+          {!isCustom && impact && (
             <ImpactIndicator impact={impact} regionName={regionName} />
           )}
+          {/* Hero: Custom Reach-Block */}
+          {isCustom && customImpact && (() => {
+            const reachBarPct = Math.min(customImpact.reachPercent, 100);
+            const satRatio = customImpact.saturationRatio;
+            const reachColor = satRatio < 0.4 ? '#7A7596' : satRatio <= 1.0 ? '#6B4FBB' : '#BA7517';
+            const reachWeight = satRatio < 0.4 ? 700 : 800;
+            return (
+              <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 16, padding: 28 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7A7596', marginBottom: 8 }}>
+                  Deine Botschaft erreicht
+                </div>
+                <div style={{ fontSize: 48, fontWeight: reachWeight, color: reachColor, lineHeight: 1, marginBottom: 4, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  ~{Math.round(customImpact.reach).toLocaleString('de-CH')}
+                </div>
+                <div style={{ fontSize: 14, color: '#7A7596', marginBottom: 16 }}>
+                  Personen &nbsp;·&nbsp; {customImpact.reachPercent.toFixed(1)}% der Stimmberechtigten
+                </div>
+                <div style={{ height: 8, borderRadius: 4, background: 'rgba(107,79,187,0.12)', overflow: 'hidden', marginBottom: 16 }}>
+                  <div style={{ height: '100%', width: `${reachBarPct}%`, background: reachColor, borderRadius: 4, transition: 'width 0.3s ease' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, color: '#7A7596', fontWeight: 600, marginBottom: 4 }}>Frequenz</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{customConfig!.freqWeekly}×/Wo</div>
+                  </div>
+                  <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, color: '#7A7596', fontWeight: 600, marginBottom: 4 }}>Laufzeit</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{customConfig!.laufzeitDays} Tage</div>
+                  </div>
+                  <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, color: '#7A7596', fontWeight: 600, marginBottom: 4 }}>Kanal-Mix</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{Math.round(customConfig!.doohShare * 100)}% DOOH</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* "Gespräch buchen" inline card on mobile (budget >= 20k) */}
           {isMobile && budget >= 20000 && (
@@ -221,8 +283,8 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
             </div>
           )}
 
-          {/* Kampagnen-Hinweise */}
-          {impact && impact.hinweise.length > 0 && (
+          {/* Kampagnen-Hinweise (paket only) */}
+          {!isCustom && impact && impact.hinweise.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <CampaignHint
                 hinweise={impact.hinweise.filter(h => h.code !== 'ok')}
@@ -294,11 +356,24 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
             {/* Mini-Summary Card */}
             <div style={{ background: 'white', border: '1px solid rgba(107,79,187,0.10)', borderRadius: 14, padding: 18 }}>
               <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#2D1F52', marginBottom: 10 }}>Deine Kampagne</div>
-              <SbRow label="Paket" value={pkg?.name ?? selectedPkg.charAt(0).toUpperCase() + selectedPkg.slice(1)} />
-              <SbRow label="Budget" value={fmtCHF(budget)} valueColor="#6B4FBB" />
-              <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} />
-              <SbRow label="Start" value={campaignStartISO ? fmtMed(campaignStartISO) : '—'} />
-              <SbRow label="Wahlsonntag" value={briefing.votingDate ? fmtMed(briefing.votingDate) : '—'} valueColor="#BA7517" last />
+              {isCustom && customConfig ? (
+                <>
+                  <SbRow label="Budget" value={fmtCHF(customConfig.budget)} valueColor="#6B4FBB" />
+                  <SbRow label="Laufzeit" value={`${customConfig.laufzeitDays} Tage`} />
+                  <SbRow label="Frequenz" value={`${customConfig.freqWeekly}×/Wo`} />
+                  <SbRow label="Kanal-Mix" value={`${Math.round(customConfig.doohShare * 100)}% DOOH`} />
+                  <SbRow label="Start" value={campaignStartISO ? fmtMed(campaignStartISO) : '—'} />
+                  <SbRow label="Wahlsonntag" value={briefing.votingDate ? fmtMed(briefing.votingDate) : '—'} valueColor="#BA7517" last />
+                </>
+              ) : (
+                <>
+                  <SbRow label="Paket" value={pkg?.name ?? selectedPkg.charAt(0).toUpperCase() + selectedPkg.slice(1)} />
+                  <SbRow label="Budget" value={fmtCHF(budget)} valueColor="#6B4FBB" />
+                  <SbRow label="Laufzeit" value={`${laufzeitWeeks} Woche${laufzeitWeeks !== 1 ? 'n' : ''}`} />
+                  <SbRow label="Start" value={campaignStartISO ? fmtMed(campaignStartISO) : '—'} />
+                  <SbRow label="Wahlsonntag" value={briefing.votingDate ? fmtMed(briefing.votingDate) : '—'} valueColor="#BA7517" last />
+                </>
+              )}
             </div>
 
             {/* Gespräch buchen — nur ab CHF 20'000 */}
