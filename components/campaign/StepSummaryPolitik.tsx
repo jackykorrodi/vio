@@ -105,7 +105,8 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
   const customConfig: CustomConfig | null = isCustom ? (briefing.customConfig ?? null) : null;
   const customImpact: CustomImpactResult | null = useMemo(() => {
     if (!isCustom || !customConfig || !selectedRegionsFull.length) return null;
-    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull });
+    const start = customConfig.campaignStart ? new Date(customConfig.campaignStart) : undefined;
+    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull, campaignStart: start });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCustom, selectedRegionsFull.map(r => r.name).join(','),
     customConfig?.budget, customConfig?.laufzeitDays, customConfig?.freqWeekly, customConfig?.doohShare]);

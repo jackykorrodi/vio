@@ -6,17 +6,19 @@ import type { CustomConfig } from '@/lib/types';
 import {
   calculateImpact, buildPackages, getLaufzeitCorridor,
   calculateSweetSpot, calculateImpactCustom, PKG_CAP_LEVEL,
+  calculateSweetSpotCustom, SETUP_VORLAUF_WERKTAGE,
+  COACH_BUDGET_LOW_RATIO, COACH_BUDGET_HIGH_RATIO,
+  REACH_CURVE_K, WIRKUNGSFOKUS_FREQUENZ,
 } from '@/lib/preislogik';
 import type { CustomImpactResult } from '@/lib/preislogik';
+import { addBusinessDays } from '@/lib/business-days';
 import { evaluateCustomConfig, maxDoohShareForRegion } from '@/lib/custom-hints';
-import type { CustomHint } from '@/lib/custom-hints';
 import { validatePartnerCode } from '@/lib/partner-codes-mock';
 import type { PartnerCode } from '@/lib/partner-codes-mock';
 import type { PaketKey, PakeResult, Paket, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import AllocationBar from '@/components/campaign/AllocationBar';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -204,6 +206,106 @@ function Slider({ label, value, min, max, step, formatVal, onChange, minLabel, m
   );
 }
 
+// ─── Campaign Timeline ────────────────────────────────────────────────────────
+function CampaignTimeline({
+  voteDate, fruehesterStart, laufzeitWochen, onChange,
+}: {
+  voteDate: Date; fruehesterStart: Date; laufzeitWochen: number;
+  onChange: (wochen: number) => void;
+}) {
+  const totalMs   = voteDate.getTime() - fruehesterStart.getTime();
+  const totalDays = totalMs / 86400000;
+  const maxWeeks  = Math.max(2, Math.floor(totalDays / 7));
+  const minWeeks  = 2;
+
+  const campaignStart = new Date(voteDate.getTime() - laufzeitWochen * 7 * 86400000);
+  const handlePct = totalMs > 0
+    ? Math.max(0, Math.min(100, ((campaignStart.getTime() - fruehesterStart.getTime()) / totalMs) * 100))
+    : 0;
+
+  function pctToWeeks(pct: number): number {
+    const msFromLeft = fruehesterStart.getTime() + (pct / 100) * totalMs;
+    const daysToVote = (voteDate.getTime() - msFromLeft) / 86400000;
+    return Math.max(minWeeks, Math.min(maxWeeks, Math.round(daysToVote / 7)));
+  }
+
+  function handleDrag(e: React.PointerEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct  = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    onChange(pctToWeeks(pct));
+  }
+
+  const tickStep = maxWeeks > 16 ? 4 : maxWeeks > 8 ? 2 : 1;
+  const ticks: { pct: number; weeks: number }[] = [];
+  for (let w = maxWeeks; w >= minWeeks; w -= tickStep) {
+    const d = new Date(voteDate.getTime() - w * 7 * 86400000);
+    if (d.getTime() >= fruehesterStart.getTime()) {
+      ticks.push({ pct: ((d.getTime() - fruehesterStart.getTime()) / totalMs) * 100, weeks: w });
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Kampagnenfenster</span>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>
+          {laufzeitWochen}&nbsp;{laufzeitWochen === 1 ? 'Woche' : 'Wochen'}&nbsp;·&nbsp;{fmtDateShort(campaignStart)}
+        </span>
+      </div>
+      <div
+        style={{ position: 'relative', height: 44, cursor: 'pointer', userSelect: 'none' as const, touchAction: 'none', margin: '0 0 4px' }}
+        onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); handleDrag(e); }}
+        onPointerMove={e => { if (e.buttons === 0) return; handleDrag(e); }}
+      >
+        {/* Bahn */}
+        <div style={{ position: 'absolute', top: 18, left: 0, right: 0, height: 8, background: T.lineStrong, borderRadius: 999 }} />
+        {/* Sperrzone-Indikator (linke Kante = frühester Start) */}
+        <div style={{
+          position: 'absolute', top: 18, left: 0, width: 14, height: 8,
+          borderRadius: '999px 0 0 999px', pointerEvents: 'none',
+          background: 'repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(107,79,187,0.2) 3px,rgba(107,79,187,0.2) 6px)',
+        }} />
+        {/* Aktive Zone (handle → rechts) */}
+        <div style={{
+          position: 'absolute', top: 18, right: 0, height: 8,
+          width: `${100 - handlePct}%`,
+          background: T.violet, borderRadius: '0 999px 999px 0', pointerEvents: 'none',
+        }} />
+        {/* Wochen-Ticks */}
+        {ticks.map(t => (
+          <div key={t.weeks}
+            onPointerDown={e => { e.stopPropagation(); onChange(t.weeks); }}
+            style={{
+              position: 'absolute', top: 14, left: `${t.pct}%`,
+              transform: 'translateX(-50%)',
+              width: 2, height: 16, background: T.line, borderRadius: 1, cursor: 'pointer',
+            }}
+          />
+        ))}
+        {/* Handle */}
+        <div style={{
+          position: 'absolute', top: 11,
+          left: `${handlePct}%`, transform: 'translateX(-50%)',
+          width: 22, height: 22, borderRadius: '50%',
+          background: 'white', border: `3px solid ${T.violet}`,
+          boxShadow: '0 2px 8px rgba(107,79,187,0.30)', pointerEvents: 'none',
+        }} />
+        {/* Wahltag-Marker rechts */}
+        <div style={{
+          position: 'absolute', top: 11, right: 0, transform: 'translateX(50%)',
+          width: 22, height: 22, borderRadius: '50%',
+          background: T.warn, border: '3px solid white',
+          boxShadow: '0 2px 6px rgba(232,168,56,0.4)', pointerEvents: 'none',
+        }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate }}>
+        <span>{fmtDateShort(fruehesterStart)} (frühester Start)</span>
+        <span style={{ color: T.warn }}>{fmtDateShort(voteDate)} (Wahltag)</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Hint display ────────────────────────────────────────────────────────────
 type HintTone = 'warn' | 'info' | 'good' | 'violet';
 interface HintDisplay { tone: HintTone; title: string; text: string }
@@ -215,14 +317,6 @@ const HINT_META: Record<HintTone, { bg: string; border: string; iconBg: string; 
   violet: { bg: T.highlight, border: T.lineStrong, iconBg: T.violet, titleColor: T.violetDeep, icon: '★' },
 };
 
-// ─── Custom-Pfad Hint-Mapping ─────────────────────────────────────────────────
-// Separates Mapping für dreistufige CustomHint-Engine (Sprint 2).
-// Bestehende HINT_META für Pfad 'paket' bleibt 1:1.
-const CUSTOM_HINT_META: Record<CustomHint['level'], { bg: string; border: string; iconBg: string; titleColor: string; icon: string }> = {
-  einschraenkung: { bg: '#FEF2F2', border: '#C84B4B', iconBg: '#991B1B', titleColor: '#991B1B', icon: '!' },
-  warning:        { bg: '#FEF3E2', border: '#D97706', iconBg: '#D97706', titleColor: '#92400E', icon: '⚠' },
-  insight:        { bg: '#EFF6FF', border: '#3B82F6', iconBg: '#3B82F6', titleColor: '#1E40AF', icon: 'i' },
-} as const;
 
 function hinweisToDisplay(h: Hinweis, _days: number, _regionName: string): HintDisplay | null {
   const { code, text } = h;
@@ -336,7 +430,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     const safeDays = daysUntilVote != null
       ? Math.max(14, Math.min(CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK, daysUntilVote - 10))
       : 28;
-    return { budget: 8000, laufzeitDays: safeDays, freqWeekly: 5, doohShare: 0.6 };
+    return { budget: 8000, laufzeitDays: safeDays, freqWeekly: 5, doohShare: 0.6, wirkungsfokus: 'ausgewogen' };
   });
   const [activeCode, setActiveCode]   = useState<PartnerCode | null>(() =>
     briefing.partnerCode ? validatePartnerCode(briefing.partnerCode) : null
@@ -428,23 +522,45 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     [daysUntilVote]
   );
 
-  const customMaxDoohShare = useMemo(() =>
-    maxDoohShareForRegion(selectedRegionsFull, customConfig.laufzeitDays),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedRegionsFull.map(r => r.name).join(','), customConfig.laufzeitDays]
-  );
-
   const customImpact: CustomImpactResult | null = useMemo(() => {
     if (!selectedRegionsFull.length) return null;
-    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull });
+    const start = customConfig.campaignStart ? new Date(customConfig.campaignStart) : undefined;
+    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull, campaignStart: start });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRegionsFull.map(r => r.name).join(','), customConfig]);
 
-  const customHints = useMemo(() => {
-    if (!customImpact) return [] as ReturnType<typeof evaluateCustomConfig>;
+  const customEval = useMemo(() => {
+    if (!customImpact) return null;
     return evaluateCustomConfig(customConfig, selectedRegionsFull, customImpact, daysUntilVote ?? 999);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customImpact, daysUntilVote]);
+
+  // ── Custom-Pfad: Zeitachse + Sweet-Spot ────────────────────────────────────
+  const fruehesterStart = useMemo(() => addBusinessDays(new Date(), SETUP_VORLAUF_WERKTAGE), []);
+
+  const voteDate = useMemo(() =>
+    briefing.votingDate ? new Date(briefing.votingDate + 'T00:00:00') : null,
+    [briefing.votingDate]
+  );
+
+  // laufzeitWochen aus customConfig.laufzeitDays (immer ganze Wochen)
+  const laufzeitWochen = Math.max(2, Math.round(customConfig.laufzeitDays / 7));
+
+  // Sweet-Spot Berechnung — doohAnteil aus customImpact ableiten
+  const doohAnteilForSS = customImpact && customConfig.budget > 0
+    ? customImpact.doohBudget / customConfig.budget
+    : maxDoohShareForRegion(selectedRegionsFull, customConfig.laufzeitDays);
+
+  const sweetSpotCustom = useMemo(() => {
+    if (!selectedRegionsFull.length) return null;
+    return calculateSweetSpotCustom(
+      selectedRegionsFull,
+      customConfig.wirkungsfokus ?? 'ausgewogen',
+      customConfig.laufzeitDays,
+      doohAnteilForSS,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRegionsFull.map(r => r.name).join(','), customConfig.wirkungsfokus, customConfig.laufzeitDays, doohAnteilForSS]);
 
   // Pfad 'custom': Boosted-Variante für Partner-Code-Delta.
   // calculateImpactCustom hat kein partnerCodeBoostPct-Param → Budget-Multiplikator als Approximation.
@@ -452,7 +568,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     if (mode !== 'custom' || !activeCode || activeCode.reachBoostPct === 0
         || !selectedRegionsFull.length) return null;
     const boostedBudget = customConfig.budget * (1 + activeCode.reachBoostPct / 100);
-    return calculateImpactCustom({ ...customConfig, budget: boostedBudget, regions: selectedRegionsFull });
+    const start = customConfig.campaignStart ? new Date(customConfig.campaignStart) : undefined;
+    return calculateImpactCustom({ ...customConfig, budget: boostedBudget, regions: selectedRegionsFull, campaignStart: start });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, selectedRegionsFull.map(r => r.name).join(','), customConfig, activeCode?.reachBoostPct]);
 
@@ -667,79 +784,108 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               Reichweite &amp; Paket
             </div>
 
-            {/* Pfad 'custom': Vier-Slider-Cockpit */}
+            {/* Pfad 'custom': Drei-Hebel-Cockpit */}
             {mode === 'custom' && (
               <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '24px 28px', marginBottom: 18 }}>
 
-                {/* Primary Tier: Budget */}
-                <Slider
-                  label="Budget"
-                  value={customConfig.budget}
-                  min={4000}
-                  max={customBudgetMax}
-                  step={500}
-                  formatVal={fmtCHF}
-                  onChange={v => handleCustomConfigChange({ budget: v })}
-                />
+                {/* HEBEL 3: Wirkungsfokus-Toggle */}
+                <div style={{ marginBottom: 28 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.slate, marginBottom: 10 }}>Wirkungsfokus</div>
+                  <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${T.line}` }}>
+                    {(['breit', 'ausgewogen', 'verankerung'] as const).map((key, i) => {
+                      const labels = { breit: 'Breite Wirkung', ausgewogen: 'Ausgewogen', verankerung: 'Verankerung' };
+                      const active = (customConfig.wirkungsfokus ?? 'ausgewogen') === key;
+                      return (
+                        <button key={key} type="button"
+                          onClick={() => handleCustomConfigChange({ wirkungsfokus: key })}
+                          style={{
+                            flex: 1, border: 'none',
+                            borderLeft: i > 0 ? `1px solid ${T.line}` : 'none',
+                            background: active ? T.violet : T.card,
+                            color: active ? 'white' : T.slate,
+                            fontFamily: "'Jost', sans-serif",
+                            fontSize: 13, fontWeight: active ? 600 : 400,
+                            padding: '9px 4px', cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >{labels[key]}</button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-                {/* Primary Tier: Laufzeit */}
-                <div style={{ marginTop: 28 }}>
-                  <Slider
-                    label="Laufzeit"
-                    value={customConfig.laufzeitDays}
-                    min={14}
-                    max={customLaufzeitMax}
-                    step={1}
-                    formatVal={v => `${v} Tage`}
-                    onChange={v => handleCustomConfigChange({ laufzeitDays: v })}
+                {/* HEBEL 1: Budget mit Sweet-Spot-Zone */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Budget</span>
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{fmtCHF(customConfig.budget)}</span>
+                  </div>
+                  <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
+                    {/* Filled track */}
+                    <div style={{
+                      position: 'absolute', left: 0, top: 0, height: '100%',
+                      width: `${customBudgetMax > 4000 ? Math.max(0, Math.min(100, ((customConfig.budget - 4000) / (customBudgetMax - 4000)) * 100)) : 0}%`,
+                      background: T.violet, borderRadius: 999, pointerEvents: 'none',
+                    }} />
+                    {/* Sweet-Spot band */}
+                    {sweetSpotCustom && sweetSpotCustom.budget > 0 && customBudgetMax > 4000 && (() => {
+                      const range     = customBudgetMax - 4000;
+                      const leftPct   = Math.max(0, Math.min(100, ((COACH_BUDGET_LOW_RATIO  * sweetSpotCustom.budget - 4000) / range) * 100));
+                      const rightPct  = Math.max(0, Math.min(100, ((COACH_BUDGET_HIGH_RATIO * sweetSpotCustom.budget - 4000) / range) * 100));
+                      const markerPct = Math.max(0, Math.min(100, ((sweetSpotCustom.budget - 4000) / range) * 100));
+                      return (
+                        <>
+                          <div style={{
+                            position: 'absolute', top: -3, height: 10,
+                            left: `${leftPct}%`, width: `${Math.max(0, rightPct - leftPct)}%`,
+                            background: 'rgba(107,79,187,0.18)', borderRadius: 999, pointerEvents: 'none',
+                          }} />
+                          <div style={{
+                            position: 'absolute', top: -4, width: 12, height: 12,
+                            left: `${markerPct}%`, transform: 'translateX(-50%)',
+                            background: T.violet, borderRadius: '50%', opacity: 0.7, pointerEvents: 'none',
+                          }} />
+                        </>
+                      );
+                    })()}
+                    <input
+                      type="range" className="vio-range"
+                      min={4000} max={customBudgetMax} step={500} value={customConfig.budget}
+                      onChange={e => handleCustomConfigChange({ budget: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate, marginBottom: sweetSpotCustom ? 8 : 0 }}>
+                    <span>CHF 4&apos;000</span>
+                    <span>{fmtCHF(customBudgetMax)}</span>
+                  </div>
+                  {sweetSpotCustom && sweetSpotCustom.budget > 0 && (
+                    <button type="button"
+                      onClick={() => handleCustomConfigChange({ budget: Math.round(sweetSpotCustom.budget / 1000) * 1000 })}
+                      style={{
+                        background: 'none', border: `1px solid ${T.lineStrong}`, borderRadius: 8,
+                        padding: '5px 12px', fontSize: 12, color: T.violetDeep, cursor: 'pointer',
+                        fontFamily: "'Jost', sans-serif", fontWeight: 500,
+                      }}
+                    >Auf Empfehlung setzen ({fmtCHF(Math.round(sweetSpotCustom.budget / 1000) * 1000)})</button>
+                  )}
+                </div>
+
+                {/* HEBEL 2: Kampagnenfenster (Zeitachse) */}
+                {voteDate && (
+                  <CampaignTimeline
+                    voteDate={voteDate}
+                    fruehesterStart={fruehesterStart}
+                    laufzeitWochen={laufzeitWochen}
+                    onChange={wochen => {
+                      const start = new Date(voteDate.getTime() - wochen * 7 * 86400000);
+                      handleCustomConfigChange({
+                        laufzeitDays: wochen * 7,
+                        campaignStart: start.toISOString().slice(0, 10),
+                      });
+                    }}
                   />
-                  {briefing.votingDate && (() => {
-                    const voteD  = new Date(briefing.votingDate + 'T00:00:00');
-                    const startD = addDaysToDate(voteD, -customConfig.laufzeitDays);
-                    const d = startD.getDate().toString().padStart(2, '0');
-                    const m = (startD.getMonth() + 1).toString().padStart(2, '0');
-                    const y = startD.getFullYear();
-                    return (
-                      <div style={{ fontSize: 12, color: T.slate, fontWeight: 400, marginTop: 4 }}>
-                        Kampagne startet am {d}.{m}.{y}
-                      </div>
-                    );
-                  })()}
-                </div>
+                )}
 
-                {/* Secondary Tier: Frequenz + Kanal-Mix */}
-                <div className="vio-ctrl-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 28 }}>
-
-                  {/* Frequenz-Slider */}
-                  <div>
-                    <Slider
-                      label="Wochenfrequenz"
-                      value={customConfig.freqWeekly}
-                      min={3.0}
-                      max={10.0}
-                      step={0.1}
-                      formatVal={v => `${v.toFixed(1)}× /Woche`}
-                      onChange={v => handleCustomConfigChange({ freqWeekly: Math.round(v * 10) / 10 })}
-                    />
-                    <div style={{ fontSize: 12, color: T.slate, fontWeight: 500, marginTop: 4 }}>
-                      {customConfig.freqWeekly < 4.0
-                        ? 'Wahrnehmungs-Schwelle'
-                        : customConfig.freqWeekly <= 6.5
-                          ? 'Stabile Erinnerung'
-                          : 'Hochfrequenz · Wearout-Risiko'}
-                    </div>
-                  </div>
-
-                  {/* Kanal-Mix (AllocationBar) */}
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: T.slate, marginBottom: 10 }}>Kanal-Mix</div>
-                    <AllocationBar
-                      doohShare={customConfig.doohShare}
-                      onChange={v => handleCustomConfigChange({ doohShare: v })}
-                      maxDoohShare={customMaxDoohShare}
-                    />
-                  </div>
-                </div>
               </div>
             )}
 
@@ -809,72 +955,110 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </div>
             )}
 
+            {/* Coach-Hint (Brücke zwischen Cockpit und Outcome) */}
+            {mode === 'custom' && customEval?.coachHint && (
+              <div style={{
+                background: T.highlight, border: `1px solid ${T.lineStrong}`,
+                borderRadius: 14, padding: '13px 18px', marginBottom: 14,
+                display: 'flex', gap: 12, alignItems: 'flex-start',
+                fontFamily: "'Jost', sans-serif",
+              }}>
+                <div style={{
+                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+                  background: T.violet, color: 'white',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, marginTop: 1,
+                }}>→</div>
+                <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.5 }}>
+                  {customEval.coachHint.text}
+                </div>
+              </div>
+            )}
+
             {/* Zone 2: Outcome-Panel (nur Pfad 'custom') */}
             {mode === 'custom' && customImpact && (() => {
-              const satRatio     = customImpact.saturationRatio;
-              const reachCollapse = customImpact.reachPercent < 3;
-              const reachColor   = (reachCollapse || satRatio < 0.4) ? T.slate : T.violet;
-              const reachWeight  = satRatio >= 0.85 ? 800 : satRatio >= 0.4 ? 700 : 600;
-              const markerPct    = Math.min(satRatio, 1.5) / 1.5 * 100;
-              const satLabel     = customImpact.saturationPosition === 'unter'
-                ? 'Unter-investiert'
-                : customImpact.saturationPosition === 'sweet'
-                  ? 'Sweet Spot'
-                  : 'Über-investiert';
-              // Saturation bar: slate 0–26.7% · violet 26.7–66.7% · orange 66.7–100%
-              // corresponding to satRatio zones [0–0.4] [0.4–1.0] [1.0–1.5]
-              const satGradient = `linear-gradient(to right,
-                ${T.slate} 26.7%, ${T.violet} 26.7%, ${T.violet} 66.7%, ${T.warn} 66.7%
-              )`;
+              const wfKey = customConfig.wirkungsfokus ?? 'ausgewogen';
+              // poolCap back-computed: reach = poolCap * (1 - exp(-k * saturationRatio))
+              const sr = customImpact.saturationRatio;
+              const poolCapEst = sr > 0 && customImpact.reach > 0
+                ? customImpact.reach / (1 - Math.exp(-REACH_CURVE_K * sr))
+                : stimmTotal || 10000;
+              // Frequenz: Ziel-Kontakte/Person über gesamte Kampagne
+              const frequenzKampagne = Math.round(WIRKUNGSFOKUS_FREQUENZ[wfKey] * customConfig.laufzeitDays / 7);
+              const regionsKontext = selectedRegionsFull.length === 1
+                ? `im ${selectedRegionsFull[0].name}`
+                : 'in deiner Auswahl';
+              // Dot-Grid
+              const ZIEL_PUNKTE = 50;
+              const DOTUNIT_STEPS = [250, 500, 1000, 2000, 5000];
+              const dotUnitRaw = poolCapEst / ZIEL_PUNKTE;
+              const dotUnit = DOTUNIT_STEPS.find(v => v >= dotUnitRaw) ?? 5000;
+              const totalSlots  = Math.min(60, Math.max(1, Math.round(poolCapEst / dotUnit)));
+              const filledDots  = Math.min(totalSlots, Math.max(0, Math.round(customImpact.reach / dotUnit)));
+              const DOTS_PER_ROW = 12;
+              // Präsenz
+              const presence = customEval?.presence;
               return (
                 <div style={{
-                  background: T.card,
-                  border: `1px solid ${reachCollapse ? 'rgba(200,75,75,0.5)' : T.line}`,
+                  background: T.card, border: `1px solid ${T.line}`,
                   borderRadius: 16, padding: '24px 28px', marginBottom: 18,
                 }}>
-                  {/* Reach Hauptzahl */}
+                  {/* Reichweite-Hero */}
                   <div style={{
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    fontSize: 38, fontWeight: reachWeight, color: reachColor,
-                    letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 2,
+                    fontSize: 42, fontWeight: 800, color: T.violet,
+                    letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 4,
                   }}>
-                    {fmtNum(customImpact.reach)} Stimmberechtigte
+                    {fmtNum(customImpact.reach)}
                   </div>
-                  <div style={{ fontSize: 15, color: reachColor, fontWeight: 500, marginBottom: 20, opacity: 0.8 }}>
-                    ({customImpact.reachPercent.toFixed(1)}%)
+                  <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 6 }}>
+                    Stimmberechtigte erreicht
+                  </div>
+                  <div style={{ fontSize: 13, color: T.slate, marginBottom: 24 }}>
+                    Ø&nbsp;{frequenzKampagne}× gesehen&nbsp;·&nbsp;{regionsKontext}
                   </div>
 
-                  {/* Saturation-Indicator */}
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ position: 'relative', paddingTop: 3, paddingBottom: 3, marginBottom: 6 }}>
-                      <div style={{ height: 8, borderRadius: 4, background: satGradient }} />
-                      <div style={{
-                        position: 'absolute', top: 0,
-                        left: `${markerPct}%`,
-                        transform: 'translateX(-50%)',
-                        width: 14, height: 14, borderRadius: '50%',
-                        background: 'white',
-                        border: `2.5px solid ${T.violet}`,
-                        boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                        pointerEvents: 'none',
-                      }} />
+                  {/* Dot-Grid */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{
+                      display: 'flex', flexWrap: 'wrap' as const,
+                      gap: 5, maxWidth: DOTS_PER_ROW * (10 + 5),
+                    }}>
+                      {Array.from({ length: totalSlots }, (_, i) => (
+                        <div key={i} style={{
+                          width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+                          background: i < filledDots ? T.violet : 'rgba(107,79,187,0.15)',
+                        }} />
+                      ))}
                     </div>
-                    <div style={{ fontSize: 12, color: T.slate, textAlign: 'center' as const, fontWeight: 500 }}>
-                      {satLabel}
+                    <div style={{ fontSize: 11, color: T.slate, marginTop: 8 }}>
+                      1 Punkt ≈ {fmtNum(dotUnit)} Stimmberechtigte&nbsp;·&nbsp;gefüllt = von dir erreicht
                     </div>
                   </div>
 
-                  {/* Secondary stats */}
-                  <div style={{
-                    fontSize: reachCollapse ? 11 : 12,
-                    color: T.slate,
-                    opacity: reachCollapse ? 0.65 : 0.85,
-                    marginTop: 8,
-                  }}>
-                    GRPs: {Math.round(customImpact.grps)}
-                    {' · '}Impressionen: {fmtNum(customImpact.impressionsTotal)}
-                    {' · '}Screens: {customImpact.screens}
-                  </div>
+                  {/* Präsenz-Story */}
+                  {presence && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ fontSize: 16, lineHeight: 1.4 }}>📍</span>
+                        <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.5 }}>
+                          {presence.doohAvailable ? (
+                            presence.showScreenCount ? (
+                              <>Sichtbar auf rund <strong style={{ color: T.ink }}>{fmtNum(presence.screenCount)}</strong> Bildschirmen im öffentlichen Raum – und online.</>
+                            ) : (
+                              <>Sichtbar im öffentlichen Raum deiner Region – und online.</>
+                            )
+                          ) : (
+                            <>Sichtbar online in deiner Region.</>
+                          )}
+                        </div>
+                      </div>
+                      {/* TODO: Ortsanker — spezifische Vergleichswerte (separate Verfeinerung) */}
+                      <div style={{ fontSize: 13, color: T.slate, fontStyle: 'italic', marginTop: 6, paddingLeft: 24 }}>
+                        Das entspricht mehreren mittelgrossen Gemeinden zusammen.
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -936,33 +1120,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {/* Hint-Karten: nur Pfad 'paket' mit Auswahl */}
             {mode === 'paket' && selectedPkg !== null && activeHint && (
               <HintCard hint={activeHint} />
-            )}
-
-            {/* Zone 3: Custom-Hints — dreistufige Hint-Engine (einschraenkung → warning → insight) */}
-            {mode === 'custom' && customHints.length > 0 && (
-              <div style={{ marginBottom: 4 }}>
-                {customHints.map(h => {
-                  const s = CUSTOM_HINT_META[h.level];
-                  return (
-                    <div key={h.code} style={{
-                      borderRadius: 14, padding: '14px 18px', marginBottom: 10,
-                      display: 'flex', gap: 14, alignItems: 'flex-start',
-                      background: s.bg, border: `1px solid ${s.border}`,
-                      fontSize: 14, lineHeight: 1.5, fontFamily: "'Jost', sans-serif",
-                    }}>
-                      <div style={{
-                        width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: s.iconBg, color: 'white', fontSize: 14, fontWeight: 700, marginTop: 1,
-                      }}>{s.icon}</div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: s.titleColor, marginBottom: 2 }}>{h.title}</div>
-                        <div style={{ color: T.slate }}>{h.text}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             )}
 
             {/* CTA row */}
