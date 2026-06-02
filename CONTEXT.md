@@ -197,15 +197,58 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 - Empirisch kalibriert via 13-Cluster-Smoke (entspricht ~63% des Pool-Caps)
 - `calculateSweetSpotCustom()` → Budget bei dem Sättigungsgrad = 4.0 erreicht wird, pro Wirkungsfokus
 
-### Outcome-Panel-Konzept (Phase B — noch nicht implementiert)
-- Komponenten: Reichweite + Dot-Grid + Präsenz-Story + Ortsanker
+### Outcome-Panel-Konzept (Phase B — IMPLEMENTIERT 02.06.2026)
+- Komponenten: Reichweite-Hero + Dot-Grid (Stil A) + Präsenz-Story + Ortsanker + Coach-Zeile
 - Kein Adtech-Vokabular (kein CPM, kein %, keine GRP-Anzeige)
-- Verbindliche UI-Referenz: `docs/prototypes/` (Phase B)
+- Umsetzung: `components/campaign/StepPackages.tsx` Custom-Pfad Zone 2
 
 ### Phase-Schnitt Sprint 3
 - **Phase A (Logik): ABGESCHLOSSEN** — Custom-Modell, DOOH-Zwei-Zustand, Sweet-Spot, Smoke Tests, Regelkatalog v3.7
-- **Phase B (UI)**: Outcome-Panel, Dot-Grid, Präsenz-Story — offen
-- **Prompt 4 (Coach-Hints + Inventar-Copy)**: offen → Trigger emergent aus Optimizer-Status `display_only_late_window`. `buildDisplaySprint()`-Funktion ebenfalls entfernt.
+- **Phase B (UI + Coach): ABGESCHLOSSEN** — Cockpit 3 Hebel + Outcome-Panel + Coach-Engine (02.06.2026)
+
+### Custom-Pfad Phase B — Coach-Engine + UI (02.06.2026)
+
+**Coach-Engine (`lib/custom-hints.ts`):**
+- `evaluateCustomConfig()` → `CustomEvaluation { coachHint: CoachHint | null, presence }`
+- Ein priorisierter Hint, deterministisch, Sweet-Spot-relativ
+- Sweet-Spot-Zone 60–115% = still (kein Hint)
+- `budget_niedrig`: Budget < 60% × Sweet-Spot → Empfehlung mehr Budget
+- `laufzeit`: Budget < 60% × ss(aktuell) ABER >= 60% × ss(28d) + laufzeit > 28d → Laufzeit verkürzen (bringt Budget in Zone ohne Budget-Erhöhung)
+- `saettigung`: Budget > 115% × Sweet-Spot → Sättigungs-Warnung
+- `REFERENZ_LAUFZEIT_DAYS = 28` (Ankerlaufzeit für Laufzeit-Hint)
+
+**presence-Objekt:**
+- `doohAvailable`, `showScreenCount`, `screenCount`
+- Logik komplett in lib (nicht in UI) — UI orchestriert nur
+- `SCREEN_ANZEIGE_SCHWELLE = 30`: Zahl anzeigen ab 30 Screens, sonst qualitativ
+
+**Konstanten (preislogik.ts / custom-hints.ts):**
+- `REFERENZ_LAUFZEIT_DAYS = 28`
+- `COACH_BUDGET_LOW_RATIO = 0.6`
+- `COACH_BUDGET_HIGH_RATIO = 1.15`
+- `SCREEN_ANZEIGE_SCHWELLE = 30`
+
+**UI Step 2 Custom-Pfad — Cockpit (3 Hebel):**
+- Layout: Cockpit oben, Outcome unten (kein Side-by-Side)
+- Hebel 1: Budget-Slider + Sweet-Spot-Zone (%-basiert, live-verschiebend, COACH_BUDGET_LOW/HIGH_RATIO × ss) + Marker + "Auf Empfehlung setzen"-Button
+- Hebel 2: Kampagnenfenster-Zeitachse — `briefing.votingDate` = fixes rechtes Ende (garantiert vorhanden, PolitikFlow prüft vor Step-2-Skip); Start-Handle + Wochen-Ticks antippbar; Wochen-Snap RÜCKWÄRTS vom Wahltag (ganze Wochen, `laufzeitWochen × 7 = laufzeitDays`); Vorlauf-Sperrzone links schraffiert (`addBusinessDays(heute, SETUP_VORLAUF_WERKTAGE)`)
+- Hebel 3: Wirkungsfokus 3er-Toggle (Breite Wirkung / Ausgewogen / Verankerung)
+- Coach-Box als Brücke Hebel → Outcome (erscheint nur bei `coachHint !== null`)
+
+**UI Step 2 Custom-Pfad — Outcome-Panel:**
+- Reichweite-Hero: `customImpact.reach` (Schweizer Format), "Stimmberechtigte erreicht", "Ø N× gesehen · im [Name] / in deiner Auswahl" (Frequenz = `WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus] × laufzeitDays/7`, gerundet)
+- Dot-Grid (Stil A, gerade/dicht): adaptiver `DOTUNIT` = poolCap / ~50, gerundet auf `[250, 500, 1000, 2000, 5000]`; poolCap exakt invertiert: `reach / (1 − e^(−REACH_CURVE_K × saturationRatio))`; max 60 Slots, 12/Reihe; Legende mit DOTUNIT-Wert
+- Präsenz-Story (3 Zustände): (1) `doohAvailable && showScreenCount` → Zahl in Fett; (2) `doohAvailable && !showScreenCount` → qualitativ ohne Zahl; (3) `!doohAvailable` → online-only
+- Ortsanker: generischer Platzhalter-Satz ("mehrere mittelgrosse Gemeinden") + TODO-Kommentar für echte Referenztabelle (separate Verfeinerung)
+
+**Rückbau:**
+- Frequenz-Slider entfernt (`freqWeekly` bleibt in `CustomConfig` als TS-Pflicht, Default 5, kein Slider)
+- AllocationBar-Import entfernt (`AllocationBar.tsx` liegt noch, nicht mehr verwendet)
+- `customMaxDoohShare` useMemo entfernt
+
+**campaignStart:**
+- `CustomConfig.campaignStart?: string` (ISO-date); gesetzt beim Zeitachsen-Drag
+- `calculateImpactCustom()` bekommt `campaignStart?: Date` → `checkDoohAvailability()` nutzt es (Vorlauf-Check)
 
 ### Pakete (Politik + B2B identisch)
 | Paket | Frequenz | Laufzeit | Min-Budget |
@@ -225,6 +268,12 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 02.06.2026 | **Phase B UI + Coach COMPLETE** | Coach-Engine (`evaluateCustomConfig` → `CustomEvaluation`), presence-Objekt (doohAvailable/showScreenCount/screenCount), Konstanten COACH_BUDGET_LOW/HIGH_RATIO/SCREEN_ANZEIGE_SCHWELLE/REFERENZ_LAUFZEIT_DAYS. UI: 3-Hebel-Cockpit (Budget+Sweet-Spot-Zone %-basiert, Zeitachse-Wochen-Snap rückwärts, Wirkungsfokus-Toggle), Coach-Brücke, Outcome-Panel (Dot-Grid adaptiver DOTUNIT, poolCap-Inversion, Präsenz-Story 3 Zustände, Ortsanker-Platzhalter). Rückbau: Frequenz-Slider + AllocationBar. `CustomConfig.campaignStart?: string`. |
+| 02.06.2026 | Decision: SCREEN_ANZEIGE_SCHWELLE=30 | Nicht 10 (SCREENS_THRESHOLD_LIMITED) — würde schwache Zahlen zeigen (z.B. 10 Screens Adliswil). Qualitativ ist vertrauenswürdiger als schwache Zahlen. |
+| 02.06.2026 | Decision: presence vollständig in lib | UI orchestriert nur; Logik (doohAvailable, showScreenCount, screenCount) komplett in `evaluateCustomConfig`. |
+| 02.06.2026 | Decision: Dot-Grid Stil A + adaptiver DOTUNIT | Jede Region erscheint ~gleich voll (40–55 Punkte); Absolutzahl ist zweitrangig, Verhältnis zeigt Ausschöpfung. DOTUNIT aus `[250,500,1000,2000,5000]` ≥ poolCap/50. |
+| 02.06.2026 | Decision: Sweet-Spot-Zone %-basiert | Keine clientWidth-Berechnung; responsive und Mobile-sicher. leftPct/rightPct geclampt [0,100]. |
+| 02.06.2026 | Decision: Zeitachse Wochen-Snap rückwärts | `laufzeitWochen × 7 = laufzeitDays` → immer ganze Wochen; Snap-Richtung vom Wahltag rückwärts (nicht vorwärts ab frühesterStart) verhindert krumme Laufzeiten. |
 | 01.06.2026 | **v3.7 (SPEC_VERSION 3.7)** | Custom-Pfad-Modell vollständig spezifiziert: Wirkungsfokus-Modell (3 Hebel: Budget, Kampagnenfenster, Wirkungsfokus; Frequenz+Kanal als Outputs), Reach-Formel (reachLinear = impressionenImPool/(zielFrequenz×laufzeitWeeks)), DOOH-Zwei-Zustand (im Raum + online / online-only), SETUP_VORLAUF_WERKTAGE=10 (Custom-Pfad), SWEET_SPOT_TARGET_SATURATION=4.0 (13-Cluster-Smoke kalibriert). Regelkatalog-Dateiname: vio-regelkatalog-politik-v3-6.md. |
 | 21.05.2026 | **v3.6** | v3.6: OTS_DOOH, DELIVERY_DOOH, DELIVERY_DISPLAY aus contacts_*-Formel entfernt. Naming unverändert. EK-CPM mit Operating-Partner preist OTS/Delivery ein. |
 | 20.05.2026 | fix(partnercode) | **Cap-Edge-Case Range-Inkonsistenz behoben.** `isCapEdgeCase` + `displayReachImpact` als component-level derived values in `StepPackages.tsx`. Wenn Code mit Boost aktiv aber `deltaPersonen=0`: Range (Low/High + Abdeckungs-%) aus `impactBase` (ohne Code) statt aus `impact`. Vorher asymmetrisch (Upper am Cap, Lower minimal mitgewandert). |
