@@ -73,6 +73,20 @@ export const SETUP_VORLAUF_WERKTAGE = 10;
 // Empirisch kalibriert (~63% poolCap erreicht, via 13-Cluster-Smoke validiert).
 export const SWEET_SPOT_TARGET_SATURATION = 4.0;
 
+// ─── Custom-Pfad Coach-Logik Konstanten (Regelkatalog v3.7) ──────────────────
+
+// Referenz-Laufzeit für die Laufzeit-vs-Budget-Coach-Unterscheidung.
+// 28 Tage = typische Politik-Kampagne (Präsenz-Paket-Länge). Kalibrierbar.
+export const REFERENZ_LAUFZEIT_DAYS = 28;
+
+// Coach-Schwellen relativ zum Sweet-Spot-Budget (kalibrierbar):
+export const COACH_BUDGET_LOW_RATIO  = 0.6;    // < 60% → niedrig-Bereich
+export const COACH_BUDGET_HIGH_RATIO = 1.15;   // > 115% → Sättigung
+
+// Inventar-Copy-Signal: ab dieser politScreens-Summe kann eine aussagekräftige
+// Screen-Zahl angezeigt werden. Preliminär — vor Go-Live mit Splicky-Inventar nachkalibrieren.
+export const SCREEN_ANZEIGE_SCHWELLE = 30;
+
 // ─── Typen ───────────────────────────────────────────────────────────────────
 
 export type HinweisCode =

@@ -57,6 +57,7 @@ export interface CustomConfig {
   freqWeekly: number;    // Wochenkontakte pro Person, range 3.0–10.0 (deprecated, Phase B)
   doohShare: number;     // DOOH-Anteil, range 0.0–1.0 (deprecated, Phase B)
   wirkungsfokus?: Wirkungsfokus;
+  campaignStart?: string; // ISO-date string; gesetzt im Custom-Pfad Cockpit
 }
 
 export interface BriefingData {

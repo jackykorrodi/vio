@@ -1,4 +1,4 @@
-// Custom-Pfad Smoke-Tests (Sprint 2)
+// Custom-Pfad Smoke-Tests (Sprint 3 — evaluateCustomConfig → CustomEvaluation)
 // Aufruf: npx tsx lib/__smoke__/custom-impact-smoke.ts
 
 import { calculateImpactCustom } from '../preislogik';
@@ -14,53 +14,39 @@ const cases = [
   {
     id: 1, label: 'Sweet Spot (Kanton Bern)',
     r: BERN, cfg: { budget: 18000, laufzeitDays: 28, freqWeekly: 5, doohShare: 0.6 }, dtv: 35,
-    spec: "satPos='sweet' · at_sweet_spot-Hint · kein einschraenkung",
-    notes: "KALIBRIERUNG: reachPct ~3% (nicht 15–20%); at_sweet_spot feuert ab satRatio≥0.85; satRatio≈0.75 → knapp darunter",
+    spec: "satPos='sweet' · coachHint=null",
   },
   {
     id: 2, label: 'Frequenz-Kollaps (Stadt Zürich)',
     r: ZURICH, cfg: { budget: 5000, laufzeitDays: 42, freqWeekly: 8, doohShare: 0.5 }, dtv: 50,
-    spec: "satPos='unter' · reach_collapse-Hint · reachPct < 5%",
-    notes: "Hofmans-Reach ≈ 4.6% (≥ 3%) → reach_collapse feuert nicht; satPos='unter' ✓",
+    spec: "satPos='unter' · coachHint=budget_niedrig",
   },
   {
     id: 3, label: 'DOOH-Cutoff (Kanton Aargau)',
     r: AARGAU, cfg: { budget: 12000, laufzeitDays: 14, freqWeekly: 4, doohShare: 0.8 }, dtv: 7,
-    spec: "dooh_cutoff-Hint (level=einschraenkung) · kein Throw",
-    notes: "daysToVote=7 < DOOH_CUTOFF_DAYS=10 → dooh_cutoff feuert ✓",
+    spec: "presence.doohAvailable erwartet (no_inventory-Check), coachHint=budget_niedrig",
   },
   {
     id: 4, label: 'Über-Investment (Adliswil)',
     r: ADLI, cfg: { budget: 25000, laufzeitDays: 28, freqWeekly: 5, doohShare: 0.6 }, dtv: 35,
-    spec: "satRatio > 1.1 · above_sweet_spot-Hint mit CHF-Wert",
-    notes: "",
+    spec: "coachHint=saettigung oder null (abhängig von Sweet-Spot Adliswil)",
   },
 ] as const;
 
-console.log('\n=== Custom-Pfad Smoke Tests (Sprint 2) ===\n');
+console.log('\n=== Custom-Pfad Smoke Tests (Sprint 3) ===\n');
 
 for (const c of cases) {
   const impact = calculateImpactCustom({ ...c.cfg, regions: [c.r] });
-  const hints  = evaluateCustomConfig(c.cfg, [c.r], impact, c.dtv);
+  const eval_  = evaluateCustomConfig(c.cfg, [c.r], impact, c.dtv);
 
   console.log(`Case ${c.id} — ${c.label}`);
   console.log(`  Region: ${c.r.name} (stimm=${c.r.stimm.toLocaleString()})`);
-  console.log(`  Config: budget=${c.cfg.budget} · laufzeit=${c.cfg.laufzeitDays}d · freq=${c.cfg.freqWeekly}×/W · dooh=${c.cfg.doohShare * 100}%`);
+  console.log(`  Config: budget=${c.cfg.budget} · laufzeit=${c.cfg.laufzeitDays}d`);
   console.log(`  ---`);
   console.log(`  saturationPosition : ${impact.saturationPosition}`);
   console.log(`  saturationRatio    : ${impact.saturationRatio.toFixed(3)}`);
-  console.log(`  reach              : ${impact.reach.toLocaleString()}`);
-  console.log(`  reachPercent       : ${impact.reachPercent.toFixed(1)}%`);
-  console.log(`  impressionsTotal   : ${impact.impressionsTotal.toLocaleString()}`);
-  console.log(`  cpmEffective       : ${impact.cpmEffective}`);
-  console.log(`  screens            : ${impact.screens}`);
-  console.log(`  grps               : ${impact.grps}`);
-  console.log(`  Hints (${hints.length}):`);
-  for (const h of hints) {
-    console.log(`    [${h.level}/${h.category}] ${h.code}: ${h.text}`);
-  }
-  if (hints.length === 0) console.log('    (keine)');
-  console.log(`  Spec:  ${c.spec}`);
-  if (c.notes) console.log(`  Notiz: ${c.notes}`);
+  console.log(`  coachHint          : ${eval_.coachHint ? `${eval_.coachHint.type} — ${eval_.coachHint.text}` : 'null (still)'}`);
+  console.log(`  presence           : doohAvailable=${eval_.presence.doohAvailable} · showScreenCount=${eval_.presence.showScreenCount} · screenCount=${eval_.presence.screenCount}`);
+  console.log(`  Spec: ${c.spec}`);
   console.log();
 }

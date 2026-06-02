@@ -704,30 +704,29 @@ function CustomSmokeTests({ base }: { base: import('react').CSSProperties }) {
             ))}
           </div>
 
-          {/* Hints */}
+          {/* Coach-Hint + Presence */}
           <div style={{ padding: '8px 12px' }}>
-            {r.hints.length === 0 ? (
-              <span style={{ ...base, fontSize: 12, color: '#9B8FBF' }}>Keine Hints</span>
-            ) : r.hints.map(h => (
-              <div key={h.code} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8,
-                marginBottom: 4, fontSize: 12,
-              }}>
+            {r.hints.coachHint ? (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                 <span style={{
                   fontFamily: 'monospace', fontSize: 10, fontWeight: 700,
                   padding: '1px 5px', borderRadius: 4, whiteSpace: 'nowrap',
-                  background: h.level === 'einschraenkung' ? '#FEE2E2'
-                    : h.level === 'warning' ? '#FEF9C3' : '#DCFCE7',
-                  color: h.level === 'einschraenkung' ? '#991B1B'
-                    : h.level === 'warning' ? '#92400E' : '#166534',
+                  background: '#FEF9C3', color: '#92400E',
                 }}>
-                  {h.level}
+                  {r.hints.coachHint.type}
                 </span>
                 <span style={{ ...base, fontSize: 12, color: '#374151' }}>
-                  <strong>{h.code}</strong>: {h.text}
+                  {r.hints.coachHint.text}
                 </span>
               </div>
-            ))}
+            ) : (
+              <span style={{ ...base, fontSize: 12, color: '#166534' }}>null (still / Sweet-Spot-Zone)</span>
+            )}
+            <div style={{ ...base, fontSize: 11, color: '#9B8FBF', marginTop: 4 }}>
+              presence: doohAvailable={String(r.hints.presence.doohAvailable)}
+              {' · '}showScreenCount={String(r.hints.presence.showScreenCount)}
+              {' · '}screenCount={r.hints.presence.screenCount}
+            </div>
           </div>
 
           {/* Spec-Assertions */}
