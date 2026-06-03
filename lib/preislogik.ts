@@ -196,11 +196,24 @@ export type DoohAvailability =
   | { available: true;  channelMix: number }
   | { available: false; reason: 'setup_vorlauf' | 'no_inventory' };
 
+// ─── Custom-Pfad: Kampagnenfenster (Single Source of Truth für Laufzeit + Kanal) ─
+
+export interface CampaignWindow {
+  modus: 'dooh_mix' | 'display_only';
+  doohShare: number;
+  displayShare: number;
+  earliestStart: Date;        // display_only: voteDate − effectiveLaufzeitDays; dooh_mix: addBusinessDays(today, SETUP_VORLAUF_WERKTAGE)
+  effectiveLaufzeitDays: number;
+  daysUntilVote: number | null;
+}
+
 // ─── Custom-Pfad Return-Type (Sprint 2) ──────────────────────────────────────
 
 export interface CustomImpactResult {
   reach: number;                  // Stimmberechtigte erreicht (unique, gerundet)
   reachPercent: number;           // % vom regionalen Stimm-Pool (1 Dezimale)
+  reachUniqueLow: number;         // Reichweite Untergrenze (/500 gerundet)
+  reachUniqueHigh: number;        // Reichweite Obergrenze (/500 gerundet, poolCap-geklämmt)
   grps: number;                   // Gross Rating Points (impressionsTotal / stimmTotal * 100)
   impressionsTotal: number;       // Total Impressionen über Laufzeit
   screens: number;                // Anzahl DOOH-Screens in Region(en) (aus Klassifikation)
@@ -934,6 +947,65 @@ export function checkDoohAvailability(
   return { available: true, channelMix };
 }
 
+// ─── getCampaignWindow — Custom-Pfad DOOH-Feasibility + effectiveLaufzeitDays ──
+//
+// Einziger Aufruf pro Render in StepPackages; alle Custom-Konsumenten lesen daraus.
+// Timing-Logik: campaignStart = voteDate − requestedLaufzeitDays.
+// Falls campaignStart < doohEarliestStart → display_only; effectiveLaufzeitDays per §7.3.
+// doohShare=0 ist autoritativ bei display_only (unabhängig von channelMix).
+
+export function getCampaignWindow(
+  regions: Region[],
+  voteDate: Date | null,
+  requestedLaufzeitDays: number,
+  today: Date = new Date(),
+): CampaignWindow {
+  const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const daysUntilVote = voteDate ? Math.ceil((voteDate.getTime() - todayMs) / 86400000) : null;
+  const doohEarliestStart = addBusinessDays(today, SETUP_VORLAUF_WERKTAGE);
+  const campaignStartRaw = voteDate
+    ? new Date(voteDate.getTime() - requestedLaufzeitDays * 86400000)
+    : null;
+
+  if (campaignStartRaw !== null && campaignStartRaw < doohEarliestStart) {
+    const effectiveLaufzeitDays = Math.min(
+      requestedLaufzeitDays,
+      Math.max(LAUFZEIT_MIN_DAYS, (daysUntilVote ?? 1) - 1),
+    );
+    return {
+      modus: 'display_only',
+      doohShare: 0,
+      displayShare: 1,
+      earliestStart: new Date(voteDate!.getTime() - effectiveLaufzeitDays * 86400000),
+      effectiveLaufzeitDays,
+      daysUntilVote,
+    };
+  }
+
+  const deduped = dedupRegions(regions);
+  const doohAvail = checkDoohAvailability(deduped, campaignStartRaw ?? undefined, today);
+
+  if (!doohAvail.available) {
+    return {
+      modus: 'display_only',
+      doohShare: 0,
+      displayShare: 1,
+      earliestStart: campaignStartRaw ?? doohEarliestStart,
+      effectiveLaufzeitDays: requestedLaufzeitDays,
+      daysUntilVote,
+    };
+  }
+
+  return {
+    modus: 'dooh_mix',
+    doohShare: doohAvail.channelMix,
+    displayShare: 1 - doohAvail.channelMix,
+    earliestStart: doohEarliestStart,
+    effectiveLaufzeitDays: requestedLaufzeitDays,
+    daysUntilVote,
+  };
+}
+
 // ─── calculateImpactCustom — Custom-Pfad Wirkungsfokus-Modell (Regelkatalog v3.7) ─
 //
 // Simulation ohne Optimizer: Wirkungsfokus bestimmt Ziel-Frequenz (invers in Reach).
@@ -1021,9 +1093,15 @@ export function calculateImpactCustom({
     saturationRatio <= 1.0 ? 'sweet' :
     'ueber';
 
+  const band = getUncertaintyBand(screens);
+  const reachUniqueLow  = Math.round(Math.max(0, reach * (1 - band)) / 500) * 500;
+  const reachUniqueHigh = Math.round(Math.min(poolCap, reach * (1 + band)) / 500) * 500;
+
   return {
     reach:             Math.round(reach),
     reachPercent:      Math.round(reachPercent * 10) / 10,
+    reachUniqueLow,
+    reachUniqueHigh,
     grps:              Math.round(grps * 10) / 10,
     impressionsTotal:  Math.round(impressionsTotal),
     screens,

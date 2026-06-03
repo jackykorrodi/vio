@@ -72,6 +72,7 @@ export function evaluateCustomConfig(
   regions: Region[],
   impact: CustomImpactResult,
   _daysToVote: number,
+  campaignStart?: Date,
 ): CustomEvaluation {
   const { budget, laufzeitDays, wirkungsfokus = 'ausgewogen' } = config;
 
@@ -110,7 +111,7 @@ export function evaluateCustomConfig(
   }
 
   // Presence: DOOH-Verfügbarkeit + Screen-Zahl
-  const doohAvail = checkDoohAvailability(regions, undefined);
+  const doohAvail = checkDoohAvailability(regions, campaignStart);
   const doohAvailable = doohAvail.available;
   const screenCount = doohAvailable
     ? regions.reduce((sum, r) => sum + getPolitScreens(r), 0)

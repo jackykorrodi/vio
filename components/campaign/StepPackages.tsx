@@ -5,20 +5,21 @@ import { BriefingData } from '@/lib/types';
 import type { CustomConfig } from '@/lib/types';
 import {
   calculateImpact, buildPackages, getLaufzeitCorridor,
-  calculateSweetSpot, calculateImpactCustom, PKG_CAP_LEVEL,
-  calculateSweetSpotCustom, SETUP_VORLAUF_WERKTAGE,
+  calculateImpactCustom, PKG_CAP_LEVEL,
+  calculateSweetSpotCustom,
   COACH_BUDGET_LOW_RATIO, COACH_BUDGET_HIGH_RATIO,
-  REACH_CURVE_K, WIRKUNGSFOKUS_FREQUENZ,
+  WIRKUNGSFOKUS_FREQUENZ,
+  getCampaignWindow,
 } from '@/lib/preislogik';
-import type { CustomImpactResult } from '@/lib/preislogik';
-import { addBusinessDays } from '@/lib/business-days';
-import { evaluateCustomConfig, maxDoohShareForRegion } from '@/lib/custom-hints';
+import type { CustomImpactResult, CampaignWindow } from '@/lib/preislogik';
+import { evaluateCustomConfig } from '@/lib/custom-hints';
 import { validatePartnerCode } from '@/lib/partner-codes-mock';
 import type { PartnerCode } from '@/lib/partner-codes-mock';
 import type { PaketKey, PakeResult, Paket, Hinweis } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
+import { resolveLandmarkAnchor } from '@/lib/landmark-anchor';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -208,20 +209,22 @@ function Slider({ label, value, min, max, step, formatVal, onChange, minLabel, m
 
 // ─── Campaign Timeline ────────────────────────────────────────────────────────
 function CampaignTimeline({
-  voteDate, fruehesterStart, laufzeitWochen, onChange,
+  voteDate, fruehesterStart, laufzeitWochen, onChange, effectiveDays,
 }: {
   voteDate: Date; fruehesterStart: Date; laufzeitWochen: number;
   onChange: (wochen: number) => void;
+  effectiveDays?: number;
 }) {
   const totalMs   = voteDate.getTime() - fruehesterStart.getTime();
+  if (totalMs <= 0) return null;
   const totalDays = totalMs / 86400000;
   const maxWeeks  = Math.max(2, Math.floor(totalDays / 7));
   const minWeeks  = 2;
 
   const campaignStart = new Date(voteDate.getTime() - laufzeitWochen * 7 * 86400000);
-  const handlePct = totalMs > 0
-    ? Math.max(0, Math.min(100, ((campaignStart.getTime() - fruehesterStart.getTime()) / totalMs) * 100))
-    : 0;
+  // Header-Datum darf nicht vor frühestem Start liegen
+  const campaignStartDisplay = new Date(Math.max(campaignStart.getTime(), fruehesterStart.getTime()));
+  const handlePct = Math.max(0, Math.min(100, ((campaignStart.getTime() - fruehesterStart.getTime()) / totalMs) * 100));
 
   function pctToWeeks(pct: number): number {
     const msFromLeft = fruehesterStart.getTime() + (pct / 100) * totalMs;
@@ -249,7 +252,10 @@ function CampaignTimeline({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Kampagnenfenster</span>
         <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>
-          {laufzeitWochen}&nbsp;{laufzeitWochen === 1 ? 'Woche' : 'Wochen'}&nbsp;·&nbsp;{fmtDateShort(campaignStart)}
+          {effectiveDays != null
+            ? `${effectiveDays} Tage`
+            : `${laufzeitWochen} ${laufzeitWochen === 1 ? 'Woche' : 'Wochen'}`
+          }&nbsp;·&nbsp;{fmtDateShort(campaignStartDisplay)}
         </span>
       </div>
       <div
@@ -445,10 +451,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // Clamp days to corridor on budget change
   const effectiveDays = Math.min(corridor.maxDays, Math.max(corridor.minDays, days));
 
-  const displayBudget = mode === 'paket' && packages && selectedPkg
-    ? packages[selectedPkg].budget
-    : mode === 'custom' ? customConfig.budget : budget;
-
   const demonym    = getInhabitants(selectedRegionsFull.map(r => r.name));
   const regionName = briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
 
@@ -494,25 +496,37 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCode, mode, selectedPkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]);
 
-  // Pfad 'custom': Laufzeit kommt vom Optimizer; Pfad 'paket': aus gewähltem Paket
-  const displayDays = mode === 'paket' && packages && selectedPkg
-    ? packages[selectedPkg].laufzeitDays
-    : mode === 'custom' ? customConfig.laufzeitDays : (impact?.laufzeitDays ?? effectiveDays);
-
   const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
 
-  const sweetSpot = useMemo(
-    () => mode === 'custom' && selectedRegionsFull.length > 0
-      ? calculateSweetSpot(selectedRegionsFull, daysUntilVote)
-      : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mode, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]
+  // ── Custom-Pfad: Kampagnenfenster (Single Source of Truth) ─────────────────
+  const voteDate = useMemo(() =>
+    briefing.votingDate ? new Date(briefing.votingDate + 'T00:00:00') : null,
+    [briefing.votingDate]
   );
 
+  const campaignWindow = useMemo(
+    () => getCampaignWindow(selectedRegionsFull, voteDate, customConfig.laufzeitDays),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedRegionsFull.map(r => r.name).join(','), voteDate, customConfig.laufzeitDays]
+  );
+
+  const sweetSpotCustom = useMemo(() => {
+    if (!selectedRegionsFull.length) return null;
+    return calculateSweetSpotCustom(
+      selectedRegionsFull,
+      customConfig.wirkungsfokus ?? 'ausgewogen',
+      campaignWindow.effectiveLaufzeitDays,
+      campaignWindow.doohShare,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRegionsFull.map(r => r.name).join(','), customConfig.wirkungsfokus, campaignWindow.effectiveLaufzeitDays, campaignWindow.doohShare]);
+
   // ── Custom-Pfad derived values ──────────────────────────────────────────────
-  const customBudgetMax = useMemo(() =>
-    sweetSpot ? Math.ceil(sweetSpot.budget * 1.5 / 1000) * 1000 : 100000,
-    [sweetSpot]
+  const customBudgetMax = useMemo(
+    () => sweetSpotCustom && sweetSpotCustom.budget > 0
+      ? Math.ceil(sweetSpotCustom.budget * 1.5 / 1000) * 1000
+      : 100000,
+    [sweetSpotCustom]
   );
 
   const customLaufzeitMax = useMemo(() =>
@@ -522,56 +536,57 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     [daysUntilVote]
   );
 
+  // effectiveBudget: abgeleiteter Wert, kein State — kein useEffect, kein Flash
+  const effectiveBudget = Math.min(customConfig.budget, customBudgetMax);
+
   const customImpact: CustomImpactResult | null = useMemo(() => {
     if (!selectedRegionsFull.length) return null;
-    const start = customConfig.campaignStart ? new Date(customConfig.campaignStart) : undefined;
-    return calculateImpactCustom({ ...customConfig, regions: selectedRegionsFull, campaignStart: start });
+    return calculateImpactCustom({
+      budget: effectiveBudget,
+      laufzeitDays: campaignWindow.effectiveLaufzeitDays,
+      freqWeekly: customConfig.freqWeekly,
+      doohShare: customConfig.doohShare,
+      wirkungsfokus: customConfig.wirkungsfokus,
+      regions: selectedRegionsFull,
+      campaignStart: campaignWindow.earliestStart,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRegionsFull.map(r => r.name).join(','), customConfig]);
+  }, [selectedRegionsFull.map(r => r.name).join(','), effectiveBudget, campaignWindow.effectiveLaufzeitDays, campaignWindow.doohShare, campaignWindow.earliestStart.getTime()]);
 
   const customEval = useMemo(() => {
     if (!customImpact) return null;
-    return evaluateCustomConfig(customConfig, selectedRegionsFull, customImpact, daysUntilVote ?? 999);
+    return evaluateCustomConfig(customConfig, selectedRegionsFull, customImpact, daysUntilVote ?? 999, campaignWindow.earliestStart);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customImpact, daysUntilVote]);
+  }, [customImpact, daysUntilVote, campaignWindow.earliestStart.getTime()]);
 
-  // ── Custom-Pfad: Zeitachse + Sweet-Spot ────────────────────────────────────
-  const fruehesterStart = useMemo(() => addBusinessDays(new Date(), SETUP_VORLAUF_WERKTAGE), []);
+  // laufzeitWochen aus effectiveLaufzeitDays (aus Fenster)
+  const laufzeitWochen = Math.max(2, Math.round(campaignWindow.effectiveLaufzeitDays / 7));
 
-  const voteDate = useMemo(() =>
-    briefing.votingDate ? new Date(briefing.votingDate + 'T00:00:00') : null,
-    [briefing.votingDate]
-  );
+  // displayDays + displayBudget nach effectiveBudget/campaignWindow
+  const displayDays = mode === 'paket' && packages && selectedPkg
+    ? packages[selectedPkg].laufzeitDays
+    : mode === 'custom' ? campaignWindow.effectiveLaufzeitDays : (impact?.laufzeitDays ?? effectiveDays);
 
-  // laufzeitWochen aus customConfig.laufzeitDays (immer ganze Wochen)
-  const laufzeitWochen = Math.max(2, Math.round(customConfig.laufzeitDays / 7));
-
-  // Sweet-Spot Berechnung — doohAnteil aus customImpact ableiten
-  const doohAnteilForSS = customImpact && customConfig.budget > 0
-    ? customImpact.doohBudget / customConfig.budget
-    : maxDoohShareForRegion(selectedRegionsFull, customConfig.laufzeitDays);
-
-  const sweetSpotCustom = useMemo(() => {
-    if (!selectedRegionsFull.length) return null;
-    return calculateSweetSpotCustom(
-      selectedRegionsFull,
-      customConfig.wirkungsfokus ?? 'ausgewogen',
-      customConfig.laufzeitDays,
-      doohAnteilForSS,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedRegionsFull.map(r => r.name).join(','), customConfig.wirkungsfokus, customConfig.laufzeitDays, doohAnteilForSS]);
+  const displayBudget = mode === 'paket' && packages && selectedPkg
+    ? packages[selectedPkg].budget
+    : mode === 'custom' ? effectiveBudget : budget;
 
   // Pfad 'custom': Boosted-Variante für Partner-Code-Delta.
-  // calculateImpactCustom hat kein partnerCodeBoostPct-Param → Budget-Multiplikator als Approximation.
   const customImpactBoosted: CustomImpactResult | null = useMemo(() => {
     if (mode !== 'custom' || !activeCode || activeCode.reachBoostPct === 0
         || !selectedRegionsFull.length) return null;
-    const boostedBudget = customConfig.budget * (1 + activeCode.reachBoostPct / 100);
-    const start = customConfig.campaignStart ? new Date(customConfig.campaignStart) : undefined;
-    return calculateImpactCustom({ ...customConfig, budget: boostedBudget, regions: selectedRegionsFull, campaignStart: start });
+    const boostedBudget = effectiveBudget * (1 + activeCode.reachBoostPct / 100);
+    return calculateImpactCustom({
+      budget: boostedBudget,
+      laufzeitDays: campaignWindow.effectiveLaufzeitDays,
+      freqWeekly: customConfig.freqWeekly,
+      doohShare: customConfig.doohShare,
+      wirkungsfokus: customConfig.wirkungsfokus,
+      regions: selectedRegionsFull,
+      campaignStart: campaignWindow.earliestStart,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, selectedRegionsFull.map(r => r.name).join(','), customConfig, activeCode?.reachBoostPct]);
+  }, [mode, selectedRegionsFull.map(r => r.name).join(','), effectiveBudget, campaignWindow.effectiveLaufzeitDays, campaignWindow.earliestStart.getTime(), activeCode?.reachBoostPct]);
 
   // Partner-Code Reach-Delta — Pfad 'paket' (calculateImpact-basiert, 1:1 unverändert)
   const _codeBaseReach  = impactBase?.reachUniqueAbs ?? 0;
@@ -645,8 +660,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   }
 
   function handleNext() {
-    // Pfad 'custom': customConfig ist bereits per Slider-onChange synchronisiert
     if (mode === 'custom') {
+      // Budget-Clamp in State materialisieren, damit Step 3 / Briefing keinen überhöhten Roh-Wert erhält
+      if (customConfig.budget > customBudgetMax) handleCustomConfigChange({ budget: customBudgetMax });
       nextStep();
       return;
     }
@@ -692,13 +708,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       : null;
   const activeHint: HintDisplay | null = (() => {
     if (!activeHintRaw) return null;
-    if (mode !== 'custom' || !sweetSpot || activeHintRaw.tone !== 'good') return activeHintRaw;
-    const zoneLow  = sweetSpot.budget * 0.9;
-    const zoneHigh = sweetSpot.budget * 1.2;
+    if (mode !== 'custom' || !sweetSpotCustom || activeHintRaw.tone !== 'good') return activeHintRaw;
+    const zoneLow  = sweetSpotCustom.budget * COACH_BUDGET_LOW_RATIO;
+    const zoneHigh = sweetSpotCustom.budget * COACH_BUDGET_HIGH_RATIO;
     const prefix =
-      budget < zoneLow
-        ? `Empfohlenes Budget ab ${fmtCHF(sweetSpot.budget)}. `
-        : budget <= zoneHigh
+      effectiveBudget < zoneLow
+        ? `Empfohlenes Budget ab ${fmtCHF(sweetSpotCustom.budget)}. `
+        : effectiveBudget <= zoneHigh
           ? 'Im Sweet Spot. '
           : 'Starke Kampagne — du nutzt das volle Potenzial dieser Region. ';
     return { ...activeHintRaw, text: prefix + activeHintRaw.text };
@@ -765,7 +781,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             <span key={r.name} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: '#F2EFFA', color: T.ink }}>{r.name}</span>
           ))}
           {stimmTotal > 0 && (
-            <span style={{ color: T.slate, fontSize: 14 }}>{fmtNum(stimmTotal)} {demonym}</span>
+            <span style={{ color: T.slate, fontSize: 14 }}>{fmtNum(stimmTotal)} Stimmberechtigte</span>
           )}
           {daysUntilVote != null && (
             <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 500, background: T.warnBg, color: T.warn }}>
@@ -818,13 +834,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Budget</span>
-                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{fmtCHF(customConfig.budget)}</span>
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{fmtCHF(effectiveBudget)}</span>
                   </div>
                   <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
                     {/* Filled track */}
                     <div style={{
                       position: 'absolute', left: 0, top: 0, height: '100%',
-                      width: `${customBudgetMax > 4000 ? Math.max(0, Math.min(100, ((customConfig.budget - 4000) / (customBudgetMax - 4000)) * 100)) : 0}%`,
+                      width: `${customBudgetMax > 4000 ? Math.max(0, Math.min(100, ((effectiveBudget - 4000) / (customBudgetMax - 4000)) * 100)) : 0}%`,
                       background: T.violet, borderRadius: 999, pointerEvents: 'none',
                     }} />
                     {/* Sweet-Spot band */}
@@ -850,7 +866,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     })()}
                     <input
                       type="range" className="vio-range"
-                      min={4000} max={customBudgetMax} step={500} value={customConfig.budget}
+                      min={4000} max={Math.max(4000, customBudgetMax)} step={500} value={effectiveBudget}
                       onChange={e => handleCustomConfigChange({ budget: Number(e.target.value) })}
                     />
                   </div>
@@ -874,8 +890,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 {voteDate && (
                   <CampaignTimeline
                     voteDate={voteDate}
-                    fruehesterStart={fruehesterStart}
+                    fruehesterStart={campaignWindow.earliestStart}
                     laufzeitWochen={laufzeitWochen}
+                    effectiveDays={campaignWindow.effectiveLaufzeitDays}
                     onChange={wochen => {
                       const start = new Date(voteDate.getTime() - wochen * 7 * 86400000);
                       handleCustomConfigChange({
@@ -978,25 +995,23 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {/* Zone 2: Outcome-Panel (nur Pfad 'custom') */}
             {mode === 'custom' && customImpact && (() => {
               const wfKey = customConfig.wirkungsfokus ?? 'ausgewogen';
-              // poolCap back-computed: reach = poolCap * (1 - exp(-k * saturationRatio))
-              const sr = customImpact.saturationRatio;
-              const poolCapEst = sr > 0 && customImpact.reach > 0
-                ? customImpact.reach / (1 - Math.exp(-REACH_CURVE_K * sr))
-                : stimmTotal || 10000;
-              // Frequenz: Ziel-Kontakte/Person über gesamte Kampagne
-              const frequenzKampagne = Math.round(WIRKUNGSFOKUS_FREQUENZ[wfKey] * customConfig.laufzeitDays / 7);
+              const frequenzKampagne = Math.round(WIRKUNGSFOKUS_FREQUENZ[wfKey] * campaignWindow.effectiveLaufzeitDays / 7);
               const regionsKontext = selectedRegionsFull.length === 1
-                ? `im ${selectedRegionsFull[0].name}`
+                ? `in ${selectedRegionsFull[0].name}`
                 : 'in deiner Auswahl';
-              // Dot-Grid
-              const ZIEL_PUNKTE = 50;
-              const DOTUNIT_STEPS = [250, 500, 1000, 2000, 5000];
-              const dotUnitRaw = poolCapEst / ZIEL_PUNKTE;
-              const dotUnit = DOTUNIT_STEPS.find(v => v >= dotUnitRaw) ?? 5000;
-              const totalSlots  = Math.min(60, Math.max(1, Math.round(poolCapEst / dotUnit)));
-              const filledDots  = Math.min(totalSlots, Math.max(0, Math.round(customImpact.reach / dotUnit)));
+              const heroStep = customImpact.reachUniqueLow < 10000 ? 100 : customImpact.reachUniqueLow < 100000 ? 1000 : 5000;
+              const heroFloor = Math.floor(customImpact.reachUniqueLow / heroStep) * heroStep;
+              const anchor = resolveLandmarkAnchor(customImpact.reachUniqueLow, selectedRegionsFull);
+              const dotUnit = (() => {
+                if (customImpact.reachUniqueLow <= 0) return 1000;
+                const raw = customImpact.reachUniqueLow / 90;
+                const exp = Math.floor(Math.log10(raw));
+                const mag = Math.pow(10, exp);
+                return [1, 2, 5, 10].map(b => b * mag).find(v => v >= raw) ?? mag * 10;
+              })();
+              const filledDots = Math.min(260, Math.max(1, Math.round(customImpact.reachUniqueLow / dotUnit)));
+              const totalSlots = filledDots;
               const DOTS_PER_ROW = 12;
-              // Präsenz
               const presence = customEval?.presence;
               return (
                 <div style={{
@@ -1009,10 +1024,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     fontSize: 42, fontWeight: 800, color: T.violet,
                     letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 4,
                   }}>
-                    {fmtNum(customImpact.reach)}
+                    {fmtNum(heroFloor)}+
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 6 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
                     Stimmberechtigte erreicht
+                  </div>
+                  <div style={{ fontSize: 12, color: T.slate, marginBottom: 8 }}>
+                    {fmtNum(customImpact.reachUniqueLow)} – {fmtNum(customImpact.reachUniqueHigh)} Stimmberechtigte · typischer Bereich
                   </div>
                   <div style={{ fontSize: 13, color: T.slate, marginBottom: 24 }}>
                     Ø&nbsp;{frequenzKampagne}× gesehen&nbsp;·&nbsp;{regionsKontext}
@@ -1032,7 +1050,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       ))}
                     </div>
                     <div style={{ fontSize: 11, color: T.slate, marginTop: 8 }}>
-                      1 Punkt ≈ {fmtNum(dotUnit)} Stimmberechtigte&nbsp;·&nbsp;gefüllt = von dir erreicht
+                      1 Punkt ≈ {fmtNum(dotUnit)} Stimmberechtigte
                     </div>
                   </div>
 
@@ -1042,20 +1060,17 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                         <span style={{ fontSize: 16, lineHeight: 1.4 }}>📍</span>
                         <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.5 }}>
-                          {presence.doohAvailable ? (
-                            presence.showScreenCount ? (
-                              <>Sichtbar auf rund <strong style={{ color: T.ink }}>{fmtNum(presence.screenCount)}</strong> Bildschirmen im öffentlichen Raum – und online.</>
-                            ) : (
-                              <>Sichtbar im öffentlichen Raum deiner Region – und online.</>
-                            )
+                          {campaignWindow.modus === 'display_only' ? (
+                            <>Sichtbar auf Online-Werbeflächen in deiner Zielregion.</>
+                          ) : presence.showScreenCount ? (
+                            <>Sichtbar auf rund <strong style={{ color: T.ink }}>{fmtNum(presence.screenCount)}</strong> Bildschirmen im öffentlichen Raum – und online.</>
                           ) : (
-                            <>Sichtbar online in deiner Region.</>
+                            <>Sichtbar im öffentlichen Raum deiner Region – und online.</>
                           )}
                         </div>
                       </div>
-                      {/* TODO: Ortsanker — spezifische Vergleichswerte (separate Verfeinerung) */}
-                      <div style={{ fontSize: 13, color: T.slate, fontStyle: 'italic', marginTop: 6, paddingLeft: 24 }}>
-                        Das entspricht mehreren mittelgrossen Gemeinden zusammen.
+                      <div style={{ fontSize: 13, color: anchor.generic ? 'rgba(122,117,150,0.65)' : T.slate, fontStyle: 'italic', marginTop: 6, paddingLeft: 24 }}>
+                        {anchor.text}
                       </div>
                     </div>
                   )}

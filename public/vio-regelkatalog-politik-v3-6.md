@@ -416,6 +416,32 @@ Es gibt bewusst keine Zwischenstufe "reduzierte Präsenz": DOOH-Setup ist operat
 binär (Vorlauf reicht oder nicht). Eine Zwischenstufe erzeugt für politische
 Nutzer mehr Erklärbedarf als Mehrwert.
 
+### Kampagnenfenster & DOOH-Feasibility (Custom-Pfad)
+
+Eine Quelle: getCampaignWindow(regions, voteDate, requestedLaufzeitDays).
+
+DOOH-Feasibility (binär, keine zweite Schwelle):
+
+    doohEarliestStart = addBusinessDays(today, SETUP_VORLAUF_WERKTAGE)
+
+    voteDate − requestedLaufzeitDays < doohEarliestStart
+      → modus = display_only, doohShare = 0, displayShare = 1
+      → effectiveLaufzeitDays = min(requestedLaufzeitDays, max(LAUFZEIT_MIN_DAYS, daysUntilVote − 1))
+      → earliestStart = voteDate − effectiveLaufzeitDays
+
+    sonst
+      → modus = dooh_mix; checkDoohAvailability entscheidet Inventar
+      → bei no_inventory ebenfalls display_only (doohShare = 0)
+
+Begründung: Die Kampagne ist nicht mehr rechtzeitig produzierbar, wenn der Wahltag
+vor dem frühesten DOOH-Start liegt. Bewusst keine "minimal sinnvolle Laufzeit"-Schwelle
+(80/20-Entscheid); der Edge-Case Runway knapp > Setup (1–2 sinnlose DOOH-Tage) wird
+akzeptiert.
+
+Alle Konsumenten — sliderMax (via sweetSpotCustom), Sweet-Spot-Marker, CampaignTimeline,
+Pin, calculateImpactCustom — lesen Laufzeit und doohShare ausschliesslich aus diesem Objekt.
+Keine zweite, unabhängige Laufzeit- oder doohShare-Quelle im Custom-Pfad.
+
 ### Präsenz-Kommunikation (Inventar-Copy-Regel)
 Innerhalb von Zustand A entscheidet die Screen-Anzahl der Region über die
 Formulierung der Präsenz-Aussage – nicht über eine zusätzliche Stufe:
