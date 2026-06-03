@@ -445,6 +445,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [partnerCodeInput, setPartnerCodeInput] = useState<string>('');
   const [partnerCodeError, setPartnerCodeError] = useState<string | null>(null);
 
+  // Custom-Pfad: geführter Wizard (Fokus → Dauer → Empfehlung → Budget).
+  // Bestehende customConfig (Rückkehrer) → alle Schritte erledigt, Outcome direkt sichtbar.
+  const [wizardStep, setWizardStep] = useState<number>(briefing.customConfig ? 3 : 0);
+  const [doneSteps, setDoneSteps]   = useState<boolean[]>(
+    briefing.customConfig ? [true, true, true] : [false, false, false]
+  );
+
   // ── Derived ────────────────────────────────────────────────────────────────
   const corridor = getLaufzeitCorridor(budget);
 
@@ -800,111 +807,234 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               Reichweite &amp; Paket
             </div>
 
-            {/* Pfad 'custom': Drei-Hebel-Cockpit */}
-            {mode === 'custom' && (
-              <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '24px 28px', marginBottom: 18 }}>
-
-                {/* HEBEL 3: Wirkungsfokus-Toggle */}
-                <div style={{ marginBottom: 28 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.slate, marginBottom: 10 }}>Wirkungsfokus</div>
-                  <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: `1px solid ${T.line}` }}>
-                    {(['breit', 'ausgewogen', 'verankerung'] as const).map((key, i) => {
-                      const labels = { breit: 'Breite Wirkung', ausgewogen: 'Ausgewogen', verankerung: 'Verankerung' };
-                      const active = (customConfig.wirkungsfokus ?? 'ausgewogen') === key;
-                      return (
-                        <button key={key} type="button"
-                          onClick={() => handleCustomConfigChange({ wirkungsfokus: key })}
-                          style={{
-                            flex: 1, border: 'none',
-                            borderLeft: i > 0 ? `1px solid ${T.line}` : 'none',
-                            background: active ? T.violet : T.card,
-                            color: active ? 'white' : T.slate,
-                            fontFamily: "'Jost', sans-serif",
-                            fontSize: 13, fontWeight: active ? 600 : 400,
-                            padding: '9px 4px', cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >{labels[key]}</button>
-                      );
-                    })}
-                  </div>
+            {/* Pfad 'custom': Geführter Wizard (Fokus → Dauer → Empfehlung → Budget) */}
+            {mode === 'custom' && (() => {
+              const effLauf = campaignWindow.effectiveLaufzeitDays;
+              const wfKey   = customConfig.wirkungsfokus ?? 'ausgewogen';
+              const WF_LABEL: Record<'breit' | 'ausgewogen' | 'verankerung', string> =
+                { breit: 'Breite Wirkung', ausgewogen: 'Ausgewogen', verankerung: 'Tiefe Verankerung' };
+              const WF_DESC: Record<'breit' | 'ausgewogen' | 'verankerung', string> =
+                { breit: 'Möglichst viele Menschen erreichen', ausgewogen: 'Gute Balance aus Reichweite & Wiederholung', verankerung: 'Gezielter — dafür sieht dich jede Person öfter' };
+              const sweetRounded = sweetSpotCustom && sweetSpotCustom.budget > 0 ? Math.round(sweetSpotCustom.budget / 1000) * 1000 : 0;
+              const unlocked = (i: number) => i === 0 || doneSteps[i - 1];
+              const stState  = (i: number): 'done' | 'active' | 'idle' =>
+                doneSteps[i] && wizardStep !== i ? 'done' : (wizardStep === i && unlocked(i) ? 'active' : 'idle');
+              const mkImpact = (wf: 'breit' | 'ausgewogen' | 'verankerung') => calculateImpactCustom({
+                budget: effectiveBudget, laufzeitDays: effLauf, freqWeekly: customConfig.freqWeekly,
+                doohShare: customConfig.doohShare, wirkungsfokus: wf, regions: selectedRegionsFull,
+                campaignStart: campaignWindow.earliestStart,
+              });
+              const rBreit = mkImpact('breit');
+              const rVer   = mkImpact('verankerung');
+              const freqOf = (wf: 'breit' | 'ausgewogen' | 'verankerung') => Math.round(WIRKUNGSFOKUS_FREQUENZ[wf] * effLauf / 7);
+              const zoneLow  = sweetSpotCustom ? sweetSpotCustom.budget * COACH_BUDGET_LOW_RATIO  : 0;
+              const zoneHigh = sweetSpotCustom ? sweetSpotCustom.budget * COACH_BUDGET_HIGH_RATIO : 0;
+              const badge = (s: 'done' | 'active' | 'idle'): React.CSSProperties => ({
+                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 13,
+                background: s === 'done' ? T.good : s === 'active' ? T.violet : T.highlight,
+                color: s === 'idle' ? T.violet : 'white',
+                border: `2px solid ${s === 'done' ? T.good : s === 'active' ? T.violet : T.lineStrong}`,
+              });
+              const card = (i: number): React.CSSProperties => ({
+                background: T.card,
+                border: `1px solid ${wizardStep === i && unlocked(i) ? T.violet : T.line}`,
+                borderRadius: 16, marginBottom: 12, overflow: 'hidden',
+                boxShadow: wizardStep === i && unlocked(i) ? '0 6px 24px rgba(107,79,187,0.10)' : 'none',
+                opacity: unlocked(i) ? 1 : 0.55,
+              });
+              const headRow = (i: number): React.CSSProperties => ({
+                display: 'flex', alignItems: 'center', gap: 14, padding: '18px 22px',
+                cursor: unlocked(i) ? 'pointer' : 'default',
+              });
+              const ttl: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: T.ink };
+              const stepBtn: React.CSSProperties = {
+                marginTop: 18, background: T.violet, color: 'white', border: 'none',
+                padding: '11px 22px', borderRadius: 999, fontFamily: "'Jost', sans-serif",
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(107,79,187,0.25)',
+              };
+              const microHint = (text: React.ReactNode) => (
+                <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', background: T.highlight, border: `1px solid ${T.lineStrong}`, borderRadius: 11, padding: '11px 14px', marginTop: 14, fontSize: 13, color: T.ink, lineHeight: 1.45 }}>
+                  <span style={{ color: T.violet, fontWeight: 700 }}>→</span>
+                  <span>{text}</span>
                 </div>
-
-                {/* HEBEL 1: Budget mit Sweet-Spot-Zone */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Budget</span>
-                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{fmtCHF(effectiveBudget)}</span>
+              );
+              return (
+                <>
+                  {/* Fortschrittsbalken */}
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{ height: 5, flex: 1, borderRadius: 999, background: doneSteps[i] ? T.violet : T.lineStrong, opacity: doneSteps[i] ? 1 : wizardStep === i ? 0.85 : 0.5, transition: 'all 0.3s ease' }} />
+                    ))}
                   </div>
-                  <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
-                    {/* Filled track */}
-                    <div style={{
-                      position: 'absolute', left: 0, top: 0, height: '100%',
-                      width: `${customBudgetMax > 4000 ? Math.max(0, Math.min(100, ((effectiveBudget - 4000) / (customBudgetMax - 4000)) * 100)) : 0}%`,
-                      background: T.violet, borderRadius: 999, pointerEvents: 'none',
-                    }} />
-                    {/* Sweet-Spot band */}
-                    {sweetSpotCustom && sweetSpotCustom.budget > 0 && customBudgetMax > 4000 && (() => {
-                      const range     = customBudgetMax - 4000;
-                      const leftPct   = Math.max(0, Math.min(100, ((COACH_BUDGET_LOW_RATIO  * sweetSpotCustom.budget - 4000) / range) * 100));
-                      const rightPct  = Math.max(0, Math.min(100, ((COACH_BUDGET_HIGH_RATIO * sweetSpotCustom.budget - 4000) / range) * 100));
-                      const markerPct = Math.max(0, Math.min(100, ((sweetSpotCustom.budget - 4000) / range) * 100));
-                      return (
-                        <>
+
+                  {/* SCHRITT 1 — Fokus (Breite ↔ Tiefe) */}
+                  <div style={card(0)}>
+                    <div style={headRow(0)} onClick={() => unlocked(0) && setWizardStep(0)}>
+                      <div style={badge(stState(0))}>{stState(0) === 'done' ? '✓' : '1'}</div>
+                      <div style={ttl}>Worauf legst du den Fokus?</div>
+                      {doneSteps[0] && wizardStep !== 0 && (
+                        <div style={{ marginLeft: 'auto', fontSize: 13, color: T.violetDeep, fontWeight: 600 }}>{WF_LABEL[wfKey]}</div>
+                      )}
+                    </div>
+                    {wizardStep === 0 && (
+                      <div style={{ padding: '0 22px 22px' }}>
+                        <p style={{ fontSize: 13, color: T.slate, margin: '0 0 14px', lineHeight: 1.45 }}>
+                          Gleiches Budget, andere Wirkung: viele Menschen einmal antippen — oder weniger Menschen dafür richtig oft erreichen.
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                          {(['breit', 'ausgewogen', 'verankerung'] as const).map(key => {
+                            const active = wfKey === key;
+                            return (
+                              <button key={key} type="button" onClick={() => handleCustomConfigChange({ wirkungsfokus: key })}
+                                style={{
+                                  position: 'relative', textAlign: 'left',
+                                  border: `1.5px solid ${active ? T.violet : T.line}`,
+                                  background: active ? 'rgba(107,79,187,0.05)' : T.card,
+                                  borderRadius: 13, padding: 14, cursor: 'pointer',
+                                  fontFamily: "'Jost', sans-serif",
+                                  boxShadow: active ? '0 4px 16px rgba(107,79,187,0.10)' : 'none',
+                                  transition: 'all 0.15s ease',
+                                }}>
+                                {key === 'ausgewogen' && (
+                                  <span style={{ position: 'absolute', top: -9, right: 12, background: T.violet, color: 'white', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '3px 8px', borderRadius: 999, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Empfohlen</span>
+                                )}
+                                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, color: active ? T.violetDeep : T.ink, marginBottom: 5 }}>{WF_LABEL[key]}</div>
+                                <div style={{ fontSize: 12, color: T.slate, lineHeight: 1.4 }}>{WF_DESC[key]}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate, margin: '9px 2px 0' }}>
+                          <span>← mehr Menschen</span><span>öfter gesehen →</span>
+                        </div>
+                        <div style={{ marginTop: 12, background: T.infoBg, border: '1px solid #D9E0F4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: T.infoText, lineHeight: 1.45 }}>
+                          {wfKey === 'breit'
+                            ? <>Maximale Streuung: rund <strong style={{ color: T.ink }}>{fmtNum(rBreit.reachUniqueLow)}</strong> Menschen, je <strong style={{ color: T.ink }}>{freqOf('breit')}×</strong> gesehen.</>
+                            : wfKey === 'verankerung'
+                            ? <>Tiefe vor Breite: rund <strong style={{ color: T.ink }}>{fmtNum(rVer.reachUniqueLow)}</strong> Menschen, dafür ganze <strong style={{ color: T.ink }}>{freqOf('verankerung')}×</strong> gesehen.</>
+                            : <>Mehr Breite → ~{fmtNum(rBreit.reachUniqueLow)} Menschen · {freqOf('breit')}×. Mehr Tiefe → ~{fmtNum(rVer.reachUniqueLow)} Menschen · {freqOf('verankerung')}×.</>}
+                        </div>
+                        <button type="button" style={stepBtn}
+                          onClick={() => { setDoneSteps(prev => { const n = [...prev]; n[0] = true; return n; }); setWizardStep(1); }}>
+                          Passt — weiter zur Dauer →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SCHRITT 2 — Dauer (Kampagnenfenster) */}
+                  <div style={card(1)}>
+                    <div style={headRow(1)} onClick={() => unlocked(1) && setWizardStep(1)}>
+                      <div style={badge(stState(1))}>{stState(1) === 'done' ? '✓' : '2'}</div>
+                      <div style={ttl}>Wie lange läuft die Kampagne?</div>
+                      {!unlocked(1) && <div style={{ marginLeft: 'auto', fontSize: 12, color: T.slate }}>Zuerst Schritt 1</div>}
+                      {doneSteps[1] && wizardStep !== 1 && <div style={{ marginLeft: 'auto', fontSize: 13, color: T.violetDeep, fontWeight: 600 }}>{effLauf} Tage</div>}
+                    </div>
+                    {wizardStep === 1 && unlocked(1) && (
+                      <div style={{ padding: '0 22px 22px' }}>
+                        <p style={{ fontSize: 13, color: T.slate, margin: '0 0 4px', lineHeight: 1.45 }}>
+                          Der orange Punkt ist der Abstimmungstag. Zieh den Start nach links für mehr Vorlauf — wir enden immer rechtzeitig.
+                        </p>
+                        {voteDate && (
+                          <CampaignTimeline
+                            voteDate={voteDate}
+                            fruehesterStart={campaignWindow.earliestStart}
+                            laufzeitWochen={laufzeitWochen}
+                            effectiveDays={campaignWindow.effectiveLaufzeitDays}
+                            onChange={wochen => {
+                              const start = new Date(voteDate.getTime() - wochen * 7 * 86400000);
+                              handleCustomConfigChange({ laufzeitDays: wochen * 7, campaignStart: start.toISOString().slice(0, 10) });
+                            }}
+                          />
+                        )}
+                        {microHint(<>Bei {effLauf} Tagen sieht dich jede Person rund <strong>{freqOf(wfKey)}×</strong> — gut verteilt bis zum Abstimmungstag.</>)}
+                        <button type="button" style={stepBtn}
+                          onClick={() => {
+                            setDoneSteps(prev => { const n = [...prev]; n[1] = true; return n; });
+                            if (sweetRounded > 0) handleCustomConfigChange({ budget: sweetRounded });
+                            setWizardStep(2);
+                          }}>
+                          Passt — Budget-Empfehlung berechnen →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SCHRITT 3 — Budget (Empfehlung bestätigen / anpassen) */}
+                  <div style={card(2)}>
+                    <div style={headRow(2)} onClick={() => unlocked(2) && setWizardStep(2)}>
+                      <div style={badge(stState(2))}>{stState(2) === 'done' ? '✓' : '3'}</div>
+                      <div style={ttl}>Dein Budget — bestätigen oder anpassen</div>
+                      {!unlocked(2) && <div style={{ marginLeft: 'auto', fontSize: 12, color: T.slate }}>Zuerst Schritt 2</div>}
+                      {doneSteps[2] && wizardStep !== 2 && <div style={{ marginLeft: 'auto', fontSize: 13, color: T.violetDeep, fontWeight: 600 }}>{fmtCHF(effectiveBudget)}</div>}
+                    </div>
+                    {wizardStep === 2 && unlocked(2) && (
+                      <div style={{ padding: '0 22px 22px' }}>
+                        {sweetRounded > 0 && (
+                          <div style={{ background: `linear-gradient(135deg, ${T.violetDeep}, ${T.violet})`, color: 'white', borderRadius: 14, padding: '18px 20px', marginBottom: 18 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>✦ Unsere Empfehlung für dich</div>
+                            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 7 }}>{fmtCHF(sweetRounded)}</div>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
+                              Bei <strong style={{ color: 'white' }}>{WF_LABEL[wfKey]}</strong> über <strong style={{ color: 'white' }}>{effLauf} Tage</strong> in {regionName} trifft dieses Budget den Sweet Spot — die meiste Wirkung pro Franken.
+                            </div>
+                          </div>
+                        )}
+                        <p style={{ fontSize: 13, color: T.slate, margin: '0 0 8px', lineHeight: 1.45 }}>
+                          Der Regler steht bereits auf der Empfehlung. Hast du ein festes Budget im Kopf? Tipp es einfach drüber — wir zeigen dir sofort, was es bewirkt.
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Budget</span>
+                          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{fmtCHF(effectiveBudget)}</span>
+                        </div>
+                        <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
                           <div style={{
-                            position: 'absolute', top: -3, height: 10,
-                            left: `${leftPct}%`, width: `${Math.max(0, rightPct - leftPct)}%`,
-                            background: 'rgba(107,79,187,0.18)', borderRadius: 999, pointerEvents: 'none',
+                            position: 'absolute', left: 0, top: 0, height: '100%',
+                            width: `${customBudgetMax > 4000 ? Math.max(0, Math.min(100, ((effectiveBudget - 4000) / (customBudgetMax - 4000)) * 100)) : 0}%`,
+                            background: T.violet, borderRadius: 999, pointerEvents: 'none',
                           }} />
-                          <div style={{
-                            position: 'absolute', top: -4, width: 12, height: 12,
-                            left: `${markerPct}%`, transform: 'translateX(-50%)',
-                            background: T.violet, borderRadius: '50%', opacity: 0.7, pointerEvents: 'none',
-                          }} />
-                        </>
-                      );
-                    })()}
-                    <input
-                      type="range" className="vio-range"
-                      min={4000} max={Math.max(4000, customBudgetMax)} step={500} value={effectiveBudget}
-                      onChange={e => handleCustomConfigChange({ budget: Number(e.target.value) })}
-                    />
+                          {sweetSpotCustom && sweetSpotCustom.budget > 0 && customBudgetMax > 4000 && (() => {
+                            const range     = customBudgetMax - 4000;
+                            const leftPct   = Math.max(0, Math.min(100, ((COACH_BUDGET_LOW_RATIO  * sweetSpotCustom.budget - 4000) / range) * 100));
+                            const rightPct  = Math.max(0, Math.min(100, ((COACH_BUDGET_HIGH_RATIO * sweetSpotCustom.budget - 4000) / range) * 100));
+                            const markerPct = Math.max(0, Math.min(100, ((sweetSpotCustom.budget - 4000) / range) * 100));
+                            return (
+                              <>
+                                <div style={{ position: 'absolute', top: -3, height: 10, left: `${leftPct}%`, width: `${Math.max(0, rightPct - leftPct)}%`, background: 'rgba(107,79,187,0.18)', borderRadius: 999, pointerEvents: 'none' }} />
+                                <div style={{ position: 'absolute', top: -4, width: 12, height: 12, left: `${markerPct}%`, transform: 'translateX(-50%)', background: T.violet, borderRadius: '50%', opacity: 0.7, pointerEvents: 'none' }} />
+                              </>
+                            );
+                          })()}
+                          <input type="range" className="vio-range" min={4000} max={Math.max(4000, customBudgetMax)} step={500} value={effectiveBudget} onChange={e => handleCustomConfigChange({ budget: Number(e.target.value) })} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate }}>
+                          <span>CHF 4&apos;000</span>
+                          <span>{fmtCHF(customBudgetMax)}</span>
+                        </div>
+                        {sweetRounded > 0 && effectiveBudget !== sweetRounded && (
+                          <button type="button" onClick={() => handleCustomConfigChange({ budget: sweetRounded })}
+                            style={{ marginTop: 10, background: 'none', border: `1px solid ${T.lineStrong}`, borderRadius: 8, padding: '5px 12px', fontSize: 12, color: T.violetDeep, cursor: 'pointer', fontFamily: "'Jost', sans-serif", fontWeight: 500 }}>
+                            ↺ Zurück zur Empfehlung
+                          </button>
+                        )}
+                        {microHint(
+                          effectiveBudget < zoneLow
+                            ? <>Solide Basis. Ab {fmtCHF(sweetRounded)} holst du in {regionName} spürbar mehr Menschen ab.</>
+                            : effectiveBudget <= zoneHigh
+                            ? <>Perfekt im Sweet Spot — dein Franken arbeitet hier am effizientesten.</>
+                            : <>Volle Power: du schöpfst {regionName} fast aus. Mehr bringt nur noch wenig dazu.</>
+                        )}
+                        <button type="button" style={stepBtn}
+                          onClick={() => { setDoneSteps(prev => { const n = [...prev]; n[2] = true; return n; }); setWizardStep(3); }}>
+                          Fertig — Ergebnis zeigen ↓
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate, marginBottom: sweetSpotCustom ? 8 : 0 }}>
-                    <span>CHF 4&apos;000</span>
-                    <span>{fmtCHF(customBudgetMax)}</span>
-                  </div>
-                  {sweetSpotCustom && sweetSpotCustom.budget > 0 && (
-                    <button type="button"
-                      onClick={() => handleCustomConfigChange({ budget: Math.round(sweetSpotCustom.budget / 1000) * 1000 })}
-                      style={{
-                        background: 'none', border: `1px solid ${T.lineStrong}`, borderRadius: 8,
-                        padding: '5px 12px', fontSize: 12, color: T.violetDeep, cursor: 'pointer',
-                        fontFamily: "'Jost', sans-serif", fontWeight: 500,
-                      }}
-                    >Auf Empfehlung setzen ({fmtCHF(Math.round(sweetSpotCustom.budget / 1000) * 1000)})</button>
-                  )}
-                </div>
-
-                {/* HEBEL 2: Kampagnenfenster (Zeitachse) */}
-                {voteDate && (
-                  <CampaignTimeline
-                    voteDate={voteDate}
-                    fruehesterStart={campaignWindow.earliestStart}
-                    laufzeitWochen={laufzeitWochen}
-                    effectiveDays={campaignWindow.effectiveLaufzeitDays}
-                    onChange={wochen => {
-                      const start = new Date(voteDate.getTime() - wochen * 7 * 86400000);
-                      handleCustomConfigChange({
-                        laufzeitDays: wochen * 7,
-                        campaignStart: start.toISOString().slice(0, 10),
-                      });
-                    }}
-                  />
-                )}
-
-              </div>
-            )}
+                </>
+              );
+            })()}
 
             {/* Pfad 'paket': Paket-Karten */}
             {mode === 'paket' && packages && (
@@ -972,109 +1102,66 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               </div>
             )}
 
-            {/* Coach-Hint (Brücke zwischen Cockpit und Outcome) */}
-            {mode === 'custom' && customEval?.coachHint && (
-              <div style={{
-                background: T.highlight, border: `1px solid ${T.lineStrong}`,
-                borderRadius: 14, padding: '13px 18px', marginBottom: 14,
-                display: 'flex', gap: 12, alignItems: 'flex-start',
-                fontFamily: "'Jost', sans-serif",
-              }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-                  background: T.violet, color: 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, marginTop: 1,
-                }}>→</div>
-                <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.5 }}>
-                  {customEval.coachHint.text}
-                </div>
-              </div>
-            )}
-
-            {/* Zone 2: Outcome-Panel (nur Pfad 'custom') */}
-            {mode === 'custom' && customImpact && (() => {
+            {/* Outcome (nur Pfad 'custom', nach Abschluss aller drei Schritte) */}
+            {mode === 'custom' && customImpact && doneSteps[0] && doneSteps[1] && doneSteps[2] && (() => {
               const wfKey = customConfig.wirkungsfokus ?? 'ausgewogen';
               const frequenzKampagne = Math.round(WIRKUNGSFOKUS_FREQUENZ[wfKey] * campaignWindow.effectiveLaufzeitDays / 7);
-              const regionsKontext = selectedRegionsFull.length === 1
-                ? `in ${selectedRegionsFull[0].name}`
-                : 'in deiner Auswahl';
               const heroStep = customImpact.reachUniqueLow < 10000 ? 100 : customImpact.reachUniqueLow < 100000 ? 1000 : 5000;
               const heroFloor = Math.floor(customImpact.reachUniqueLow / heroStep) * heroStep;
               const anchor = resolveLandmarkAnchor(customImpact.reachUniqueLow, selectedRegionsFull);
-              const dotUnit = (() => {
-                if (customImpact.reachUniqueLow <= 0) return 1000;
-                const raw = customImpact.reachUniqueLow / 90;
-                const exp = Math.floor(Math.log10(raw));
-                const mag = Math.pow(10, exp);
-                return [1, 2, 5, 10].map(b => b * mag).find(v => v >= raw) ?? mag * 10;
-              })();
-              const filledDots = Math.min(260, Math.max(1, Math.round(customImpact.reachUniqueLow / dotUnit)));
-              const totalSlots = filledDots;
-              const DOTS_PER_ROW = 12;
               const presence = customEval?.presence;
+              const sweetB   = sweetSpotCustom ? sweetSpotCustom.budget : 0;
+              const zoneLow  = sweetB * COACH_BUDGET_LOW_RATIO;
+              const zoneHigh = sweetB * COACH_BUDGET_HIGH_RATIO;
+              const confirm = effectiveBudget < zoneLow
+                ? { title: 'Guter Plan — da geht noch was', text: `Mit etwas mehr Budget holst du spürbar mehr Menschen ab. Ab ${fmtCHF(Math.round(sweetB / 1000) * 1000)} bist du im Sweet Spot für ${regionName}.` }
+                : effectiveBudget <= zoneHigh
+                ? { title: 'Das sitzt.', text: `~${fmtNum(heroFloor)} ${demonym} sehen deine Botschaft im Schnitt ${frequenzKampagne}× — genug, um wirklich hängen zu bleiben. Starke Wahl.` }
+                : { title: 'Volle Power für deine Region', text: `Du schöpfst das Potenzial von ${regionName} aus — fast jede erreichbare Person ist dabei.` };
               return (
-                <div style={{
-                  background: T.card, border: `1px solid ${T.line}`,
-                  borderRadius: 16, padding: '24px 28px', marginBottom: 18,
-                }}>
-                  {/* Reichweite-Hero */}
-                  <div style={{
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    fontSize: 42, fontWeight: 800, color: T.violet,
-                    letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 4,
-                  }}>
-                    {fmtNum(heroFloor)}+
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 4 }}>
-                    Stimmberechtigte erreicht
-                  </div>
-                  <div style={{ fontSize: 12, color: T.slate, marginBottom: 8 }}>
-                    {fmtNum(customImpact.reachUniqueLow)} – {fmtNum(customImpact.reachUniqueHigh)} Stimmberechtigte · typischer Bereich
-                  </div>
-                  <div style={{ fontSize: 13, color: T.slate, marginBottom: 24 }}>
-                    Ø&nbsp;{frequenzKampagne}× gesehen&nbsp;·&nbsp;{regionsKontext}
-                  </div>
-
-                  {/* Dot-Grid */}
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{
-                      display: 'flex', flexWrap: 'wrap' as const,
-                      gap: 5, maxWidth: DOTS_PER_ROW * (10 + 5),
-                    }}>
-                      {Array.from({ length: totalSlots }, (_, i) => (
-                        <div key={i} style={{
-                          width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                          background: i < filledDots ? T.violet : 'rgba(107,79,187,0.15)',
-                        }} />
-                      ))}
+                <>
+                  {/* Zwei-Hero-Outcome: Menschen erreicht · Häufigkeit */}
+                  <div style={{ background: T.ink, borderRadius: 20, padding: '30px 32px 28px', color: 'white', position: 'relative', overflow: 'hidden', marginBottom: 18 }}>
+                    <div style={{ position: 'absolute', top: -40, right: -40, width: 300, height: 300, background: 'radial-gradient(circle, rgba(107,79,187,0.55), transparent 62%)', pointerEvents: 'none' }} />
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 18, position: 'relative' }}>
+                      Das bewirkt deine Kampagne
                     </div>
-                    <div style={{ fontSize: 11, color: T.slate, marginTop: 8 }}>
-                      1 Punkt ≈ {fmtNum(dotUnit)} Stimmberechtigte
+                    <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, position: 'relative', zIndex: 1 }}>
+                      <div>
+                        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 50, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 7 }}>≈ {fmtNum(heroFloor)}</div>
+                        <div style={{ fontSize: 15, color: 'white', fontWeight: 600, marginBottom: 3 }}>{demonym} erreicht</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>{fmtNum(customImpact.reachUniqueLow)} – {fmtNum(customImpact.reachUniqueHigh)} · typischer Bereich</div>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 50, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 7, color: '#C9B6FF' }}>{frequenzKampagne}×</div>
+                        <div style={{ fontSize: 15, color: 'white', fontWeight: 600, marginBottom: 3 }}>sieht dich jede Person</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>über die ganze Laufzeit verteilt</div>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Präsenz-Story */}
-                  {presence && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                        <span style={{ fontSize: 16, lineHeight: 1.4 }}>📍</span>
-                        <div style={{ fontSize: 14, color: T.ink, lineHeight: 1.5 }}>
-                          {campaignWindow.modus === 'display_only' ? (
-                            <>Sichtbar auf Online-Werbeflächen in deiner Zielregion.</>
-                          ) : presence.showScreenCount ? (
-                            <>Sichtbar auf rund <strong style={{ color: T.ink }}>{fmtNum(presence.screenCount)}</strong> Bildschirmen im öffentlichen Raum – und online.</>
-                          ) : (
-                            <>Sichtbar im öffentlichen Raum deiner Region – und online.</>
-                          )}
+                    {presence && (
+                      <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', marginTop: 22, position: 'relative', zIndex: 1, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+                        <span style={{ fontSize: 17, lineHeight: 1.3 }}>📍</span>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
+                          {campaignWindow.modus === 'display_only'
+                            ? <>Sichtbar auf Online-Werbeflächen in deiner Zielregion.</>
+                            : presence.showScreenCount
+                            ? <>Sichtbar auf rund <strong style={{ color: 'white' }}>{fmtNum(presence.screenCount)}</strong> Bildschirmen im öffentlichen Raum — und online.</>
+                            : <>Sichtbar im öffentlichen Raum deiner Region — und online.</>}
+                          <span style={{ display: 'block', color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', fontSize: 13, marginTop: 4 }}>{anchor.text}</span>
                         </div>
                       </div>
-                      <div style={{ fontSize: 13, color: anchor.generic ? 'rgba(122,117,150,0.65)' : T.slate, fontStyle: 'italic', marginTop: 6, paddingLeft: 24 }}>
-                        {anchor.text}
-                      </div>
+                    )}
+                  </div>
+
+                  {/* Wohlwollende Bestätigung */}
+                  <div style={{ display: 'flex', gap: 13, alignItems: 'flex-start', background: T.goodBg, border: '1px solid #C5DDC5', borderRadius: 14, padding: '14px 18px', marginBottom: 18 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: T.good, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, marginTop: 1 }}>✓</div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: T.good, marginBottom: 2, fontSize: 14 }}>{confirm.title}</div>
+                      <div style={{ color: T.slate, fontSize: 14, lineHeight: 1.5 }}>{confirm.text}</div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                </>
               );
             })()}
 
@@ -1139,7 +1226,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
             {/* CTA row */}
             {(() => {
-              const nextDisabled = mode === 'paket' ? selectedPkg === null : false;
+              const nextDisabled = mode === 'paket'
+                ? selectedPkg === null
+                : !(doneSteps[0] && doneSteps[1] && doneSteps[2]);
               return (
                 <div style={{ marginTop: 26 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1161,6 +1250,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   {nextDisabled && mode === 'paket' && (
                     <div style={{ fontSize: 13, color: T.slate, marginTop: 6, textAlign: 'right' as const }}>
                       Bitte wähle ein Paket aus.
+                    </div>
+                  )}
+                  {nextDisabled && mode === 'custom' && (
+                    <div style={{ fontSize: 13, color: T.slate, marginTop: 6, textAlign: 'right' as const }}>
+                      Schliesse die drei Schritte ab, dann geht&apos;s weiter.
                     </div>
                   )}
                   {mode === 'paket' && (
