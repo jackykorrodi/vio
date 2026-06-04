@@ -451,6 +451,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const [doneSteps, setDoneSteps]   = useState<boolean[]>(
     briefing.customConfig ? [true, true, true] : [false, false, false]
   );
+  const [budgetRaw, setBudgetRaw]   = useState<string>(String(customConfig.budget));
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const corridor = getLaufzeitCorridor(budget);
@@ -545,6 +546,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
 
   // effectiveBudget: abgeleiteter Wert, kein State — kein useEffect, kein Flash
   const effectiveBudget = Math.min(customConfig.budget, customBudgetMax);
+  useEffect(() => { setBudgetRaw(String(effectiveBudget)); }, [effectiveBudget]);
 
   const customImpact: CustomImpactResult | null = useMemo(() => {
     if (!selectedRegionsFull.length) return null;
@@ -894,10 +896,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                         </div>
                         <div style={{ marginTop: 12, background: T.infoBg, border: '1px solid #D9E0F4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: T.infoText, lineHeight: 1.45 }}>
                           {wfKey === 'breit'
-                            ? <>Maximale Streuung: möglichst viele Menschen erreicht, je <strong style={{ color: T.ink }}>{freqOf('breit')}×</strong> gesehen.</>
+                            ? <>Möglichst viele Menschen erreichen.</>
                             : wfKey === 'verankerung'
-                            ? <>Tiefe vor Breite: weniger Menschen, dafür ganze <strong style={{ color: T.ink }}>{freqOf('verankerung')}×</strong> gesehen.</>
-                            : <>Mehr Breite → mehr Menschen · {freqOf('breit')}×. Mehr Tiefe → weniger Menschen, dafür {freqOf('verankerung')}×.</>}
+                            ? <>Dieselben Personen häufiger erreichen.</>
+                            : <>Gute Balance zwischen Reichweite und Wiederholung.</>}
                         </div>
                         <button type="button" style={stepBtn}
                           onClick={() => { setDoneSteps(prev => { const n = [...prev]; n[0] = true; return n; }); setWizardStep(1); }}>
@@ -933,6 +935,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                           />
                         )}
                         {microHint(<>Bei {effLauf} Tagen sieht dich jede Person rund <strong>{freqOf(wfKey)}×</strong> — gut verteilt bis zum Abstimmungstag.</>)}
+                        {microHint(campaignWindow.modus === 'display_only'
+                          ? <>Kurzfristig machbar: Online-Display startet 1 Werktag nach deiner Bestätigung und vorliegendem Werbemittel. Digitale Plakate (DOOH) bräuchten 10 Werktage Vorlauf.</>
+                          : <>Genug Vorlauf für digitale Plakate — DOOH startet 10 Werktage nach Bestätigung, sobald dein Werbemittel vorliegt.</>)}
                         <button type="button" style={stepBtn}
                           onClick={() => {
                             setDoneSteps(prev => { const n = [...prev]; n[1] = true; return n; });
@@ -972,17 +977,12 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                           <label style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
                             <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>CHF</span>
                             <input
-                              type="number"
-                              min={4000}
-                              max={Math.max(4000, customBudgetMax)}
-                              step={500}
-                              value={effectiveBudget}
-                              onChange={e => {
-                                const v = Number(e.target.value);
-                                if (!isNaN(v) && v > 0) handleCustomConfigChange({ budget: Math.max(4000, Math.min(Math.max(4000, customBudgetMax), v)) });
-                              }}
+                              type="text"
+                              inputMode="numeric"
+                              value={budgetRaw}
+                              onChange={e => setBudgetRaw(e.target.value)}
                               onBlur={e => {
-                                const v = Number(e.target.value);
+                                const v = Number(e.target.value.replace(/[^0-9]/g, ''));
                                 const clamped = (isNaN(v) || v < 4000) ? 4000 : Math.round(Math.min(Math.max(4000, customBudgetMax), v) / 500) * 500;
                                 handleCustomConfigChange({ budget: clamped });
                               }}
@@ -998,13 +998,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                           }} />
                           {sweetSpotCustom && sweetSpotCustom.budget > 0 && customBudgetMax > 4000 && (() => {
                             const range     = customBudgetMax - 4000;
-                            const leftPct   = Math.max(0, Math.min(100, ((COACH_BUDGET_LOW_RATIO  * sweetSpotCustom.budget - 4000) / range) * 100));
-                            const rightPct  = Math.max(0, Math.min(100, ((COACH_BUDGET_HIGH_RATIO * sweetSpotCustom.budget - 4000) / range) * 100));
+                            const leftPct   = Math.max(0, Math.min(100, ((0.94 * sweetSpotCustom.budget - 4000) / range) * 100));
+                            const rightPct  = Math.max(0, Math.min(100, ((1.06 * sweetSpotCustom.budget - 4000) / range) * 100));
                             const markerPct = Math.max(0, Math.min(100, ((sweetSpotCustom.budget - 4000) / range) * 100));
                             return (
                               <>
                                 <div style={{ position: 'absolute', top: -3, height: 10, left: `${leftPct}%`, width: `${Math.max(0, rightPct - leftPct)}%`, background: 'rgba(107,79,187,0.18)', borderRadius: 999, pointerEvents: 'none' }} />
                                 <div style={{ position: 'absolute', top: -4, width: 12, height: 12, left: `${markerPct}%`, transform: 'translateX(-50%)', background: T.violet, borderRadius: '50%', opacity: 0.7, pointerEvents: 'none' }} />
+                                <div style={{ position: 'absolute', top: 10, left: `${markerPct}%`, transform: 'translateX(-50%)', fontSize: 10, color: T.violet, whiteSpace: 'nowrap', pointerEvents: 'none', fontWeight: 600 }}>Sweet Spot</div>
                               </>
                             );
                           })()}
