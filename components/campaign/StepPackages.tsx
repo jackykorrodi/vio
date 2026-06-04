@@ -569,14 +569,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   // laufzeitWochen aus effectiveLaufzeitDays (aus Fenster)
   const laufzeitWochen = Math.max(2, Math.round(campaignWindow.effectiveLaufzeitDays / 7));
 
-  // displayDays + displayBudget nach effectiveBudget/campaignWindow
   const displayDays = mode === 'paket' && packages && selectedPkg
     ? packages[selectedPkg].laufzeitDays
     : mode === 'custom' ? campaignWindow.effectiveLaufzeitDays : (impact?.laufzeitDays ?? effectiveDays);
-
-  const displayBudget = mode === 'paket' && packages && selectedPkg
-    ? packages[selectedPkg].budget
-    : mode === 'custom' ? effectiveBudget : budget;
 
   // Pfad 'custom': Boosted-Variante für Partner-Code-Delta.
   const customImpactBoosted: CustomImpactResult | null = useMemo(() => {
@@ -735,17 +730,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const fWeekly    = impact ? impact.frequencyWeekly.toFixed(1)   : '—';
 
 
-  // ── Sidebar row ─────────────────────────────────────────────────────────────
-  const SbRow = ({ label, val, color = T.ink, last = false }: { label: string; val: string; color?: string; last?: boolean }) => (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      padding: '9px 0', borderBottom: last ? 'none' : `1px solid ${T.line}`, fontSize: 14,
-    }}>
-      <span style={{ color: T.slate }}>{label}</span>
-      <span style={{ fontWeight: 600, color }}>{val}</span>
-    </div>
-  );
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <section style={{ background: T.bg, minHeight: '100vh', fontFamily: "'Jost', sans-serif", color: T.ink }}>
@@ -758,7 +742,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         .vio-pkg-card:not([tabindex="-1"]):hover { border-color: #9181CC !important; box-shadow: 0 2px 12px rgba(107,79,187,0.14) !important; }
         @media (max-width: 700px) {
           .vio-stage { grid-template-columns: 1fr !important; }
-          .vio-sidebar { position: relative !important; top: 0 !important; }
           .vio-kpis { grid-template-columns: 1fr !important; }
           .vio-pkgs { grid-template-columns: 1fr !important; }
         }
@@ -799,7 +782,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
         </div>
 
         {/* Stage: main + sidebar */}
-        <div className="vio-stage" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32, alignItems: 'start' }}>
+        <div className="vio-stage" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 32, alignItems: 'start' }}>
 
           {/* MAIN */}
           <div>
@@ -911,10 +894,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                         </div>
                         <div style={{ marginTop: 12, background: T.infoBg, border: '1px solid #D9E0F4', borderRadius: 11, padding: '11px 14px', fontSize: 13, color: T.infoText, lineHeight: 1.45 }}>
                           {wfKey === 'breit'
-                            ? <>Maximale Streuung: rund <strong style={{ color: T.ink }}>{fmtNum(rBreit.reachUniqueLow)}</strong> Menschen, je <strong style={{ color: T.ink }}>{freqOf('breit')}×</strong> gesehen.</>
+                            ? <>Maximale Streuung: möglichst viele Menschen erreicht, je <strong style={{ color: T.ink }}>{freqOf('breit')}×</strong> gesehen.</>
                             : wfKey === 'verankerung'
-                            ? <>Tiefe vor Breite: rund <strong style={{ color: T.ink }}>{fmtNum(rVer.reachUniqueLow)}</strong> Menschen, dafür ganze <strong style={{ color: T.ink }}>{freqOf('verankerung')}×</strong> gesehen.</>
-                            : <>Mehr Breite → ~{fmtNum(rBreit.reachUniqueLow)} Menschen · {freqOf('breit')}×. Mehr Tiefe → ~{fmtNum(rVer.reachUniqueLow)} Menschen · {freqOf('verankerung')}×.</>}
+                            ? <>Tiefe vor Breite: weniger Menschen, dafür ganze <strong style={{ color: T.ink }}>{freqOf('verankerung')}×</strong> gesehen.</>
+                            : <>Mehr Breite → mehr Menschen · {freqOf('breit')}×. Mehr Tiefe → weniger Menschen, dafür {freqOf('verankerung')}×.</>}
                         </div>
                         <button type="button" style={stepBtn}
                           onClick={() => { setDoneSteps(prev => { const n = [...prev]; n[0] = true; return n; }); setWizardStep(1); }}>
@@ -986,7 +969,26 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                         </p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>Budget</span>
-                          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>{fmtCHF(effectiveBudget)}</span>
+                          <label style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet }}>CHF</span>
+                            <input
+                              type="number"
+                              min={4000}
+                              max={Math.max(4000, customBudgetMax)}
+                              step={500}
+                              value={effectiveBudget}
+                              onChange={e => {
+                                const v = Number(e.target.value);
+                                if (!isNaN(v) && v > 0) handleCustomConfigChange({ budget: Math.max(4000, Math.min(Math.max(4000, customBudgetMax), v)) });
+                              }}
+                              onBlur={e => {
+                                const v = Number(e.target.value);
+                                const clamped = (isNaN(v) || v < 4000) ? 4000 : Math.round(Math.min(Math.max(4000, customBudgetMax), v) / 500) * 500;
+                                handleCustomConfigChange({ budget: clamped });
+                              }}
+                              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 700, color: T.violet, background: 'none', border: 'none', borderBottom: `2px solid ${T.violet}`, outline: 'none', width: 96, textAlign: 'right', padding: '0 2px' }}
+                            />
+                          </label>
                         </div>
                         <div style={{ position: 'relative', height: 4, background: T.lineStrong, borderRadius: 999, margin: '14px 0 4px' }}>
                           <div style={{
@@ -1090,14 +1092,22 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     <span>Kanal-Mix</span>
                     <span>Klasse: {klasseLabel}</span>
                   </div>
-                  <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden', display: 'flex', gap: 2 }}>
-                    <div style={{ width: `${doohPct}%`, background: '#B8A2F0', borderRadius: '999px 0 0 999px', transition: 'width 0.3s ease' }} />
-                    <div style={{ width: `${displayPct}%`, background: T.violet, borderRadius: '0 999px 999px 0', transition: 'width 0.3s ease' }} />
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-                    <span><strong style={{ color: 'white', fontWeight: 600 }}>{doohPct}%</strong> Digitale Plakate</span>
-                    <span><strong style={{ color: 'white', fontWeight: 600 }}>{displayPct}%</strong> Online-Display</span>
-                  </div>
+                  {doohPct === 0 ? (
+                    <div style={{ background: 'rgba(255,255,255,0.10)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
+                      <strong style={{ color: 'white' }}>Nur Online-Display</strong> — bei kurzer Laufzeit kein DOOH-Vorlauf möglich
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ height: 8, background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden', display: 'flex', gap: 2 }}>
+                        <div style={{ width: `${doohPct}%`, background: '#B8A2F0', borderRadius: '999px 0 0 999px', transition: 'width 0.3s ease' }} />
+                        <div style={{ width: `${displayPct}%`, background: T.violet, borderRadius: '0 999px 999px 0', transition: 'width 0.3s ease' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+                        <span><strong style={{ color: 'white', fontWeight: 600 }}>{doohPct}%</strong> Digitale Plakate</span>
+                        <span><strong style={{ color: 'white', fontWeight: 600 }}>{displayPct}%</strong> Online-Display</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1143,7 +1153,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                         <span style={{ fontSize: 17, lineHeight: 1.3 }}>📍</span>
                         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
                           {campaignWindow.modus === 'display_only'
-                            ? <>Sichtbar auf Online-Werbeflächen in deiner Zielregion.</>
+                            ? <><strong style={{ color: 'white' }}>Nur Online-Display</strong> — bei kurzer Laufzeit kein DOOH-Vorlauf möglich.</>
                             : presence.showScreenCount
                             ? <>Sichtbar auf rund <strong style={{ color: 'white' }}>{fmtNum(presence.screenCount)}</strong> Bildschirmen im öffentlichen Raum — und online.</>
                             : <>Sichtbar im öffentlichen Raum deiner Region — und online.</>}
@@ -1273,30 +1283,6 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             })()}
           </div>
 
-          {/* SIDEBAR */}
-          <aside className="vio-sidebar" style={{ position: 'sticky', top: 32, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
-            <div style={{ background: T.card, border: `1px solid ${T.line}`, borderRadius: 16, padding: '22px 22px 18px' }}>
-              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 16 }}>Deine Kampagne</div>
-              <SbRow label="Kampagnentyp" val="Politisch" />
-              <SbRow label="Region" val={regionName} />
-              {votingDateLabel && <SbRow label="Abstimmung" val={votingDateLabel} color={T.warn} />}
-              {mode === 'paket' && packages && selectedPkg && (
-                <SbRow label="Paket" val={packages[selectedPkg].name} color={T.violetDeep} />
-              )}
-              <SbRow label="Budget" val={fmtCHF(displayBudget)} color={T.violetDeep} />
-              <SbRow label="Laufzeit" val={`${displayDays} Tage`} last />
-            </div>
-            {budget >= 20000 && (
-              <div style={{ background: T.highlight, borderRadius: 16, padding: '18px 20px' }}>
-                <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: T.ink, marginBottom: 4, fontSize: 15 }}>Persönliche Beratung</div>
-                <p style={{ color: T.slate, fontSize: 13, lineHeight: 1.5, marginBottom: 14 }}>Wir planen deine Kampagne gemeinsam mit dir — kostenlos und unverbindlich.</p>
-                <a href={process.env.NEXT_PUBLIC_CALENDLY_URL ?? '#'} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-block', background: T.violet, color: 'white', border: 'none', padding: '10px 18px', borderRadius: 999, fontFamily: "'Jost', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
-                  Gespräch buchen →
-                </a>
-              </div>
-            )}
-          </aside>
         </div>
       </div>
     </section>
