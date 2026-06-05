@@ -182,13 +182,17 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
     width: size,
     height: size,
   });
-  // Label ober- oder unterhalb der Achslinie, plus Verbindungsstrich.
-  const labelWrap = (place: 'top' | 'bottom'): CSSProperties => ({
+  // Label ober- oder unterhalb der Achslinie. align klemmt die äusseren Labels
+  // (erstes linksbündig, letztes rechtsbündig), damit sie nicht über den
+  // Kartenrand ragen; innere Labels bleiben zentriert.
+  const labelWrap = (place: 'top' | 'bottom', align: 'center' | 'left' | 'right' = 'center'): CSSProperties => ({
     position: 'absolute',
-    left: 0,
-    transform: 'translateX(-50%)',
-    textAlign: 'center',
     whiteSpace: 'nowrap',
+    ...(align === 'center'
+      ? { left: 0, transform: 'translateX(-50%)', textAlign: 'center' }
+      : align === 'left'
+        ? { left: 0, transform: 'none', textAlign: 'left' }
+        : { right: 0, transform: 'none', textAlign: 'right' }),
     ...(place === 'top'
       ? { bottom: TRACK_H - RAIL_Y + 16 }
       : { top: RAIL_Y + 16 }),
@@ -252,18 +256,20 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
       <div ref={trackRef} style={{ position: 'relative' as const, height: TRACK_H, marginBottom: 16 }}>
         <div style={{ position: 'absolute' as const, top: RAIL_Y, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
 
-        {posNodes.map((n) => {
+        {posNodes.map((n, i) => {
           const s = { ...node(n.adjPx), opacity: n.past ? 0.45 : 1 };
           const cap = { fontSize: 11.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const, letterSpacing: 0.1 };
           const dateStyle = { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 700, color: INK, marginTop: 2 };
+          // Äusserste Labels klemmen: erstes linksbündig, letztes rechtsbündig.
+          const align: 'center' | 'left' | 'right' = i === 0 ? 'left' : i === posNodes.length - 1 ? 'right' : 'center';
 
           if (n.id === 'heute') return (
             <div key="heute" style={s}>
               <div style={bulletWrap(16)}>
                 <div style={{ width: 16, height: 16, borderRadius: '50%', background: V, border: `2.5px solid ${V}` }} />
               </div>
-              <div style={stem(n.place)} />
-              <div style={labelWrap(n.place)}>
+              {align === 'center' && <div style={stem(n.place)} />}
+              <div style={labelWrap(n.place, align)}>
                 <div style={cap}>Heute</div>
                 <div style={{ ...dateStyle, color: V }}>{fmt(today)}</div>
               </div>
@@ -274,8 +280,8 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
               <div style={bulletWrap(14)}>
                 <div style={{ width: 14, height: 14, borderRadius: '50%', background: n.past ? 'transparent' : WHITE, border: '2px solid rgba(107,79,187,0.45)' }} />
               </div>
-              <div style={stem(n.place)} />
-              <div style={labelWrap(n.place)}>
+              {align === 'center' && <div style={stem(n.place)} />}
+              <div style={labelWrap(n.place, align)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center', position: 'relative' as const }}>
                   <div style={cap}>Stimmzettel versandt</div>
                   <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtVersand(true)} onMouseLeave={() => setTtVersand(false)}>ⓘ</span>
@@ -290,8 +296,8 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
               <div style={bulletWrap(14)}>
                 <div style={{ width: 14, height: 14, borderRadius: '50%', background: WHITE, border: `2px solid ${V}` }} />
               </div>
-              <div style={stem(n.place)} />
-              <div style={labelWrap(n.place)}>
+              {align === 'center' && <div style={stem(n.place)} />}
+              <div style={labelWrap(n.place, align)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center', position: 'relative' as const }}>
                   <div style={cap}>Buchungsschluss</div>
                   <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
@@ -306,8 +312,8 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
               <div style={bulletWrap(18)}>
                 <div style={{ width: 18, height: 18, borderRadius: '50%', background: WHITE, border: `3px solid ${V}` }} />
               </div>
-              <div style={stem(n.place)} />
-              <div style={labelWrap(n.place)}>
+              {align === 'center' && <div style={stem(n.place)} />}
+              <div style={labelWrap(n.place, align)}>
                 <div style={cap}>Abstimmung</div>
                 <div style={{ ...dateStyle, color: V }}>{fmt(votingDateISO)}</div>
               </div>
