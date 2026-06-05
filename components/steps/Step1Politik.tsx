@@ -26,7 +26,7 @@ const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','Augus
 const SIDEBAR: Record<number, { title: string; text: string; tip: string }> = {
   1: {
     title: 'Warum zuerst das Enddatum?',
-    text:  'Weil der Abstimmungs- oder Wahltag fix ist. Von dort aus rechnen wir rückwärts – so siehst du sofort, wie viel Vorlauf du noch hast und welche Pakete zeitlich möglich sind.',
+    text:  'Weil der Abstimmungs- oder Wahltag fix ist. Von dort aus rechnen wir rückwärts – so siehst du sofort, wie viel Vorlauf du noch hast.',
     tip:   '<strong>Empfehlung:</strong> 4–6 Wochen Vorlauf sind ideal. Die Timeline wird automatisch berechnet – du musst keinen Starttermin eingeben.',
   },
   2: {
@@ -73,7 +73,8 @@ function calcDaysUntil(iso: string): number {
   return Math.max(0, Math.round((d.getTime() - today.getTime()) / 86400000));
 }
 
-const MIN_SETUP_DAYS = 10;
+const MIN_SETUP_DAYS = 10;   // unter diesem Vorlauf ist ein Termin nicht buchbar
+const MIN_LEAD_DAYS  = 14;   // unter diesem Vorlauf zeigen wir einen "Vorlauf knapp"-Hinweis
 
 function todayPlusDaysISO(days: number): string {
   const d = new Date();
@@ -82,9 +83,11 @@ function todayPlusDaysISO(days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function getNext2Sundays(): string[] {
-  const minDate = todayPlusDaysISO(MIN_SETUP_DAYS);
-  return CH_ABSTIMMUNGSSONNTAGE.filter(d => d >= minDate).slice(0, 2);
+// Nächste Abstimmungs-/Wahlsonntage ab heute. Kurze Termine (unter
+// MIN_SETUP_DAYS Vorlauf) werden weiterhin angezeigt, aber nicht buchbar.
+function getNextSundays(count: number): string[] {
+  const todayISO = todayPlusDaysISO(0);
+  return CH_ABSTIMMUNGSSONNTAGE.filter(d => d >= todayISO).slice(0, count);
 }
 
 
@@ -193,11 +196,11 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
   // ─── Q1 derived state ─────────────────────────────────────────────────────
 
   const daysToEvent = dateEvent ? calcDaysUntil(dateEvent) : 0;
-  const dateBlocked = !!dateEvent && daysToEvent < 3;
+  const dateBlocked = !!dateEvent && daysToEvent < MIN_SETUP_DAYS;
   const q1Valid     = !!dateEvent && !dateBlocked;
 
   // Pills for voting day selection
-  const next2Sundays = getNext2Sundays();
+  const nextSundays = getNextSundays(6);
 
   // ─── Finish ───────────────────────────────────────────────────────────────
 
@@ -336,20 +339,27 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
 
                 {/* Date pills */}
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10, marginBottom: 16 }}>
-                  {next2Sundays.map(iso => {
+                  {nextSundays.map(iso => {
+                    const days       = calcDaysUntil(iso);
+                    const tooShort   = days < MIN_SETUP_DAYS;          // nicht buchbar
+                    const shortLead  = !tooShort && days < MIN_LEAD_DAYS; // buchbar, aber knapp
                     const isSelected = dateEvent === iso && !showCustomDate;
                     return (
                       <button
                         key={iso}
-                        className="sp1-date-pill"
-                        onClick={() => { setDateEvent(iso); setShowCustomDate(false); }}
+                        className={tooShort ? undefined : 'sp1-date-pill'}
+                        onClick={() => { if (tooShort) return; setDateEvent(iso); setShowCustomDate(false); }}
+                        disabled={tooShort}
+                        aria-disabled={tooShort}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 14,
                           background: isSelected ? V_DIM2 : WHITE,
                           border: `1.5px solid ${isSelected ? V : BORDER}`,
                           borderRadius: 14, padding: '14px 18px',
                           boxShadow: isSelected ? `0 0 0 3px ${V_DIM}` : SHADOW,
-                          cursor: 'pointer', textAlign: 'left' as const,
+                          cursor: tooShort ? 'default' : 'pointer',
+                          textAlign: 'left' as const,
+                          opacity: tooShort ? 0.62 : 1,
                           transition: 'all 0.18s',
                         }}
                       >
@@ -368,6 +378,16 @@ export default function Step1Politik({ briefing, updateBriefing, onComplete, ini
                           <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 800, color: isSelected ? V : INK, letterSpacing: -0.3 }}>
                             {fmtLongDE(iso)}
                           </div>
+                          {tooShort && (
+                            <div style={{ fontSize: 11.5, fontWeight: 500, color: INK2, marginTop: 5, lineHeight: 1.45 }}>
+                              Dieser Termin ist sehr bald – für eine saubere Kampagne fehlt etwas Vorlauf. Wähle einen späteren Sonntag, dann holen wir das Maximum für dich heraus.
+                            </div>
+                          )}
+                          {shortLead && isSelected && (
+                            <div style={{ fontSize: 11.5, fontWeight: 500, color: V, marginTop: 5, lineHeight: 1.45 }}>
+                              Knapp, aber machbar – wir starten sofort und nutzen jeden Tag bis zum Termin.
+                            </div>
+                          )}
                         </div>
                         {isSelected && (
                           <div style={{ fontSize: 11, fontWeight: 700, color: V, background: V_DIM2, padding: '3px 10px', borderRadius: 99, flexShrink: 0 }}>

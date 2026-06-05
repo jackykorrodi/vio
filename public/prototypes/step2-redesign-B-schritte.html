@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIO · Step 2 — Variante B (Empfehlung zuerst)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --violet:#6B4FBB; --violetDeep:#5A3FA8; --ink:#2D1F52; --slate:#7A7596;
+    --bg:#F7F5FF; --card:#FFFFFF; --line:#E8E4F5; --lineStrong:#D5CDEC;
+    --highlight:#F0EBFF; --warn:#C97A2B; --warnBg:#FFF6E8;
+    --good:#5B8C5A; --goodBg:#EEF6EE; --infoBg:#EEF1FE; --infoText:#3B4A87;
+    --disp:'Plus Jakarta Sans',sans-serif; --body:'Jost',sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:var(--body);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 28px 90px}
+  .steptag{display:inline-flex;align-items:center;gap:8px;color:var(--violet);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
+  .steptag .bar{width:24px;height:2px;background:var(--violet)}
+  h1{font-family:var(--disp);font-size:34px;font-weight:800;letter-spacing:-.01em;margin:0 0 8px;line-height:1.12}
+  .sub{color:var(--slate);font-size:15px;margin:0 0 22px}
+  .ctx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:22px}
+  .chip{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;font-size:13px;font-weight:500;background:var(--highlight);color:var(--violetDeep)}
+  .chip.region{background:#F2EFFA;color:var(--ink);font-weight:600;cursor:pointer;border:1px solid transparent}
+  .chip.region.active{border-color:var(--violet)}
+  .ctx .muted{color:var(--slate);font-size:14px}
+  .ctx .vote{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;font-size:13px;background:var(--warnBg);color:var(--warn)}
+  .dot6{width:6px;height:6px;border-radius:50%;background:var(--warn)}
+  .stage{display:grid;grid-template-columns:1fr 320px;gap:30px;align-items:start}
+  @media(max-width:860px){.stage{grid-template-columns:1fr}}
+  .rail{display:flex;align-items:center;gap:6px;margin-bottom:18px}
+  .rail .seg{height:5px;flex:1;border-radius:999px;background:var(--lineStrong);transition:.3s}
+  .rail .seg.done{background:var(--violet)}
+  .rail .seg.active{background:linear-gradient(90deg,var(--violet),var(--lineStrong))}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden;transition:.2s}
+  .step.locked{opacity:.55}
+  .step.active{border-color:var(--violet);box-shadow:0 6px 24px rgba(107,79,187,.10)}
+  .step-head{display:flex;align-items:center;gap:14px;padding:18px 22px;cursor:pointer}
+  .num{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:700;font-size:14px;background:var(--highlight);color:var(--violet);border:2px solid var(--lineStrong)}
+  .step.active .num{background:var(--violet);color:#fff;border-color:var(--violet)}
+  .step.done .num{background:var(--good);color:#fff;border-color:var(--good)}
+  .step-head .ttl{font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ink)}
+  .step.locked .step-head{cursor:default}
+  .step-head .summ{margin-left:auto;font-size:13px;color:var(--violetDeep);font-weight:600;text-align:right}
+  .step-head .lockmsg{margin-left:auto;font-size:12px;color:var(--slate)}
+  .step-body{padding:0 22px 22px}
+  .lever-hint{font-size:13px;color:var(--slate);margin:0 0 14px;line-height:1.45}
+  .val{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--violet)}
+  .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .dial{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .seg2{position:relative;text-align:left;border:1.5px solid var(--line);background:var(--card);border-radius:13px;padding:14px;cursor:pointer;transition:.15s;font-family:var(--body)}
+  .seg2:hover{border-color:#9181CC}
+  .seg2.active{border-color:var(--violet);background:rgba(107,79,187,.05);box-shadow:0 4px 16px rgba(107,79,187,.10)}
+  .seg2 .nm{font-family:var(--disp);font-size:14px;font-weight:700;color:var(--ink);margin-bottom:5px}
+  .seg2.active .nm{color:var(--violetDeep)}
+  .seg2 .ds{font-size:12px;color:var(--slate);line-height:1.4}
+  .seg2 .recbadge{position:absolute;top:-9px;right:12px;background:var(--violet);color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;border-radius:999px;font-family:var(--disp)}
+  .dialaxis{display:flex;justify-content:space-between;font-size:11px;color:var(--slate);margin:9px 2px 0}
+  .tradeoff{margin-top:12px;background:var(--infoBg);border:1px solid #D9E0F4;border-radius:11px;padding:11px 14px;font-size:13px;color:var(--infoText);line-height:1.45}
+  .tradeoff b{color:var(--ink)}
+  .track{position:relative;height:6px;background:var(--lineStrong);border-radius:999px;margin:16px 0 6px}
+  .fill{position:absolute;left:0;top:0;height:100%;background:var(--violet);border-radius:999px;pointer-events:none}
+  .sweet{position:absolute;top:-3px;height:12px;background:rgba(107,79,187,.18);border-radius:999px;pointer-events:none}
+  .sweetdot{position:absolute;top:-4px;width:13px;height:13px;border-radius:50%;background:var(--violet);opacity:.75;transform:translateX(-50%);pointer-events:none}
+  input[type=range]{-webkit-appearance:none;appearance:none;position:absolute;width:100%;top:50%;transform:translateY(-50%);margin:0;background:transparent;height:24px;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;background:#fff;border:3px solid var(--violet);border-radius:50%;box-shadow:0 2px 8px rgba(107,79,187,.3);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:24px;height:24px;background:#fff;border:3px solid var(--violet);border-radius:50%;cursor:pointer}
+  .ends{display:flex;justify-content:space-between;font-size:11px;color:var(--slate)}
+  .reco-btn{margin-top:10px;background:none;border:1px solid var(--lineStrong);border-radius:9px;padding:6px 13px;font-size:12px;color:var(--violetDeep);cursor:pointer;font-family:var(--body);font-weight:500}
+  .reco-btn:hover{background:var(--highlight)}
+  .tl{position:relative;height:46px;margin:14px 0 6px;cursor:pointer;user-select:none;touch-action:none}
+  .tl .bahn{position:absolute;top:19px;left:0;right:0;height:8px;background:var(--lineStrong);border-radius:999px}
+  .tl .act{position:absolute;top:19px;right:0;height:8px;background:var(--violet);border-radius:0 999px 999px 0;pointer-events:none}
+  .tl .handle{position:absolute;top:11px;width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid var(--violet);box-shadow:0 2px 8px rgba(107,79,187,.3);transform:translateX(-50%);pointer-events:none}
+  .tl .wahltag{position:absolute;top:11px;right:0;width:24px;height:24px;border-radius:50%;background:var(--warn);border:3px solid #fff;transform:translateX(50%);box-shadow:0 2px 6px rgba(232,168,56,.4);pointer-events:none}
+  .stepcta{margin-top:18px;display:flex;align-items:center;gap:14px}
+  .stepnext{background:var(--violet);color:#fff;border:none;padding:11px 22px;border-radius:999px;font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(107,79,187,.25)}
+  .stepnext:hover{background:var(--violetDeep)}
+  .microhint{display:flex;gap:9px;align-items:flex-start;background:var(--highlight);border:1px solid var(--lineStrong);border-radius:11px;padding:11px 14px;margin-top:14px;font-size:13px;color:var(--ink);line-height:1.45}
+  .microhint .a{color:var(--violet);font-weight:700}
+  /* Empfehlung reveal banner inside budget step */
+  .reco-reveal{background:linear-gradient(135deg,#5A3FA8,#6B4FBB);color:#fff;border-radius:14px;padding:18px 20px;margin-bottom:18px;position:relative;overflow:hidden}
+  .reco-reveal .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.7);margin-bottom:6px;display:flex;align-items:center;gap:7px}
+  .reco-reveal .amt{font-family:var(--disp);font-size:32px;font-weight:800;letter-spacing:-.02em;line-height:1;margin-bottom:7px}
+  .reco-reveal .why{font-size:13px;color:rgba(255,255,255,.85);line-height:1.5}
+  .reco-reveal .why b{color:#fff}
+  .deviation{font-size:12px;color:var(--warn);margin-top:8px;min-height:16px}
+  .outwrap{margin-top:6px}
+  .outlocked{background:linear-gradient(180deg,#F4F0FF,#FBFAFF);border:1px dashed var(--lineStrong);border-radius:18px;padding:30px;text-align:center;color:var(--slate)}
+  .outlocked .big{font-family:var(--disp);font-size:20px;font-weight:700;color:var(--ink);margin-bottom:6px}
+  .outcome{background:var(--ink);border-radius:20px;padding:30px 32px 28px;color:#fff;position:relative;overflow:hidden;margin-bottom:18px}
+  .outcome .glow{position:absolute;top:-40px;right:-40px;width:300px;height:300px;background:radial-gradient(circle,rgba(107,79,187,.55),transparent 62%);pointer-events:none}
+  .outcome .lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.16em;margin-bottom:18px;position:relative}
+  .heroes{display:grid;grid-template-columns:1fr 1fr;gap:18px;position:relative;z-index:1}
+  @media(max-width:520px){.heroes{grid-template-columns:1fr}}
+  .hero .big{font-family:var(--disp);font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1;margin-bottom:7px}
+  .hero .cap{font-size:15px;color:#fff;font-weight:600;margin-bottom:3px}
+  .hero .sm{font-size:13px;color:rgba(255,255,255,.62)}
+  .hero.freq .big{color:#C9B6FF}
+  .presence{display:flex;gap:9px;align-items:flex-start;margin-top:22px;position:relative;z-index:1;padding-top:20px;border-top:1px solid rgba(255,255,255,.12)}
+  .presence .pin{font-size:17px;line-height:1.3}
+  .presence .txt{font-size:14px;color:rgba(255,255,255,.85);line-height:1.5}
+  .presence .txt b{color:#fff}
+  .presence .txt .anchor{display:block;color:rgba(255,255,255,.55);font-style:italic;font-size:13px;margin-top:4px}
+  .confirm{display:flex;gap:13px;align-items:flex-start;background:var(--goodBg);border:1px solid #C5DDC5;border-radius:14px;padding:14px 18px;margin-bottom:18px}
+  .confirm .ic{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:var(--good);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-top:1px}
+  .confirm .t{font-weight:600;color:var(--good);margin-bottom:2px;font-size:14px}
+  .confirm .x{color:var(--slate);font-size:14px;line-height:1.5}
+  .cta{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
+  .back{background:none;border:none;color:var(--slate);font-family:var(--body);font-size:14px;font-weight:500;cursor:pointer;padding:10px 4px}
+  .next{background:var(--violet);color:#fff;border:none;padding:14px 28px;border-radius:999px;font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(107,79,187,.3)}
+  .next:disabled{background:#9A90BB;cursor:not-allowed;box-shadow:none}
+  aside{position:sticky;top:32px}
+  .sbcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;margin-bottom:14px}
+  .sbtitle{font-family:var(--disp);font-size:16px;font-weight:700;margin-bottom:14px}
+  .sbrow{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .sbrow:last-child{border-bottom:none}
+  .sbrow .k{color:var(--slate)}
+  .sbrow .v{font-weight:600}
+  .sbrow .v.pending{color:var(--slate);font-weight:400;font-style:italic}
+  .variant-flag{position:fixed;left:14px;bottom:14px;background:var(--ink);color:#fff;font-size:12px;font-family:var(--disp);font-weight:600;padding:8px 14px;border-radius:999px;opacity:.9;z-index:50}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="steptag"><span class="bar"></span>Schritt 2 · Politische Kampagne</div>
+  <h1>Bauen wir deine Kampagne — in drei Schritten.</h1>
+  <p class="sub">Erst dein Ziel, dann die Dauer. Daraus berechnen wir dir eine Budget-Empfehlung, die du nur noch bestätigst oder anpasst.</p>
+
+  <div class="ctx">
+    <span class="chip">Politische Kampagne</span>
+    <span class="chip region active" data-region="bern">Bern</span>
+    <span class="chip region" data-region="zuerich">Zürich Stadt</span>
+    <span class="chip region" data-region="thun">Thun</span>
+    <span class="muted" id="ctxStimm"></span>
+    <span class="vote"><span class="dot6"></span>Abstimmung in 116 Tagen</span>
+  </div>
+
+  <div class="stage">
+    <div>
+      <div class="rail"><div class="seg" id="rail0"></div><div class="seg" id="rail1"></div><div class="seg" id="rail2"></div></div>
+
+      <!-- STEP 1: Fokus -->
+      <div class="step active" id="step0">
+        <div class="step-head" data-step="0">
+          <div class="num">1</div>
+          <div class="ttl">Worauf legst du den Fokus?</div>
+          <div class="summ" id="sum0"></div>
+        </div>
+        <div class="step-body">
+          <p class="lever-hint">Gleiches Budget, andere Wirkung: viele Menschen einmal antippen — oder weniger Menschen dafür richtig oft erreichen.</p>
+          <div class="dial" id="dial">
+            <button class="seg2" data-wf="breit"><span class="nm">Breite Wirkung</span><span class="ds">Möglichst viele Menschen erreichen</span></button>
+            <button class="seg2 active" data-wf="ausgewogen"><span class="recbadge">Empfohlen</span><span class="nm">Ausgewogen</span><span class="ds">Gute Balance aus Reichweite &amp; Wiederholung</span></button>
+            <button class="seg2" data-wf="verankerung"><span class="nm">Tiefe Verankerung</span><span class="ds">Gezielter — dafür sieht dich jede Person öfter</span></button>
+          </div>
+          <div class="dialaxis"><span>← mehr Menschen</span><span>öfter gesehen →</span></div>
+          <div class="tradeoff" id="tradeoff"></div>
+          <div class="stepcta"><button class="stepnext" data-next="0">Passt — weiter zur Dauer →</button></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Dauer -->
+      <div class="step locked" id="step1">
+        <div class="step-head" data-step="1">
+          <div class="num">2</div>
+          <div class="ttl">Wie lange läuft die Kampagne?</div>
+          <div class="lockmsg" id="lock1">Zuerst Schritt 1</div>
+        </div>
+        <div class="step-body" style="display:none" id="body1">
+          <p class="lever-hint">Der orange Punkt ist der Abstimmungstag. Zieh den Start nach links für mehr Vorlauf — wir enden immer rechtzeitig.</p>
+          <div class="row"><span class="lever-hint" style="margin:0">Kampagnendauer</span><span class="val" id="durVal"></span></div>
+          <div class="tl" id="tl">
+            <div class="bahn"></div><div class="act" id="tlAct"></div><div class="handle" id="tlHandle"></div><div class="wahltag"></div>
+          </div>
+          <div class="ends"><span id="tlStartLbl"></span><span style="color:var(--warn)" id="tlVoteLbl"></span></div>
+          <div class="microhint" id="durMicro"></div>
+          <div class="stepcta"><button class="stepnext" data-next="1">Passt — Budget-Empfehlung berechnen →</button></div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Budget (Empfehlung bestätigen/anpassen) -->
+      <div class="step locked" id="step2">
+        <div class="step-head" data-step="2">
+          <div class="num">3</div>
+          <div class="ttl">Dein Budget — bestätigen oder anpassen</div>
+          <div class="lockmsg" id="lock2">Zuerst Schritt 2</div>
+        </div>
+        <div class="step-body" style="display:none" id="body2">
+          <!-- Empfehlung reveal -->
+          <div class="reco-reveal">
+            <div class="k">✦ Unsere Empfehlung für dich</div>
+            <div class="amt" id="recoAmt"></div>
+            <div class="why" id="recoWhy"></div>
+          </div>
+          <p class="lever-hint">Der Regler steht bereits auf der Empfehlung. Hast du ein festes Budget im Kopf? Tipp es einfach drüber — wir zeigen dir sofort, was es bewirkt.</p>
+          <div class="row"><span class="lever-hint" style="margin:0">Budget</span><span class="val" id="budgetVal"></span></div>
+          <div class="track" id="budgetTrack">
+            <div class="fill" id="budgetFill"></div>
+            <div class="sweet" id="budgetSweet"></div>
+            <div class="sweetdot" id="budgetSweetDot"></div>
+            <input type="range" id="budget" min="4000" step="500">
+          </div>
+          <div class="ends"><span>CHF 4'000</span><span id="budgetMax"></span></div>
+          <div class="deviation" id="budgetDeviation"></div>
+          <button class="reco-btn" id="budgetReco">↺ Zurück zur Empfehlung</button>
+          <div class="microhint" id="budgetMicro"></div>
+          <div class="stepcta"><button class="stepnext" data-next="2">Fertig — Ergebnis zeigen ↓</button></div>
+        </div>
+      </div>
+
+      <!-- OUTCOME -->
+      <div class="outwrap" id="outwrap">
+        <div class="outlocked" id="outLocked">
+          <div class="big">Gleich siehst du deine Wirkung ✦</div>
+          <div>Schliess die drei Schritte ab — dann zeigen wir dir, wie viele Menschen du erreichst und wie oft sie dich sehen.</div>
+        </div>
+        <div id="outReady" style="display:none">
+          <div class="outcome">
+            <div class="glow"></div>
+            <div class="lbl">Das bewirkt deine Kampagne</div>
+            <div class="heroes">
+              <div class="hero"><div class="big" id="oReach"></div><div class="cap" id="oReachCap"></div><div class="sm" id="oReachRange"></div></div>
+              <div class="hero freq"><div class="big" id="oFreq"></div><div class="cap">mal sieht dich jede Person</div><div class="sm">über die ganze Laufzeit verteilt</div></div>
+            </div>
+            <div class="presence"><span class="pin">📍</span><div class="txt" id="oPresence"></div></div>
+          </div>
+          <div class="confirm"><div class="ic">✓</div><div><div class="t" id="confirmTitle"></div><div class="x" id="confirmText"></div></div></div>
+        </div>
+      </div>
+
+      <div class="cta">
+        <button class="back">← Zurück</button>
+        <button class="next" id="finalNext" disabled>Weiter zur Zusammenfassung →</button>
+      </div>
+    </div>
+
+    <aside>
+      <div class="sbcard">
+        <div class="sbtitle">Deine Kampagne</div>
+        <div class="sbrow"><span class="k">Kampagnentyp</span><span class="v">Politisch</span></div>
+        <div class="sbrow"><span class="k">Region</span><span class="v" id="sbRegion"></span></div>
+        <div class="sbrow"><span class="k">Abstimmung</span><span class="v" style="color:var(--warn)">27. September 2026</span></div>
+        <div class="sbrow"><span class="k">Fokus</span><span class="v pending" id="sbFocus">offen</span></div>
+        <div class="sbrow"><span class="k">Laufzeit</span><span class="v pending" id="sbDur">offen</span></div>
+        <div class="sbrow"><span class="k">Budget</span><span class="v pending" id="sbBudget">offen</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="variant-flag">Variante B · Empfehlung zuerst</div>
+
+<script>
+/* ── Engine (faithful replica of lib/preislogik.ts custom path) ── */
+const CPM_DOOH=50,CPM_DISPLAY=15,IN_POOL=0.7,K=0.25,DOOH=0.7,SWEET_SAT=4.0;
+const WF={breit:2.1,ausgewogen:3.1,verankerung:4.6};
+const WF_LABEL={breit:'Breite Wirkung',ausgewogen:'Ausgewogen',verankerung:'Tiefe Verankerung'};
+function reachCap(s,l){if(s<50000)return l===1?.22:l===2?.45:.65;if(s<200000)return l===1?.12:l===2?.22:.38;if(s<500000)return l===1?.06:l===2?.12:.21;return l===1?.03:l===2?.06:.12;}
+function inferCap(c,s,w){const tf={1:3,2:5,3:6};let best=1,bd=1e9;[1,2,3].forEach(l=>{const pool=s*reachCap(s,l);const sat=1-Math.exp(-K*c/pool);const reach=Math.min(pool*sat,s*0.25);const fw=reach>0?c/(reach*w):0;const d=Math.abs(fw-tf[l]);if(d<bd){bd=d;best=l;}});return best;}
+function band(sc){if(sc<30)return .20;if(sc<150)return .15;if(sc<500)return .13;return .12;}
+function wearout(w){return w<=8?1:Math.max(.7,1-(w-8)*.03);}
+function cpm(){return DOOH*CPM_DOOH+(1-DOOH)*CPM_DISPLAY;}
+function impact(budget,stimm,days,wf,screens){
+  const weeks=days/7, zf=WF[wf];
+  const imp=budget*1000/cpm(), inpool=imp*IN_POOL;
+  const cap=inferCap(inpool,stimm,weeks);
+  const poolCap=stimm*reachCap(stimm,cap);
+  const rl=inpool/(zf*weeks);
+  const reach=poolCap*(1-Math.exp(-K*rl/poolCap))*wearout(weeks);
+  const b=band(screens);
+  return {reach:Math.round(reach),low:Math.round(Math.max(0,reach*(1-b))/500)*500,high:Math.round(Math.min(poolCap,reach*(1+b))/500)*500,freqCampaign:Math.round(zf*weeks),poolCap:Math.round(poolCap)};
+}
+function sweetBudget(stimm,days,wf){const weeks=days/7,zf=WF[wf],poolCap=stimm*reachCap(stimm,1);const rlT=SWEET_SAT*poolCap,impP=rlT*(zf*weeks),imp=impP/IN_POOL;return Math.round((imp*cpm()/1000)/1000)*1000;}
+const f=n=>Math.round(n).toLocaleString('de-CH');
+const chf=n=>'CHF '+f(n);
+const MONTHS=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const fmtDate=d=>d.getDate()+'. '+MONTHS[d.getMonth()];
+const REGIONS={bern:{name:'Bern',stimm:775000,demonym:'Bernerinnen und Berner'},zuerich:{name:'Zürich Stadt',stimm:290000,demonym:'Zürcherinnen und Zürcher'},thun:{name:'Thun',stimm:32000,demonym:'Thunerinnen und Thuner'}};
+const VOTE=new Date();VOTE.setHours(0,0,0,0);VOTE.setDate(VOTE.getDate()+116);
+const EARLIEST_DAYS=106,DUR_MIN=14,DUR_MAX=60;
+const screensFor=r=>Math.max(0,Math.round(r*0.128/10)*10);
+
+/* steps: 0 Fokus, 1 Dauer, 2 Budget */
+let st={region:'bern',wf:'ausgewogen',budget:0,days:60};
+let completed=[false,false,false];
+let openStep=0;
+
+function calc(){
+  const R=REGIONS[st.region];
+  const sweet=sweetBudget(R.stimm,st.days,st.wf);
+  const budgetMax=Math.ceil(sweet*1.5/1000)*1000;
+  st.budget=Math.min(Math.max(4000,st.budget),budgetMax);
+  const r0=impact(st.budget,R.stimm,st.days,st.wf,300);
+  const screens=screensFor(r0.reach);
+  const r=impact(st.budget,R.stimm,st.days,st.wf,screens);
+  return {R,sweet,budgetMax,r,screens};
+}
+
+function setOpen(i){
+  openStep=i;
+  for(let s=0;s<3;s++){
+    const el=document.getElementById('step'+s);
+    const body=document.getElementById('body'+s);
+    const unlocked = s===0 || completed[s-1];
+    el.classList.toggle('locked',!unlocked);
+    el.classList.toggle('active',s===openStep && unlocked);
+    el.classList.toggle('done',completed[s] && s!==openStep);
+    if(body){ body.style.display = (s===openStep && unlocked) ? 'block':'none'; }
+    if(s>0){const lock=document.getElementById('lock'+s);if(lock)lock.style.display = unlocked?'none':'block';}
+  }
+  render();
+}
+
+function render(){
+  const {R,sweet,budgetMax,r,screens}=calc();
+  document.getElementById('ctxStimm').textContent=f(R.stimm)+' Stimmberechtigte';
+  document.getElementById('sbRegion').textContent=R.name;
+
+  // rail
+  document.getElementById('rail0').className='seg '+(completed[0]?'done':openStep===0?'active':'');
+  document.getElementById('rail1').className='seg '+(completed[1]?'done':openStep===1?'active':'');
+  document.getElementById('rail2').className='seg '+(completed[2]?'done':openStep===2?'active':'');
+
+  // STEP 1 dial
+  document.querySelectorAll('.seg2').forEach(s=>s.classList.toggle('active',s.dataset.wf===st.wf));
+  const rBreit=impact(st.budget,R.stimm,st.days,'breit',screens);
+  const rVer=impact(st.budget,R.stimm,st.days,'verankerung',screens);
+  document.getElementById('tradeoff').innerHTML=
+    st.wf==='breit'? `Maximale Streuung: rund <b>${f(r.low)}</b> Menschen, je <b>${r.freqCampaign}×</b> gesehen.`
+    : st.wf==='verankerung'? `Tiefe vor Breite: rund <b>${f(r.low)}</b> Menschen, dafür ganze <b>${r.freqCampaign}×</b> gesehen.`
+    : `Mehr Breite → ~${f(rBreit.low)} Menschen · ${rBreit.freqCampaign}×. Mehr Tiefe → ~${f(rVer.low)} Menschen · ${rVer.freqCampaign}×.`;
+  document.getElementById('sum0').textContent=completed[0]&&openStep!==0?WF_LABEL[st.wf]:'';
+
+  // STEP 2 timeline
+  const tlH=document.getElementById('tlHandle');
+  if(tlH){
+    document.getElementById('durVal').textContent=st.days+' Tage';
+    const start=new Date(VOTE.getTime()-st.days*86400000);
+    const earliest=new Date(VOTE.getTime()-EARLIEST_DAYS*86400000);
+    const total=VOTE.getTime()-earliest.getTime();
+    const hp=Math.max(0,Math.min(100,(start.getTime()-earliest.getTime())/total*100));
+    tlH.style.left=hp+'%';
+    document.getElementById('tlAct').style.width=(100-hp)+'%';
+    document.getElementById('tlStartLbl').textContent=fmtDate(earliest)+' (frühester Start)';
+    document.getElementById('tlVoteLbl').textContent=fmtDate(VOTE)+' (Wahltag)';
+    document.getElementById('durMicro').innerHTML=`<span class="a">→</span><span>Bei ${st.days} Tagen sieht dich jede Person rund <b>${r.freqCampaign}×</b> — gut verteilt bis zum Abstimmungstag.</span>`;
+  }
+  document.getElementById('sum1') && (document.getElementById('sum1').textContent='');
+
+  // STEP 3 budget + Empfehlung reveal
+  const b=document.getElementById('budget');
+  if(b){
+    document.getElementById('recoAmt').textContent=chf(sweet);
+    document.getElementById('recoWhy').innerHTML=`Bei <b>${WF_LABEL[st.wf]}</b> über <b>${st.days} Tage</b> in ${R.name} trifft dieses Budget den Sweet Spot — die meiste Wirkung pro Franken.`;
+    b.min=4000;b.max=Math.max(4000,budgetMax);b.value=st.budget;
+    document.getElementById('budgetVal').textContent=chf(st.budget);
+    document.getElementById('budgetMax').textContent=chf(budgetMax);
+    const range=budgetMax-4000;
+    const pct=range>0?Math.max(0,Math.min(100,(st.budget-4000)/range*100)):0;
+    document.getElementById('budgetFill').style.width=pct+'%';
+    const loR=Math.max(0,Math.min(100,(0.6*sweet-4000)/range*100));
+    const hiR=Math.max(0,Math.min(100,(1.15*sweet-4000)/range*100));
+    const mk=Math.max(0,Math.min(100,(sweet-4000)/range*100));
+    const sw=document.getElementById('budgetSweet');sw.style.left=loR+'%';sw.style.width=Math.max(0,hiR-loR)+'%';
+    document.getElementById('budgetSweetDot').style.left=mk+'%';
+    const rb=document.getElementById('budgetReco');
+    rb.onclick=()=>{st.budget=sweet;render();};
+    rb.style.display = (st.budget===sweet) ? 'none':'inline-block';
+    const zoneLow=sweet*0.6,zoneHigh=sweet*1.15;
+    const dev=document.getElementById('budgetDeviation');
+    dev.textContent = st.budget<zoneLow ? `Das liegt unter unserer Empfehlung von ${chf(sweet)}.`
+      : st.budget>zoneHigh ? `Das liegt über unserer Empfehlung von ${chf(sweet)}.` : '';
+    const micro=document.getElementById('budgetMicro');
+    micro.innerHTML='<span class="a">→</span><span>'+(
+      st.budget<zoneLow? `Solide Basis. Ab ${chf(sweet)} holst du in ${R.name} spürbar mehr Menschen ab.`
+      : st.budget<=zoneHigh? `Perfekt im Sweet Spot — dein Franken arbeitet hier am effizientesten.`
+      : `Volle Power: du schöpfst ${R.name} fast aus. Mehr bringt nur noch wenig dazu.`)+'</span>';
+  }
+
+  // sidebar
+  const sf=document.getElementById('sbFocus'),sb=document.getElementById('sbBudget'),sd=document.getElementById('sbDur');
+  if(completed[0]){sf.textContent=WF_LABEL[st.wf];sf.className='v';sf.style.color='var(--violetDeep)';}
+  if(completed[1]){sd.textContent=st.days+' Tage';sd.className='v';}
+  if(completed[2]){sb.textContent=chf(st.budget);sb.className='v';sb.style.color='var(--violetDeep)';}
+
+  // outcome reveal
+  const allDone=completed[0]&&completed[1]&&completed[2];
+  document.getElementById('outLocked').style.display=allDone?'none':'block';
+  document.getElementById('outReady').style.display=allDone?'block':'none';
+  document.getElementById('finalNext').disabled=!allDone;
+  if(allDone){
+    const step=r.low<10000?100:r.low<100000?1000:5000;
+    const heroFloor=Math.floor(r.low/step)*step;
+    document.getElementById('oReach').textContent='≈ '+f(heroFloor);
+    document.getElementById('oReachCap').textContent=R.demonym+' erreicht';
+    document.getElementById('oReachRange').textContent=f(r.low)+' – '+f(r.high)+' · typischer Bereich';
+    document.getElementById('oFreq').textContent=r.freqCampaign+'×';
+    document.getElementById('oPresence').innerHTML=`Sichtbar auf rund <b>${f(screens)}</b> Bildschirmen im öffentlichen Raum — und online.<span class="anchor">So viele Menschen, wie in eine mittelgrosse Schweizer Veranstaltungshalle passen.</span>`;
+    const zoneLow=sweet*0.6,zoneHigh=sweet*1.15;
+    let t,x;
+    if(st.budget<zoneLow){t='Guter Plan — da geht noch was';x=`Mit etwas mehr Budget holst du spürbar mehr Menschen ab. Ab ${chf(sweet)} bist du im Sweet Spot für ${R.name}.`;}
+    else if(st.budget<=zoneHigh){t='Das sitzt.';x=`~${f(heroFloor)} ${R.demonym} sehen deine Botschaft im Schnitt ${r.freqCampaign}× — genug, um wirklich hängen zu bleiben. Starke Wahl.`;}
+    else{t='Volle Power für deine Region';x=`Du schöpfst das Potenzial von ${R.name} aus — fast jede erreichbare Person ist dabei.`;}
+    document.getElementById('confirmTitle').textContent=t;
+    document.getElementById('confirmText').textContent=x;
+  }
+}
+
+/* interactions */
+function setRegion(key){
+  st.region=key;document.querySelectorAll('.chip.region').forEach(c=>c.classList.toggle('active',c.dataset.region===key));
+  st.days=60;st.budget=sweetBudget(REGIONS[key].stimm,st.days,st.wf);render();
+}
+document.querySelectorAll('.chip.region').forEach(c=>c.addEventListener('click',()=>setRegion(c.dataset.region)));
+document.querySelectorAll('.seg2').forEach(s=>s.addEventListener('click',()=>{st.wf=s.dataset.wf;render();}));
+document.addEventListener('input',e=>{if(e.target.id==='budget'){st.budget=+e.target.value;render();}});
+document.querySelectorAll('.stepnext').forEach(btn=>btn.addEventListener('click',()=>{
+  const i=+btn.dataset.next; completed[i]=true;
+  if(i===1){ /* entering budget step: set slider to fresh recommendation (fokus+dauer now locked) */
+    st.budget=sweetBudget(REGIONS[st.region].stimm,st.days,st.wf);
+  }
+  if(i<2) setOpen(i+1); else { setOpen(-1); document.getElementById('outwrap').scrollIntoView({behavior:'smooth',block:'center'}); }
+}));
+document.querySelectorAll('.step-head').forEach(h=>h.addEventListener('click',()=>{
+  const i=+h.dataset.step; const unlocked=i===0||completed[i-1];
+  if(unlocked) setOpen(i);
+}));
+
+// timeline drag
+const tl=document.getElementById('tl');
+function tlSet(clientX){const rect=tl.getBoundingClientRect();const pct=Math.max(0,Math.min(100,(clientX-rect.left)/rect.width*100));const earliest=new Date(VOTE.getTime()-EARLIEST_DAYS*86400000);const total=VOTE.getTime()-earliest.getTime();const ms=earliest.getTime()+pct/100*total;const days=Math.round((VOTE.getTime()-ms)/86400000);st.days=Math.max(DUR_MIN,Math.min(DUR_MAX,days));render();}
+tl.addEventListener('pointerdown',e=>{tl.setPointerCapture(e.pointerId);tlSet(e.clientX);});
+tl.addEventListener('pointermove',e=>{if(e.buttons)tlSet(e.clientX);});
+
+st.budget=sweetBudget(REGIONS.bern.stimm,60,'ausgewogen');
+setOpen(0);
+</script>
+</body>
+</html>
