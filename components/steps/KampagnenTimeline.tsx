@@ -17,6 +17,8 @@ const STIMMUNTERLAGEN_OFFSET = 28;
 const DOOH_CUTOFF_DAYS = 10;
 const MIN_BULLET_PX = 36;   // nur Bullet-Kollision verhindern (Labels weichen vertikal aus)
 const LABEL_GAP_PX  = 150;  // darunter würden zwei Labels auf gleicher Ebene überlappen → alternieren
+const TAIL_DAYS     = 42;   // Schlussfenster (letzte 6 Wochen) wird gezoomt dargestellt
+const TAIL_FRAC     = 0.58; // …und bekommt diesen Anteil der Trackbreite
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function addDaysISO(iso: string, days: number): string {
@@ -47,11 +49,12 @@ function getKampParatDate(votingDateISO: string): string {
   return addDaysISO(votingDateISO, -DOOH_CUTOFF_DAYS);
 }
 
-function getStatusPill(days: number): { text: string; bg: string; border: string; color: string } {
-  if (days > 56) return { text: `${days} Tage bis zur Abstimmung — du hast alle Optionen offen`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days > 28) return { text: `${days} Tage bis zur Abstimmung — jetzt ist ein guter Zeitpunkt`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  if (days > DOOH_CUTOFF_DAYS) return { text: `Stimmzettel sind unterwegs — noch ${days} Tage bis zur Abstimmung`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  return { text: `Nur noch ${days} Tage — öffentliche digitale Plakate (DOOH) brauchen mindestens ${DOOH_CUTOFF_DAYS} Tage Vorlauf`, bg: AMBER_BG, border: AMBER, color: AMBER };
+// Headline-Status: grosse Zahl + Einheit + erklärender Satz (statt enger Pill).
+function getStatusCopy(days: number): { num: number; unit: string; sub: string; tight: boolean; blocked: boolean } {
+  if (days < DOOH_CUTOFF_DAYS) return { num: days, unit: 'Tage bis zur Abstimmung', sub: `Der Vorlauf ist zu kurz für eine buchbare Kampagne — öffentliche digitale Plakate (DOOH) brauchen mindestens ${DOOH_CUTOFF_DAYS} Tage.`, tight: true, blocked: true };
+  if (days > 56) return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Du hast vollen Spielraum — alle Laufzeiten sind möglich.', tight: false, blocked: false };
+  if (days > 28) return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Guter Zeitpunkt zum Starten. Genug Vorlauf für eine saubere Vorbereitung.', tight: false, blocked: false };
+  return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Die Stimmunterlagen sind unterwegs — jetzt entscheidet sich vieles.', tight: false, blocked: false };
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -76,18 +79,41 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
     return () => obs.disconnect();
   }, []);
 
+  const state = daysToEvent > 56 ? 1 : daysToEvent > 28 ? 2 : daysToEvent > DOOH_CUTOFF_DAYS ? 3 : 4;
+
   const today      = todayISO();
   const versand    = addDaysISO(votingDateISO, -STIMMUNTERLAGEN_OFFSET);
   const versandPast = versand < today;
-  const axisStart  = versandPast ? versand : today;
-  const axisStartMs = new Date(axisStart + 'T00:00:00').getTime();
-  const axisSpan   = Math.max(1, new Date(votingDateISO + 'T00:00:00').getTime() - axisStartMs);
-  const toPx = (iso: string) =>
-    Math.max(0, (new Date(iso + 'T00:00:00').getTime() - axisStartMs) / axisSpan * trackW);
+  // Achse beginnt beim frühesten *angezeigten* Knoten. "Stimmzettel versandt"
+  // wird nur in State 1–3 gezeigt; in State 4 (nicht buchbar) startet die Achse
+  // bei Heute, damit Heute links und Abstimmung rechts steht (kein Rechts-Kleben).
+  const axisStart  = (versandPast && state !== 4) ? versand : today;
+  const totalDays  = Math.max(1, daysBetween(axisStart, votingDateISO));
+
+  // Achse:
+  // - Kurzer Vorlauf (gesamte Achse ≤ TAIL_DAYS): rein linear über die volle
+  //   Breite → Knoten verteilen sich, statt sich rechts zu drängen (Zoom-in
+  //   aufs kurze Fenster).
+  // - Langer Vorlauf: zweizonig. Das entscheidende Schlussfenster (letzte
+  //   TAIL_DAYS) bekommt einen festen, breiten Anteil (TAIL_FRAC); die frühere
+  //   Zeit wird in den Rest komprimiert, damit sich Versand / Buchungsschluss /
+  //   Abstimmung nicht ans Ende drängen.
+  const linearOnly  = totalDays <= TAIL_DAYS;
+  const tailStartPx = (1 - TAIL_FRAC) * trackW;
+  const toPx = (iso: string) => {
+    const dToVote = Math.max(0, daysBetween(iso, votingDateISO));
+    if (linearOnly) {
+      return (1 - dToVote / totalDays) * trackW;
+    }
+    if (dToVote <= TAIL_DAYS) {
+      return tailStartPx + (1 - dToVote / TAIL_DAYS) * (trackW - tailStartPx);
+    }
+    const headSpan = Math.max(1, totalDays - TAIL_DAYS);
+    return Math.max(0, (1 - (dToVote - TAIL_DAYS) / headSpan) * tailStartPx);
+  };
 
   const kampParatDate = getKampParatDate(votingDateISO);
-  const state = daysToEvent > 56 ? 1 : daysToEvent > 28 ? 2 : daysToEvent > DOOH_CUTOFF_DAYS ? 3 : 4;
-  const pill  = getStatusPill(daysToEvent);
+  const copy  = getStatusCopy(daysToEvent);
 
   // Build node list per state
   const nVersand    = { id: 'versand'    as const, rawPx: toPx(versand),      past: versandPast };
@@ -200,13 +226,26 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
 
   return (
     <div style={{ background: '#F3F0FF', borderRadius: 16, padding: '18px 20px', border: '1.5px solid rgba(107,79,187,0.14)', marginBottom: 24, animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' as const, color: '#7A7596', marginBottom: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, textTransform: 'uppercase' as const, color: copy.tight ? AMBER : '#7A7596', marginBottom: 10 }}>
         KAMPAGNEN-TIMELINE
       </div>
 
-      {/* Status pill */}
-      <div style={{ background: pill.bg, border: `1px solid ${pill.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13, fontWeight: 500, color: pill.color, lineHeight: 1.5, marginBottom: 20 }}>
-        {pill.text}
+      {/* Status headline: grosse Zahl + Einheit (+ Badge) + Satz */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' as const, marginBottom: 4 }}>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 38, fontWeight: 800, lineHeight: 1, color: copy.tight ? AMBER : V, letterSpacing: -1 }}>
+          {copy.num}
+        </span>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, color: INK, letterSpacing: -0.2 }}>
+          {copy.unit}
+        </span>
+        {copy.blocked && (
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase' as const, color: AMBER, background: AMBER_BG, border: `1px solid rgba(201,106,0,0.30)`, borderRadius: 999, padding: '4px 11px', alignSelf: 'center' }}>
+            nicht buchbar
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 500, color: INK2, lineHeight: 1.5, marginBottom: 22, maxWidth: '52ch' }}>
+        {copy.sub}
       </div>
 
       {/* Bullets track */}

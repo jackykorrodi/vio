@@ -318,6 +318,8 @@
 const VOTE_ISO = '2026-09-27';
 const STIMMUNTERLAGEN_OFFSET = 28; // Tage vor Abstimmung
 const DOOH_CUTOFF = 10;
+const TAIL_DAYS = 42;    // Schlussfenster (letzte 6 Wochen) wird gezoomt dargestellt
+const TAIL_FRAC = 0.58;  // …und bekommt diesen Anteil der Trackbreite
 
 const MONTHS = ['Jan.','Feb.','März','Apr.','Mai','Juni','Juli','Aug.','Sept.','Okt.','Nov.','Dez.'];
 
@@ -365,9 +367,23 @@ function buildNodes(state, days){
   // Regelkatalog §7.0/§8.6: MIN_VORLAUF_DOOH = 10. Fix, paketunabhängig.
   const buchung = addDays(VOTE_ISO, -DOOH_CUTOFF);
 
+  // Zweizonige (gezoomte) Achse: das entscheidende Schlussfenster (letzte
+  // TAIL_DAYS vor Abstimmung) bekommt einen festen, breiten Anteil (TAIL_FRAC).
+  // Die frühere Zeit wird in den Rest komprimiert. So drängen sich Versand /
+  // Buchungsschluss / Abstimmung bei langem Vorlauf nicht mehr ans rechte Ende.
   const axisStart = versandPast ? versand : today;
-  const span = Math.max(1, daysBetween(axisStart, VOTE_ISO));
-  const pct = iso => Math.max(0, Math.min(100, daysBetween(axisStart, iso) / span * 100));
+  const totalDays = Math.max(1, daysBetween(axisStart, VOTE_ISO));
+  const tailStartPct = (1 - TAIL_FRAC) * 100;
+  const pct = iso => {
+    const dToVote = Math.max(0, daysBetween(iso, VOTE_ISO));
+    if (dToVote <= TAIL_DAYS) {
+      // Schlussfenster: TAIL_DAYS → tailStartPct, 0 → 100
+      return tailStartPct + (1 - dToVote / TAIL_DAYS) * (100 - tailStartPct);
+    }
+    // Frühe Zone komprimiert: totalDays → 0, TAIL_DAYS → tailStartPct
+    const headSpan = Math.max(1, totalDays - TAIL_DAYS);
+    return Math.max(0, (1 - (dToVote - TAIL_DAYS) / headSpan) * tailStartPct);
+  };
 
   const N = {
     heute:   { id:'heute',   cls:'n-heute', cap:'Heute',                date:fmt(today),   raw:pct(today),   past:false, tip:null },
