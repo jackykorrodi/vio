@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect, type CSSProperties } from 'react';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const V       = '#6B4FBB';
@@ -15,7 +15,8 @@ const V_DIM2  = 'rgba(107,79,187,0.16)';
 
 const STIMMUNTERLAGEN_OFFSET = 28;
 const DOOH_CUTOFF_DAYS = 10;
-const MIN_BULLET_PX = 90;
+const MIN_BULLET_PX = 36;   // nur Bullet-Kollision verhindern (Labels weichen vertikal aus)
+const LABEL_GAP_PX  = 150;  // darunter würden zwei Labels auf gleicher Ebene überlappen → alternieren
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function addDaysISO(iso: string, days: number): string {
@@ -39,19 +40,18 @@ function daysBetween(fromISO: string, toISO: string): number {
   );
 }
 
-function getKampParatDate(daysToEvent: number, versand: string, today: string): string {
-  if (daysToEvent >= 49) return addDaysISO(versand, -10);
-  if (daysToEvent >= 35) return addDaysISO(versand, -7);
-  if (daysToEvent >= 21) return addDaysISO(today, 3);
-  if (daysToEvent >= 10) return addDaysISO(today, 1);
-  return today;
+// Buchungsschluss = letzter buchbarer Tag = Abstimmung minus DOOH-Vorlauf (10 Tage).
+// Source of Truth: Regelkatalog §7.0/§8.6 (MIN_VORLAUF_DOOH = DOOH_CUTOFF_DAYS).
+// Fix und paketunabhängig – ersetzt die frühere 4-Stufen-Heuristik.
+function getKampParatDate(votingDateISO: string): string {
+  return addDaysISO(votingDateISO, -DOOH_CUTOFF_DAYS);
 }
 
 function getStatusPill(days: number): { text: string; bg: string; border: string; color: string } {
   if (days > 56) return { text: `${days} Tage bis zur Abstimmung — du hast alle Optionen offen`, bg: V_DIM, border: V_DIM2, color: INK2 };
   if (days > 28) return { text: `${days} Tage bis zur Abstimmung — jetzt ist ein guter Zeitpunkt`, bg: V_DIM, border: V_DIM2, color: INK2 };
   if (days > DOOH_CUTOFF_DAYS) return { text: `Stimmzettel sind unterwegs — noch ${days} Tage bis zur Abstimmung`, bg: V_DIM, border: V_DIM2, color: INK2 };
-  return { text: `Nur noch ${days} Tage — Plakatwerbung nicht mehr buchbar, Online-Werbung möglich`, bg: AMBER_BG, border: AMBER, color: AMBER };
+  return { text: `Nur noch ${days} Tage — öffentliche digitale Plakate (DOOH) brauchen mindestens ${DOOH_CUTOFF_DAYS} Tage Vorlauf`, bg: AMBER_BG, border: AMBER, color: AMBER };
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
   const toPx = (iso: string) =>
     Math.max(0, (new Date(iso + 'T00:00:00').getTime() - axisStartMs) / axisSpan * trackW);
 
-  const kampParatDate = getKampParatDate(daysToEvent, versand, today);
+  const kampParatDate = getKampParatDate(votingDateISO);
   const state = daysToEvent > 56 ? 1 : daysToEvent > 28 ? 2 : daysToEvent > DOOH_CUTOFF_DAYS ? 3 : 4;
   const pill  = getStatusPill(daysToEvent);
 
@@ -102,39 +102,88 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
                   [nHeute, nAbstimmung]
   );
 
-  // Sort chronologically; forward pass pushes right only; abstimmung stays fixed (last)
+  // Sort chronologically. Nur Bullet-Kollision verhindern (kleiner Mindestabstand) –
+  // Positionen bleiben weitgehend datentreu, kein grosses Auseinanderschieben mehr.
   const sorted = [...stateNodes].sort((a, b) => a.rawPx - b.rawPx);
   const adjPx = sorted.map(n => n.rawPx);
   for (let i = 1; i < adjPx.length - 1; i++) {
     if (adjPx[i] - adjPx[i - 1] < MIN_BULLET_PX) adjPx[i] = adjPx[i - 1] + MIN_BULLET_PX;
   }
   const secLast = adjPx.length - 2;
-  if (secLast >= 0 && adjPx[secLast] >= trackW - MIN_BULLET_PX) {
+  if (secLast >= 0 && adjPx[secLast] > trackW - MIN_BULLET_PX) {
     adjPx[secLast] = trackW - MIN_BULLET_PX;
     for (let i = secLast - 1; i >= 0; i--) {
-      if (adjPx[i] >= adjPx[i + 1] - MIN_BULLET_PX) adjPx[i] = Math.max(0, adjPx[i + 1] - MIN_BULLET_PX);
+      if (adjPx[i] > adjPx[i + 1] - MIN_BULLET_PX) adjPx[i] = Math.max(0, adjPx[i + 1] - MIN_BULLET_PX);
     }
   }
-  const posNodes = sorted.map((n, i) => ({ ...n, adjPx: adjPx[i] }));
+
+  // Label-Platzierung: Standard oben. Wenn ein Knoten dem Vorgänger zu nah ist
+  // (Labels würden auf gleicher Ebene überlappen), kippt er auf die Gegenseite →
+  // alternierendes Oben/Unten-Muster. Punkte bleiben an echter Position.
+  const places: ('top' | 'bottom')[] = [];
+  for (let i = 0; i < adjPx.length; i++) {
+    if (i === 0) { places.push('top'); continue; }
+    places.push(adjPx[i] - adjPx[i - 1] < LABEL_GAP_PX
+      ? (places[i - 1] === 'top' ? 'bottom' : 'top')
+      : 'top');
+  }
+  const posNodes = sorted.map((n, i) => ({ ...n, adjPx: adjPx[i], place: places[i] }));
 
   // Phase bar metrics (true proportional, raw)
   const versandPct       = Math.max(0, Math.min(100, toPx(versand) / trackW * 100));
   const daysSinceVersand = state >= 3 ? Math.max(0, daysBetween(versand, today)) : 0;
   const daysVorbPrep     = state <= 2 ? daysBetween(today, versand) : 0;
 
-  const node = (px: number) => ({
-    position: 'absolute' as const,
+  // Vertikale Geometrie: Achslinie in der Track-Mitte, Labels ober-/unterhalb.
+  const TRACK_H = 116;
+  const RAIL_Y  = 58;
+
+  // Node-Wrapper: nur Ankerpunkt auf der x-Position; Bullet/Label absolut.
+  const node = (px: number): CSSProperties => ({
+    position: 'absolute',
     left: px,
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
+    top: 0,
+    bottom: 0,
+    width: 0,
     zIndex: 1,
   });
+  // Bullet zentriert auf der Achslinie.
+  const bulletWrap = (size: number): CSSProperties => ({
+    position: 'absolute',
+    left: 0,
+    top: RAIL_Y,
+    transform: 'translate(-50%, -50%)',
+    width: size,
+    height: size,
+  });
+  // Label ober- oder unterhalb der Achslinie, plus Verbindungsstrich.
+  const labelWrap = (place: 'top' | 'bottom'): CSSProperties => ({
+    position: 'absolute',
+    left: 0,
+    transform: 'translateX(-50%)',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    ...(place === 'top'
+      ? { bottom: TRACK_H - RAIL_Y + 16 }
+      : { top: RAIL_Y + 16 }),
+  });
+  const stem = (place: 'top' | 'bottom'): CSSProperties => ({
+    position: 'absolute',
+    left: 0,
+    transform: 'translateX(-50%)',
+    width: 1.5,
+    height: 11,
+    background: 'rgba(107,79,187,0.28)',
+    ...(place === 'top'
+      ? { bottom: TRACK_H - RAIL_Y + 4 }
+      : { top: RAIL_Y + 4 }),
+  });
 
-  const ttBox = {
-    position: 'absolute' as const,
-    bottom: 'calc(100% + 6px)',
+  const ttBox = (place: 'top' | 'bottom'): CSSProperties => ({
+    position: 'absolute',
+    ...(place === 'top'
+      ? { bottom: 'calc(100% + 6px)' }
+      : { top: 'calc(100% + 6px)' }),
     left: '50%',
     transform: 'translateX(-50%)',
     background: '#2D1F52',
@@ -147,7 +196,7 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
     zIndex: 50,
     lineHeight: 1.5,
     boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-  };
+  });
 
   return (
     <div style={{ background: '#F3F0FF', borderRadius: 16, padding: '18px 20px', border: '1.5px solid rgba(107,79,187,0.14)', marginBottom: 24, animation: 'sp1-popIn 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}>
@@ -161,45 +210,68 @@ export default function KampagnenTimeline({ votingDateISO, daysToEvent }: Props)
       </div>
 
       {/* Bullets track */}
-      <div ref={trackRef} style={{ position: 'relative' as const, height: 68, marginBottom: 16 }}>
-        <div style={{ position: 'absolute' as const, top: 7, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
+      <div ref={trackRef} style={{ position: 'relative' as const, height: TRACK_H, marginBottom: 16 }}>
+        <div style={{ position: 'absolute' as const, top: RAIL_Y, left: 0, right: 0, height: 1, background: 'rgba(107,79,187,0.18)' }} />
 
         {posNodes.map((n) => {
           const s = { ...node(n.adjPx), opacity: n.past ? 0.45 : 1 };
+          const cap = { fontSize: 11.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const, letterSpacing: 0.1 };
+          const dateStyle = { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, fontWeight: 700, color: INK, marginTop: 2 };
+
           if (n.id === 'heute') return (
             <div key="heute" style={s}>
-              <div style={{ width: 16, height: 16, borderRadius: '50%', background: V, border: `2.5px solid ${V}` }} />
-              <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, marginTop: 5, whiteSpace: 'nowrap' as const }}>Heute</div>
-              <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(today)}</div>
+              <div style={bulletWrap(16)}>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', background: V, border: `2.5px solid ${V}` }} />
+              </div>
+              <div style={stem(n.place)} />
+              <div style={labelWrap(n.place)}>
+                <div style={cap}>Heute</div>
+                <div style={{ ...dateStyle, color: V }}>{fmt(today)}</div>
+              </div>
             </div>
           );
           if (n.id === 'versand') return (
             <div key="versand" style={s}>
-              <div style={{ width: 14, height: 14, borderRadius: '50%', background: n.past ? 'transparent' : WHITE, border: '2px solid rgba(107,79,187,0.45)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
-                <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Stimmzettel versandt</div>
-                <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtVersand(true)} onMouseLeave={() => setTtVersand(false)}>ⓘ</span>
-                {ttVersand && <div style={ttBox}>Ca. 4 Wochen vor dem Abstimmungssonntag kommen die Stimmunterlagen ins Haus. Viele Stimmberechtigte entscheiden genau in dieser Phase — Kampagnen, die hier präsent sind, erzielen die höchste Wirkung.</div>}
+              <div style={bulletWrap(14)}>
+                <div style={{ width: 14, height: 14, borderRadius: '50%', background: n.past ? 'transparent' : WHITE, border: '2px solid rgba(107,79,187,0.45)' }} />
               </div>
-              <div style={{ fontSize: 9.5, fontWeight: 500, color: MUTED, marginTop: 1 }}>{fmt(versand)}</div>
+              <div style={stem(n.place)} />
+              <div style={labelWrap(n.place)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center', position: 'relative' as const }}>
+                  <div style={cap}>Stimmzettel versandt</div>
+                  <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtVersand(true)} onMouseLeave={() => setTtVersand(false)}>ⓘ</span>
+                  {ttVersand && <div style={ttBox(n.place)}>Ca. 4 Wochen vor dem Abstimmungssonntag kommen die Stimmunterlagen ins Haus. Viele Stimmberechtigte entscheiden genau in dieser Phase — Kampagnen, die hier präsent sind, erzielen die höchste Wirkung.</div>}
+                </div>
+                <div style={{ ...dateStyle, color: MUTED, fontWeight: 500 }}>{fmt(versand)}</div>
+              </div>
             </div>
           );
           if (n.id === 'buchung') return (
             <div key="buchung" style={s}>
-              <div style={{ width: 14, height: 14, borderRadius: '50%', background: WHITE, border: `2px solid ${V}` }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 5, position: 'relative' as const }}>
-                <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, whiteSpace: 'nowrap' as const }}>Buchungsschluss</div>
-                <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
-                {ttParat && <div style={ttBox}>Bis zu diesem Datum müssen deine Werbemittel bereit und die Kampagne gebucht sein. Politische Plakatwerbung braucht ca. 10 Tage Freigabelauf — wir helfen dir dabei!</div>}
+              <div style={bulletWrap(14)}>
+                <div style={{ width: 14, height: 14, borderRadius: '50%', background: WHITE, border: `2px solid ${V}` }} />
               </div>
-              <div style={{ fontSize: 9.5, fontWeight: 500, color: INK, marginTop: 1 }}>{fmt(kampParatDate)}</div>
+              <div style={stem(n.place)} />
+              <div style={labelWrap(n.place)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'center', position: 'relative' as const }}>
+                  <div style={cap}>Buchungsschluss</div>
+                  <span style={{ color: '#7A7596', cursor: 'help', fontSize: 10, flexShrink: 0 }} onMouseEnter={() => setTtParat(true)} onMouseLeave={() => setTtParat(false)}>ⓘ</span>
+                  {ttParat && <div style={ttBox(n.place)}>Letzter buchbarer Tag: öffentliche digitale Plakate (DOOH) brauchen ca. {DOOH_CUTOFF_DAYS} Tage Vorlauf bis zur Ausspielung. Bis dahin müssen Werbemittel bereit und die Kampagne gebucht sein — wir helfen dir dabei.</div>}
+                </div>
+                <div style={dateStyle}>{fmt(kampParatDate)}</div>
+              </div>
             </div>
           );
           return (
             <div key="abstimmung" style={s}>
-              <div style={{ width: 16, height: 16, borderRadius: '50%', background: WHITE, border: `2.5px solid ${V}` }} />
-              <div style={{ fontSize: 9.5, fontWeight: 600, color: MUTED, marginTop: 5, whiteSpace: 'nowrap' as const }}>Abstimmung</div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: V, marginTop: 1 }}>{fmt(votingDateISO)}</div>
+              <div style={bulletWrap(18)}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', background: WHITE, border: `3px solid ${V}` }} />
+              </div>
+              <div style={stem(n.place)} />
+              <div style={labelWrap(n.place)}>
+                <div style={cap}>Abstimmung</div>
+                <div style={{ ...dateStyle, color: V }}>{fmt(votingDateISO)}</div>
+              </div>
             </div>
           );
         })}

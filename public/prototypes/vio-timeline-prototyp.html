@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VIO · Kampagnen-Timeline · Prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --v:        #6B4FBB;
+    --v-soft:   #8A72D6;
+    --ink:      #1E1535;
+    --ink2:     #4A3A72;
+    --muted:    rgba(30,21,53,0.46);
+    --white:    #FFFFFF;
+    --amber:    #C96A00;
+    --amber-bg: #FBF1E6;
+    --green:    #1E9E6A;
+    --v-dim:    rgba(107,79,187,0.09);
+    --v-dim2:   rgba(107,79,187,0.16);
+    --line:     rgba(107,79,187,0.18);
+    --card-bd:  rgba(107,79,187,0.14);
+    --bg:       #F6F5F9;
+    --tl-bg:    #F3F0FF;
+    --rail-y:   64px;   /* vertikale Position der Achslinie im Track */
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: 'Jost', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 40px 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  /* ── Prototype controls (NOT part of the component) ── */
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 28px; padding: 14px 16px;
+    background: var(--white); border: 1px solid var(--card-bd);
+    border-radius: 14px; box-shadow: 0 1px 3px rgba(30,21,53,0.05);
+  }
+  .controls .lbl {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted); margin-right: 6px;
+  }
+  .ctrl-btn {
+    font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 7px 13px; border-radius: 9px; cursor: pointer;
+    border: 1.5px solid var(--line); background: var(--white); color: var(--ink2);
+    transition: all .16s;
+  }
+  .ctrl-btn:hover { border-color: var(--v-soft); color: var(--v); }
+  .ctrl-btn.active {
+    background: var(--v); border-color: var(--v); color: #fff;
+    box-shadow: 0 3px 12px rgba(107,79,187,0.28);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     THE COMPONENT — Kampagnen-Timeline
+     ════════════════════════════════════════════════════════════ */
+  .tl {
+    background: var(--tl-bg);
+    border: 1.5px solid var(--card-bd);
+    border-radius: 18px;
+    padding: 22px 26px 26px;
+    animation: tl-pop .35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes tl-pop {
+    from { opacity: 0; transform: scale(.985); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .tl-eyebrow {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--v); margin-bottom: 14px;
+  }
+  .tl-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--v); }
+
+  /* ── Headline status: big number + sentence ── */
+  .tl-status {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .tl-bignum {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 38px; font-weight: 800; line-height: 1;
+    color: var(--v); letter-spacing: -1px;
+  }
+  .tl-bigunit {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+  .tl-sub {
+    font-size: 14px; font-weight: 500; color: var(--ink2);
+    line-height: 1.5; margin-bottom: 22px; max-width: 52ch;
+  }
+  /* amber variant for the tight state */
+  .tl.is-tight .tl-bignum { color: var(--amber); }
+  .tl.is-tight .tl-eyebrow,
+  .tl.is-tight .tl-eyebrow .dot { color: var(--amber); }
+  .tl.is-tight .tl-eyebrow .dot { background: var(--amber); }
+
+  /* ── Track ──
+     Rail liegt jetzt in der vertikalen Mitte. Labels gehen alternierend
+     nach oben (place-top) oder unten (place-bottom), damit eng
+     beieinanderliegende Knoten lesbar bleiben.
+     --rail-y (vertikale Position der Achslinie) ist in :root definiert. */
+  .tl-track {
+    position: relative;
+    height: 128px;
+    margin: 8px 4px 0;
+  }
+  /* base rail */
+  .tl-rail {
+    position: absolute; top: var(--rail-y); left: 0; right: 0; height: 3px;
+    border-radius: 2px; background: var(--line);
+  }
+  /* progress / phase fill on the rail */
+  .tl-fill {
+    position: absolute; top: var(--rail-y); height: 3px; border-radius: 2px;
+    background: var(--v);
+    transition: left .4s ease, width .4s ease, background .3s;
+  }
+  .tl.is-tight .tl-fill { background: var(--amber); }
+  /* nicht-buchbar: gestrichelte amber Linie statt durchgezogen */
+  .tl.is-blocked .tl-fill {
+    background: repeating-linear-gradient(90deg, var(--amber) 0 7px, transparent 7px 13px);
+  }
+  /* "nicht buchbar"-Badge neben der grossen Zahl */
+  .tl-badge {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--amber); background: var(--amber-bg);
+    border: 1px solid rgba(201,106,0,0.30);
+    border-radius: 999px; padding: 4px 11px;
+    align-self: center;
+  }
+  /* subtle "voting-papers-out" highlighted segment */
+  .tl-hot {
+    position: absolute; top: calc(var(--rail-y) - 1.5px); height: 6px; border-radius: 3px;
+    background: linear-gradient(90deg, rgba(107,79,187,0.0), rgba(107,79,187,0.30));
+    pointer-events: none;
+  }
+
+  /* ── Node ──
+     Bullet liegt fix auf der Rail. Label entweder oben oder unten,
+     gesteuert per .place-top / .place-bottom (vom JS gesetzt). */
+  .tl-node {
+    position: absolute; top: 0; bottom: 0;
+    transform: translateX(-50%);
+    width: 0;                 /* nur Ankerpunkt; Kinder ragen heraus */
+    z-index: 2;
+    transition: left .4s cubic-bezier(0.22,1,0.36,1), opacity .3s;
+  }
+  .tl-node.is-past { opacity: .42; }
+
+  .tl-bullet {
+    position: absolute; left: 50%;
+    top: var(--rail-y);
+    transform: translate(-50%, -50%);
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--white); border: 3px solid var(--v);
+    box-shadow: 0 2px 6px rgba(107,79,187,0.18);
+    transition: transform .16s;
+    z-index: 3;
+  }
+  .tl-node.n-heute .tl-bullet { background: var(--v); border-color: var(--v); }
+  .tl-node.n-soft  .tl-bullet { border-color: rgba(107,79,187,0.42); }
+  .tl-node.n-vote  .tl-bullet { width: 20px; height: 20px; border-width: 3.5px; }
+  .tl.is-tight .tl-node.n-vote .tl-bullet { border-color: var(--amber); }
+  .tl.is-tight .tl-node.n-heute .tl-bullet { background: var(--amber); border-color: var(--amber); }
+  .tl-node:hover .tl-bullet { transform: translate(-50%, -50%) scale(1.12); }
+
+  /* Verbindungsstrich Bullet ↔ Label */
+  .tl-stem {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 1.5px; background: rgba(107,79,187,0.28);
+  }
+  .tl-node.place-top .tl-stem    { bottom: calc(100% - var(--rail-y) + 9px); height: 12px; }
+  .tl-node.place-bottom .tl-stem { top: calc(var(--rail-y) + 9px); height: 12px; }
+
+  /* Label-Block, absolut über/unter der Rail verankert */
+  .tl-label {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    text-align: center; white-space: nowrap;
+  }
+  .tl-node.place-top .tl-label    { bottom: calc(100% - var(--rail-y) + 25px); }
+  .tl-node.place-bottom .tl-label { top: calc(var(--rail-y) + 25px); }
+  .tl-cap {
+    display: flex; align-items: center; gap: 3px; justify-content: center;
+    font-size: 11.5px; font-weight: 600; color: var(--ink2);
+    letter-spacing: 0.1px;
+  }
+  .tl-date {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 2px;
+  }
+  .tl-node.n-heute .tl-date { color: var(--v); }
+  .tl-node.n-vote  .tl-date { color: var(--v); }
+  .tl.is-tight .tl-node.n-vote .tl-date { color: var(--amber); }
+
+  /* info icon + tooltip */
+  .tl-info {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 1.2px solid var(--muted); color: var(--muted);
+    font-size: 9px; font-weight: 700; cursor: help; flex-shrink: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1;
+    position: relative;
+  }
+  .tl-info:hover { border-color: var(--v); color: var(--v); }
+  .tl-tip {
+    position: absolute; bottom: calc(100% + 9px); left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: #2D1F52; color: #fff;
+    border-radius: 10px; padding: 10px 13px;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px; font-weight: 400; line-height: 1.5;
+    width: max-content; max-width: 250px; white-space: normal;
+    text-align: left;
+    box-shadow: 0 8px 28px rgba(45,31,82,0.30);
+    opacity: 0; pointer-events: none; z-index: 60;
+    transition: opacity .18s, transform .18s;
+  }
+  .tl-tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: #2D1F52;
+  }
+  .tl-info:hover .tl-tip {
+    opacity: 1; pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  /* bei unten platziertem Label klappt der Tooltip nach unten auf */
+  .tl-node.place-bottom .tl-tip {
+    bottom: auto; top: calc(100% + 9px);
+    transform: translateX(-50%) translateY(-4px);
+  }
+  .tl-node.place-bottom .tl-info:hover .tl-tip { transform: translateX(-50%) translateY(0); }
+  .tl-node.place-bottom .tl-tip::after {
+    top: auto; bottom: 100%;
+    border-top-color: transparent; border-bottom-color: #2D1F52;
+  }
+
+  /* ── Footnote under the track ── */
+  .tl-foot {
+    margin-top: 22px; padding-top: 16px;
+    border-top: 1px solid rgba(107,79,187,0.10);
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12.5px; font-weight: 500; color: var(--ink2); line-height: 1.5;
+  }
+  .tl-foot .pin {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--v);
+    flex-shrink: 0;
+  }
+  .tl.is-tight .tl-foot .pin { background: var(--amber); }
+  .tl.is-tight .tl-foot { color: var(--amber); }
+
+  .proto-note {
+    margin-top: 22px; font-size: 12px; color: var(--muted); line-height: 1.6;
+    text-align: center;
+  }
+
+  /* edge clamp: nur das LABEL nach innen schieben, Bullet bleibt auf echter Position.
+     Der Verbindungsstrich darf bei geklemmten Labels leicht schräg wirken — wir
+     blenden ihn dann aus, damit es sauber bleibt. */
+  .tl-node.clamp-l .tl-label { left: 0; transform: translateX(0); text-align: left; }
+  .tl-node.clamp-l .tl-cap   { justify-content: flex-start; }
+  .tl-node.clamp-r .tl-label { left: auto; right: 0; transform: translateX(0); text-align: right; }
+  .tl-node.clamp-r .tl-cap   { justify-content: flex-end; }
+  .tl-node.clamp-l .tl-stem,
+  .tl-node.clamp-r .tl-stem  { display: none; }
+
+  /* Tooltip-Ausrichtung an den Rändern */
+  .tl-node.clamp-r .tl-tip { left: auto; right: 0; transform: translateY(4px); }
+  .tl-node.clamp-r .tl-info:hover .tl-tip { transform: translateY(0); }
+  .tl-node.clamp-r .tl-tip::after { left: auto; right: 8px; transform: none; }
+  .tl-node.clamp-l .tl-tip { left: 0; transform: translateY(4px); }
+  .tl-node.clamp-l .tl-info:hover .tl-tip { transform: translateY(0); }
+  .tl-node.clamp-l .tl-tip::after { left: 8px; transform: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="controls">
+    <span class="lbl">Szenario</span>
+    <button class="ctrl-btn active" data-state="1">Viel Vorlauf · 114 T</button>
+    <button class="ctrl-btn" data-state="2">Mittel · 45 T</button>
+    <button class="ctrl-btn" data-state="3">Stimmzettel unterwegs · 18 T</button>
+    <button class="ctrl-btn" data-state="5">Enges Trio · 13 T</button>
+    <button class="ctrl-btn" data-state="4">Knapp · 6 T</button>
+  </div>
+
+  <!-- ═══ COMPONENT MOUNT ═══ -->
+  <div id="tl-root"></div>
+
+  <div class="proto-note">
+    Prototyp · alle Werte beziehen sich auf den 27. September 2026 als Abstimmungstag.<br/>
+    Fahre über die <strong>ⓘ</strong>-Icons für die Erklärungen.
+  </div>
+
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────────
+//  Daten-Modell (gespiegelt aus KampagnenTimeline.tsx)
+// ────────────────────────────────────────────────────────────────
+const VOTE_ISO = '2026-09-27';
+const STIMMUNTERLAGEN_OFFSET = 28; // Tage vor Abstimmung
+const DOOH_CUTOFF = 10;
+
+const MONTHS = ['Jan.','Feb.','März','Apr.','Mai','Juni','Juli','Aug.','Sept.','Okt.','Nov.','Dez.'];
+
+function parse(iso){ return new Date(iso + 'T00:00:00'); }
+function addDays(iso, d){ const x = parse(iso); x.setDate(x.getDate()+d); return toISO(x); }
+function toISO(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function fmt(iso){ const d = parse(iso); return `${d.getDate()}. ${MONTHS[d.getMonth()]}`; }
+function daysBetween(a,b){ return Math.round((parse(b)-parse(a))/86400000); }
+
+// Für den Prototyp leiten wir "heute" aus dem gewünschten Vorlauf ab,
+// damit alle States deterministisch sind.
+function todayForDays(daysToEvent){ return addDays(VOTE_ISO, -daysToEvent); }
+
+function statusCopy(days){
+  if (days < DOOH_CUTOFF) return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Der Vorlauf ist zu kurz für eine buchbare Kampagne — öffentliche digitale Plakate (DOOH) brauchen mindestens 10 Tage.', tight:true, blocked:true };
+  if (days > 56) return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Du hast vollen Spielraum — alle Laufzeiten sind möglich.', tight:false, blocked:false };
+  if (days > 28) return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Guter Zeitpunkt zum Starten. Genug Vorlauf für eine saubere Vorbereitung.', tight:false, blocked:false };
+  return { num: days, unit: 'Tage bis zur Abstimmung', sub: 'Die Stimmunterlagen sind unterwegs — jetzt entscheidet sich vieles.', tight:false, blocked:false };
+}
+
+function footnote(state, days, daysSinceVersand, daysPrep){
+  if (state === 1) return 'Lehn dich zurück — von hier aus planen wir rückwärts und nutzen den ganzen Vorlauf.';
+  if (state === 2) return `${daysPrep} Tage Vorbereitung bis die Stimmunterlagen rausgehen — ideales Zeitfenster.`;
+  if (state === 3 || state === 5) return `Stimmunterlagen seit ${daysSinceVersand} Tag${daysSinceVersand===1?'':'en'} verschickt — der wirksamste Moment läuft jetzt.`;
+  return 'Für eine buchbare Kampagne brauchen öffentliche digitale Plakate (DOOH) mindestens 10 Tage Vorlauf — wähle einen früheren Abstimmungstag.';
+}
+
+const TIP_VERSAND = 'Rund 4 Wochen vor dem Abstimmungssonntag kommen die Stimmunterlagen ins Haus. Viele entscheiden genau in dieser Phase — wer hier präsent ist, wirkt am stärksten.';
+const TIP_BUCHUNG = 'Letzter buchbarer Tag: öffentliche digitale Plakate (DOOH) brauchen ca. 10 Tage Vorlauf bis zur Ausspielung. Bis dahin müssen Werbemittel bereit und die Kampagne gebucht sein — wir helfen dir dabei.';
+
+// ────────────────────────────────────────────────────────────────
+//  Layout: Knoten an echter Position, Labels alternierend bei Enge
+// ────────────────────────────────────────────────────────────────
+// Bullets dürfen nah beieinander stehen (Datentreue), nur Berührung
+// verhindern. Labels weichen vertikal aus, wenn sie sich überlappen würden.
+const MIN_BULLET_GAP_PCT = 7;   // Mindestabstand der Punkte (gegen Bullet-Kollision)
+const LABEL_GAP_PCT      = 22;  // darunter würden zwei Labels auf derselben Ebene kollidieren
+
+function buildNodes(state, days){
+  const today   = todayForDays(days);
+  const versand = addDays(VOTE_ISO, -STIMMUNTERLAGEN_OFFSET);
+  const versandPast = parse(versand) < parse(today);
+
+  // Buchungsschluss = letzter buchbarer Tag = Abstimmung minus DOOH-Vorlauf (10 Tage).
+  // Regelkatalog §7.0/§8.6: MIN_VORLAUF_DOOH = 10. Fix, paketunabhängig.
+  const buchung = addDays(VOTE_ISO, -DOOH_CUTOFF);
+
+  const axisStart = versandPast ? versand : today;
+  const span = Math.max(1, daysBetween(axisStart, VOTE_ISO));
+  const pct = iso => Math.max(0, Math.min(100, daysBetween(axisStart, iso) / span * 100));
+
+  const N = {
+    heute:   { id:'heute',   cls:'n-heute', cap:'Heute',                date:fmt(today),   raw:pct(today),   past:false, tip:null },
+    versand: { id:'versand', cls:'n-soft',  cap:'Stimmzettel versandt', date:fmt(versand), raw:pct(versand), past:versandPast, tip:TIP_VERSAND },
+    buchung: { id:'buchung', cls:'',        cap:'Buchungsschluss',      date:fmt(buchung), raw:pct(buchung), past:false, tip:TIP_BUCHUNG },
+    vote:    { id:'vote',    cls:'n-vote',  cap:'Abstimmung',           date:fmt(VOTE_ISO),raw:100,          past:false, tip:null },
+  };
+
+  let nodes =
+    state === 1 ? [N.heute, N.versand, N.vote] :
+    state === 2 ? [N.heute, N.buchung, N.versand, N.vote] :
+    (state === 3 || state === 5) ? [N.versand, N.heute, N.buchung, N.vote] :
+                  [N.heute, N.vote];
+
+  nodes = nodes.slice().sort((a,b)=>a.raw-b.raw);
+
+  // 1) Nur Bullet-Kollision verhindern (kleiner Mindestabstand) — Positionen
+  //    bleiben weitgehend datentreu, kein grosses Auseinanderschieben mehr.
+  const adj = nodes.map(n=>n.raw);
+  for (let i=1;i<adj.length-1;i++){ if (adj[i]-adj[i-1] < MIN_BULLET_GAP_PCT) adj[i]=adj[i-1]+MIN_BULLET_GAP_PCT; }
+  const sl = adj.length-2;
+  if (sl>=0 && adj[sl] > 100-MIN_BULLET_GAP_PCT){
+    adj[sl] = 100-MIN_BULLET_GAP_PCT;
+    for (let i=sl-1;i>=0;i--){ if (adj[i] > adj[i+1]-MIN_BULLET_GAP_PCT) adj[i]=Math.max(0,adj[i+1]-MIN_BULLET_GAP_PCT); }
+  }
+  nodes.forEach((n,i)=>n.pos=adj[i]);
+
+  // 2) Label-Platzierung: Standard oben. Wenn ein Knoten dem Vorgänger zu
+  //    nah ist (Labels würden auf derselben Ebene überlappen), kippt er auf
+  //    die Gegenseite des Vorgängers → alternierendes Oben/Unten-Muster.
+  nodes.forEach((n,i)=>{
+    if (i===0){ n.place='top'; return; }
+    const prev = nodes[i-1];
+    if (n.pos - prev.pos < LABEL_GAP_PCT){
+      n.place = prev.place === 'top' ? 'bottom' : 'top';
+    } else {
+      n.place = 'top';
+    }
+  });
+
+  const daysSinceVersand = (state>=3) ? Math.max(0, daysBetween(versand, today)) : 0;
+  const daysPrep = (state===1||state===2) ? Math.max(0, daysBetween(today, versand)) : 0;
+  const versandPos = N.versand.raw;
+
+  return { nodes, versandPast, daysSinceVersand, daysPrep, versandPos };
+}
+
+// ────────────────────────────────────────────────────────────────
+//  Render
+// ────────────────────────────────────────────────────────────────
+function render(state){
+  // State 5 = enges Trio: Heute (13T) + Buchungsschluss (10T) liegen nur 3 Tage
+  // auseinander, Stimmzettel ist gerade durch → härtester Lesbarkeits-Test.
+  const daysMap = { 1:114, 2:45, 3:18, 4:6, 5:13 };
+  const days = daysMap[state];
+  const copy = statusCopy(days);
+  const { nodes, daysSinceVersand, daysPrep, versandPos } = buildNodes(state, days);
+
+  // Fill-Segment auf der Schiene (ganze Strecke aktiv)
+  const fillLeft = 0, fillWidth = 100;
+
+  const nodeHTML = nodes.map((n, i) => {
+    let clamp = '';
+    if (i === 0 && n.pos < 8) clamp = 'clamp-l';
+    if (i === nodes.length-1 && n.pos > 92) clamp = 'clamp-r';
+    const place = `place-${n.place || 'top'}`;
+    const info = n.tip
+      ? `<span class="tl-info">i<span class="tl-tip">${n.tip}</span></span>`
+      : '';
+    return `
+      <div class="tl-node ${n.cls} ${place} ${n.past?'is-past':''} ${clamp}" style="left:${n.pos}%">
+        <div class="tl-bullet"></div>
+        <div class="tl-stem"></div>
+        <div class="tl-label">
+          <div class="tl-cap">${n.cap}${info}</div>
+          <div class="tl-date">${n.date}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // "Hot"-Segment (Stimmzettel-Phase) in States mit laufendem Versandfenster
+  let hotHTML = '';
+  if (state === 2 || state === 3 || state === 5){
+    const left = Math.min(versandPos, 100);
+    hotHTML = `<div class="tl-hot" style="left:${left}%; right:0;"></div>`;
+  }
+
+  const blockedBadge = copy.blocked
+    ? `<span class="tl-badge">nicht buchbar</span>`
+    : '';
+
+  const root = document.getElementById('tl-root');
+  root.innerHTML = `
+    <div class="tl ${copy.tight?'is-tight':''} ${copy.blocked?'is-blocked':''}">
+      <div class="tl-eyebrow"><span class="dot"></span>Kampagnen-Timeline</div>
+
+      <div class="tl-status">
+        <span class="tl-bignum">${copy.num}</span>
+        <span class="tl-bigunit">${copy.unit}</span>
+        ${blockedBadge}
+      </div>
+      <div class="tl-sub">${copy.sub}</div>
+
+      <div class="tl-track">
+        <div class="tl-rail"></div>
+        ${hotHTML}
+        <div class="tl-fill" style="left:${fillLeft}%; width:${fillWidth}%;"></div>
+        ${nodeHTML}
+      </div>
+
+      <div class="tl-foot">
+        <span class="pin"></span>
+        <span>${footnote(state, days, daysSinceVersand, daysPrep)}</span>
+      </div>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────────────────
+//  Controls
+// ────────────────────────────────────────────────────────────────
+document.querySelectorAll('.ctrl-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.ctrl-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    render(parseInt(btn.dataset.state, 10));
+  });
+});
+
+render(1);
+</script>
+</body>
+</html>
