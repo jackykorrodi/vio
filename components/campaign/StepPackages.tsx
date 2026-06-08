@@ -4,14 +4,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { BriefingData } from '@/lib/types';
 import type { CustomConfig } from '@/lib/types';
 import {
-  calculateImpact, buildPackages, getLaufzeitCorridor,
-  calculateImpactCustom, PKG_CAP_LEVEL,
+  buildPackages, getLaufzeitCorridor,
+  calculateImpactCustom,
   calculateSweetSpotCustom,
   COACH_BUDGET_LOW_RATIO, COACH_BUDGET_HIGH_RATIO,
   WIRKUNGSFOKUS_FREQUENZ,
   getCampaignWindow,
 } from '@/lib/preislogik';
-import type { CustomImpactResult, CampaignWindow } from '@/lib/preislogik';
+import type { ImpactResult, CustomImpactResult, CampaignWindow } from '@/lib/preislogik';
 import { evaluateCustomConfig } from '@/lib/custom-hints';
 import { validatePartnerCode } from '@/lib/partner-codes-mock';
 import type { PartnerCode } from '@/lib/partner-codes-mock';
@@ -514,47 +514,50 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
   const demonym    = getInhabitants(selectedRegionsFull.map(r => r.name));
   const regionName = briefing.selectedRegions?.[0]?.name ?? 'Gesamte Schweiz';
 
-  const impact = useMemo(
+  // Paket-Modus: zweiter buildPackages-Aufruf mit Boost (nur wenn Code aktiv)
+  const packagesBoosted: PakeResult | null = useMemo(
     () => {
-      if (!selectedRegionsFull.length) return null;
-      const boostPct = activeCode?.reachBoostPct ?? 0;
-      // Pfad 'paket': paketLevel-Modus, nur wenn Paket gewählt
-      if (mode === 'paket' && packages && selectedPkg) {
-        const pkgData = packages[selectedPkg];
-        return calculateImpact({
-          budget: pkgData.budget,
-          laufzeitDays: pkgData.laufzeitDays,
-          regions: selectedRegionsFull,
-          mode: 'paketLevel',
-          paketLevel: PKG_CAP_LEVEL[selectedPkg],
-          splitOverride: pkgData.deliveryMode === 'display_only' ? { dooh: 0, display: 1 } : undefined,
-          partnerCodeBoostPct: boostPct,
-        });
-      }
-      if (mode === 'custom') return null; // custom mode uses calculateImpactCustom via customImpact
-      return null;
+      if (mode !== 'paket' || !activeCode?.reachBoostPct || !selectedRegionsFull.length) return null;
+      return buildPackages({ regions: selectedRegionsFull, daysUntilVote, partnerCodeBoostPct: activeCode.reachBoostPct });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mode, selectedPkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote, activeCode?.reachBoostPct]
+    [mode, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote, activeCode?.reachBoostPct]
   );
 
-  // Basis-Impact ohne Code-Boost (für Reach-Delta-Berechnung)
-  const impactBase = useMemo(() => {
-    if (!activeCode || activeCode.reachBoostPct === 0 || !selectedRegionsFull.length) return null;
+  const impact = useMemo((): ImpactResult | null => {
+    if (!selectedRegionsFull.length) return null;
     if (mode === 'paket' && packages && selectedPkg) {
-      const pkgData = packages[selectedPkg];
-      return calculateImpact({
-        budget: pkgData.budget,
-        laufzeitDays: pkgData.laufzeitDays,
-        regions: selectedRegionsFull,
-        mode: 'paketLevel',
-        paketLevel: PKG_CAP_LEVEL[selectedPkg],
-        splitOverride: pkgData.deliveryMode === 'display_only' ? { dooh: 0, display: 1 } : undefined,
-      });
+      const boostActive = !!(activeCode?.reachBoostPct);
+      const pkgSource   = boostActive && packagesBoosted ? packagesBoosted : packages;
+      const pkg = pkgSource[selectedPkg];
+      return {
+        budget:             pkg.budget,
+        laufzeitDays:       pkg.laufzeitDays,
+        laufzeitWeeks:      pkg.laufzeitWeeks,
+        reachUniqueLow:     pkg.reachUniqueLow,
+        reachUniqueHigh:    pkg.reachUniqueHigh,
+        reachUniqueAbs:     pkg.reachUniqueAbs,
+        reachUniqueLowPct:  pkg.reachUniqueLowPct,
+        reachUniqueHighPct: pkg.reachUniqueHighPct,
+        frequencyCampaign:  pkg.frequencyCampaign,
+        frequencyWeekly:    pkg.frequencyWeekly,
+        stimmTotal:         packages.stimmTotal,
+        poolCap:            0,
+        doohShare:          pkg.doohShare,
+        displayShare:       1 - pkg.doohShare,
+        screenKlasse:       packages.screenKlasse,
+        capLevel:           selectedPkg === 'sichtbar' ? 1 : selectedPkg === 'praesenz' ? 2 : 3,
+        impactLevel:        selectedPkg,
+        efficiencyStatus:   'balanced',
+        recommendedAction:  null,
+        cappedByRegion:     false,
+        hinweise:           [],
+      };
     }
-    return calculateImpact({ budget, regions: selectedRegionsFull, daysUntilVote });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCode, mode, selectedPkg, budget, selectedRegionsFull.map(r => r.name).join(','), daysUntilVote]);
+    return null;
+  },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [mode, selectedPkg, activeCode?.reachBoostPct, packages, packagesBoosted]);
 
   const stimmTotal = impact?.stimmTotal ?? selectedRegionsFull.reduce((s, r) => s + r.stimm, 0);
 
@@ -644,9 +647,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, selectedRegionsFull.map(r => r.name).join(','), effectiveBudget, campaignWindow.effectiveLaufzeitDays, campaignWindow.earliestStart.getTime(), activeCode?.reachBoostPct]);
 
-  // Partner-Code Reach-Delta — Pfad 'paket' (calculateImpact-basiert, 1:1 unverändert)
-  const _codeBaseReach  = impactBase?.reachUniqueAbs ?? 0;
-  const _codeBoostReach = (activeCode && activeCode.reachBoostPct > 0) ? (impact?.reachUniqueAbs ?? 0) : 0;
+  // Partner-Code Reach-Delta — Pfad 'paket' (aus buildPackages, direkt)
+  const _codeBaseReach  = mode === 'paket' && packages && selectedPkg ? packages[selectedPkg].reachUniqueAbs : 0;
+  const _codeBoostReach = mode === 'paket' && packagesBoosted && selectedPkg
+    ? (packagesBoosted[selectedPkg]?.reachUniqueAbs ?? _codeBaseReach)
+    : _codeBaseReach;
   // Partner-Code Reach-Delta — Pfad 'custom' (Budget-Multiplikator-Approximation)
   const _customBaseReach  = customImpact?.reach ?? 0;
   const _customBoostReach = (activeCode && activeCode.reachBoostPct > 0 && customImpactBoosted)
@@ -662,7 +667,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     : 0;
   // Cap-Edge-Case: Code aktiv mit Boost, aber delta = 0 → Sättigung erreicht
   const isCapEdgeCase = !!(activeCode && activeCode.reachBoostPct > 0 && deltaPersonen === 0);
-  const displayReachImpact = (isCapEdgeCase && impactBase) ? impactBase : impact;
+  const displayReachImpact = impact;
 
   const disabledPkgs = useMemo<Set<PaketKey>>(() => {
     if (!packages) return new Set<PaketKey>();
@@ -1121,7 +1126,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   Deine Botschaft erreicht
                 </div>
                 <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 56, fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 6 }}>
-                  {displayReachImpact ? `${fmtNum(displayReachImpact.reachUniqueLow)} – ${fmtNum(displayReachImpact.reachUniqueHigh)}` : '—'}
+                  {displayReachImpact ? `~${fmtNum(displayReachImpact.reachUniqueAbs)}` : '—'}
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 26 }}>{demonym}</div>
 
@@ -1130,9 +1135,9 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                   <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kontaktdruck</div>
                     <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                      Ø {fCampaign}×
+                      {fCampaign}× gesamt
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>≈ {fWeekly}× / Woche</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{fWeekly}× / Woche</div>
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Zeitraum</div>

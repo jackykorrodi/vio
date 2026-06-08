@@ -179,6 +179,7 @@ export interface Paket {
   qualityStatus: 'balanced' | 'high_frequency' | 'thin';
   contextFlag?: 'mikro_limited';
   requiresConsultation: boolean;
+  doohShare: number;
 }
 
 export interface PakeResult {
@@ -826,6 +827,7 @@ function getPkgBudget(stimmTotal: number, key: PaketKey): number {
 export function buildPackages(input: {
   regions: Region[];
   daysUntilVote?: number | null;
+  partnerCodeBoostPct?: number;
 }): PakeResult {
   const regions = dedupRegions(input.regions);
   const stimmTotal = sumStimm(regions);
@@ -861,8 +863,11 @@ export function buildPackages(input: {
 
     // §8.1 v3.9: frequenz-getrieben — zielFrequenz ist INPUT, Reach ist OUTPUT
     const split = deliveryMode === 'display_only' ? { dooh: 0, display: 1.0 } : klass.split;
-    const impressionsInPool =
+    let impressionsInPool =
       ((finalBudget * split.dooh / CPM_DOOH) + (finalBudget * split.display / CPM_DISPLAY)) * 1000 * IN_POOL_FACTOR;
+    if (input.partnerCodeBoostPct) {
+      impressionsInPool /= (1 - input.partnerCodeBoostPct / 100);
+    }
     const poolCap = stimmTotal * getReachCap(stimmTotal, spec.reachCapLevel);
     const zielFrequenz = spec.frequencyWeekly;
     const reachLinear = poolCap > 0 && zielFrequenz > 0 && laufzeitWeeks > 0
@@ -905,6 +910,7 @@ export function buildPackages(input: {
       qualityStatus,
       contextFlag,
       requiresConsultation,
+      doohShare: split.dooh,
     };
   };
 
