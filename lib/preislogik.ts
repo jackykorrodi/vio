@@ -21,7 +21,8 @@ export const PKG_BUDGET_MAX = 99500;     // CHF Paket-Budget-Ceiling (Pfad B, kn
 
 export const DAILY_MIN = 150;            // CHF Tagesbudget-Floor (Splicky)
 export const LAUFZEIT_MIN_DAYS = 7;
-export const LAUFZEIT_MAX_DAYS = 84;     // 12 Wochen
+export const LAUFZEIT_MAX_DAYS = 84;     // 12 Wochen (intern; freies Slider-Max)
+export const POLITIK_LAUFZEIT_MAX = 42;  // Politik-Fenster-Obergrenze (Spec §6.3)
 
 export const F_MIN_WEEKLY = 3;           // unter dieser Schwelle: unwirksam (Krugman-Schwelle)
 export const F_MAX_WEEKLY = 10;          // ab hier Werbemüdigkeit
@@ -69,9 +70,9 @@ export const WIRKUNGSFOKUS_FREQUENZ: Record<Wirkungsfokus, number> = {
 // DOOH_CUTOFF_DAYS bleibt unverändert für Paket-Pfad.
 export const SETUP_VORLAUF_WERKTAGE = 10;
 
-// Ziel-Sättigungsgrad für Sweet-Spot-Schätzung. Kalibrierbar.
-// Empirisch kalibriert (~63% poolCap erreicht, via 13-Cluster-Smoke validiert).
-export const SWEET_SPOT_TARGET_SATURATION = 4.0;
+// Ziel-Sättigungsgrad für Sweet-Spot-Schätzung. Spec §4 v3.11: oberes Ende Paket-Korridor (0.2–1.3).
+// Annahme — vor Go-Live mit Splicky kalibrieren (§10).
+export const SWEET_SPOT_TARGET_SATURATION = 1.4;
 
 // ─── Custom-Pfad Coach-Logik Konstanten (Regelkatalog v3.7) ──────────────────
 
@@ -274,10 +275,11 @@ export function dedupRegions(regions: Region[]): Region[] {
 // ─── Laufzeit-Korridor ───────────────────────────────────────────────────────
 
 export function getLaufzeitCorridor(budget: number): { minDays: number; maxDays: number } {
-  if (budget < 6000) return { minDays: 7, maxDays: 21 };
-  if (budget < 15000) return { minDays: 14, maxDays: 42 };
-  if (budget < 30000) return { minDays: 21, maxDays: 56 };
-  return { minDays: 28, maxDays: 84 };
+  const cap = POLITIK_LAUFZEIT_MAX;
+  if (budget < 6000) return { minDays: 7,  maxDays: Math.min(21, cap) };
+  if (budget < 15000) return { minDays: 14, maxDays: Math.min(42, cap) };
+  if (budget < 30000) return { minDays: 21, maxDays: Math.min(56, cap) };
+  return { minDays: 28, maxDays: Math.min(84, cap) };
 }
 
 // ─── Budget↔Laufzeit-Kopplung (konkav, ^0.75) ────────────────────────────────
@@ -1149,7 +1151,7 @@ export function calculateImpactCustom({
 //
 // Findet das Budget, das reachLinear / poolCap = SWEET_SPOT_TARGET_SATURATION ergibt.
 // Inverse Berechnung: Sättigungsgrad → reachLinear → impressionenImPool → Budget.
-// Verwendet Cap-Level 1 (konservativ; Funktion ist Schätzung, nicht harte Wahrheit).
+// Cap-Level fokusabhängig: breit=3, ausgewogen=2, verankerung=1 (Spec §4 v3.11).
 // Reach-Rückgabe: poolCap × (1 − e^(−k × SWEET_SPOT_TARGET_SATURATION)).
 
 export function calculateSweetSpotCustom(
@@ -1164,7 +1166,8 @@ export function calculateSweetSpotCustom(
 
   const laufzeitWeeks = laufzeitDays / 7;
   const zielFrequenz  = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus];
-  const poolCap       = stimmTotal * getReachCap(stimmTotal, 1);
+  const focusLevel    = ({ breit: 3, ausgewogen: 2, verankerung: 1 } as const)[wirkungsfokus];
+  const poolCap       = stimmTotal * getReachCap(stimmTotal, focusLevel);
 
   const reachLinearTarget    = SWEET_SPOT_TARGET_SATURATION * poolCap;
   const impressionenImPool   = reachLinearTarget * (zielFrequenz * laufzeitWeeks);

@@ -10,6 +10,7 @@ import {
   COACH_BUDGET_LOW_RATIO, COACH_BUDGET_HIGH_RATIO,
   WIRKUNGSFOKUS_FREQUENZ,
   getCampaignWindow,
+  POLITIK_LAUFZEIT_MAX,
 } from '@/lib/preislogik';
 import type { ImpactResult, CustomImpactResult, CampaignWindow } from '@/lib/preislogik';
 import { evaluateCustomConfig } from '@/lib/custom-hints';
@@ -82,7 +83,7 @@ const PKG_STRATEGIE: Record<PaketKey, string> = {
   dominanz: 'mehr Wiederholung',
 };
 
-const CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK = 60; // Wenn voteDate nicht gesetzt
+const CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK = POLITIK_LAUFZEIT_MAX; // Politik-Fenster-Obergrenze (Spec §6.3)
 
 const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL ?? 'https://calendly.com/vio-media';
 
@@ -270,7 +271,7 @@ function CampaignTimeline({
   const totalMs   = voteDate.getTime() - fruehesterStart.getTime();
   if (totalMs <= 0) return null;
   const totalDays = totalMs / 86400000;
-  const maxWeeks  = Math.max(2, Math.floor(totalDays / 7));
+  const maxWeeks  = Math.max(2, Math.min(Math.floor(POLITIK_LAUFZEIT_MAX / 7), Math.floor(totalDays / 7)));
   const minWeeks  = 2;
 
   const campaignStart = new Date(voteDate.getTime() - laufzeitWochen * 7 * 86400000);
