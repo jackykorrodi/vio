@@ -188,6 +188,8 @@ export interface PakeResult {
   recommended: PaketKey;
   stimmTotal: number;
   screenKlasse: 'voll' | 'begrenzt' | 'display-dominant';
+  freqGuardrail: boolean; // deprecated v3.9 — always false; kept for StepPackages backward-compat
+  customHint: boolean;    // §9.2 v3.9: pool_tier ∈ {C, D} → Tier-C/D Custom-Hint anzeigen
 }
 
 // ─── Custom-Pfad: DOOH-Verfügbarkeit (Regelkatalog v3.7) ─────────────────────
@@ -232,9 +234,9 @@ export const PAKET_SPECS: Record<PaketKey, {
   laufzeitDays: number;
   reachCapLevel: 1 | 2 | 3;
 }> = {
-  sichtbar: { name: 'Sichtbar', frequencyWeekly: 3, laufzeitDays: 14, reachCapLevel: 1 },
-  praesenz: { name: 'Präsenz', frequencyWeekly: 5, laufzeitDays: 28, reachCapLevel: 2 },
-  dominanz: { name: 'Dominanz', frequencyWeekly: 6, laufzeitDays: 42, reachCapLevel: 3 },
+  sichtbar: { name: 'Sichtbar', frequencyWeekly: 3, laufzeitDays: 21, reachCapLevel: 1 },
+  praesenz: { name: 'Präsenz', frequencyWeekly: 4, laufzeitDays: 28, reachCapLevel: 2 },
+  dominanz: { name: 'Dominanz', frequencyWeekly: 5, laufzeitDays: 35, reachCapLevel: 3 },
 };
 
 // ─── Reach-Caps nach Pool-Grösse (tiered) ────────────────────────────────────
@@ -799,6 +801,26 @@ export function calculateImpact(input: {
   };
 }
 
+// ─── Pool-Tier-Budget (Spec v3.8 §4) ─────────────────────────────────────────
+
+function getPoolTier(pool: number): 'A' | 'B' | 'C' | 'D' {
+  if (pool < 100_000) return 'A';
+  if (pool < 300_000) return 'B';
+  if (pool <= 700_000) return 'C';
+  return 'D';
+}
+
+const TIER_BUDGET: Record<'A' | 'B' | 'C' | 'D', Record<PaketKey, number>> = {
+  A: { sichtbar:  3_500, praesenz:  6_000, dominanz: 10_000 },
+  B: { sichtbar:  5_000, praesenz:  9_000, dominanz: 15_000 },
+  C: { sichtbar:  7_500, praesenz: 14_000, dominanz: 24_000 },
+  D: { sichtbar: 10_000, praesenz: 18_000, dominanz: 30_000 },
+};
+
+function getPkgBudget(stimmTotal: number, key: PaketKey): number {
+  return TIER_BUDGET[getPoolTier(stimmTotal)][key];
+}
+
 // ─── buildPackages — Pfad B (drei Pakete) ────────────────────────────────────
 
 export function buildPackages(input: {
@@ -823,8 +845,6 @@ export function buildPackages(input: {
 
   const buildOne = (key: PaketKey): Paket => {
     const spec = PAKET_SPECS[key];
-    const reachCap = getReachCap(stimmTotal, spec.reachCapLevel);
-    const targetReach = stimmTotal * reachCap;
     const laufzeitWeeks = spec.laufzeitDays / 7;
 
     // §8.6 DOOH-Vorlauf-Constraint
@@ -832,34 +852,36 @@ export function buildPackages(input: {
     const deliveryMode: 'standard' | 'display_only' = vorlauf >= DOOH_CUTOFF_DAYS ? 'standard' : 'display_only';
     const availability: 'available' | 'unavailable' = vorlauf < 1 ? 'unavailable' : 'available';
 
-    // §8.7 display_only: Budget rein aus Display berechnen
+    // §8.1 v3.8: festes Tier-Budget aus Pool-Tier-Matrix (§4)
+    const finalBudget = getPkgBudget(stimmTotal, key);
+
+    // §8.1 v3.8: requiresConsultation = Komplexitäts-Trigger, nicht budgetgetrieben
+    // TODO: spezielle_laufzeit + manueller_setup_bedarf fehlen noch (kein Signal im Paket-Pfad)
+    const requiresConsultation = regions.length > 1;
+
+    // §8.1 v3.9: frequenz-getrieben — zielFrequenz ist INPUT, Reach ist OUTPUT
     const split = deliveryMode === 'display_only' ? { dooh: 0, display: 1.0 } : klass.split;
-    const splitOverride = deliveryMode === 'display_only' ? { dooh: 0, display: 1.0 } : undefined;
+    const impressionsInPool =
+      ((finalBudget * split.dooh / CPM_DOOH) + (finalBudget * split.display / CPM_DISPLAY)) * 1000 * IN_POOL_FACTOR;
+    const poolCap = stimmTotal * getReachCap(stimmTotal, spec.reachCapLevel);
+    const zielFrequenz = spec.frequencyWeekly;
+    const reachLinear = poolCap > 0 && zielFrequenz > 0 && laufzeitWeeks > 0
+      ? impressionsInPool / (zielFrequenz * laufzeitWeeks)
+      : 0;
+    const reach = poolCap > 0
+      ? poolCap * (1 - Math.exp(-REACH_CURVE_K * reachLinear / poolCap))
+      : 0;
+    const band = getUncertaintyBand(klass.politScreens);
+    const reachUniqueAbs  = Math.round(reach);
+    const reachUniqueLow  = Math.round(Math.max(0, reach * (1 - band)) / 500) * 500;
+    const reachUniqueHigh = Math.round(Math.min(poolCap, reach * (1 + band)) / 500) * 500;
+    const reachUniqueLowPct  = stimmTotal > 0 ? Math.round((reachUniqueLow  / stimmTotal) * 100) : 0;
+    const reachUniqueHighPct = stimmTotal > 0 ? Math.round((reachUniqueHigh / stimmTotal) * 100) : 0;
 
-    // Budget rückwärts lösen
-    const targetContacts = spec.frequencyWeekly * laufzeitWeeks * targetReach / IN_POOL_FACTOR;
-    const impsDOOH = targetContacts * split.dooh;
-    const impsDisplay = targetContacts * split.display;
-    const rawBudget = (impsDOOH / 1000) * CPM_DOOH + (impsDisplay / 1000) * CPM_DISPLAY;
-    const finalBudget = Math.min(PKG_BUDGET_MAX, Math.max(PKG_MIN[key], roundBudget(rawBudget)));
-
-    // §8.1 Dominanz-Cap (v3.5.3)
-    const requiresConsultation = key === 'dominanz' && finalBudget > DOMINANZ_BUDGET_CAP;
-
-    const imp = calculateImpact({
-      budget: finalBudget,
-      laufzeitDays: spec.laufzeitDays,
-      regions,
-      mode: 'paketLevel',
-      paketLevel: spec.reachCapLevel,
-      splitOverride,
-    });
-
-    // §8.8 Qualitätsstatus
-    const fWeekly = imp.frequencyWeekly;
+    // §8.8 Qualitätsstatus (Frequenz fix = zielFrequenz)
     const qualityStatus: 'balanced' | 'high_frequency' | 'thin' =
-      fWeekly > F_MAX_WEEKLY ? 'high_frequency'
-      : fWeekly < F_MIN_WEEKLY ? 'thin'
+      zielFrequenz > F_MAX_WEEKLY ? 'high_frequency'
+      : zielFrequenz < F_MIN_WEEKLY ? 'thin'
       : 'balanced';
     const contextFlag: 'mikro_limited' | undefined =
       (stimmTotal < 20000 && key === 'sichtbar') ? 'mikro_limited' : undefined;
@@ -870,13 +892,13 @@ export function buildPackages(input: {
       budget: finalBudget,
       laufzeitDays: spec.laufzeitDays,
       laufzeitWeeks,
-      frequencyCampaign: imp.frequencyCampaign,
-      frequencyWeekly: imp.frequencyWeekly,
-      reachUniqueLow: imp.reachUniqueLow,
-      reachUniqueHigh: imp.reachUniqueHigh,
-      reachUniqueAbs: imp.reachUniqueAbs,
-      reachUniqueLowPct: imp.reachUniqueLowPct,
-      reachUniqueHighPct: imp.reachUniqueHighPct,
+      frequencyCampaign: zielFrequenz * laufzeitWeeks,
+      frequencyWeekly:   zielFrequenz,
+      reachUniqueLow,
+      reachUniqueHigh,
+      reachUniqueAbs,
+      reachUniqueLowPct,
+      reachUniqueHighPct,
       recommended: false, // set below after all three are built
       deliveryMode,
       availability,
@@ -890,15 +912,17 @@ export function buildPackages(input: {
   const praesenz  = buildOne('praesenz');
   const dominanz  = buildOne('dominanz');
 
-  // §9.3 Empfehlung: praesenz → sichtbar → dominanz (nach Availability)
+  // §9.3 Empfehlung: praesenz → sichtbar → dominanz (nach Availability + requiresConsultation)
   const recommended: PaketKey =
-    praesenz.availability === 'available' ? 'praesenz'
-    : sichtbar.availability === 'available' ? 'sichtbar'
-    : 'dominanz';
+    praesenz.availability === 'available' && !praesenz.requiresConsultation ? 'praesenz'
+    : sichtbar.availability === 'available' && !sichtbar.requiresConsultation ? 'sichtbar'
+    : dominanz.availability === 'available' && !dominanz.requiresConsultation ? 'dominanz'
+    : 'praesenz';
 
+  // §9.3 v3.9: Badge immer auf default_recommended_package — kein Frequenz-Guardrail
   sichtbar.recommended = 'sichtbar' === recommended;
   praesenz.recommended  = 'praesenz' === recommended;
-  dominanz.recommended  = 'dominanz' === recommended && !dominanz.requiresConsultation;
+  dominanz.recommended  = 'dominanz' === recommended;
 
   return {
     sichtbar,
@@ -907,6 +931,8 @@ export function buildPackages(input: {
     recommended,
     stimmTotal,
     screenKlasse: klass.klasse,
+    freqGuardrail: false, // deprecated v3.9 — always false; kept for StepPackages backward-compat
+    customHint: ['C', 'D'].includes(getPoolTier(stimmTotal)),
   };
 }
 

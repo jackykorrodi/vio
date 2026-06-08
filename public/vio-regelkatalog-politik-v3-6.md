@@ -1,15 +1,15 @@
 # VIO Regelkatalog Politik — v3.6
 
 ```yaml
-SPEC_VERSION:     3.7
-LAST_VALIDATED:   2026-05-28
+SPEC_VERSION:     3.10
+LAST_VALIDATED:   2026-06-08
 PFAD_A_STATUS:    Re-Validierung nach Konstanten-Bereinigung (OTS/Delivery entfernt) gegen Soll-Werte v3.6 ausstehend
 PFAD_B_STATUS:    §8.6/§8.7/§8.8 implementiert (Sprint 1+1b) — §12 36 Soll-Werte ausstehend
 PRECEDENCE:       Spec > Code. Bei Konflikt gilt diese Spec; Code wird angeglichen.
 NEXT_VERSION:     keine geplant
 ```
 
-**Status**: Single Source of Truth für die Politik-Preislogik. v3.7 fügt den Custom-Pfad: Wirkungsfokus-Modell ein (neuer Abschnitt nach §7). v3.6 ist deprecated. — v3.6: Audience-Contacts-Formel bereinigt um `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY`. Diese sind im fixen EK-CPM mit dem Operating-Partner (CHF 25 DOOH / CHF 5 Display pro 1000 Bruttokontakte) bereits eingepreist und müssen nicht mehr modelliert werden. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8) und Status-Codes (§7.2) unverändert.
+**Status**: Single Source of Truth für die Politik-Preislogik. v3.10 bringt die finale Wirkungsprodukt-Logik: Paket-Parameter auf Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5× finalisiert (war 14/28/42d · 3/5/6×). Neue Tier-Budget-Matrix (§4, Status Annahme). Karten zeigen ZWEI absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label. Reach nie als Paket-Vergleich, nie Pool-%. Aufklärungssatz unter Karten (§9.2). EMPFOHLEN-Badge immer auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz), nie reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. v3.9 (frequenz-getriebene Engine) bleibt Basis. v3.8 (Pool-Tier-Budgets, requiresConsultation als Komplexitäts-Trigger) bleibt gültig. Custom-Pfad (Wirkungsfokus-Modell, WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert. — v3.6: Audience-Contacts-Formel bereinigt um `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY`. Diese sind im fixen EK-CPM mit dem Operating-Partner (CHF 25 DOOH / CHF 5 Display pro 1000 Bruttokontakte) bereits eingepreist. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8) und Status-Codes (§7.2) unverändert.
 
 ---
 
@@ -34,7 +34,7 @@ Geltungsbereich:
 
 Der Custom-Pfad (Wirkungsfokus-Modell, eigener Abschnitt) ergänzt den Paket-Pfad und löst den bisherigen Pfad A ab. Eine durchgängige Terminologie-Konsolidierung (Pfad A/B → Paket-/Custom-Pfad) ist einem separaten Update vorbehalten.
 
-Beide Pfade respektieren denselben DOOH-Vorlauf-Constraint (Pfad A: §7.0/§7.3, Pfad B: §8.6/§8.7) und teilen dieselbe Laufzeit-Granularität {14, 21, 28, 35, 42} (Pfad A §7.0, Pfad B §8.3).
+Beide Pfade respektieren denselben DOOH-Vorlauf-Constraint (Pfad A: §7.0/§7.3, Pfad B: §8.6/§8.7). Pfad A nutzt LAUFZEITEN_BASIS {14, 21, 28, 35, 42} (§7.0). Pfad B (Pakete) hat seit v3.10 fixe Einzel-Laufzeiten je Paket: Sichtbar 21d, Präsenz 28d, Dominanz 35d (§8.3).
 
 ---
 
@@ -84,7 +84,11 @@ Diese Terms sind verbindlich. Code, UI und alle Doku müssen exakt diese Bezeich
 | `contextFlag` | `mikro_limited` oder undefined (Pfad B) |
 | `screenKlasse` | `voll`, `begrenzt`, `display-dom` (aus region-buchbarkeit.ts) |
 | `budgetMarker` | Niedrigstes Budget bei dem Optimizer-Empfehlung stabil wird (§7.4). UI-Präfix dreigeteilt nach currentBudget vs. sweetSpot. Funktionsname im Code bleibt aus Backward-Compat-Gründen `calculateSweetSpot`. |
-| `requiresConsultation` | Boolean-Flag pro Paket (§8.1). True wenn berechnetes Budget Cap übersteigt → Karte zeigt „Persönliche Beratung empfohlen" statt Preis. |
+| `requiresConsultation` | Boolean-Flag pro Paket (§8.1). True wenn Komplexitäts-Trigger greift (mehrere Regionen ODER spezielle Laufzeit ODER manueller Setup-Bedarf) → Karte zeigt „Persönliche Beratung empfohlen" statt Preis. Nicht mehr budgetgetrieben (v3.8). |
+| `pool_tier` | Tier-Klasse A/B/C/D basierend auf `pool` (§8.1). Bestimmt das Tier-Budget aus der §4-Matrix. |
+| `tier_budget` | Festes Paket-Budget in CHF aus der Pool-Tier-Matrix (§4). Reach und Frequenz sind Output, nicht Preistreiber. |
+| `wirkungs_titel` | Stabiler, regionsunabhängiger Karten-Titel (§9.1). Immer wahr, keine Reichweiten-Garantien. |
+| `wirkungs_subline` | Dynamische, regionsabhängige Subline unter dem stabilen Titel (§9.2). Ändert sich je nach pool_tier und qualityStatus. |
 
 **Statuscode-Naming-Konvention** (Hinweis): Statuscodes wie `optimal_28d_standard`, `sprint_14d_*`, `aufbau_42d_*` sind **semantische Kategorien**, nicht fixe Tage. Mit der Laufzeit-Granularität-Erweiterung in v3.5.3 ({14, 21, 28, 35, 42}) bedeutet z.B. `optimal_28d_standard` „Standard-Pfad-Empfehlung" — die tatsächliche Laufzeit kann 21d oder 28d sein, je nach Vorlauf-Constraint und Reach-Optimum. Analog: `aufbau_42d_*` kann 35d oder 42d bedeuten, `sprint_14d_*` bleibt 14d.
 
@@ -128,8 +132,33 @@ MIN_DISPLAY_ONLY_LAUFZEIT = 7          # Untergrenze sinnvolle Display-Sprint-La
 ### Paket-Capping (§8.1)
 
 ```
-DOMINANZ_CAP_MULTIPLIER = 2.5          # Dominanz.budget Cap = DOMINANZ_CAP_MULTIPLIER × Präsenz.budget
+DOMINANZ_CAP_MULTIPLIER = 2.5          # DEPRECATED v3.8 — war: Dominanz.budget Cap = DOMINANZ_CAP_MULTIPLIER × Präsenz.budget
+                                        # Kein Trigger mehr für requiresConsultation. Konstante bleibt zur Rückwärts-Kompatibilität.
 ```
+
+### Pool-Tier-Budget-Matrix (§8.1) — Status: Annahme
+
+Pool-Tiers (pool = stimmTotal, §5.1; bei Mehr-Region: Summe):
+
+```
+Tier A: pool < 100'000
+Tier B: pool 100'000 – 300'000
+Tier C: pool 300'000 – 700'000
+Tier D: pool > 700'000
+```
+
+Tier-Grenze ist exklusiv-oben: pool = 700'000 → Tier C; pool = 700'001 → Tier D.
+
+Tier-Budget-Matrix (CHF, fixes Paket-Budget):
+
+| Tier | Sichtbar | Präsenz | Dominanz |
+|------|----------|---------|----------|
+| A    | 3'500    | 6'000   | 10'000   |
+| B    | 5'000    | 9'000   | 15'000   |
+| C    | 7'500    | 14'000  | 24'000   |
+| D    | 10'000   | 18'000  | 30'000   |
+
+Reach-Caps (§5.4) bleiben aktiv — ausschliesslich als Sättigungs-Obergrenze. Sie bestimmen nicht mehr das Budget.
 
 ### Custom-Pfad (Wirkungsfokus-Modell)
 
@@ -471,35 +500,49 @@ Tonalität verbindlich: datenbasiert, kompetent, nie wertend. Beispiel-Register:
 
 User wählt aus drei Paketen, System optimiert Laufzeit, Level, Channel-Mix innerhalb Paket-Identität.
 
-### 8.1 Paket-Identität & Capping
+### 8.1 Paket-Identität & Tier-Budget
 
-| Paket | Rolle | Min-Budget | Frequenz-Band (`frequency_weekly`) |
-|---|---|---|---|
-| Sichtbar | Einstieg / Awareness | CHF 4'000 | 2.5 – 5.0× |
-| Präsenz | Breite Präsenz | CHF 6'000 | 3.5 – 6.0× |
-| Dominanz | Maximale Mobilisierung | CHF 9'000 | 6.0 – 10.0× |
+**Paket-Engine ist frequenz-getrieben (v3.10):**
 
-Identitätsstiftend (fix): Name, Rolle, Min-Budget, Frequenz-Band.
-Optimizer-Output (dynamisch): Laufzeit, Level, Budget über Min, Channel-Mix.
-
-**Dominanz-Capping (N — neu in v3.5.3):**
-
-Bei grossen Regionen kann das berechnete Dominanz-Budget unverkäuflich hoch werden (z.B. Zürich Pool 1M → ~CHF 194'000 für L3-Voll-Saturation). Mediaplanner-Realität: ab einem bestimmten Investment-Level ist individuelles Setup angemessen, kein Standard-Paket.
+- **INPUT**: Tier-Budget (aus §4-Matrix) + Ziel-Frequenz (`zielFrequenz`, fix je Paket: 3/4/5×) + Laufzeit (fix, aus §8.3)
+- **OUTPUT**: erreichbare Stimmberechtigte (`reach`) — identische Formel wie Custom-Pfad:
 
 ```
-Dominanz.requiresConsultation = (Dominanz.calculatedBudget > DOMINANZ_CAP_MULTIPLIER × Präsenz.budget)
-                              = (Dominanz.calculatedBudget > 2.5 × Präsenz.budget)
+reachLinear = impressionenImPool / (zielFrequenz × laufzeitWochen)
+reach       = poolCap × (1 − e^(−REACH_CURVE_K × reachLinear / poolCap))
 ```
+
+Die Ziel-Frequenz ist garantiert (Input). Reach ist ehrliche Output-Grösse — sinkt mit grösserem Pool bei gleichem Budget. Frequenz-Bänder bleiben als informative Orientierung bestehen.
+
+Identitätsstiftend (fix): Name, Rolle, Strategie, Ziel-Frequenz, Laufzeit, Tier-Budget (aus §4-Matrix).
+Engine-Output (dynamisch): Reach, Level, Channel-Mix.
+Laufzeit ist fix pro Paket (§8.3).
+
+Differenzierung primär über Frequenz + Laufzeit. Reach steigt leicht (+13–22%), Gesamtkontakte stark (~+200%) von Sichtbar zu Dominanz — Reach nie als Paket-Vergleich verwenden.
+
+| Paket | Wirkungs-Titel (§9.1) | Rolle | Ziel-Frequenz (INPUT) | Laufzeit (fix) | Strategie | Frequenz-Band (informativ) | Tier-Budget (§4-Matrix) |
+|---|---|---|---|---|---|---|---|
+| Sichtbar | Lokale Sichtbarkeit | Einstieg / Awareness | 3× | 21d | mehr Reichweite | 2.5 – 4.5× | Tier A–D je §4 |
+| Präsenz | Regionale Präsenz | Ausgewogen / Breite Präsenz | 4× | 28d | ausgewogen | 3.0 – 5.5× | Tier A–D je §4 |
+| Dominanz | Hohe Präsenz | Maximale Mobilisierung | 5× | 35d | mehr Wiederholung | 4.0 – 7.0× | Tier A–D je §4 |
+
+**Beratungs-Trigger `requiresConsultation` (v3.8 — Komplexität, nicht Budget):**
+
+```
+paket.requiresConsultation = (regionen.length > 1)
+                           OR (spezielle_laufzeit)
+                           OR (manueller_setup_bedarf)
+```
+
+DOMINANZ_CAP_MULTIPLIER ist als Trigger deprecated (§4). Der Trigger ist Komplexität, nicht Budgethöhe.
 
 **UI-Verhalten bei `requiresConsultation = true`:**
-- Karte zeigt statt nominellem Budget den Text „Persönliche Beratung empfohlen".
+- Karte zeigt statt Tier-Budget den Text „Persönliche Beratung empfohlen".
 - Karte bleibt **klickbar** und führt zu Calendly-Link (oder konfiguriertem Beratungs-CTA).
-- Karte ist **nicht ausgegraut** — Dominanz bleibt als wählbare Option sichtbar, nur die Standard-Buchung entfällt.
+- Karte ist **nicht ausgegraut** — Paket bleibt als wählbare Option sichtbar.
 - Reach/Frequenz/Laufzeit-Details werden nicht angezeigt (sind verhandelbar im Beratungsgespräch).
 
-**Folge für §9.3**: Wenn Dominanz `requiresConsultation = true` → kein EMPFOHLEN-Badge auf Dominanz möglich, Fallback auf Präsenz.
-
-**Begründung:** „Persönliche Beratung empfohlen" ist Mediaplanner-Sprache. Unverkäufliche Standard-Bookings ab ~CHF 50k+ (regions-abhängig) werden so transparent als individuelle Setups gekennzeichnet, ohne den User abzuschrecken.
+**Folge für §9.3**: Wenn Paket `requiresConsultation = true` → kein EMPFOHLEN-Badge auf dieses Paket, Fallback auf nächstes verfügbares Paket.
 
 ### 8.2 Frequenz-Bänder
 
@@ -507,12 +550,12 @@ Unverändert.
 
 ### 8.3 Laufzeit-Kandidaten
 
-Unverändert.
+Laufzeit ist fix pro Paket (v3.10):
 
 ```
-SICHTBAR:  [14, 21, 28]
-PRAESENZ:  [21, 28, 35, 42]
-DOMINANZ:  [28, 35, 42, 49, 56]
+SICHTBAR:  21
+PRAESENZ:  28
+DOMINANZ:  35
 ```
 
 ### 8.4 Mikroregionen-Logik
@@ -541,13 +584,38 @@ Unverändert v3.5.2.
 
 ### 9.1 Hierarchie auf Paket-Karten (Pfad B)
 
-Unverändert v3.5.2.
+Jede Karte zeigt:
+1. **Wirkungs-Titel** (`wirkungs_titel`) — stabil, regionsunabhängig, immer wahr, keine Garantien
+2. **Strategie-Label** — Kurzcharakter des Pakets: Sichtbar = „mehr Reichweite" / Präsenz = „ausgewogen" / Dominanz = „mehr Wiederholung"
+3. **Wirkungs-Subline** (`wirkungs_subline`) — dynamisch, regionsspezifisch (§9.2)
+4. **Zwei absolute KPIs** (nicht bei `requiresConsultation = true`):
+   - Erreichte Stimmberechtigte (absolut, gerundet; z.B. „ca. 6'400 Personen")
+   - Ø Kontakte/Person (= `frequency_campaign`; z.B. „4× gesehen")
+   - Laufzeit (fix je Paket, z.B. „28 Tage")
+5. Tier-Budget (CHF, aus §4-Matrix) — oder „Persönliche Beratung empfohlen" bei `requiresConsultation = true`
+6. EMPFOHLEN-Badge, wenn applicable (§9.3)
 
-**Ergänzung Dominanz-Cap (§8.1)**: Bei `requiresConsultation = true` ersetzt der Text „Persönliche Beratung empfohlen" das Budget. Reach-Range und Wirkungszeitraum werden ausgeblendet. Klick auf Karte → Calendly-Link.
+Stabile Wirkungs-Titel (regionsunabhängig):
+
+| Paket | `wirkungs_titel` | Strategie-Label |
+|---|---|---|
+| Sichtbar | Lokale Sichtbarkeit | mehr Reichweite |
+| Präsenz | Regionale Präsenz | ausgewogen |
+| Dominanz | Hohe Präsenz | mehr Wiederholung |
+
+Reach wird als **absolute gerundete Zahl** angezeigt. **Pool-% erscheinen nicht** in der UI. **Reach nie als Paket-Vergleich oder Ranking** — Reach ist Ergebnisgrösse, nicht Differenzierungsmerkmal. Titel und Strategie-Label sind Richtungsangaben, keine Reach-Garantien.
+
+**Vierte Karte — „Individuell konfigurieren":**
+- Trigger: Custom-Pfad (Wirkungsfokus-Modell, v3.7)
+- Custom ist eine **eigene Achse** (mehr Kontrolle, freies Budget), nicht „höher als Dominanz"
+- Keine Hierarchie zu den drei Standardpaketen, kein Produktvergleich im Preisraum
+- Erhält **nie** ein EMPFOHLEN-Badge (§9.3)
+
+**Bei `requiresConsultation = true`**: Tier-Budget-Anzeige ersetzt durch „Persönliche Beratung empfohlen". Reach-Range und Wirkungszeitraum werden ausgeblendet. Klick auf Karte → Calendly-Link.
 
 ### 9.2 Subline-Mapping (Pfad B)
 
-Erweitert um Dominanz-Cap. Erstes Match gewinnt:
+`wirkungs_subline` = Wahrheitsebene. Gleicher Titel, aber regional andere Subline. Erstes Match gewinnt:
 
 | Bedingung | Subline |
 |---|---|
@@ -557,11 +625,25 @@ Erweitert um Dominanz-Cap. Erstes Match gewinnt:
 | `qualityStatus = high_frequency` | „Hohe Kontaktdichte" |
 | `qualityStatus = thin` | „Budget knapp für gewählte Region" |
 | `contextFlag = mikro_limited` | „Begrenzte Reichweite in kleineren Gemeinden" |
+| `paket.frequency_weekly < F_MIN_WEEKLY` (Floor) | „Erste Sichtbarkeit in einer grossen Zielregion" |
+| `pool_tier ∈ {C, D}` | „💡 [Region] zählt zu den grösseren Regionen. Wenn du zusätzliche Reichweite oder einen anderen Wirkungsfokus möchtest, kannst du deine Kampagne im Custom-Modus individuell konfigurieren." |
 | sonst | (keine Subline) |
+
+**Floor-Regel (N):** Wenn `frequency_weekly < F_MIN_WEEKLY (3)`, framt die Subline ehrlich statt ein Präsenz-Versprechen zu machen. KEIN heimliches Laufzeit-Kürzen, KEIN Budget-Erhöhen, KEIN Ausgrauen — Paket bleibt sichtbar und kaufbar.
+
+**Aufklärungssatz (N):** EIN dezenter Satz wird einmalig unter den drei Paket-Karten angezeigt:
+
+> „Mehr erreichte Personen heisst nicht automatisch mehr Wirkung — entscheidend ist, dass deine Botschaft oft genug gesehen wird."
+
+Tonalität: du-Form, ruhig, §2-Begründung (Effective Reach > Reach). Nicht als Warning, nicht fett, nicht als Subline — als kontextueller Hinweis unter den Karten.
 
 ### 9.3 Default-Empfehlung-Badge ("EMPFOHLEN")
 
-Budgetkohärent — niemals teureres Paket aufdrängen.
+Es gibt genau EINEN EMPFOHLEN-Badge. Custom erhält nie einen Badge.
+
+**Badge-Begründung**: Präsenz ist der Politik-Standard (28d, ausgewogene Frequenz 4×). Badge basiert auf Laufzeit und Wirkungscharakter — **nicht** auf Reach-Vergleich (Reach ist Ergebnisgrösse, keine Badge-Basis).
+
+`default_recommended_package` = das Paket mit Backend-recommended-Markierung (Empfehlungslogik unten), bestimmt VOR jedem UI-Sorting. Nicht „oberstes sichtbares Paket nach Sortierung".
 
 | Kontext | Default-Empfehlung |
 |---|---|
@@ -574,10 +656,24 @@ Budgetkohärent — niemals teureres Paket aufdrängen.
 
 | Bedingung | Verhalten |
 |---|---|
-| Default-Paket hat `qualityStatus = high_frequency` | Kein EMPFOHLEN-Badge |
 | Default-Paket hat `availability = unavailable` | Fallback auf nächstes verfügbares Paket |
 | Default-Paket hat `qualityStatus = thin` | Badge bleibt, Subline „Budget knapp für gewählte Region" hat Vorrang |
-| **Default-Paket hat `requiresConsultation = true` (neu v3.5.3)** | **Kein EMPFOHLEN-Badge auf Dominanz, Fallback auf Präsenz** |
+| Default-Paket hat `requiresConsultation = true` | Kein EMPFOHLEN-Badge auf dieses Paket, Fallback auf Präsenz |
+
+**Ausführungssequenz mit Schichtgrenze (gegen Race Conditions):**
+
+```
+ENGINE (determinstisch, vor UI):
+  1) Tier-Budget → Impact berechnen (§4-Matrix + §5-Engine)
+  2) default_recommended_package bestimmen (Empfehlungslogik oben)
+  3) PaketResult fest — inkl. recommended-Flag
+─── Schichtgrenze ───────────────────────────────────────────────────
+UI (kosmetisch, nach Schritt 3):
+  4) Subline-Mapping (§9.2 erstes Match)
+  5) Badge rendern (nur wenn paket.recommended = true aus Schritt 3)
+```
+
+Badge-Logik lebt vollständig in der Engine (Schritte 1–3). Karten-Sorting ist kosmetisch und beeinflusst den Badge nie.
 
 ### 9.4 Kommunikationsregeln
 
@@ -600,7 +696,8 @@ Folgende Annahmen sind mock-kalibriert. **Anpassungen erfordern eine neue Spec-V
 | `MIN_VORLAUF_DOOH = 10` | 10 | Annahme |
 | `MIN_DISPLAY_ONLY_LAUFZEIT = 7` | 7 | Annahme |
 | `AUFBAU_PREMIUM_THRESHOLD = 1.2` | 1.2 | Annahme (analog REACH_PREMIUM_THRESHOLD) |
-| `DOMINANZ_CAP_MULTIPLIER = 2.5` | 2.5 | Mediaplanner-Entscheidung (v3.5.3) |
+| `DOMINANZ_CAP_MULTIPLIER = 2.5` | 2.5 | DEPRECATED v3.8 — Konstante bleibt zur Rückwärts-Kompatibilität |
+| Tier-Budget-Matrix (12 Werte) | siehe §4 | Annahme — TODO: Owner für Kalibrierung nach ersten Live-Kampagnen |
 
 **Verantwortung Kalibrierung**: Dani (Delivery/Ausspielung) nach den ersten 10 Live-Kampagnen.
 
@@ -631,6 +728,9 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 | **v3.5.3** | **14.05.2026** | **Pfad-A-Laufzeit-Granularität von {14,28,42} auf {14,21,28,35,42} erweitert (§7.0/§7.1). Statuscode-Naming als semantische Kategorien dokumentiert (§3). Schritte 1 + 4 in §7.1 testen jetzt 21d+28d (Standard) bzw. 35d+42d (Aufbau). Neue Konstante `AUFBAU_PREMIUM_THRESHOLD = 1.2`. Kein dynamischer max_vorlauf-Kandidat (Mediaplaner-Entscheidung: pragmatisch via granularem Standard-Set). Dominanz-Capping bei grossen Regionen: `requiresConsultation = (Dominanz.budget > 2.5 × Präsenz.budget)` → UI zeigt „Persönliche Beratung empfohlen" statt Preis, klickbar zu Calendly, nicht ausgegraut (§8.1, §9.2, §9.3 Guardrail). Neue Konstante `DOMINANZ_CAP_MULTIPLIER = 2.5`.** |
 | **v3.6** | **21.05.2026** | **Audience-Contacts-Formel bereinigt (§5.3): `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY` als Konstanten entfernt (§4) und aus Kalibrierungstabelle gestrichen (§10). Begründung: fixer EK-CPM mit Operating-Partner preist OTS und Delivery vertraglich ein. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8), Status-Codes unverändert. Reach-Output verschiebt sich um max −4.5% bei `voll`-Klasse, +7.4% bei `display-dom`, ±0% bei `begrenzt`.** |
 | **v3.7** | **28.05.2026** | **Custom-Pfad: Wirkungsfokus-Modell eingefügt (neuer Abschnitt nach §7). Drei Nutzer-Hebel: Budget, Kampagnenfenster, Wirkungsfokus. Frequenz ist Output. Neue Reach-Formel mit zielFrequenz (reachLinear = impressionenImPool / (zielFrequenz × laufzeitWochen)), Hofmans-Sättigung bleibt. Neue Konstanten SETUP_VORLAUF_WERKTAGE = 10 und SCREEN_ANZEIGE_SCHWELLE = 30 in §4. §7 (Pfad A Budget-First) als abgelöst markiert (Archiv-Referenz). §1 Scope um Custom-Pfad-Satz ergänzt.** |
+| **v3.8** | **05.06.2026** | **Pool-Tier-Paketmodell: §8.1 ersetzt Min-Budget durch feste Tier-Budgets (4×3-Matrix, §4). Pool-Tiers A/B/C/D nach stimmTotal. Reach/Frequenz sind Output, nicht Preistreiber. Reach-Caps (§5.4) bleiben als Sättigungs-Obergrenze. requiresConsultation neu: Komplexitäts-Trigger (nicht budgetgetrieben), DOMINANZ_CAP_MULTIPLIER als Trigger deprecated. §3 neue Terms pool_tier, tier_budget, wirkungs_titel, wirkungs_subline. §9.1: stabile Wirkungs-Titel (Lokale Sichtbarkeit / Regionale Präsenz / Hohe Präsenz), vierte Karte „Individuell konfigurieren" als eigene Achse, keine Hierarchie zu Standardpaketen. §9.2: Floor-Wording-Regel bei frequency_weekly < F_MIN_WEEKLY (ehrliche Subline statt Ausgrauen/Kürzen). §9.3: Frequenz-Guardrail neu (Badge-Entzug bei frequency_weekly < F_MIN_WEEKLY, Custom-CTA, nie Badge-Verschiebung), Ausführungssequenz mit Schichtgrenze. §10: Tier-Budget-Matrix als Annahme + TODO Owner.** |
+| **v3.9** | **08.06.2026** | **Paket-Engine frequenz-getrieben: §8.1 dokumentiert INPUT = Tier-Budget + Ziel-Frequenz (fix: Sichtbar 3×, Präsenz 5×, Dominanz 6×) + Laufzeit; OUTPUT = Reach. Reach-Formel identisch Custom-Pfad (reachLinear + Hofmans-Sättigung). §9.3: Frequenz-Guardrail (v3.8) entfernt — EMPFOHLEN-Badge sitzt immer auf default_recommended_package (Präsenz). Ausführungssequenz auf 3 Engine-Schritte reduziert. §9.1: Reach als absolute gerundete Zahl in Karten-Hierarchie (Item 3), Pool-% explizit verboten. §9.2: Tier-C/D-Custom-Hint als neue Subline-Zeile.** |
+| **v3.10** | **08.06.2026** | **Finale Wirkungsprodukt-Logik: §8.3 Laufzeiten auf 21/28/35d fixiert (war 14/28/42d). §8.1 Ziel-Frequenz 3/4/5× (war 3/5/6×), Strategie-Spalte (mehr Reichweite / ausgewogen / mehr Wiederholung), Differenzierungshinweis (Reach +13–22%, Gesamtkontakte ~+200%). §4 Neue Tier-Budget-Matrix (CHF, Status Annahme): A 3'500/6'000/10'000, B 5'000/9'000/15'000, C 7'500/14'000/24'000, D 10'000/18'000/30'000. §9.1: Zwei absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label; Reach nie als Vergleich/Ranking. §9.2: Aufklärungssatz unter Karten. §9.3: Badge-Begründung Politik-Standard (28d, ausgewogene Frequenz 4×), nicht reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. Custom-Pfad (WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert.** |
 
 ### Geänderte normative Punkte v3.5.2 → v3.5.3
 
@@ -642,6 +742,16 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 - §8.1 Dominanz-Capping-Regel neu.
 - §9.1, §9.2, §9.3 Dominanz-Cap-Verhalten ergänzt.
 - §10 Kalibrierungs-Tabelle um neue Konstanten erweitert.
+
+### Geänderte normative Punkte v3.7 → v3.8
+
+- §3 Neue Terms `pool_tier`, `tier_budget`, `wirkungs_titel`, `wirkungs_subline`. `requiresConsultation` Bedeutung erweitert auf Komplexitäts-Trigger.
+- §4 Neue Subsection Pool-Tier-Budget-Matrix (normativ, Status Annahme). `DOMINANZ_CAP_MULTIPLIER` als DEPRECATED markiert.
+- §8.1 Tabelle: Min-Budget → Tier-Budget (§4-Matrix). Identitätsstiftende Elemente angepasst. `requiresConsultation` Trigger auf Komplexität umgestellt.
+- §9.1 Stabile Wirkungs-Titel dokumentiert. Vierte Karte „Individuell konfigurieren" als eigene Achse normiert.
+- §9.2 Floor-Wording-Zeile neu in Subline-Mapping-Tabelle.
+- §9.3 Frequenz-Guardrail neu (Badge-Entzug, Custom-CTA, kein Badge-Verschieben). `default_recommended_package` Definition. Ausführungssequenz mit Schichtgrenze.
+- §10 Tier-Budget-Matrix-Zeile (Annahme, TODO Owner).
 
 ### Unveränderte normative Punkte aus v3.5.2
 
@@ -685,6 +795,48 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 - §10 Kalibrierung.
 - §11/§12 Soll-Tabellen.
 
+### Geänderte normative Punkte v3.8 → v3.9
+
+- §8.1: Engine-Dokumentation frequenz-getrieben. Ziel-Frequenz-Spalte (INPUT) in Paket-Tabelle (3×/5×/6×). Reach-Formel explizit referenziert (identisch Custom-Pfad). Frequenz-Bänder als informativ markiert.
+- §9.1: Reach (absolut gerundet) als Item 3 in Karten-Hierarchie. Pool-% explizit verboten. Subline-Nummern angepasst.
+- §9.2: Tier-C/D-Custom-Hint als neue Subline-Zeile vor „sonst".
+- §9.3: Frequenz-Guardrail vollständig entfernt (Badge-Entzug-Regel, Custom-CTA-Regel, freqGuardrail-Konzept). Guardrails-Tabelle: Frequenz-Guardrail-Zeile gestrichen. Ausführungssequenz auf 3 Engine-Schritte + 2 UI-Schritte reduziert.
+
+### Unveränderte normative Punkte aus v3.8
+
+- §3 Terminologie vollständig (inkl. pool_tier, tier_budget, wirkungs_titel, wirkungs_subline, requiresConsultation).
+- §4 Konstanten vollständig (inkl. Pool-Tier-Budget-Matrix).
+- §5 Gemeinsame Engine (Reach-Modell, Caps, Saturation, Frequenz).
+- §6 Laufzeit-Logik.
+- §7 Pfad A Optimizer.
+- §8.2–§8.8 Pfad-B-Logik.
+- §9.3 Default-Empfehlung-Tabelle und verbleibende Guardrails (qualityStatus, availability, requiresConsultation).
+- §10 Kalibrierung.
+- §11/§12 Soll-Tabellen.
+
+### Geänderte normative Punkte v3.9 → v3.10
+
+- §4 Tier-Budget-Matrix: neue Werte (A 3'500/6'000/10'000, B 5'000/9'000/15'000, C 7'500/14'000/24'000, D 10'000/18'000/30'000). Status Annahme bleibt.
+- §8.1: Ziel-Frequenz aktualisiert (Präsenz 5× → 4×, Dominanz 6× → 5×). Neue Spalten Laufzeit (fix) und Strategie. Differenzierungshinweis ergänzt. Identitätsstiftende Elemente um Strategie und Laufzeit erweitert.
+- §8.3: Laufzeiten von Kandidaten-Listen auf fixe Einzelwerte umgestellt (21/28/35d).
+- §9.1: Strategie-Label als Item 2. Zwei-KPI-Block als Item 4 (Stimmberechtigte + Ø Kontakte/Person + Laufzeit). Reach-Anti-Ranking-Regel explizit.
+- §9.2: Aufklärungssatz-Regel ergänzt.
+- §9.3: Badge-Begründungstext (Politik-Standard, nicht reach-begründet). qualityStatus=high_frequency-Guardrail entfernt.
+
+### Unveränderte normative Punkte aus v3.9
+
+- §3 Terminologie vollständig.
+- §4 Konstanten (Reichweite & Frequenz, Preise, DOOH-Buchbarkeit, Paket-Capping).
+- §5 Gemeinsame Engine (Reach-Modell, Caps, Saturation, Frequenz).
+- §6 Laufzeit-Logik.
+- §7 Pfad A Optimizer.
+- §8.2/§8.4–§8.8 Pfad-B-Logik.
+- §9.2 Subline-Mapping (inkl. Tier-C/D-Custom-Hint).
+- §9.3 Default-Empfehlung-Tabelle und verbleibende Guardrails (availability, thin, requiresConsultation). Ausführungssequenz.
+- §10 Kalibrierung.
+- §11/§12 Soll-Tabellen.
+- Custom-Pfad: Wirkungsfokus-Modell vollständig (WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6× unverändert).
+
 ---
 
-**Ende der Spec v3.7.**
+**Ende der Spec v3.10.**

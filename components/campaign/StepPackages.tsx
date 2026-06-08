@@ -59,40 +59,49 @@ function addDaysToDate(d: Date, n: number): Date {
 function round500(n: number): number {
   return Math.round(n / 500) * 500;
 }
+function fmtReach(n: number): string {
+  const rounded = n < 10000 ? Math.round(n / 100) * 100 : Math.round(n / 500) * 500;
+  return rounded.toLocaleString('de-CH');
+}
 
 // ─── Package cards sub-component ─────────────────────────────────────────────
 const PKG_ORDER: PaketKey[] = ['sichtbar', 'praesenz', 'dominanz'];
-const PKG_SUBTITLE: Record<PaketKey, string> = {
-  sichtbar: 'Sichtbarkeit aufbauen',
-  praesenz: 'Optimal in Meinungsbildungsphase',
-  dominanz: 'Maximale Präsenz',
+const PKG_TITEL: Record<PaketKey, string> = {
+  sichtbar: 'Lokale Sichtbarkeit',
+  praesenz: 'Regionale Präsenz',
+  dominanz: 'Hohe Präsenz',
 };
 const PKG_SUBTITLE_DISPLAY: Record<PaketKey, string> = {
   sichtbar: 'Schnelle digitale Awareness',
   praesenz: 'Schnelle digitale Mobilisierung',
   dominanz: 'Intensive Endphasen-Mobilisierung',
 };
+const PKG_STRATEGIE: Record<PaketKey, string> = {
+  sichtbar: 'mehr Reichweite',
+  praesenz: 'ausgewogen',
+  dominanz: 'mehr Wiederholung',
+};
 
 const CUSTOM_LAUFZEIT_MAX_DAYS_FALLBACK = 60; // Wenn voteDate nicht gesetzt
 
 const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL ?? 'https://calendly.com/vio-media';
 
-function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommendedPkg }: {
+function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommendedPkg, onCustom }: {
   packages: PakeResult;
   selectedPkg: PaketKey | null;
   onChange: (key: PaketKey) => void;
   disabledPkgs: Set<PaketKey>;
   recommendedPkg: PaketKey;
+  onCustom: () => void;
 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 18 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 18 }}>
       {PKG_ORDER.map(key => {
         const p = packages[key];
         const isDisabled = disabledPkgs.has(key);
         const isConsult = p.requiresConsultation;
         const isSel = selectedPkg === key && !isDisabled && !isConsult;
         const isRec = key === recommendedPkg && !isConsult;
-        const fCamp = Math.round(p.frequencyCampaign);
         const handleClick = isDisabled ? undefined
           : isConsult ? () => window.open(CALENDLY_URL, '_blank')
           : () => onChange(key);
@@ -134,7 +143,7 @@ function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommend
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontSize: 11, fontWeight: 700, color: T.slate,
                 textTransform: 'uppercase' as const, letterSpacing: '0.14em',
-              }}>{p.name}</span>
+              }}>{PKG_TITEL[key]}</span>
               {!isConsult && (
                 <div style={{
                   width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
@@ -144,6 +153,9 @@ function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommend
                   transition: 'all 0.15s ease',
                 }} />
               )}
+            </div>
+            <div style={{ fontSize: 12, color: T.slate, fontWeight: 500, letterSpacing: '0.01em' }}>
+              {PKG_STRATEGIE[key]}
             </div>
             {isConsult ? (
               <div style={{ color: T.violet, fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 700, lineHeight: 1.4 }}>
@@ -157,23 +169,63 @@ function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommend
               }}>{fmtCHF(p.budget)}</div>
             )}
             {!isConsult && (
-              <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12, color: T.slate, fontSize: 13, lineHeight: 1.4 }}>
+              <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12, color: T.slate, fontSize: 13, lineHeight: 1.5 }}>
                 {isDisabled ? (
-                  <span>Mehr Vorlauf nötig · {packages[recommendedPkg].name} ist jetzt die stärkste Option</span>
+                  <span>Mehr Vorlauf nötig · {PKG_TITEL[recommendedPkg]} ist jetzt die stärkste Option</span>
                 ) : (
                   <>
-                    <strong style={{ color: T.ink, fontWeight: 600 }}>{p.laufzeitDays} Tage</strong>
-                    {' · '}
-                    <span>{fCamp}× Kontakte</span>
-                    <br />
+                    <div style={{ fontWeight: 600, color: T.ink }}>
+                      ca.&nbsp;{fmtReach(p.reachUniqueAbs)} Personen
+                    </div>
+                    <div>
+                      je {p.frequencyWeekly}× gesehen · {p.laufzeitDays} Tage
+                    </div>
+                    {p.deliveryMode === 'display_only' && (
+                      <div style={{ marginTop: 4, fontSize: 12 }}>{PKG_SUBTITLE_DISPLAY[key]}</div>
+                    )}
                   </>
                 )}
-                <span>{p.deliveryMode === 'display_only' ? PKG_SUBTITLE_DISPLAY[key] : PKG_SUBTITLE[key]}</span>
               </div>
             )}
           </div>
         );
       })}
+
+      {/* §9.1 Vierte Karte: Individuell konfigurieren — eigene Achse, nie EMPFOHLEN */}
+      <div
+        role="button"
+        tabIndex={0}
+        className="vio-pkg-card"
+        onClick={onCustom}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCustom(); } }}
+        style={{
+          position: 'relative',
+          background: T.card,
+          border: `1.5px solid ${T.line}`,
+          borderRadius: 16,
+          padding: '20px 20px 18px',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column' as const,
+          gap: 12,
+          transition: 'all 0.18s ease',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontSize: 11, fontWeight: 700, color: T.slate,
+            textTransform: 'uppercase' as const, letterSpacing: '0.14em',
+          }}>Individuell</span>
+          <span style={{ fontSize: 16, color: T.violet }}>→</span>
+        </div>
+        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, fontWeight: 700, color: T.ink, lineHeight: 1.3 }}>
+          Individuell konfigurieren
+        </div>
+        <div style={{ borderTop: `1px solid ${T.line}`, paddingTop: 12, color: T.slate, fontSize: 13, lineHeight: 1.4 }}>
+          Eigenes Budget, Laufzeit und Wirkungsfokus
+        </div>
+      </div>
     </div>
   );
 }
@@ -1042,7 +1094,18 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {/* Pfad 'paket': Paket-Karten */}
             {mode === 'paket' && packages && (
               <div className="vio-pkgs">
-                <PackageCards packages={packages} selectedPkg={selectedPkg} onChange={handlePkgChange} disabledPkgs={disabledPkgs} recommendedPkg={recommendedPkg} />
+                <PackageCards packages={packages} selectedPkg={selectedPkg} onChange={handlePkgChange} disabledPkgs={disabledPkgs} recommendedPkg={recommendedPkg} onCustom={handleSwitchToCustom} />
+                {/* §9.2 Aufklärungssatz */}
+                <p style={{ fontSize: 13, color: T.slate, lineHeight: 1.5, margin: '0 0 12px' }}>
+                  Mehr erreichte Personen heisst nicht automatisch mehr Wirkung — entscheidend ist, dass deine Botschaft oft genug gesehen wird.
+                </p>
+                {/* §9.2 Tier-C/D Custom-Hint */}
+                {packages.customHint && (
+                  <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', background: T.highlight, border: `1px solid ${T.lineStrong}`, borderRadius: 11, padding: '11px 14px', marginBottom: 14, fontSize: 13, color: T.ink, lineHeight: 1.45 }}>
+                    <span style={{ color: T.violet, fontWeight: 700 }}>→</span>
+                    <span>{regionName} zählt zu den grösseren Regionen. Wenn du zusätzliche Reichweite oder einen anderen Wirkungsfokus möchtest, kannst du deine Kampagne im Custom-Modus individuell konfigurieren.</span>
+                  </div>
+                )}
               </div>
             )}
 

@@ -119,17 +119,16 @@
 
 ## Preislogik (vereinfacht)
 
-**Aktuelle Logik-Version: v3.5.3 Single Source of Truth (14.05.2026)**
+**Aktuelle Logik-Version: v3.10 Single Source of Truth (08.06.2026)**
 
-- Min Budget: CHF 4'000
-- Pakete: Sichtbar / Präsenz / Dominanz
-- Reach basiert auf Hofmans-Saturation (asymptotisch, kein hartes Capping)
-- Frequenz emergent: f_campaign = contacts / unique_reach
-- Sweet Spot (§7.4): `calculateSweetSpot(regions, daysUntilVote?)` → niedrigstes Budget bei dem `optimizeForBudget()` einen stabilen Status liefert (NICHT in unstable-Menge {sprint_14d_thin_budget, aufbau_42d_thin_budget, too_thin, dominanzmodus_stark, too_short_for_campaign, vote_passed}). Linear-Scan über `[B_MIN, B_HARD_MAX]` in 500er-Schritten. Rückgabe `{budget, context: 'optimal'|'constrained'} | null`. UI: kein Slider-Marker, dreigeteilter HintCard-Präfix (unter/im/über Sweet Spot, Korridor ×1.3).
-- DOOH-Vorlauf-Constraint in beiden Pfaden aktiv (§7.0/§7.3 Pfad A, §8.6/§8.7 Pfad B).
-- Pfad A Laufzeit-Granularität: {14, 21, 28, 35, 42} (war {14, 28, 42} in v3.5.2).
-- Dominanz-Cap (§8.1): wenn Dominanz.budget > 2.5 × Präsenz.budget → `requiresConsultation = true` → Karte zeigt „Persönliche Beratung empfohlen" klickbar (Calendly), nicht ausgegraut.
-- Berechnung: siehe `public/vio-regelkatalog-politik-v3-5-3.md` (Single Source of Truth)
+- Min Budget (Custom-Pfad): CHF 4'000
+- Pakete (Wirkungsprodukt, §8.1/§8.3): Sichtbar 21d/3×/„mehr Reichweite" | Präsenz 28d/4×/„ausgewogen" | Dominanz 35d/5×/„mehr Wiederholung". Engine frequenz-getrieben: INPUT = Tier-Budget + Ziel-Frequenz + Laufzeit (fix je Paket), OUTPUT = Reach.
+- Tier-Budget-Matrix (CHF, Annahme): A 3'500/6'000/10'000 · B 5'000/9'000/15'000 · C 7'500/14'000/24'000 · D 10'000/18'000/30'000
+- Reach = ehrliche Output-Grösse (Hofmans-Saturation). NIE als Paket-Ranking — Reach steigt nur leicht (+13–22%), entscheidend ist Frequenz+Laufzeit. Badge fix auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz 4×).
+- DOOH-Vorlauf-Constraint aktiv (§7.0/§7.3 Pfad A, §8.6/§8.7 Pfad B).
+- Pfad A Laufzeit-Granularität: {14, 21, 28, 35, 42} (Budget-First, Archiv-Referenz §7).
+- requiresConsultation (v3.8): Komplexitäts-Trigger (mehrere Regionen ODER spezielle Laufzeit ODER manueller Setup-Bedarf), nicht Budget-Cap.
+- Berechnung: siehe `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.10, Single Source of Truth)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -137,30 +136,32 @@
 - Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
 - VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
 
-### Konstanten (v3.5.3)
+### Konstanten (v3.10)
 | Konstante | Wert | Hinweis |
 |---|---|---|
 | F_MIN_WEEKLY | 3 | Krugman-Schwelle |
 | F_MIN_TOLERANCE | 2.7 | Near-F-Min für 28d-broad_reach (aktiv) |
 | F_MAX_WEEKLY | 10 | Wearout-Grenze |
 | F_OVERKILL_THRESHOLD | 15 | ab hier Beratung empfehlen (aktiv) |
-| OTS_DOOH | 1.8 | Audience Contacts pro DOOH-Play |
 | REACH_CURVE_K | 0.25 | Hofmans-Saturation Steilheit |
 | IN_POOL_FACTOR | 0.7 | Anteil Kontakte die Pool treffen |
 | WEAROUT_FLOOR | 0.70 | Minimaler Wearout-Faktor |
 | LARGE_POOL_THRESHOLD | 500'000 | Schwelle für Sprint-Override Pfad A (aktiv) |
 | REACH_PREMIUM_THRESHOLD | 1.4 | +40% Reach für Sprint/Toleranz-Trigger (aktiv) |
-| AUFBAU_PREMIUM_THRESHOLD | 1.2 | +20% Reach für Aufbau-Override 35d/42d vs 28d (NEU v3.5.3) |
+| AUFBAU_PREMIUM_THRESHOLD | 1.2 | +20% Reach für Aufbau-Override 35d/42d vs 28d |
 | CPM_DOOH | 50 | unverändert |
 | CPM_DISPLAY | 15 | unverändert |
 | CPM_LIST | 43.89 | Listen-CPM mit 10% Channel-Puffer (= 39.50 / 0.90). Basis für Partnercode-Boost-Faktor. |
 | MIN_VORLAUF_DOOH | 10 | DOOH-Freigabe-Untergrenze (v3.5.2) |
 | MIN_VORLAUF_DISPLAY | 1 | Display-Sprint-Untergrenze (v3.5.2) |
 | MIN_DISPLAY_ONLY_LAUFZEIT | 7 | Untergrenze sinnvolle Display-Sprint-Laufzeit (v3.5.2) |
-| DOMINANZ_BUDGET_CAP | 100_000 | Hard-Cap CHF: Dominanz.budget > 100k → requiresConsultation (v3.5.3, geändert 19.05.2026) |
-| LAUFZEITEN_BASIS | [14,21,28,35,42] | Pfad-A-Laufzeit-Granularität (v3.5.3 erweitert) |
+| LAUFZEITEN_BASIS | [14,21,28,35,42] | Pfad-A-Laufzeit-Granularität (Archiv, Budget-First) |
+| PAKET_LAUFZEITEN | Sichtbar 21d / Präsenz 28d / Dominanz 35d | Fix je Paket (v3.10) |
+| TIER_BUDGET | A 3'500/6'000/10'000 · B 5'000/9'000/15'000 · C 7'500/14'000/24'000 · D 10'000/18'000/30'000 CHF | Paket-Budget je Pool-Tier (v3.10) |
 
 **Entfernt in v3.5.2**: `DISPLAY_SPRINT_SWITCH_DAYS = 24`
+**Entfernt in v3.6**: `OTS_DOOH = 1.8`
+**Ersetzt in v3.8**: `DOMINANZ_BUDGET_CAP` → `requiresConsultation` als Komplexitäts-Trigger (nicht Budget-Cap)
 
 ---
 
@@ -270,6 +271,7 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 08.06.2026 | **v3.10 Wirkungsprodukt-Logik** | **Paket-Engine frequenz-getrieben.** PAKET_SPECS: Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5×. Neue TIER_BUDGET-Matrix (A/B/C/D × 3 Pakete). Reach = ehrliche Output-Grösse, nie Paket-Ranking. Badge fix auf Präsenz (Politik-Standard 28d/4×). UI: Strategie-Labels, Zwei-KPI-Block (Reach + Frequenz + Laufzeit), Aufklärungssatz (§9.2), Tier-C/D-customHint. freqGuardrail komplett entfernt. `requiresConsultation` weiterhin Komplexitäts-Trigger. Spec: `public/vio-regelkatalog-politik-v3-6.md` SPEC_VERSION 3.10. |
 | 04.06.2026 | UX-Patch Step-2 Wizard | **4 UX-Fixes Custom-Pfad** (`components/campaign/StepPackages.tsx`, nur UI). (1) **Fokus-Hints (Schritt 1) rein qualitativ** — `freqOf()` aus den drei Hint-Zweigen entfernt: ×-Frequenz hing an der noch nicht gewählten Laufzeit → Vorgriff. Neu: breit „Möglichst viele Menschen erreichen.", ausgewogen „Gute Balance zwischen Reichweite und Wiederholung.", verankerung „Dieselben Personen häufiger erreichen." (2) **Vorlauf-Kommunikation (Schritt 2)** — zweiter microHint je nach `campaignWindow.modus`: display_only → Display startet 1 Werktag nach Bestätigung + Werbemittel, DOOH bräuchte 10 Werktage; sonst DOOH-Vorlauf-Hinweis. Nutzt bestehenden modus-Flag, keine neue Vorlauf-Berechnung. (3) **Budget-Eingabe-Tippbug behoben** — Input war `type=number` mit onChange-Clamp → jede Eingabe sprang sofort auf 4000. Neu: `budgetRaw`-State (string), `type=text inputMode=numeric`, onChange nur roh, Clamp/Commit erst onBlur; useEffect synct `budgetRaw` ← `effectiveBudget` bei externer Slider-Änderung. (4) **Sweet-Spot-Band verengt** — Slider-Band nutzte zweckentfremdet COACH_BUDGET_LOW/HIGH_RATIO (0.6/1.15 → CHF 4'800–9'200 bei ss 8'000, fast voller Slider). Neu UI-only Band 0.94/1.06 (±6% um den echten ss-Punkt) + „Sweet Spot"-Label am Marker. **COACH_BUDGET_LOW/HIGH_RATIO in `custom-hints.ts` unangetastet** — bleiben Coach-Hint-Toleranz, sind NICHT die Band-Visualisierung. `calculateSweetSpotCustom` liefert bereits einen präzisen Punkt, kein Logik-Eingriff nötig. **Frequenz-Klärung:** `WIRKUNGSFOKUS_FREQUENZ` (2.1/3.1/4.6) ist WÖCHENTLICH; Anzeige rechnet via `freqOf()` = `× laufzeitDays/7` auf Kampagnen-Frequenz hoch — konsistent in Step 2 (Z. 935) + Outcome (Z. 1118), dort gültig weil Laufzeit feststeht. `tsc --noEmit` grün. Offen (visuell auf Preview prüfen): zwei gestapelte microHints in Step 2, Cursor-Stabilität beim Budget-Tippen. |
 | 03.06.2026 | feat(ui) Step-2 Wizard | **Custom-Pfad Step 2 von 3-Hebel-Cockpit auf geführten Wizard umgebaut** (`components/campaign/StepPackages.tsx`). Reihenfolge **Fokus → Dauer → Empfehlung → Budget**: Schritte nacheinander freigeschaltet (`wizardStep`/`doneSteps`-State), Budget-Schritt öffnet mit Empfehlungs-Reveal (`sweetSpotCustom`) auf vorbelegtem Regler (bestätigen/anpassen statt leerer Anker). Begründung psychologisch: Ziel-vor-Preis-Framing + smarte Empfehlung erst möglich, wenn Fokus+Dauer fix; Fixbudget-Nutzer tippt über die Empfehlung. Wirkungsfokus sprachlich aufgelöst als Klartext-Dial „Breite Wirkung ↔ Tiefe Verankerung" (Achse + Live-Tradeoff „~X Menschen × N×"). Outcome neu als **Zwei-Hero** (Menschen erreicht · Ø N× gesehen) auf Ink-Card; Dot-Grid + Coach-Brücke entfernt, wohlwollende Bestätigung (Sweet-Spot-Zonen) ergänzt; Outcome erst nach Abschluss aller Schritte, „Weiter" bis dahin disabled. Engine (`calculateImpactCustom`/`calculateSweetSpotCustom`/`getCampaignWindow`), Props, Paket-Pfad, Partnercode unberührt. `tsc --noEmit` grün, eslint 0 Errors (7 vorbestehende Warnings). Prototypen: `public/prototypes/step2-redesign-A-gefuehrt.html` + `…-B-schritte.html`. |
 | 03.06.2026 | WS2 | Wirkungsindikator Custom-Pfad neu. IMPLEMENTIERT (3 Reviews grün): Reichweite als Range statt Punktzahl — Hero = abgerundete reachUniqueLow + "+" (immer einlösbarer Boden), Spanne reachUniqueLow–reachUniqueHigh klein darunter; Unsicherheitsband via getUncertaintyBand intern in calculateImpactCustom (additive Felder reachUniqueLow/High, Formel unberührt, identisch Paket-Pfad); Unit-Grid mit dynamischem Massstab (1 Punkt = niceUnit, gegen Untergrenze, kein fixes 1000 mehr); benannter Wahrzeichen-Anker via lib/landmark-anchor.ts (resolveLandmarkAnchor, "grösstes Venue mit cap ≤ reachUniqueLow", Multiplikator ab Faktor 1.5, generischer Fallback), Anker gegen Untergrenze; modus-abhängiger Pin (display_only → kein "Bildschirme im öffentlichen Raum"); Kleinkram: "in {Ort}", Context-Bar "Stimmberechtigte", Slider-Floor max(4000, customBudgetMax). ANNAHMEN: Landmark-Caps sind gerundete Sortier-Werte (nie angezeigt), kalibriert gegen /vio-map-Korridor-Scan vom 03.06.2026 (erreichbarer reachUniqueLow: ZH 8'000–33'500, BE 7'500–25'500, BS 7'000–14'500) auf Basis des aktuellen Reach-Modells — Re-Kalibrierung möglich, wenn P2 (Dani/Splicky) capRates ändert. Tote Venues entfernt: BE Wankdorf, BS St. Jakob-Park (über Korridor). OFFEN: Generic-Zonen BE <17'000 / BS <12'000 (häufiger Sprint-Bereich zeigt generisch — je ein kleines Venue ~8–10k würde es schliessen, reiner Dateneintrag); Korridor-Scan + Venue-Kalibrierung für GE/LU/SG ausstehend (Erst-Seed aktiv); Genfer Arena + // TODO-Bekanntheit. |
