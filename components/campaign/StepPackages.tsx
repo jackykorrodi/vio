@@ -180,7 +180,10 @@ function PackageCards({ packages, selectedPkg, onChange, disabledPkgs, recommend
                       ca.&nbsp;{fmtReach(p.reachUniqueAbs)} Personen
                     </div>
                     <div>
-                      je {p.frequencyWeekly}× gesehen · {p.laufzeitDays} Tage
+                      je {p.frequencyCampaign}× gesehen · {p.laufzeitDays} Tage
+                    </div>
+                    <div style={{ fontSize: 11, color: T.slate, marginTop: 2 }}>
+                      Ø {p.frequencyWeekly.toFixed(1)}×/Woche
                     </div>
                     {p.deliveryMode === 'display_only' && (
                       <div style={{ marginTop: 4, fontSize: 12 }}>{PKG_SUBTITLE_DISPLAY[key]}</div>
@@ -875,7 +878,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               });
               const rBreit = mkImpact('breit');
               const rVer   = mkImpact('verankerung');
-              const freqOf = (wf: 'breit' | 'ausgewogen' | 'verankerung') => Math.round(WIRKUNGSFOKUS_FREQUENZ[wf] * effLauf / 7);
+              const freqOf = (wf: 'breit' | 'ausgewogen' | 'verankerung') => WIRKUNGSFOKUS_FREQUENZ[wf]; // v3.13: direkte Kampagnenkontakte
               const zoneLow  = sweetSpotCustom ? sweetSpotCustom.budget * COACH_BUDGET_LOW_RATIO  : 0;
               const zoneHigh = sweetSpotCustom ? sweetSpotCustom.budget * COACH_BUDGET_HIGH_RATIO : 0;
               const badge = (s: 'done' | 'active' | 'idle'): React.CSSProperties => ({
@@ -998,7 +1001,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                             }}
                           />
                         )}
-                        {microHint(<>Bei {effLauf} Tagen sieht dich jede Person rund <strong>{freqOf(wfKey)}×</strong> — gut verteilt bis zum Abstimmungstag.</>)}
+                        {microHint(<>Bei {effLauf} Tagen sieht dich jede Person rund <strong>{freqOf(wfKey)}× während der Kampagne</strong> — gut verteilt bis zum Abstimmungstag.</>)}
                         {microHint(campaignWindow.modus === 'display_only'
                           ? <>Kurzfristig machbar: Online-Display startet 1 Werktag nach deiner Bestätigung und vorliegendem Werbemittel. Digitale Plakate (DOOH) bräuchten 10 Werktage Vorlauf.</>
                           : <>Genug Vorlauf für digitale Plakate — DOOH startet 10 Werktage nach Bestätigung, sobald dein Werbemittel vorliegt.</>)}
@@ -1140,11 +1143,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                 {/* 2 KPIs */}
                 <div className="vio-kpis" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'rgba(255,255,255,0.10)', borderRadius: 12, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
                   <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kontaktdruck</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Kampagnenkontakte</div>
                     <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, lineHeight: 1.05, marginBottom: 4 }}>
-                      {fCampaign}× gesamt
+                      {fCampaign}× gesehen
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{fWeekly}× / Woche</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Ø {fWeekly}× / Woche</div>
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.04)', padding: '18px 18px 16px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 8 }}>Zeitraum</div>
@@ -1191,8 +1194,11 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {/* Outcome (nur Pfad 'custom', nach Abschluss aller drei Schritte) */}
             {mode === 'custom' && customImpact && doneSteps[0] && doneSteps[1] && doneSteps[2] && (() => {
               const wfKey = customConfig.wirkungsfokus ?? 'ausgewogen';
-              const fWeeklyDisplay = WIRKUNGSFOKUS_FREQUENZ[wfKey];
-              const frequenzKampagne = Math.round(fWeeklyDisplay * campaignWindow.effectiveLaufzeitDays / 7);
+              // v3.13: Kampagnenkontakte direkt (fix), Wochenfreq abgeleitet
+              const frequenzKampagne = WIRKUNGSFOKUS_FREQUENZ[wfKey];
+              const fWeeklyDisplay = campaignWindow.effectiveLaufzeitDays > 0
+                ? frequenzKampagne / (campaignWindow.effectiveLaufzeitDays / 7)
+                : 0;
               const heroStep = customImpact.reachUniqueLow < 10000 ? 100 : customImpact.reachUniqueLow < 100000 ? 1000 : 5000;
               const heroFloor = Math.floor(customImpact.reachUniqueLow / heroStep) * heroStep;
               const anchor = resolveLandmarkAnchor(customImpact.reachUniqueLow, selectedRegionsFull);
@@ -1221,8 +1227,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       </div>
                       <div>
                         <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 50, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 7, color: '#C9B6FF' }}>{frequenzKampagne}×</div>
-                        <div style={{ fontSize: 15, color: 'white', fontWeight: 600, marginBottom: 3 }}>gesamt · {fWeeklyDisplay.toFixed(1)}×/Woche</div>
-                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>sieht dich jede Person</div>
+                        <div style={{ fontSize: 15, color: 'white', fontWeight: 600, marginBottom: 3 }}>gesehen während der Kampagne</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>
+                          Ø {fWeeklyDisplay.toFixed(1)}×/Woche · {fWeeklyDisplay > 3 ? 'hoher Wochendruck' : fWeeklyDisplay >= 1 ? 'gleichmässig verteilt' : 'über lange Zeit verteilt'}
+                        </div>
                       </div>
                     </div>
                     {presence && (

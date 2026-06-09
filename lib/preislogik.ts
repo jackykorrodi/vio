@@ -60,10 +60,12 @@ export const DOMINANZ_BUDGET_CAP = 100_000;   // §8.1: Dominanz-Budget Hard-Cap
 
 // ─── Custom-Pfad: Wirkungsfokus-Modell (Regelkatalog v3.7) ───────────────────
 
+// v3.13: Kampagnenkontakte (Kontakte/Person über gesamte Laufzeit), nicht mehr Wochenfrequenz.
+// Status: Annahme — Splicky-Kalibrierung + Live-Test vor Go-Live (§10).
 export const WIRKUNGSFOKUS_FREQUENZ: Record<Wirkungsfokus, number> = {
-  breit:       2.1,
-  ausgewogen:  3.1,
-  verankerung: 4.6,
+  breit:       5,
+  ausgewogen:  7,
+  verankerung: 10,
 };
 
 // DOOH-Setup-Vorlauf für Custom-Pfad (löst DOOH_CUTOFF_DAYS im Custom-Pfad ab).
@@ -230,15 +232,17 @@ export interface CustomImpactResult {
 
 // ─── Paket-Definitionen (politisch-stark kalibriert) ─────────────────────────
 
+// v3.13: frequencyWeekly hält jetzt Kampagnenkontakte (fKampagne), nicht mehr Wochenfrequenz.
+// Wochenfrequenz wird in buildOne abgeleitet: fKampagne / laufzeitWeeks. Status: Annahme.
 export const PAKET_SPECS: Record<PaketKey, {
   name: string;
-  frequencyWeekly: number;
+  frequencyWeekly: number; // semantisch: fKampagne (Kampagnenkontakte fix), Feld-Rename folgt nach UI-Migration
   laufzeitDays: number;
   reachCapLevel: 1 | 2 | 3;
 }> = {
-  sichtbar: { name: 'Sichtbar', frequencyWeekly: 3, laufzeitDays: 21, reachCapLevel: 1 },
-  praesenz: { name: 'Präsenz', frequencyWeekly: 4, laufzeitDays: 28, reachCapLevel: 2 },
-  dominanz: { name: 'Dominanz', frequencyWeekly: 5, laufzeitDays: 35, reachCapLevel: 3 },
+  sichtbar: { name: 'Sichtbar', frequencyWeekly: 5, laufzeitDays: 21, reachCapLevel: 1 },
+  praesenz: { name: 'Präsenz', frequencyWeekly: 7, laufzeitDays: 28, reachCapLevel: 2 },
+  dominanz: { name: 'Dominanz', frequencyWeekly: 9, laufzeitDays: 35, reachCapLevel: 3 },
 };
 
 // ─── Reach-Caps nach Pool-Grösse (tiered) ────────────────────────────────────
@@ -863,7 +867,7 @@ export function buildPackages(input: {
     // TODO: spezielle_laufzeit + manueller_setup_bedarf fehlen noch (kein Signal im Paket-Pfad)
     const requiresConsultation = regions.length > 1;
 
-    // §8.1 v3.9: frequenz-getrieben — zielFrequenz ist INPUT, Reach ist OUTPUT
+    // §8.1 v3.13: fKampagne (Kampagnenkontakte) ist INPUT, Reach ist OUTPUT. laufzeitWeeks raus aus Formel.
     const split = deliveryMode === 'display_only' ? { dooh: 0, display: 1.0 } : klass.split;
     let impressionsInPool =
       ((finalBudget * split.dooh / CPM_DOOH) + (finalBudget * split.display / CPM_DISPLAY)) * 1000 * IN_POOL_FACTOR;
@@ -871,9 +875,9 @@ export function buildPackages(input: {
       impressionsInPool /= (1 - input.partnerCodeBoostPct / 100);
     }
     const poolCap = stimmTotal * getReachCap(stimmTotal, spec.reachCapLevel);
-    const zielFrequenz = spec.frequencyWeekly;
-    const reachLinear = poolCap > 0 && zielFrequenz > 0 && laufzeitWeeks > 0
-      ? impressionsInPool / (zielFrequenz * laufzeitWeeks)
+    const fKampagne = spec.frequencyWeekly; // Kampagnenkontakte fix (Feld-Name folgt UI-Migration)
+    const reachLinear = poolCap > 0 && fKampagne > 0
+      ? impressionsInPool / fKampagne
       : 0;
     const reach = poolCap > 0
       ? poolCap * (1 - Math.exp(-REACH_CURVE_K * reachLinear / poolCap))
@@ -885,10 +889,10 @@ export function buildPackages(input: {
     const reachUniqueLowPct  = stimmTotal > 0 ? Math.round((reachUniqueLow  / stimmTotal) * 100) : 0;
     const reachUniqueHighPct = stimmTotal > 0 ? Math.round((reachUniqueHigh / stimmTotal) * 100) : 0;
 
-    // §8.8 Qualitätsstatus (Frequenz fix = zielFrequenz)
+    // §8.8 Qualitätsstatus gegen Effective-Frequency-Korridor (3–10 Kampagnenkontakte)
     const qualityStatus: 'balanced' | 'high_frequency' | 'thin' =
-      zielFrequenz > F_MAX_WEEKLY ? 'high_frequency'
-      : zielFrequenz < F_MIN_WEEKLY ? 'thin'
+      fKampagne > F_MAX_WEEKLY ? 'high_frequency'  // F_MAX_WEEKLY = 10, entspricht EFFECTIVE_FREQUENCY_MAX
+      : fKampagne < F_MIN_WEEKLY ? 'thin'           // F_MIN_WEEKLY = 3, entspricht EFFECTIVE_FREQUENCY_MIN
       : 'balanced';
     const contextFlag: 'mikro_limited' | undefined =
       (stimmTotal < 20000 && key === 'sichtbar') ? 'mikro_limited' : undefined;
@@ -899,8 +903,8 @@ export function buildPackages(input: {
       budget: finalBudget,
       laufzeitDays: spec.laufzeitDays,
       laufzeitWeeks,
-      frequencyCampaign: zielFrequenz * laufzeitWeeks,
-      frequencyWeekly:   zielFrequenz,
+      frequencyCampaign: fKampagne,                                         // fix (Input), primär
+      frequencyWeekly:   laufzeitWeeks > 0 ? fKampagne / laufzeitWeeks : 0, // abgeleitet, informativ
       reachUniqueLow,
       reachUniqueHigh,
       reachUniqueAbs,
@@ -1046,11 +1050,11 @@ export function getCampaignWindow(
 // DOOH-Anteil wird intern aus Region-Klassifizierung bestimmt (nicht config.doohShare).
 // freqWeekly/doohShare bleiben im Param für Rückwärtskompatibilität (deprecated, Phase B).
 //
-// Reach-Formel:
-//   laufzeitWochen = laufzeitDays / 7   (Kalendertage, KEINE Werktage)
-//   reachLinear    = impressionenImPool / (zielFrequenz × laufzeitWochen)
-//   poolCap        = stimmTotal × getReachCap(stimmTotal, capLevel)
-//   reach          = poolCap × (1 − e^(−k × reachLinear / poolCap))
+// Reach-Formel (v3.13: Kampagnenfrequenz als direkter Input):
+//   fKampagneCustom = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus]  (Kampagnenkontakte)
+//   reachLinear     = impressionenImPool / fKampagneCustom    (laufzeitWochen raus)
+//   poolCap         = stimmTotal × getReachCap(stimmTotal, capLevel)
+//   reach           = poolCap × (1 − e^(−k × reachLinear / poolCap))
 //
 // saturationRatio = reachLinear / poolCap (kann > 1.0 sein)
 
@@ -1076,8 +1080,8 @@ export function calculateImpactCustom({
   // Kalendertage für Wirkungsdauer (Regelkatalog v3.7: Zeitachsen-Trennung)
   const laufzeitWeeks = laufzeitDays / 7;
 
-  // Ziel-Frequenz aus Wirkungsfokus (Default: ausgewogen)
-  const zielFrequenz = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus ?? 'ausgewogen'];
+  // v3.13: Kampagnenkontakte aus Wirkungsfokus (Default: ausgewogen)
+  const fKampagneCustom = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus ?? 'ausgewogen'];
 
   // DOOH-Verfügbarkeit → doohAnteil
   const doohAvail = checkDoohAvailability(deduped, campaignStart);
@@ -1105,17 +1109,16 @@ export function calculateImpactCustom({
       : { klasse: 'voll' as const, politScreens: 0, split: { dooh: 0.70, display: 0.30 }, hinweis: null };
   const screens = klass.politScreens;
 
-  // Pool-Cap
-  const capLevel: 1 | 2 | 3 = (stimmTotal > 0 && impressionsInPool > 0 && laufzeitWeeks > 0)
-    ? inferCapLevel(impressionsInPool, stimmTotal, laufzeitWeeks)
-    : 1;
+  // Pool-Cap: capLevel aus Wirkungsfokus (breit=L3, ausgewogen=L2, verankerung=L1), Spec §4 v3.11/v3.13
+  const focusCapLevel: 1 | 2 | 3 = ({ breit: 3, ausgewogen: 2, verankerung: 1 } as const)[wirkungsfokus ?? 'ausgewogen'];
+  const capLevel: 1 | 2 | 3 = stimmTotal > 0 ? focusCapLevel : 1;
   const poolCap = stimmTotal > 0 ? stimmTotal * getReachCap(stimmTotal, capLevel) : 0;
 
-  // Reach via Wirkungsfokus-Modell: Frequenz koppelt invers in die Reach
+  // Reach via Kampagnenfrequenz (v3.13): fKampagneCustom direkt, laufzeitWeeks raus aus Formel
   let reach = 0;
   let reachLinear = 0;
-  if (poolCap > 0 && zielFrequenz > 0 && laufzeitWeeks > 0) {
-    reachLinear = impressionsInPool / (zielFrequenz * laufzeitWeeks);
+  if (poolCap > 0 && fKampagneCustom > 0) {
+    reachLinear = impressionsInPool / fKampagneCustom;
     reach = poolCap * (1 - Math.exp(-REACH_CURVE_K * reachLinear / poolCap));
   }
   const reachPercent = stimmTotal > 0 ? (reach / stimmTotal) * 100 : 0;
@@ -1164,13 +1167,13 @@ export function calculateSweetSpotCustom(
   const stimmTotal = sumStimm(deduped);
   if (stimmTotal === 0) return { budget: 0, reach: 0 };
 
-  const laufzeitWeeks = REFERENZ_LAUFZEIT_DAYS / 7; // Sweet-Spot-Empfehlung auf Referenz-Laufzeit (28d), laufzeitDays ignoriert
-  const zielFrequenz  = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus];
-  const focusLevel    = ({ breit: 3, ausgewogen: 2, verankerung: 1 } as const)[wirkungsfokus];
-  const poolCap       = stimmTotal * getReachCap(stimmTotal, focusLevel);
+  // v3.13: fKampagneCustom direkt (kein × laufzeitWeeks mehr). laufzeitDays bleibt ignoriert (Referenz-Budget).
+  const fKampagneCustom = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus];
+  const focusLevel      = ({ breit: 3, ausgewogen: 2, verankerung: 1 } as const)[wirkungsfokus];
+  const poolCap         = stimmTotal * getReachCap(stimmTotal, focusLevel);
 
   const reachLinearTarget    = SWEET_SPOT_TARGET_SATURATION * poolCap;
-  const impressionenImPool   = reachLinearTarget * (zielFrequenz * laufzeitWeeks);
+  const impressionenImPool   = reachLinearTarget * fKampagneCustom;
   const impressionen         = impressionenImPool / IN_POOL_FACTOR;
   const mischCPM             = doohAnteil * CPM_DOOH + (1 - doohAnteil) * CPM_DISPLAY;
   const budget               = mischCPM > 0 ? (impressionen * mischCPM) / 1000 : 0;

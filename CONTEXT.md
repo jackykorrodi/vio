@@ -119,10 +119,10 @@
 
 ## Preislogik (vereinfacht)
 
-**Aktuelle Logik-Version: v3.12 Single Source of Truth (09.06.2026)**
+**Aktuelle Logik-Version: v3.13 Single Source of Truth (09.06.2026)**
 
 - Min Budget (Custom-Pfad): CHF 4'000
-- Pakete (Wirkungsprodukt, §8.1/§8.3): Sichtbar 21d/3×/„mehr Reichweite" | Präsenz 28d/4×/„ausgewogen" | Dominanz 35d/5×/„mehr Wiederholung". Engine frequenz-getrieben: INPUT = Tier-Budget + Ziel-Frequenz + Laufzeit (fix je Paket), OUTPUT = Reach.
+- Pakete (Wirkungsprodukt, §8.1/§8.3): Sichtbar 21d/**5×**/„mehr Reichweite" | Präsenz 28d/**7×**/„ausgewogen" | Dominanz 35d/**9×**/„mehr Wiederholung" (Kampagnenkontakte fix über gesamte Laufzeit). Engine: INPUT = Tier-Budget + fKampagne (fix je Paket) + Laufzeit, OUTPUT = Reach via `reachLinear = impressionenImPool / fKampagne`.
 - Tier-Budget-Matrix (CHF, Annahme): A 3'500/6'000/10'000 · B 5'000/9'000/15'000 · C 7'500/14'000/24'000 · D 10'000/18'000/30'000
 - Reach = ehrliche Output-Grösse (Hofmans-Saturation). NIE als Paket-Ranking — Reach steigt nur leicht (+13–22%), entscheidend ist Frequenz+Laufzeit. Badge fix auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz 4×).
 - DOOH-Vorlauf-Constraint aktiv (§7.0/§7.3 Pfad A, §8.6/§8.7 Pfad B).
@@ -130,7 +130,7 @@
 - requiresConsultation (v3.8): Komplexitäts-Trigger (mehrere Regionen ODER spezielle Laufzeit ODER manueller Setup-Bedarf), nicht Budget-Cap.
 - **Single Source of Truth Paket-Modus (v3.11):** Karte, Summary-Box, Step-3-Übergabe lesen ALLE aus `buildPackages` (= `packages[selectedPkg]`). Kein `calculateImpact()` mehr im Paket-Modus (behob Dual-Source-Bug: Karte zeigte 6'900, Summary 78'500). `calculateImpact` bedient nur noch Pfad A (Archiv).
 - **Partnercode (v3.11):** Vertriebs-Hebel in Paket UND Custom. Mechanik: internes Impressions-/Budget-Topup (tieferer interner CPM). Wirkung bei fixer Paket-Frequenz/Laufzeit: MEHR REACH (Frequenz + Laufzeit bleiben). Im Paket-Modus via zweitem `buildPackages({partnerCodeBoostPct})`-Aufruf; Summary zeigt geboostete Reach + Delta "inkl. Partnercode +X Personen". Boost relativ: `1/(1−boostPct/100)`, ohne Code Faktor 1 (keine Regression).
-- Berechnung: siehe `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.12, Single Source of Truth)
+- Berechnung: siehe `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.13, Single Source of Truth)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -168,6 +168,7 @@
 **Ersetzt in v3.8**: `DOMINANZ_BUDGET_CAP` → `requiresConsultation` als Komplexitäts-Trigger (nicht Budget-Cap)
 **Geändert in v3.11**: `SWEET_SPOT_TARGET_SATURATION` 4.0 → 1.4; Custom-Laufzeit-Korridor auf max 42d gedeckelt
 **Geändert in v3.12**: `calculateSweetSpotCustom` rechnet Budget-Empfehlung auf `REFERENZ_LAUFZEIT_DAYS = 28` (laufzeit-stabil) statt gewählter Laufzeit; UI Range-Framing + beide Frequenzen + Laufzeit-Trade-off-Hinweis
+**Geändert in v3.13**: Frequenz-Modell auf Kampagnenkontakte umgestellt. `PAKET_SPECS.frequencyWeekly` = 5/7/9 (Kampagnenkontakte fix, Feld-Name historisch); `WIRKUNGSFOKUS_FREQUENZ` = 5/7/10. Reach-Formel: `reachLinear = impressionenImPool / fKampagne` (laufzeitWeeks entfernt). `frequencyWeekly` jetzt abgeleitet (`fKampagne / laufzeitWeeks`). `WOCHENDRUCK_WARN_THRESHOLD` entfernt (alle Pakete by-design im Korridor [3,10]). Browser-Back: pushState + popstate in PolitikFlow.
 
 ---
 
@@ -180,14 +181,15 @@
 ### Custom-Modell: 3 Hebel, 2 Outputs
 - **Inputs (Nutzer steuert):** Budget (CHF), Kampagnenfenster (Laufzeit in Tagen), Wirkungsfokus (`breit` | `ausgewogen` | `verankerung`)
 - **Outputs (emergent):** Frequenz (aus Wirkungsfokus-Zielwert) + Kanal-Mix (aus DOOH-Inventory-Klassifizierung)
-- Wirkungsfokus-Frequenzwerte: `breit=2.1`, `ausgewogen=3.1`, `verankerung=4.6` (kalibriert, v3.7)
+- Wirkungsfokus-Frequenzwerte (Kampagnenkontakte, v3.13): `breit=5`, `ausgewogen=7`, `verankerung=10`
 
 ### Reach-Formel
 ```
-reachLinear = impressionenImPool / (zielFrequenz × laufzeitWeeks)
+reachLinear = impressionenImPool / fKampagne                   // v3.13: Kampagnenkontakte, kein ×laufzeitWeeks mehr
 reach       = poolCap × (1 − e^(−K × reachLinear/poolCap))   // Hofmans
+fWeekly     = fKampagne / laufzeitWeeks                        // abgeleitet, nur informativ
 ```
-Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere Reach bei gleichem Budget.
+Frequenz koppelt invers: höhere Kampagnenfrequenz → tieferer reachLinear → tiefere Reach bei gleichem Budget.
 
 ### Zeitachsen-Trennung
 - **Wirkungsdauer**: Kalendertage (unverändert für beide Pfade)
@@ -248,7 +250,7 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 - Coach-Box als Brücke Hebel → Outcome (erscheint nur bei `coachHint !== null`)
 
 **UI Step 2 Custom-Pfad — Outcome-Panel:**
-- Reichweite-Hero: `customImpact.reach` (Schweizer Format), "Stimmberechtigte erreicht", "Ø N× gesehen · im [Name] / in deiner Auswahl" (Frequenz = `WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus] × laufzeitDays/7`, gerundet)
+- Reichweite-Hero: `customImpact.reach` (Schweizer Format), "Stimmberechtigte erreicht", "N× gesehen während der Kampagne · Ø M×/Woche" (Kampagnenkontakte = `WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus]` fix, Wochendruck abgeleitet)
 - Dot-Grid (Stil A, gerade/dicht): adaptiver `DOTUNIT` = poolCap / ~50, gerundet auf `[250, 500, 1000, 2000, 5000]`; poolCap exakt invertiert: `reach / (1 − e^(−REACH_CURVE_K × saturationRatio))`; max 60 Slots, 12/Reihe; Legende mit DOTUNIT-Wert
 - Präsenz-Story (3 Zustände): (1) `doohAvailable && showScreenCount` → Zahl in Fett; (2) `doohAvailable && !showScreenCount` → qualitativ ohne Zahl; (3) `!doohAvailable` → online-only
 - Ortsanker: generischer Platzhalter-Satz ("mehrere mittelgrosse Gemeinden") + TODO-Kommentar für echte Referenztabelle (separate Verfeinerung)
@@ -263,11 +265,11 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 - `calculateImpactCustom()` bekommt `campaignStart?: Date` → `checkDoohAvailability()` nutzt es (Vorlauf-Check)
 
 ### Pakete (Politik + B2B identisch)
-| Paket | Frequenz | Laufzeit | Min-Budget |
+| Paket | Kampagnenkontakte | Laufzeit | Min-Budget |
 |---|---|---|---|
-| Sichtbar | 3× | 14 Tage | CHF 4'000 |
-| Präsenz  | 5× | 28 Tage | CHF 6'000 |
-| Dominanz | 6× | 42 Tage | CHF 9'000 |
+| Sichtbar | 5× | 21 Tage | CHF 4'000 |
+| Präsenz  | 7× | 28 Tage | CHF 6'000 |
+| Dominanz | 9× | 35 Tage | CHF 9'000 |
 
 ### Tiered Reach Caps (v2.3 — +50% zu v2.2)
 | Stimmberechtigte | Level 1 | Level 2 | Level 3 |
@@ -280,6 +282,7 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 ### Decision Log
 | Datum | Version | Änderungen |
 |---|---|---|
+| 09.06.2026 | **v3.13 Kampagnenfrequenz-Modell** | **Frequenz-Semantik auf Kampagnenkontakte umgestellt.** PAKET_SPECS: Sichtbar 21d/5×, Präsenz 28d/7×, Dominanz 35d/9× (Kampagnenkontakte fix, nicht mehr wöchentlich). WIRKUNGSFOKUS_FREQUENZ: breit=5, ausgewogen=7, verankerung=10. Reach-Formel: `reachLinear = impressionenImPool / fKampagne` (×laufzeitWeeks entfernt). `frequencyWeekly` = abgeleitet (`fKampagne / laufzeitWeeks`, informativ). Wochendruck-Warnung entfernt (alle fKampagne 5/7/9 by-design im Korridor [3,10]). Verteilungsprofil-Label im Custom-Pfad (statt Warn-Alert). Step-3 Custom-Frequenzanzeige auf Kampagnenfrequenz-Semantik aktualisiert. Browser-Back: `pushState` + `popstate`-Listener in PolitikFlow — Back geht einen Step zurück, briefing erhalten. Spec: SPEC_VERSION 3.13. |
 | 08.06.2026 | **v3.10 Wirkungsprodukt-Logik** | **Paket-Engine frequenz-getrieben.** PAKET_SPECS: Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5×. Neue TIER_BUDGET-Matrix (A/B/C/D × 3 Pakete). Reach = ehrliche Output-Grösse, nie Paket-Ranking. Badge fix auf Präsenz (Politik-Standard 28d/4×). UI: Strategie-Labels, Zwei-KPI-Block (Reach + Frequenz + Laufzeit), Aufklärungssatz (§9.2), Tier-C/D-customHint. freqGuardrail komplett entfernt. `requiresConsultation` weiterhin Komplexitäts-Trigger. Spec: `public/vio-regelkatalog-politik-v3-6.md` SPEC_VERSION 3.10. |
 | 04.06.2026 | UX-Patch Step-2 Wizard | **4 UX-Fixes Custom-Pfad** (`components/campaign/StepPackages.tsx`, nur UI). (1) **Fokus-Hints (Schritt 1) rein qualitativ** — `freqOf()` aus den drei Hint-Zweigen entfernt: ×-Frequenz hing an der noch nicht gewählten Laufzeit → Vorgriff. Neu: breit „Möglichst viele Menschen erreichen.", ausgewogen „Gute Balance zwischen Reichweite und Wiederholung.", verankerung „Dieselben Personen häufiger erreichen." (2) **Vorlauf-Kommunikation (Schritt 2)** — zweiter microHint je nach `campaignWindow.modus`: display_only → Display startet 1 Werktag nach Bestätigung + Werbemittel, DOOH bräuchte 10 Werktage; sonst DOOH-Vorlauf-Hinweis. Nutzt bestehenden modus-Flag, keine neue Vorlauf-Berechnung. (3) **Budget-Eingabe-Tippbug behoben** — Input war `type=number` mit onChange-Clamp → jede Eingabe sprang sofort auf 4000. Neu: `budgetRaw`-State (string), `type=text inputMode=numeric`, onChange nur roh, Clamp/Commit erst onBlur; useEffect synct `budgetRaw` ← `effectiveBudget` bei externer Slider-Änderung. (4) **Sweet-Spot-Band verengt** — Slider-Band nutzte zweckentfremdet COACH_BUDGET_LOW/HIGH_RATIO (0.6/1.15 → CHF 4'800–9'200 bei ss 8'000, fast voller Slider). Neu UI-only Band 0.94/1.06 (±6% um den echten ss-Punkt) + „Sweet Spot"-Label am Marker. **COACH_BUDGET_LOW/HIGH_RATIO in `custom-hints.ts` unangetastet** — bleiben Coach-Hint-Toleranz, sind NICHT die Band-Visualisierung. `calculateSweetSpotCustom` liefert bereits einen präzisen Punkt, kein Logik-Eingriff nötig. **Frequenz-Klärung:** `WIRKUNGSFOKUS_FREQUENZ` (2.1/3.1/4.6) ist WÖCHENTLICH; Anzeige rechnet via `freqOf()` = `× laufzeitDays/7` auf Kampagnen-Frequenz hoch — konsistent in Step 2 (Z. 935) + Outcome (Z. 1118), dort gültig weil Laufzeit feststeht. `tsc --noEmit` grün. Offen (visuell auf Preview prüfen): zwei gestapelte microHints in Step 2, Cursor-Stabilität beim Budget-Tippen. |
 | 03.06.2026 | feat(ui) Step-2 Wizard | **Custom-Pfad Step 2 von 3-Hebel-Cockpit auf geführten Wizard umgebaut** (`components/campaign/StepPackages.tsx`). Reihenfolge **Fokus → Dauer → Empfehlung → Budget**: Schritte nacheinander freigeschaltet (`wizardStep`/`doneSteps`-State), Budget-Schritt öffnet mit Empfehlungs-Reveal (`sweetSpotCustom`) auf vorbelegtem Regler (bestätigen/anpassen statt leerer Anker). Begründung psychologisch: Ziel-vor-Preis-Framing + smarte Empfehlung erst möglich, wenn Fokus+Dauer fix; Fixbudget-Nutzer tippt über die Empfehlung. Wirkungsfokus sprachlich aufgelöst als Klartext-Dial „Breite Wirkung ↔ Tiefe Verankerung" (Achse + Live-Tradeoff „~X Menschen × N×"). Outcome neu als **Zwei-Hero** (Menschen erreicht · Ø N× gesehen) auf Ink-Card; Dot-Grid + Coach-Brücke entfernt, wohlwollende Bestätigung (Sweet-Spot-Zonen) ergänzt; Outcome erst nach Abschluss aller Schritte, „Weiter" bis dahin disabled. Engine (`calculateImpactCustom`/`calculateSweetSpotCustom`/`getCampaignWindow`), Props, Paket-Pfad, Partnercode unberührt. `tsc --noEmit` grün, eslint 0 Errors (7 vorbestehende Warnings). Prototypen: `public/prototypes/step2-redesign-A-gefuehrt.html` + `…-B-schritte.html`. |

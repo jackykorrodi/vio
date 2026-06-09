@@ -1,7 +1,7 @@
 # VIO Regelkatalog Politik — v3.6
 
 ```yaml
-SPEC_VERSION:     3.12
+SPEC_VERSION:     3.13
 LAST_VALIDATED:   2026-06-09
 PFAD_A_STATUS:    Re-Validierung nach Konstanten-Bereinigung (OTS/Delivery entfernt) gegen Soll-Werte v3.6 ausstehend
 PFAD_B_STATUS:    §8.6/§8.7/§8.8 implementiert (Sprint 1+1b) — §12 36 Soll-Werte ausstehend
@@ -9,7 +9,7 @@ PRECEDENCE:       Spec > Code. Bei Konflikt gilt diese Spec; Code wird angeglich
 NEXT_VERSION:     keine geplant
 ```
 
-**Status**: Single Source of Truth für die Politik-Preislogik. v3.12 normalisiert Sweet-Spot-Budget-Empfehlung auf Referenz-Laufzeit (REFERENZ_LAUFZEIT_DAYS=28): Budget-Empfehlung ist laufzeit-stabil, Wirkungsberechnung (calculateImpactCustom) nutzt weiterhin die echte Laufzeit. — v3.11 korrigiert Custom-Sweet-Spot mediaplanerisch: SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; SAT 4.0 = Übersättigung, Pakete fahren 0.2–1.3), Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1, nicht mehr fix L1), Politik-Laufzeit-Fenster 14/28/42d als Produktregel (§6.3) für Paket und Custom. Neue §4-Konstante SWEET_SPOT_TARGET_SATURATION. §10 erweitert. — v3.10 bringt die finale Wirkungsprodukt-Logik: Paket-Parameter auf Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5× finalisiert (war 14/28/42d · 3/5/6×). Neue Tier-Budget-Matrix (§4, Status Annahme). Karten zeigen ZWEI absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label. Reach nie als Paket-Vergleich, nie Pool-%. Aufklärungssatz unter Karten (§9.2). EMPFOHLEN-Badge immer auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz), nie reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. v3.9 (frequenz-getriebene Engine) bleibt Basis. v3.8 (Pool-Tier-Budgets, requiresConsultation als Komplexitäts-Trigger) bleibt gültig. Custom-Pfad (Wirkungsfokus-Modell, WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert. — v3.6: Audience-Contacts-Formel bereinigt um `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY`. Diese sind im fixen EK-CPM mit dem Operating-Partner (CHF 25 DOOH / CHF 5 Display pro 1000 Bruttokontakte) bereits eingepreist. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8) und Status-Codes (§7.2) unverändert.
+**Status**: Single Source of Truth für die Politik-Preislogik. v3.13 stellt das Frequenz-Modell von Wochenfrequenz auf Kampagnenfrequenz um (fundamentaler Modellwechsel): Pakete steuern über feste Kampagnenkontakte (Sichtbar 5×, Präsenz 7×, Dominanz 9×), Custom-Pfad über Wirkungsfokus-Kampagnenkontakte (Breite ~5×, Ausgewogen ~7×, Verankerung ~10×). Reach-Formel §8.1 und Custom-Pfad: reachLinear = impressionenImPool / fKampagne (laufzeitWochen fällt aus der Formel). Dadurch steigt Reach monoton mit teureren Paketen; teureres Paket erreicht mehr Personen. Wochendruck wird informativ (nicht normativ) kommuniziert. UI-Regel: Kampagnenfrequenz prominent, Wochenfrequenz sekundär. SAT 1.4, fokusabhängiges Cap-Level, 42d-Deckel und alle übrigen Regeln bleiben unverändert. — v3.12 normalisiert Sweet-Spot-Budget-Empfehlung auf Referenz-Laufzeit (REFERENZ_LAUFZEIT_DAYS=28): Budget-Empfehlung ist laufzeit-stabil, Wirkungsberechnung (calculateImpactCustom) nutzt weiterhin die echte Laufzeit. — v3.11 korrigiert Custom-Sweet-Spot mediaplanerisch: SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; SAT 4.0 = Übersättigung, Pakete fahren 0.2–1.3), Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1, nicht mehr fix L1), Politik-Laufzeit-Fenster 14/28/42d als Produktregel (§6.3) für Paket und Custom. Neue §4-Konstante SWEET_SPOT_TARGET_SATURATION. §10 erweitert. — v3.10 bringt die finale Wirkungsprodukt-Logik: Paket-Parameter auf Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5× finalisiert (war 14/28/42d · 3/5/6×). Neue Tier-Budget-Matrix (§4, Status Annahme). Karten zeigen ZWEI absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label. Reach nie als Paket-Vergleich, nie Pool-%. Aufklärungssatz unter Karten (§9.2). EMPFOHLEN-Badge immer auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz), nie reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. v3.9 (frequenz-getriebene Engine) bleibt Basis. v3.8 (Pool-Tier-Budgets, requiresConsultation als Komplexitäts-Trigger) bleibt gültig. Custom-Pfad (Wirkungsfokus-Modell, WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert. — v3.6: Audience-Contacts-Formel bereinigt um `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY`. Diese sind im fixen EK-CPM mit dem Operating-Partner (CHF 25 DOOH / CHF 5 Display pro 1000 Bruttokontakte) bereits eingepreist. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8) und Status-Codes (§7.2) unverändert.
 
 ---
 
@@ -48,9 +48,9 @@ VIO ist eine politik-spezifische Preis- und Reichweitenlogik. Sie unterscheidet 
 - Daraus folgt: **28 Tage ist die natürliche Standard-Laufzeit** für Politik-Kampagnen
 
 **Wirkungstheorie:**
-- **Krugman 3+ Rule (1972)**: unter 3 Kontakten pro Person pro Woche ist Werbewirkung empirisch nahe null → F_MIN_WEEKLY = 3
+- **Krugman 3+ Rule (1972)**: Werbewirkung benötigt Mindest-Wiederholung; empirische Orientierung: 3–5 Kontakte über den Entscheidungszeitraum → Effective-Frequency-Korridor 3–10 Kampagnenkontakte. F_MIN_WEEKLY (=3) bleibt als Pfad-A-Schwelle (Wochenfrequenz-Optimizer).
 - **Effective Reach > Reach**: nicht "wie viele Personen erreicht", sondern "wie viele mit Mindestwirkungsschwelle erreicht"
-- **Wear-out** ab ca. 10–15 Kontakten/Woche → Frequency-Cap und Dominanzmodus
+- **Wear-out** ab ca. 10–15 Kampagnenkontakten → Frequency-Cap und Dominanzmodus. Für Paket und Custom: fKampagne-Obergrenze = 10 (Effective-Frequency-Korridor).
 
 **Pool-Begründung:**
 Politische Kampagnen wirken auf Stimmberechtigte. Eine Hybrid-Logik (Stadt → Bevölkerung, Kanton → Stimmberechtigte) würde Reach % je nach Regionstyp unterschiedlich bedeuten und Mehr-Region-Buchungen inkonsistent machen. Deshalb: **immer `region.stimm`** (siehe §5.1).
@@ -70,8 +70,8 @@ Diese Terms sind verbindlich. Code, UI und alle Doku müssen exakt diese Bezeich
 | `contacts_total` | Audience Contacts nach IN_POOL_FACTOR (effektive In-Pool-Kontakte) |
 | `reach_unique_abs` | Eindeutig erreichte Personen, absolut (= "Unique Reach") |
 | `reach_unique_pct` | reach_unique_abs / pool, in % |
-| `frequency_weekly` | contacts_total / reach_unique_abs / weeks |
-| `frequency_campaign` | contacts_total / reach_unique_abs (= frequency_weekly × weeks) |
+| `frequency_campaign` | contacts_total / reach_unique_abs — **PRIMÄRE Steuergrösse** für Paket- und Custom-Pfad. Feste Kampagnenkontakte je Paket/Wirkungsfokus (Input). |
+| `frequency_weekly` | frequency_campaign / weeks — **abgeleitet, sekundär/informativ**. Nicht Steuer-Input für Paket oder Custom. Bleibt Optimizer-Grösse in Pfad A (§7). |
 | `pcap_share` | Cap-Anteil aus Reach-Cap-Tabelle (z.B. 0.22 für L1 in <50k) |
 | `pcap_abs` | pcap_share × pool (absolute Pool-Cap in Personen) |
 | `saturation_factor` | Hofmans-Sättigungsfaktor, Wert in [0, 1] |
@@ -159,6 +159,35 @@ Tier-Budget-Matrix (CHF, fixes Paket-Budget):
 | D    | 10'000   | 18'000  | 30'000   |
 
 Reach-Caps (§5.4) bleiben aktiv — ausschliesslich als Sättigungs-Obergrenze. Sie bestimmen nicht mehr das Budget.
+
+### Kampagnenfrequenz — fKampagne (v3.13) — Status: Annahme
+
+Primäre Steuergrösse für Paket-Pfad und Custom-Pfad. Werte mock-kalibriert, Splicky-Kalibrierung + Live-Test vor Go-Live (§10).
+
+**Paket-Pfad (fix je Paket):**
+```
+F_KAMPAGNE_SICHTBAR    = 5     # Kontakte/Person über gesamte Laufzeit
+F_KAMPAGNE_PRAESENZ    = 7     # Kontakte/Person über gesamte Laufzeit
+F_KAMPAGNE_DOMINANZ    = 9     # Kontakte/Person über gesamte Laufzeit
+```
+
+**Custom-Pfad (je Wirkungsfokus):**
+```
+F_KAMPAGNE_BREIT       = 5     # Breite Wirkung (~5 Kontakte)
+F_KAMPAGNE_AUSGEWOGEN  = 7     # Ausgewogen (~7 Kontakte)
+F_KAMPAGNE_VERANKERUNG = 10    # Verankerung (~10 Kontakte, fokussierter als Dominanz)
+```
+
+**Effective-Frequency-Korridor (Orientierung):**
+```
+EFFECTIVE_FREQUENCY_MIN  = 3   # Unteres Ende des Wirkungskorridors
+EFFECTIVE_FREQUENCY_MAX  = 10  # Oberes Ende (ab hier Wear-out)
+```
+
+**Wochendruck-Info-Schwelle (informativ, kein normatives Limit):**
+```
+WOCHENDRUCK_WARN_THRESHOLD = 2.0  # frequency_weekly < 2.0 → Info-Hinweis in UI
+```
 
 ### Custom-Pfad (Wirkungsfokus-Modell)
 
@@ -411,31 +440,37 @@ Der Custom-Pfad kennt drei vom Nutzer steuerbare Hebel:
 
 Frequenz und Kanal-Mix sind keine Nutzer-Hebel, sondern Outputs des Modells.
 
-### Wirkungsfokus → Ziel-Wochenfrequenz
-| Wirkungsfokus   | Ziel-Wochenfrequenz | Bedeutung                                   |
-|-----------------|---------------------|---------------------------------------------|
-| Breite Wirkung  | 2.1×                | Mehr Personen, geringere Wiederholung       |
-| Ausgewogen      | 3.1×                | Standard                                    |
-| Verankerung     | 4.6×                | Weniger Personen, höhere Wiederholung       |
+### Wirkungsfokus → Kampagnenkontakte (Ziel-Frequenz über gesamte Laufzeit)
+
+| Wirkungsfokus   | Kampagnenkontakte | Bedeutung                                   |
+|-----------------|-------------------|---------------------------------------------|
+| Breite Wirkung  | ~5×               | Mehr Personen, geringere Wiederholung       |
+| Ausgewogen      | ~7×               | Standard                                    |
+| Verankerung     | ~10×              | Weniger Personen, höhere Wiederholung       |
+
+Werte sind `zielFrequenzKampagne` (Input). Wochenfrequenz = zielFrequenzKampagne / laufzeitWochen (Output, informativ). Status: Annahme (§10).
 
 ### Reach-Berechnung (Custom-Pfad)
-    mischCPM            = doohAnteil × CPM_DOOH + (1 − doohAnteil) × CPM_DISPLAY
-    impressionen        = budget × 1000 / mischCPM
-    impressionenImPool  = impressionen × IN_POOL_FACTOR
-    laufzeitWochen      = laufzeitTage / 7
-    reachLinear         = impressionenImPool / (zielFrequenz × laufzeitWochen)
-    poolCap             = stimmTotal × tieredReachCap(stimmTotal)
-    reach               = poolCap × (1 − e^(−REACH_CURVE_K × reachLinear / poolCap))
+    mischCPM              = doohAnteil × CPM_DOOH + (1 − doohAnteil) × CPM_DISPLAY
+    impressionen          = budget × 1000 / mischCPM
+    impressionenImPool    = impressionen × IN_POOL_FACTOR
+    reachLinear           = impressionenImPool / zielFrequenzKampagne
+    poolCap               = stimmTotal × tieredReachCap(stimmTotal)
+    reach                 = poolCap × (1 − e^(−REACH_CURVE_K × reachLinear / poolCap))
 
-Die Ziel-Frequenz (aus dem Wirkungsfokus) geht über reachLinear invers in die
-Reach ein: tiefere Frequenz erhöht die erreichte Personenzahl, höhere senkt sie.
+    # Informativ (kein Steuer-Input):
+    laufzeitWochen        = laufzeitTage / 7
+    frequency_weekly      = zielFrequenzKampagne / laufzeitWochen
+
+`zielFrequenzKampagne` ist die feste Kampagnen-Zielfrequenz aus dem Wirkungsfokus
+(§4: 5/7/10). laufzeitTage geht NICHT mehr in die Reach-Formel ein; längere Laufzeit
+ändert Reach nicht mehr, senkt aber frequency_weekly (Wochendruck dünner).
+
 Die Hofmans-Sättigung gegen poolCap bleibt erhalten und sichert den Budget-
 Sweet-Spot.
 
-Abgrenzung zum bisherigen Modell: Die frühere Custom-Reach war rein Hofmans-
-basiert (reach = f(impressionenImPool)) und ignorierte die Frequenz. Das neue
-Modell teilt die In-Pool-Impressionen durch (zielFrequenz × laufzeitWochen),
-bevor die Sättigung greift.
+Abgrenzung zu v3.7–v3.12: Bisherige Formel teilte durch (zielFrequenz × laufzeitWochen),
+was implizit Wochenfrequenz steuerte. Ab v3.13 ist Kampagnenfrequenz der direkte Input.
 
 ### Zeitachsen-Trennung (wichtig)
 Die Wirkungsdauer (laufzeitWochen in der Reach-Berechnung) basiert bewusst auf
@@ -512,10 +547,19 @@ Begründung: Pakete fahren Sättigungswerte 0.2–1.3; 1.4 ist das obere Ende di
 Die Coach-Hinweise leiten sich relativ zum regionalen Sweet-Spot ab und führen den Nutzer neutral:
 - Budget deutlich unter Sweet-Spot → Hinweis, ab welchem Budget die Wirkung
   spürbar steigt.
-- Budget auf zu viele Wochen verteilt (wöchentliche Schlagkraft zu gering)
-  → Hinweis auf kürzere Laufzeit.
 - Budget über Sweet-Spot → Hinweis auf Sättigung (mehr Budget bringt kaum mehr
   Reichweite).
+
+**Wochendruck-Info-Hinweis (v3.13 — informativ, kein Block):**
+Wenn `frequency_weekly = zielFrequenzKampagne / laufzeitWochen < WOCHENDRUCK_WARN_THRESHOLD (2.0)`:
+
+> „Bei dieser Laufzeit verteilt sich die Wirkung auf Ø [X]× Kontakte pro Woche.
+> Kürzere Kampagnen erzeugen stärkeren Wochendruck."
+
+Regeln:
+- Nur Info, kein Hard-Block, keine heimliche Laufzeit-Kürzung.
+- Politische Wirkung ist kumulativ; langer Vorlauf ist legitim (Bekanntheit aufbauen).
+- 42d-Deckel (§6.3) verhindert, dass Wochendruck beliebig dünn wird.
 
 Tonalität verbindlich: datenbasiert, kompetent, nie wertend. Beispiel-Register:
 "Für [Region] entfalten Kampagnen meist ab CHF X spürbar mehr Wirkung" statt
@@ -529,29 +573,32 @@ User wählt aus drei Paketen, System optimiert Laufzeit, Level, Channel-Mix inne
 
 ### 8.1 Paket-Identität & Tier-Budget
 
-**Paket-Engine ist frequenz-getrieben (v3.10):**
+**Paket-Engine ist kampagnenfrequenz-getrieben (v3.13):**
 
-- **INPUT**: Tier-Budget (aus §4-Matrix) + Ziel-Frequenz (`zielFrequenz`, fix je Paket: 3/4/5×) + Laufzeit (fix, aus §8.3)
+- **INPUT**: Tier-Budget (aus §4-Matrix) + Kampagnenfrequenz (`fKampagne`, fix je Paket: 5/7/9×, Kontakte über gesamte Laufzeit) + Laufzeit (fix, aus §8.3)
 - **OUTPUT**: erreichbare Stimmberechtigte (`reach`) — identische Formel wie Custom-Pfad:
 
 ```
-reachLinear = impressionenImPool / (zielFrequenz × laufzeitWochen)
+reachLinear = impressionenImPool / fKampagne
 reach       = poolCap × (1 − e^(−REACH_CURVE_K × reachLinear / poolCap))
+
+# Informativ:
+frequency_weekly = fKampagne / laufzeitWochen
 ```
 
-Die Ziel-Frequenz ist garantiert (Input). Reach ist ehrliche Output-Grösse — sinkt mit grösserem Pool bei gleichem Budget. Frequenz-Bänder bleiben als informative Orientierung bestehen.
+`fKampagne` ist garantiert (Input). laufzeitWochen geht NICHT mehr in die Reach-Formel ein. Reach ist ehrliche Output-Grösse — steigt monoton von Sichtbar zu Dominanz (teureres Paket = mehr Personen + mehr Kontakte). Frequenz-Bänder bleiben als informative Orientierung bestehen.
 
-Identitätsstiftend (fix): Name, Rolle, Strategie, Ziel-Frequenz, Laufzeit, Tier-Budget (aus §4-Matrix).
-Engine-Output (dynamisch): Reach, Level, Channel-Mix.
+Identitätsstiftend (fix): Name, Rolle, Strategie, fKampagne, Laufzeit, Tier-Budget (aus §4-Matrix).
+Engine-Output (dynamisch): Reach, Level, Channel-Mix, frequency_weekly.
 Laufzeit ist fix pro Paket (§8.3).
 
-Differenzierung primär über Frequenz + Laufzeit. Reach steigt leicht (+13–22%), Gesamtkontakte stark (~+200%) von Sichtbar zu Dominanz — Reach nie als Paket-Vergleich verwenden.
+Differenzierung primär über fKampagne + Laufzeit. Reach steigt mit höherem Paket; Gesamtkontakte stark (~+200%) von Sichtbar zu Dominanz — Reach nie als isolierter Paket-Vergleich verwenden.
 
-| Paket | Wirkungs-Titel (§9.1) | Rolle | Ziel-Frequenz (INPUT) | Laufzeit (fix) | Strategie | Frequenz-Band (informativ) | Tier-Budget (§4-Matrix) |
+| Paket | Wirkungs-Titel (§9.1) | Rolle | fKampagne / Kampagnenkontakte (INPUT) | Laufzeit (fix) | Strategie | Frequenz-Band (informativ) | Tier-Budget (§4-Matrix) |
 |---|---|---|---|---|---|---|---|
-| Sichtbar | Lokale Sichtbarkeit | Einstieg / Awareness | 3× | 21d | mehr Reichweite | 2.5 – 4.5× | Tier A–D je §4 |
-| Präsenz | Regionale Präsenz | Ausgewogen / Breite Präsenz | 4× | 28d | ausgewogen | 3.0 – 5.5× | Tier A–D je §4 |
-| Dominanz | Hohe Präsenz | Maximale Mobilisierung | 5× | 35d | mehr Wiederholung | 4.0 – 7.0× | Tier A–D je §4 |
+| Sichtbar | Lokale Sichtbarkeit | Einstieg / Awareness | 5× | 21d | mehr Reichweite | ~3 – 5× | Tier A–D je §4 |
+| Präsenz | Regionale Präsenz | Ausgewogen / Breite Präsenz | 7× | 28d | ausgewogen | ~4 – 7× | Tier A–D je §4 |
+| Dominanz | Hohe Präsenz | Maximale Mobilisierung | 9× | 35d | mehr Wiederholung | ~6 – 10× | Tier A–D je §4 |
 
 **Beratungs-Trigger `requiresConsultation` (v3.8 — Komplexität, nicht Budget):**
 
@@ -571,9 +618,19 @@ DOMINANZ_CAP_MULTIPLIER ist als Trigger deprecated (§4). Der Trigger ist Komple
 
 **Folge für §9.3**: Wenn Paket `requiresConsultation = true` → kein EMPFOHLEN-Badge auf dieses Paket, Fallback auf nächstes verfügbares Paket.
 
-### 8.2 Frequenz-Bänder
+### 8.2 Frequenz-Bänder (informativ)
 
-Unverändert.
+Kampagnenkontakte je Paket (fKampagne, fix, Status: Annahme §10):
+
+| Paket | fKampagne (Kampagnenkontakte) | Orientierungsband Wochenfrequenz (28d Ref.) |
+|---|---|---|
+| Sichtbar | 5× | ~1.8×/Woche |
+| Präsenz | 7× | ~2.5×/Woche |
+| Dominanz | 9× | ~1.8×/Woche (bei 35d Laufzeit) |
+
+Wochendruck ist Output (informativ). Bei kurzen Laufzeiten steigt die Wochenfrequenz;
+bei langen Laufzeiten sinkt sie. Kein Wochen-Floor für Paket-Pfad — politische
+Wirkung ist kumulativ. Wochendruck-Hinweis ab frequency_weekly < 2.0 (§9 Wochendruck-Warnung).
 
 ### 8.3 Laufzeit-Kandidaten
 
@@ -617,7 +674,8 @@ Jede Karte zeigt:
 3. **Wirkungs-Subline** (`wirkungs_subline`) — dynamisch, regionsspezifisch (§9.2)
 4. **Zwei absolute KPIs** (nicht bei `requiresConsultation = true`):
    - Erreichte Stimmberechtigte (absolut, gerundet; z.B. „ca. 6'400 Personen")
-   - Ø Kontakte/Person (= `frequency_campaign`; z.B. „4× gesehen")
+   - Kampagnenfrequenz **PROMINENT**: `frequency_campaign` als „N× gesehen während der Kampagne" (z.B. „7× gesehen während der Kampagne")
+   - Wochenfrequenz **SEKUNDÄR** / klein: als Kontextinfo „(Ø ~2.5×/Woche)" — optional, nicht primäre Aussage
    - Laufzeit (fix je Paket, z.B. „28 Tage")
 5. Tier-Budget (CHF, aus §4-Matrix) — oder „Persönliche Beratung empfohlen" bei `requiresConsultation = true`
 6. EMPFOHLEN-Badge, wenn applicable (§9.3)
@@ -727,7 +785,10 @@ Folgende Annahmen sind mock-kalibriert. **Anpassungen erfordern eine neue Spec-V
 | Tier-Budget-Matrix (12 Werte) | siehe §4 | Annahme — TODO: Owner für Kalibrierung nach ersten Live-Kampagnen |
 | `SWEET_SPOT_TARGET_SATURATION` | 1.4 | Annahme — TODO: Kalibrierung mit Splicky vor Go-Live |
 | Politik-Laufzeit-Max (§6.3) | 42d | Annahme — TODO: Kalibrierung mit Splicky vor Go-Live |
-| `REFERENZ_LAUFZEIT_DAYS` (Sweet-Spot) | 28 | Annahme — Budget-Empfehlung normalisiert auf 28d (Politik-Standard)
+| `REFERENZ_LAUFZEIT_DAYS` (Sweet-Spot) | 28 | Annahme — Budget-Empfehlung normalisiert auf 28d (Politik-Standard) |
+| `F_KAMPAGNE_SICHTBAR / PRAESENZ / DOMINANZ` | 5 / 7 / 9 | **Annahme** — TODO: Owner-Kalibrierung nach ersten Live-Kampagnen. Effective-Frequency-Korridor 3–10 als Begründung. |
+| `F_KAMPAGNE_BREIT / AUSGEWOGEN / VERANKERUNG` | 5 / 7 / 10 | **Annahme** — Custom leicht höher bei Verankerung (fokussierter). TODO: Splicky-Kalibrierung + Live-Test. |
+| `WOCHENDRUCK_WARN_THRESHOLD` | 2.0 | Annahme — TODO: Kalibrierung mit User-Feedback nach Live-Kampagnen. |
 
 **Verantwortung Kalibrierung**: Dani (Delivery/Ausspielung) nach den ersten 10 Live-Kampagnen.
 
@@ -761,6 +822,7 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 | **v3.8** | **05.06.2026** | **Pool-Tier-Paketmodell: §8.1 ersetzt Min-Budget durch feste Tier-Budgets (4×3-Matrix, §4). Pool-Tiers A/B/C/D nach stimmTotal. Reach/Frequenz sind Output, nicht Preistreiber. Reach-Caps (§5.4) bleiben als Sättigungs-Obergrenze. requiresConsultation neu: Komplexitäts-Trigger (nicht budgetgetrieben), DOMINANZ_CAP_MULTIPLIER als Trigger deprecated. §3 neue Terms pool_tier, tier_budget, wirkungs_titel, wirkungs_subline. §9.1: stabile Wirkungs-Titel (Lokale Sichtbarkeit / Regionale Präsenz / Hohe Präsenz), vierte Karte „Individuell konfigurieren" als eigene Achse, keine Hierarchie zu Standardpaketen. §9.2: Floor-Wording-Regel bei frequency_weekly < F_MIN_WEEKLY (ehrliche Subline statt Ausgrauen/Kürzen). §9.3: Frequenz-Guardrail neu (Badge-Entzug bei frequency_weekly < F_MIN_WEEKLY, Custom-CTA, nie Badge-Verschiebung), Ausführungssequenz mit Schichtgrenze. §10: Tier-Budget-Matrix als Annahme + TODO Owner.** |
 | **v3.9** | **08.06.2026** | **Paket-Engine frequenz-getrieben: §8.1 dokumentiert INPUT = Tier-Budget + Ziel-Frequenz (fix: Sichtbar 3×, Präsenz 5×, Dominanz 6×) + Laufzeit; OUTPUT = Reach. Reach-Formel identisch Custom-Pfad (reachLinear + Hofmans-Sättigung). §9.3: Frequenz-Guardrail (v3.8) entfernt — EMPFOHLEN-Badge sitzt immer auf default_recommended_package (Präsenz). Ausführungssequenz auf 3 Engine-Schritte reduziert. §9.1: Reach als absolute gerundete Zahl in Karten-Hierarchie (Item 3), Pool-% explizit verboten. §9.2: Tier-C/D-Custom-Hint als neue Subline-Zeile.** |
 | **v3.10** | **08.06.2026** | **Finale Wirkungsprodukt-Logik: §8.3 Laufzeiten auf 21/28/35d fixiert (war 14/28/42d). §8.1 Ziel-Frequenz 3/4/5× (war 3/5/6×), Strategie-Spalte (mehr Reichweite / ausgewogen / mehr Wiederholung), Differenzierungshinweis (Reach +13–22%, Gesamtkontakte ~+200%). §4 Neue Tier-Budget-Matrix (CHF, Status Annahme): A 3'500/6'000/10'000, B 5'000/9'000/15'000, C 7'500/14'000/24'000, D 10'000/18'000/30'000. §9.1: Zwei absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label; Reach nie als Vergleich/Ranking. §9.2: Aufklärungssatz unter Karten. §9.3: Badge-Begründung Politik-Standard (28d, ausgewogene Frequenz 4×), nicht reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. Custom-Pfad (WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert.** |
+| **v3.13** | **09.06.2026** | **Kampagnenfrequenz-Modell (fundamentaler Modellwechsel). §3: `frequency_campaign` PRIMARY, `frequency_weekly` abgeleitet/sekundär. §4: Neuer Block Kampagnenfrequenz (F_KAMPAGNE_SICHTBAR/PRAESENZ/DOMINANZ = 5/7/9, F_KAMPAGNE_BREIT/AUSGEWOGEN/VERANKERUNG = 5/7/10, EFFECTIVE_FREQUENCY_MIN/MAX = 3/10, WOCHENDRUCK_WARN_THRESHOLD = 2.0). §8.1: Formel reachLinear = impressionenImPool / fKampagne (war / (zielFrequenz × laufzeitWochen)); fKampagne 5/7/9× (war 3/4/5×). Custom-Pfad: Wirkungsfokus-Tabelle auf Kampagnenkontakte umgestellt (5/7/10×, war 2.1/3.1/4.6×/Woche); Reach-Formel analog. §8.2: Frequenz-Bänder auf Kampagnenkontakte aktualisiert (informativ). §9.1: KPI-Regel — Kampagnenfrequenz PROMINENT („N× gesehen während der Kampagne"), Wochenfrequenz sekundär. Neuer Wochendruck-Info-Hinweis bei frequency_weekly < 2.0 in Custom-Coach. §10: Drei neue fKampagne/WOCHENDRUCK-Zeilen (Status: Annahme, TODO Owner). SAT 1.4, fokusabhängiges Cap-Level, 42d-Deckel bleiben unverändert.** |
 | **v3.12** | **09.06.2026** | **Sweet-Spot-Budget-Empfehlung auf Referenz-Laufzeit normalisiert (§ Sweet-Spot, §10). `calculateSweetSpotCustom` rechnet intern mit `REFERENZ_LAUFZEIT_DAYS = 28` statt der vom Nutzer gewählten Laufzeit. Budget-Empfehlung ist damit laufzeit-stabil. `calculateImpactCustom` unverändert (echte Laufzeit). Neue §10-Zeile: `REFERENZ_LAUFZEIT_DAYS`.** |
 | **v3.11** | **08.06.2026** | **Custom-Sweet-Spot mediaplanerisch korrigiert. §4: Neue Konstante SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; Pakete 0.2–1.3, effizienter Grenzertrag-Punkt). §6.3 neu: Politik-Laufzeit-Fenster 14/28/42d als Produktregel (N) für Paket und Custom (Custom deckelt nach oben auf 42d, Korridor 14–42d bleibt). Custom-Pfad Sweet-Spot: Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1; war fix L1). §10: SWEET_SPOT_TARGET_SATURATION und Laufzeit-Max als Annahme + TODO Splicky-Kalibrierung ergänzt.** |
 
@@ -888,6 +950,29 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 - §11/§12 Soll-Tabellen.
 - Custom-Pfad: Wirkungsfokus-Modell, Reach-Berechnung, DOOH-Verfügbarkeit, Kampagnenfenster.
 
+### Geänderte normative Punkte v3.12 → v3.13
+
+- §2 Wirkungstheorie: Krugman-Referenz auf Kampagnenskala aktualisiert (war: 3 Kontakte/Woche → neu: 3–5 Kontakte/Kampagne, Korridor 3–10). Wear-out auf Kampagnenkontakte bezogen.
+- §3 Terminologie: `frequency_campaign` als PRIMARY markiert, `frequency_weekly` als abgeleitet/sekundär (Pfad A bleibt Ausnahme).
+- §4 Neuer Block „Kampagnenfrequenz — fKampagne": F_KAMPAGNE_SICHTBAR/PRAESENZ/DOMINANZ (5/7/9), F_KAMPAGNE_BREIT/AUSGEWOGEN/VERANKERUNG (5/7/10), EFFECTIVE_FREQUENCY_MIN/MAX (3/10), WOCHENDRUCK_WARN_THRESHOLD (2.0). Status: Annahme.
+- §8.1: Formel reachLinear = impressionenImPool / fKampagne (laufzeitWochen fällt aus Formel). fKampagne 5/7/9× (war zielFrequenz 3/4/5×). Tabellenspalte umbenannt und Werte aktualisiert. frequency_weekly als informativ-Output explizit.
+- §8.2: Frequenz-Bänder auf Kampagnenkontakte umgestellt; Wochenfrequenz-Orientierung als Kontextwerte.
+- Custom-Pfad: Wirkungsfokus-Tabelle auf Kampagnenkontakte (5/7/10×, war 2.1/3.1/4.6×/Woche). Reach-Formel analog §8.1 (/ zielFrequenzKampagne statt / (zielFrequenz × laufzeitWochen)). Wochendruck-Info-Hinweis bei frequency_weekly < 2.0.
+- §9.1: KPI-Regel — Kampagnenfrequenz PROMINENT, Wochenfrequenz sekundär. Beispiel-Wording aktualisiert (war „4× gesehen" → „7× gesehen während der Kampagne").
+- §10: Drei neue Kalibrierungszeilen (fKampagne-Paket, fKampagne-Custom, WOCHENDRUCK_WARN_THRESHOLD).
+
+### Unveränderte normative Punkte aus v3.12
+
+- §1 Scope (inkl. Custom-Pfad-Satz).
+- §4 Alle bestehenden Konstanten (Reichweite & Frequenz, Preise, DOOH-Buchbarkeit, Paket-Capping, Pool-Tier-Budget-Matrix, Custom-Pfad-Block mit SETUP_VORLAUF_WERKTAGE / SCREEN_ANZEIGE_SCHWELLE / SWEET_SPOT_TARGET_SATURATION / REFERENZ_LAUFZEIT_DAYS).
+- §5 Gemeinsame Engine (Reach-Modell, Caps, Saturation, Frequenz §5.6 bleibt als Definitions-Paragraph).
+- §6 Laufzeit-Logik vollständig (inkl. §6.3 42d-Deckel, Politik-Laufzeit-Fenster).
+- §7 Pfad A Optimizer vollständig (F_MIN_WEEKLY bleibt Optimizer-Grösse in §7.1).
+- §8.3–§8.8 Pfad-B-Logik.
+- §9.2 Subline-Mapping, §9.3 Default-Empfehlung-Badge, §9.4 Kommunikationsregeln.
+- §11/§12 Soll-Tabellen.
+- Custom-Pfad: DOOH-Verfügbarkeit, Kampagnenfenster, Sweet-Spot-Logik, Cap-Level fokusabhängig (SAT 1.4).
+
 ---
 
-**Ende der Spec v3.12.**
+**Ende der Spec v3.13.**

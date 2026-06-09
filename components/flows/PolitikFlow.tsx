@@ -91,7 +91,12 @@ export default function PolitikFlow({ resumeData, resumeId }: Props) {
     updateBriefing({ email });
   }
 
-  const nextStep = () => setCurrentStep(prev => prev + 1);
+  const nextStep = () => {
+    setCurrentStep(prev => {
+      window.history.pushState({ step: prev + 1 }, '');
+      return prev + 1;
+    });
+  };
 
   const prevStep = () => {
     if (currentStep === 4 && step4Phase === 'adcreator') { setStep4Phase('creative'); return; }
@@ -162,6 +167,21 @@ export default function PolitikFlow({ resumeData, resumeId }: Props) {
 
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Browser-Back-Sync ───────────────────────────────────────────────────────
+  useEffect(() => {
+    function onPopState() {
+      setCurrentStep(prev => {
+        if (prev === 4 && step4Phase === 'adcreator') {
+          setStep4Phase('creative');
+          return prev;
+        }
+        return Math.max(1, prev - 1);
+      });
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [step4Phase]);
 
   useEffect(() => {
     if (currentStep === 4 && !briefing.sessionId) {

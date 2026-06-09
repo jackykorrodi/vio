@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { BriefingData } from '@/lib/types';
 import type { CustomConfig } from '@/lib/types';
 import { getInhabitants } from '@/lib/vio-inhabitants-map';
-import { calculateImpact, calculateImpactCustom, PKG_CAP_LEVEL } from '@/lib/preislogik';
+import { calculateImpact, calculateImpactCustom, PKG_CAP_LEVEL, WIRKUNGSFOKUS_FREQUENZ } from '@/lib/preislogik';
 import type { PaketKey, CustomImpactResult } from '@/lib/preislogik';
 import { ALL_REGIONS } from '@/lib/regions';
 import type { Region } from '@/lib/regions';
@@ -103,6 +103,10 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
 
   const isCustom = briefing.pfad === 'custom' && !!briefing.customConfig;
   const customConfig: CustomConfig | null = isCustom ? (briefing.customConfig ?? null) : null;
+  const customFKampagne = WIRKUNGSFOKUS_FREQUENZ[customConfig?.wirkungsfokus ?? 'ausgewogen'];
+  const customFWeekly = customConfig && customConfig.laufzeitDays > 0
+    ? customFKampagne / (customConfig.laufzeitDays / 7)
+    : 0;
   const customImpact: CustomImpactResult | null = useMemo(() => {
     if (!isCustom || !customConfig || !selectedRegionsFull.length) return null;
     const start = customConfig.campaignStart ? new Date(customConfig.campaignStart) : undefined;
@@ -243,8 +247,9 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                   <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 10, color: '#7A7596', fontWeight: 600, marginBottom: 4 }}>Frequenz</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{customConfig!.freqWeekly}×/Wo</div>
+                    <div style={{ fontSize: 10, color: '#7A7596', fontWeight: 600, marginBottom: 4 }}>Kampagnenkontakte</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#2D1F52' }}>{customFKampagne}× gesehen</div>
+                    <div style={{ fontSize: 11, color: '#7A7596', marginTop: 2 }}>Ø {customFWeekly.toFixed(1)}×/Wo</div>
                   </div>
                   <div style={{ background: '#F5F3FF', borderRadius: 10, padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, color: '#7A7596', fontWeight: 600, marginBottom: 4 }}>Laufzeit</div>
@@ -350,7 +355,7 @@ export default function StepSummaryPolitik({ briefing, updateBriefing, nextStep,
                 <>
                   <SbRow label="Budget" value={fmtCHF(customConfig.budget)} valueColor="#6B4FBB" />
                   <SbRow label="Laufzeit" value={`${customConfig.laufzeitDays} Tage`} />
-                  <SbRow label="Frequenz" value={`${customConfig.freqWeekly}×/Wo`} />
+                  <SbRow label="Kampagnenkontakte" value={`${customFKampagne}× (Ø ${customFWeekly.toFixed(1)}×/Wo)`} />
                   <SbRow label="Kanal-Mix" value={`${Math.round(customConfig.doohShare * 100)}% DOOH`} />
                   <SbRow label="Start" value={campaignStartISO ? fmtMed(campaignStartISO) : '—'} />
                   <SbRow label="Wahlsonntag" value={briefing.votingDate ? fmtMed(briefing.votingDate) : '—'} valueColor="#BA7517" last />
