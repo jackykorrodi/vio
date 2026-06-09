@@ -281,12 +281,14 @@ function CampaignTimeline({
   const campaignStart = new Date(voteDate.getTime() - laufzeitWochen * 7 * 86400000);
   // Header-Datum darf nicht vor frühestem Start liegen
   const campaignStartDisplay = new Date(Math.max(campaignStart.getTime(), fruehesterStart.getTime()));
-  const handlePct = Math.max(0, Math.min(100, ((campaignStart.getTime() - fruehesterStart.getTime()) / totalMs) * 100));
+  const rangeWeeks = maxWeeks - minWeeks;
+  // Laufzeit-basierte Skala: 0% = minWeeks (14d), 100% = maxWeeks (42d)
+  const handlePct = rangeWeeks > 0
+    ? Math.max(0, Math.min(100, ((laufzeitWochen - minWeeks) / rangeWeeks) * 100))
+    : 100;
 
   function pctToWeeks(pct: number): number {
-    const msFromLeft = fruehesterStart.getTime() + (pct / 100) * totalMs;
-    const daysToVote = (voteDate.getTime() - msFromLeft) / 86400000;
-    return Math.max(minWeeks, Math.min(maxWeeks, Math.round(daysToVote / 7)));
+    return Math.max(minWeeks, Math.min(maxWeeks, Math.round(minWeeks + (pct / 100) * rangeWeeks)));
   }
 
   function handleDrag(e: React.PointerEvent<HTMLDivElement>) {
@@ -297,11 +299,9 @@ function CampaignTimeline({
 
   const tickStep = maxWeeks > 16 ? 4 : maxWeeks > 8 ? 2 : 1;
   const ticks: { pct: number; weeks: number }[] = [];
-  for (let w = maxWeeks; w >= minWeeks; w -= tickStep) {
-    const d = new Date(voteDate.getTime() - w * 7 * 86400000);
-    if (d.getTime() >= fruehesterStart.getTime()) {
-      ticks.push({ pct: ((d.getTime() - fruehesterStart.getTime()) / totalMs) * 100, weeks: w });
-    }
+  for (let w = minWeeks; w <= maxWeeks; w += tickStep) {
+    const pct = rangeWeeks > 0 ? ((w - minWeeks) / rangeWeeks) * 100 : 100;
+    ticks.push({ pct, weeks: w });
   }
 
   return (
@@ -322,17 +322,11 @@ function CampaignTimeline({
       >
         {/* Bahn */}
         <div style={{ position: 'absolute', top: 18, left: 0, right: 0, height: 8, background: T.lineStrong, borderRadius: 999 }} />
-        {/* Sperrzone-Indikator (linke Kante = frühester Start) */}
+        {/* Aktive Zone (links → handle): längere Laufzeit = vollerer Balken */}
         <div style={{
-          position: 'absolute', top: 18, left: 0, width: 14, height: 8,
-          borderRadius: '999px 0 0 999px', pointerEvents: 'none',
-          background: 'repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(107,79,187,0.2) 3px,rgba(107,79,187,0.2) 6px)',
-        }} />
-        {/* Aktive Zone (handle → rechts) */}
-        <div style={{
-          position: 'absolute', top: 18, right: 0, height: 8,
-          width: `${100 - handlePct}%`,
-          background: T.violet, borderRadius: '0 999px 999px 0', pointerEvents: 'none',
+          position: 'absolute', top: 18, left: 0, height: 8,
+          width: `${handlePct}%`,
+          background: T.violet, borderRadius: '999px 0 0 999px', pointerEvents: 'none',
         }} />
         {/* Wochen-Ticks */}
         {ticks.map(t => (
@@ -362,7 +356,7 @@ function CampaignTimeline({
         }} />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.slate }}>
-        <span>{fmtDateShort(fruehesterStart)} (frühester Start)</span>
+        <span>{minWeeks * 7} Tage</span>
         <span style={{ color: T.warn }}>{fmtDateShort(voteDate)} (Wahltag)</span>
       </div>
     </div>
@@ -987,7 +981,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                     {wizardStep === 1 && unlocked(1) && (
                       <div style={{ padding: '0 22px 22px' }}>
                         <p style={{ fontSize: 13, color: T.slate, margin: '0 0 4px', lineHeight: 1.45 }}>
-                          Der orange Punkt ist der Abstimmungstag. Zieh den Start nach links für mehr Vorlauf — wir enden immer rechtzeitig.
+                          Der orange Punkt ist der Abstimmungstag. Zieh nach rechts für eine längere Kampagne — wir starten früher, enden immer am Wahltag.
                         </p>
                         {voteDate && (
                           <CampaignTimeline
