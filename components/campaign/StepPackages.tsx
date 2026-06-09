@@ -9,6 +9,7 @@ import {
   calculateSweetSpotCustom,
   COACH_BUDGET_LOW_RATIO, COACH_BUDGET_HIGH_RATIO,
   WIRKUNGSFOKUS_FREQUENZ,
+  REFERENZ_LAUFZEIT_DAYS,
   getCampaignWindow,
   POLITIK_LAUFZEIT_MAX,
 } from '@/lib/preislogik';
@@ -773,12 +774,17 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
     if (mode !== 'custom' || !sweetSpotCustom || activeHintRaw.tone !== 'good') return activeHintRaw;
     const zoneLow  = sweetSpotCustom.budget * COACH_BUDGET_LOW_RATIO;
     const zoneHigh = sweetSpotCustom.budget * COACH_BUDGET_HIGH_RATIO;
-    const prefix =
-      effectiveBudget < zoneLow
-        ? `Empfohlenes Budget ab ${fmtCHF(sweetSpotCustom.budget)}. `
-        : effectiveBudget <= zoneHigh
-          ? 'Im Sweet Spot. '
-          : 'Starke Kampagne — du nutzt das volle Potenzial dieser Region. ';
+    let prefix: string;
+    if (effectiveBudget < zoneLow) {
+      const rangeLow  = Math.round(sweetSpotCustom.budget * 0.85 / 1000) * 1000;
+      const rangeHigh = Math.round(sweetSpotCustom.budget * 1.15 / 1000) * 1000;
+      const wfLabel = ({ breit: 'Breite Wirkung', ausgewogen: 'Ausgewogen', verankerung: 'Verankerung' } as const)[customConfig.wirkungsfokus ?? 'ausgewogen'];
+      prefix = `${fmtCHF(rangeLow)}–${Math.round(rangeHigh).toLocaleString('de-CH')} · abgestimmt auf ${regionName}, ${wfLabel}. `;
+    } else if (effectiveBudget <= zoneHigh) {
+      prefix = 'Im Sweet Spot. ';
+    } else {
+      prefix = 'Starke Kampagne — du nutzt das volle Potenzial dieser Region. ';
+    }
     return { ...activeHintRaw, text: prefix + activeHintRaw.text };
   })();
 
@@ -1185,7 +1191,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
             {/* Outcome (nur Pfad 'custom', nach Abschluss aller drei Schritte) */}
             {mode === 'custom' && customImpact && doneSteps[0] && doneSteps[1] && doneSteps[2] && (() => {
               const wfKey = customConfig.wirkungsfokus ?? 'ausgewogen';
-              const frequenzKampagne = Math.round(WIRKUNGSFOKUS_FREQUENZ[wfKey] * campaignWindow.effectiveLaufzeitDays / 7);
+              const fWeeklyDisplay = WIRKUNGSFOKUS_FREQUENZ[wfKey];
+              const frequenzKampagne = Math.round(fWeeklyDisplay * campaignWindow.effectiveLaufzeitDays / 7);
               const heroStep = customImpact.reachUniqueLow < 10000 ? 100 : customImpact.reachUniqueLow < 100000 ? 1000 : 5000;
               const heroFloor = Math.floor(customImpact.reachUniqueLow / heroStep) * heroStep;
               const anchor = resolveLandmarkAnchor(customImpact.reachUniqueLow, selectedRegionsFull);
@@ -1214,8 +1221,8 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       </div>
                       <div>
                         <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 50, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 7, color: '#C9B6FF' }}>{frequenzKampagne}×</div>
-                        <div style={{ fontSize: 15, color: 'white', fontWeight: 600, marginBottom: 3 }}>sieht dich jede Person</div>
-                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>über die ganze Laufzeit verteilt</div>
+                        <div style={{ fontSize: 15, color: 'white', fontWeight: 600, marginBottom: 3 }}>gesamt · {fWeeklyDisplay.toFixed(1)}×/Woche</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)' }}>sieht dich jede Person</div>
                       </div>
                     </div>
                     {presence && (
@@ -1232,6 +1239,13 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       </div>
                     )}
                   </div>
+
+                  {/* Laufzeit-Trade-off-Hinweis (nur bei >28d) */}
+                  {campaignWindow.effectiveLaufzeitDays > REFERENZ_LAUFZEIT_DAYS && (
+                    <div style={{ background: T.infoBg, border: '1px solid #D0D6F0', borderRadius: 11, padding: '11px 16px', marginBottom: 12, fontSize: 13, color: T.infoText, lineHeight: 1.5 }}>
+                      Längere Laufzeit verteilt dein Budget auf mehr Wochen — du erreichst etwas weniger Personen, dafür bist du länger präsent.
+                    </div>
+                  )}
 
                   {/* Wohlwollende Bestätigung */}
                   <div style={{ display: 'flex', gap: 13, alignItems: 'flex-start', background: T.goodBg, border: '1px solid #C5DDC5', borderRadius: 14, padding: '14px 18px', marginBottom: 18 }}>

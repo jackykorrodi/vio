@@ -1,15 +1,15 @@
 # VIO Regelkatalog Politik — v3.6
 
 ```yaml
-SPEC_VERSION:     3.11
-LAST_VALIDATED:   2026-06-08
+SPEC_VERSION:     3.12
+LAST_VALIDATED:   2026-06-09
 PFAD_A_STATUS:    Re-Validierung nach Konstanten-Bereinigung (OTS/Delivery entfernt) gegen Soll-Werte v3.6 ausstehend
 PFAD_B_STATUS:    §8.6/§8.7/§8.8 implementiert (Sprint 1+1b) — §12 36 Soll-Werte ausstehend
 PRECEDENCE:       Spec > Code. Bei Konflikt gilt diese Spec; Code wird angeglichen.
 NEXT_VERSION:     keine geplant
 ```
 
-**Status**: Single Source of Truth für die Politik-Preislogik. v3.11 korrigiert Custom-Sweet-Spot mediaplanerisch: SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; SAT 4.0 = Übersättigung, Pakete fahren 0.2–1.3), Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1, nicht mehr fix L1), Politik-Laufzeit-Fenster 14/28/42d als Produktregel (§6.3) für Paket und Custom. Neue §4-Konstante SWEET_SPOT_TARGET_SATURATION. §10 erweitert. — v3.10 bringt die finale Wirkungsprodukt-Logik: Paket-Parameter auf Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5× finalisiert (war 14/28/42d · 3/5/6×). Neue Tier-Budget-Matrix (§4, Status Annahme). Karten zeigen ZWEI absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label. Reach nie als Paket-Vergleich, nie Pool-%. Aufklärungssatz unter Karten (§9.2). EMPFOHLEN-Badge immer auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz), nie reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. v3.9 (frequenz-getriebene Engine) bleibt Basis. v3.8 (Pool-Tier-Budgets, requiresConsultation als Komplexitäts-Trigger) bleibt gültig. Custom-Pfad (Wirkungsfokus-Modell, WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert. — v3.6: Audience-Contacts-Formel bereinigt um `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY`. Diese sind im fixen EK-CPM mit dem Operating-Partner (CHF 25 DOOH / CHF 5 Display pro 1000 Bruttokontakte) bereits eingepreist. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8) und Status-Codes (§7.2) unverändert.
+**Status**: Single Source of Truth für die Politik-Preislogik. v3.12 normalisiert Sweet-Spot-Budget-Empfehlung auf Referenz-Laufzeit (REFERENZ_LAUFZEIT_DAYS=28): Budget-Empfehlung ist laufzeit-stabil, Wirkungsberechnung (calculateImpactCustom) nutzt weiterhin die echte Laufzeit. — v3.11 korrigiert Custom-Sweet-Spot mediaplanerisch: SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; SAT 4.0 = Übersättigung, Pakete fahren 0.2–1.3), Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1, nicht mehr fix L1), Politik-Laufzeit-Fenster 14/28/42d als Produktregel (§6.3) für Paket und Custom. Neue §4-Konstante SWEET_SPOT_TARGET_SATURATION. §10 erweitert. — v3.10 bringt die finale Wirkungsprodukt-Logik: Paket-Parameter auf Sichtbar 21d/3×, Präsenz 28d/4×, Dominanz 35d/5× finalisiert (war 14/28/42d · 3/5/6×). Neue Tier-Budget-Matrix (§4, Status Annahme). Karten zeigen ZWEI absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label. Reach nie als Paket-Vergleich, nie Pool-%. Aufklärungssatz unter Karten (§9.2). EMPFOHLEN-Badge immer auf Präsenz (Politik-Standard: 28d, ausgewogene Frequenz), nie reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. v3.9 (frequenz-getriebene Engine) bleibt Basis. v3.8 (Pool-Tier-Budgets, requiresConsultation als Komplexitäts-Trigger) bleibt gültig. Custom-Pfad (Wirkungsfokus-Modell, WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert. — v3.6: Audience-Contacts-Formel bereinigt um `OTS_DOOH`, `DELIVERY_DOOH`, `DELIVERY_DISPLAY`. Diese sind im fixen EK-CPM mit dem Operating-Partner (CHF 25 DOOH / CHF 5 Display pro 1000 Bruttokontakte) bereits eingepreist. Naming (§3), Caps/Saturation (§5.4–5.6), Optimizer (§7–§8) und Status-Codes (§7.2) unverändert.
 
 ---
 
@@ -499,6 +499,8 @@ Der Sweet-Spot ist der Budget-Punkt, ab dem der Grenzertrag der Reach unter eine
 Schwelle fällt (Eintritt in die Sättigung). Ziel-Sättigungswert: `SWEET_SPOT_TARGET_SATURATION = 1.4` (§4).
 Begründung: Pakete fahren Sättigungswerte 0.2–1.3; 1.4 ist das obere Ende dieses Korridors und markiert den effizienten Grenzertrag-Punkt. SAT 4.0 bedeutet Übersättigung.
 
+**Sweet-Spot rechnet auf Referenz-Laufzeit (v3.12):** Die Budget-Empfehlung (`calculateSweetSpotCustom`) verwendet intern immer `REFERENZ_LAUFZEIT_DAYS = 28`, unabhängig von der vom Nutzer gewählten Laufzeit. Damit ist der Sweet-Spot laufzeit-stabil und vergleichbar. Die tatsächliche Wirkungsberechnung (`calculateImpactCustom`) nutzt weiterhin die echte Laufzeit.
+
 **Cap-Level im Sweet-Spot (fokusabhängig):** Das Cap-Level richtet sich nach dem gewählten Wirkungsfokus:
 
 | Wirkungsfokus  | Sweet-Spot Cap-Level | Mentales Modell                          |
@@ -725,6 +727,7 @@ Folgende Annahmen sind mock-kalibriert. **Anpassungen erfordern eine neue Spec-V
 | Tier-Budget-Matrix (12 Werte) | siehe §4 | Annahme — TODO: Owner für Kalibrierung nach ersten Live-Kampagnen |
 | `SWEET_SPOT_TARGET_SATURATION` | 1.4 | Annahme — TODO: Kalibrierung mit Splicky vor Go-Live |
 | Politik-Laufzeit-Max (§6.3) | 42d | Annahme — TODO: Kalibrierung mit Splicky vor Go-Live |
+| `REFERENZ_LAUFZEIT_DAYS` (Sweet-Spot) | 28 | Annahme — Budget-Empfehlung normalisiert auf 28d (Politik-Standard)
 
 **Verantwortung Kalibrierung**: Dani (Delivery/Ausspielung) nach den ersten 10 Live-Kampagnen.
 
@@ -758,6 +761,7 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 | **v3.8** | **05.06.2026** | **Pool-Tier-Paketmodell: §8.1 ersetzt Min-Budget durch feste Tier-Budgets (4×3-Matrix, §4). Pool-Tiers A/B/C/D nach stimmTotal. Reach/Frequenz sind Output, nicht Preistreiber. Reach-Caps (§5.4) bleiben als Sättigungs-Obergrenze. requiresConsultation neu: Komplexitäts-Trigger (nicht budgetgetrieben), DOMINANZ_CAP_MULTIPLIER als Trigger deprecated. §3 neue Terms pool_tier, tier_budget, wirkungs_titel, wirkungs_subline. §9.1: stabile Wirkungs-Titel (Lokale Sichtbarkeit / Regionale Präsenz / Hohe Präsenz), vierte Karte „Individuell konfigurieren" als eigene Achse, keine Hierarchie zu Standardpaketen. §9.2: Floor-Wording-Regel bei frequency_weekly < F_MIN_WEEKLY (ehrliche Subline statt Ausgrauen/Kürzen). §9.3: Frequenz-Guardrail neu (Badge-Entzug bei frequency_weekly < F_MIN_WEEKLY, Custom-CTA, nie Badge-Verschiebung), Ausführungssequenz mit Schichtgrenze. §10: Tier-Budget-Matrix als Annahme + TODO Owner.** |
 | **v3.9** | **08.06.2026** | **Paket-Engine frequenz-getrieben: §8.1 dokumentiert INPUT = Tier-Budget + Ziel-Frequenz (fix: Sichtbar 3×, Präsenz 5×, Dominanz 6×) + Laufzeit; OUTPUT = Reach. Reach-Formel identisch Custom-Pfad (reachLinear + Hofmans-Sättigung). §9.3: Frequenz-Guardrail (v3.8) entfernt — EMPFOHLEN-Badge sitzt immer auf default_recommended_package (Präsenz). Ausführungssequenz auf 3 Engine-Schritte reduziert. §9.1: Reach als absolute gerundete Zahl in Karten-Hierarchie (Item 3), Pool-% explizit verboten. §9.2: Tier-C/D-Custom-Hint als neue Subline-Zeile.** |
 | **v3.10** | **08.06.2026** | **Finale Wirkungsprodukt-Logik: §8.3 Laufzeiten auf 21/28/35d fixiert (war 14/28/42d). §8.1 Ziel-Frequenz 3/4/5× (war 3/5/6×), Strategie-Spalte (mehr Reichweite / ausgewogen / mehr Wiederholung), Differenzierungshinweis (Reach +13–22%, Gesamtkontakte ~+200%). §4 Neue Tier-Budget-Matrix (CHF, Status Annahme): A 3'500/6'000/10'000, B 5'000/9'000/15'000, C 7'500/14'000/24'000, D 10'000/18'000/30'000. §9.1: Zwei absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label; Reach nie als Vergleich/Ranking. §9.2: Aufklärungssatz unter Karten. §9.3: Badge-Begründung Politik-Standard (28d, ausgewogene Frequenz 4×), nicht reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. Custom-Pfad (WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert.** |
+| **v3.12** | **09.06.2026** | **Sweet-Spot-Budget-Empfehlung auf Referenz-Laufzeit normalisiert (§ Sweet-Spot, §10). `calculateSweetSpotCustom` rechnet intern mit `REFERENZ_LAUFZEIT_DAYS = 28` statt der vom Nutzer gewählten Laufzeit. Budget-Empfehlung ist damit laufzeit-stabil. `calculateImpactCustom` unverändert (echte Laufzeit). Neue §10-Zeile: `REFERENZ_LAUFZEIT_DAYS`.** |
 | **v3.11** | **08.06.2026** | **Custom-Sweet-Spot mediaplanerisch korrigiert. §4: Neue Konstante SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; Pakete 0.2–1.3, effizienter Grenzertrag-Punkt). §6.3 neu: Politik-Laufzeit-Fenster 14/28/42d als Produktregel (N) für Paket und Custom (Custom deckelt nach oben auf 42d, Korridor 14–42d bleibt). Custom-Pfad Sweet-Spot: Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1; war fix L1). §10: SWEET_SPOT_TARGET_SATURATION und Laufzeit-Max als Annahme + TODO Splicky-Kalibrierung ergänzt.** |
 
 ### Geänderte normative Punkte v3.5.2 → v3.5.3
@@ -886,4 +890,4 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 
 ---
 
-**Ende der Spec v3.11.**
+**Ende der Spec v3.12.**

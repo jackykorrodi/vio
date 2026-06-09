@@ -1164,7 +1164,7 @@ export function calculateSweetSpotCustom(
   const stimmTotal = sumStimm(deduped);
   if (stimmTotal === 0) return { budget: 0, reach: 0 };
 
-  const laufzeitWeeks = laufzeitDays / 7;
+  const laufzeitWeeks = REFERENZ_LAUFZEIT_DAYS / 7; // Sweet-Spot-Empfehlung auf Referenz-Laufzeit (28d), laufzeitDays ignoriert
   const zielFrequenz  = WIRKUNGSFOKUS_FREQUENZ[wirkungsfokus];
   const focusLevel    = ({ breit: 3, ausgewogen: 2, verankerung: 1 } as const)[wirkungsfokus];
   const poolCap       = stimmTotal * getReachCap(stimmTotal, focusLevel);
