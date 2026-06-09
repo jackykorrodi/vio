@@ -119,7 +119,7 @@
 
 ## Preislogik (vereinfacht)
 
-**Aktuelle Logik-Version: v3.10 Single Source of Truth (08.06.2026)**
+**Aktuelle Logik-Version: v3.12 Single Source of Truth (09.06.2026)**
 
 - Min Budget (Custom-Pfad): CHF 4'000
 - Pakete (Wirkungsprodukt, §8.1/§8.3): Sichtbar 21d/3×/„mehr Reichweite" | Präsenz 28d/4×/„ausgewogen" | Dominanz 35d/5×/„mehr Wiederholung". Engine frequenz-getrieben: INPUT = Tier-Budget + Ziel-Frequenz + Laufzeit (fix je Paket), OUTPUT = Reach.
@@ -128,7 +128,9 @@
 - DOOH-Vorlauf-Constraint aktiv (§7.0/§7.3 Pfad A, §8.6/§8.7 Pfad B).
 - Pfad A Laufzeit-Granularität: {14, 21, 28, 35, 42} (Budget-First, Archiv-Referenz §7).
 - requiresConsultation (v3.8): Komplexitäts-Trigger (mehrere Regionen ODER spezielle Laufzeit ODER manueller Setup-Bedarf), nicht Budget-Cap.
-- Berechnung: siehe `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.10, Single Source of Truth)
+- **Single Source of Truth Paket-Modus (v3.11):** Karte, Summary-Box, Step-3-Übergabe lesen ALLE aus `buildPackages` (= `packages[selectedPkg]`). Kein `calculateImpact()` mehr im Paket-Modus (behob Dual-Source-Bug: Karte zeigte 6'900, Summary 78'500). `calculateImpact` bedient nur noch Pfad A (Archiv).
+- **Partnercode (v3.11):** Vertriebs-Hebel in Paket UND Custom. Mechanik: internes Impressions-/Budget-Topup (tieferer interner CPM). Wirkung bei fixer Paket-Frequenz/Laufzeit: MEHR REACH (Frequenz + Laufzeit bleiben). Im Paket-Modus via zweitem `buildPackages({partnerCodeBoostPct})`-Aufruf; Summary zeigt geboostete Reach + Delta "inkl. Partnercode +X Personen". Boost relativ: `1/(1−boostPct/100)`, ohne Code Faktor 1 (keine Regression).
+- Berechnung: siehe `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.12, Single Source of Truth)
 
 ### Einkauf-Modell
 - EK CHF 25 DOOH / CHF 5 Display sind Preise gegenüber Operating-Partner (nicht Splicky-Rohpreis)
@@ -136,7 +138,7 @@
 - Splicky-Rohpreise können tiefer liegen — Delta ist Partner-Marge, VIO-irrelevant
 - VIO-Marge 51.9% ist netto nach Partner-Fee gerechnet
 
-### Konstanten (v3.10)
+### Konstanten (v3.11)
 | Konstante | Wert | Hinweis |
 |---|---|---|
 | F_MIN_WEEKLY | 3 | Krugman-Schwelle |
@@ -158,10 +160,14 @@
 | LAUFZEITEN_BASIS | [14,21,28,35,42] | Pfad-A-Laufzeit-Granularität (Archiv, Budget-First) |
 | PAKET_LAUFZEITEN | Sichtbar 21d / Präsenz 28d / Dominanz 35d | Fix je Paket (v3.10) |
 | TIER_BUDGET | A 3'500/6'000/10'000 · B 5'000/9'000/15'000 · C 7'500/14'000/24'000 · D 10'000/18'000/30'000 CHF | Paket-Budget je Pool-Tier (v3.10) |
+| POLITIK_LAUFZEIT_MAX | 42 | Politik-Fenster-Obergrenze (v3.11, §6.3). Deckelt `getLaufzeitCorridor` maxDays nach oben (Budget-Staffelung unten bleibt). |
+| SWEET_SPOT_TARGET_SATURATION | 1.4 | Custom-Sweet-Spot Ziel-Sättigung (v3.11, war 4.0). Annahme. |
 
 **Entfernt in v3.5.2**: `DISPLAY_SPRINT_SWITCH_DAYS = 24`
 **Entfernt in v3.6**: `OTS_DOOH = 1.8`
 **Ersetzt in v3.8**: `DOMINANZ_BUDGET_CAP` → `requiresConsultation` als Komplexitäts-Trigger (nicht Budget-Cap)
+**Geändert in v3.11**: `SWEET_SPOT_TARGET_SATURATION` 4.0 → 1.4; Custom-Laufzeit-Korridor auf max 42d gedeckelt
+**Geändert in v3.12**: `calculateSweetSpotCustom` rechnet Budget-Empfehlung auf `REFERENZ_LAUFZEIT_DAYS = 28` (laufzeit-stabil) statt gewählter Laufzeit; UI Range-Framing + beide Frequenzen + Laufzeit-Trade-off-Hinweis
 
 ---
 
@@ -193,10 +199,13 @@ Frequenz koppelt invers: höhere Frequenz → tieferer reachLinear → tiefere R
 - `available: false` → Reason `setup_vorlauf` (Vorlauf unterschritten) oder `no_inventory` (0 Screens)
 - Inventar-Copy-Regel: UI zeigt je nach Zustand "im Raum + online" vs. "online-only"
 
-### Sweet-Spot über Sättigungsgrad
-- Ziel-Sättigungsgrad `SWEET_SPOT_TARGET_SATURATION = 4.0` (dimensionslos: reachLinear / poolCap)
-- Empirisch kalibriert via 13-Cluster-Smoke (entspricht ~63% des Pool-Caps)
-- `calculateSweetSpotCustom()` → Budget bei dem Sättigungsgrad = 4.0 erreicht wird, pro Wirkungsfokus
+### Sweet-Spot über Sättigungsgrad (korrigiert v3.11/v3.12)
+- Ziel-Sättigungsgrad `SWEET_SPOT_TARGET_SATURATION = 1.4` (dimensionslos: reachLinear / poolCap). War 4.0 = Übersättigung (~63% poolCap) → führte zu absurder Budgetempfehlung (Bern CHF 152k für 16k Personen). 1.4 = oberes Ende des Paket-Sättigungs-Korridors (Pakete fahren 0.2–1.3), effizienter Grenzertrag-Punkt.
+- **Cap-Level fokusabhängig (v3.11):** `breit → Level 3`, `ausgewogen → Level 2`, `verankerung → Level 1` (statt fix Level 1). Hebt erreichbare Personenzahl bei breitem Fokus.
+- **Laufzeit-Deckel (v3.11):** Custom-Laufzeit max 42d (`POLITIK_LAUFZEIT_MAX`, §6.3) — verhindert budget-getriebene Langläufer (84d trieb Budget linear ohne Reach-Gewinn).
+- **Sweet-Spot auf Referenz-Laufzeit (v3.12):** `calculateSweetSpotCustom()` rechnet die Budget-EMPFEHLUNG immer auf `REFERENZ_LAUFZEIT_DAYS = 28` (Politik-Standard), NICHT auf der gewählten Laufzeit. Grund: bei festem Budget = längere Laufzeit weniger Reichweite (Physik), nur mehr Frequenz — die Empfehlung wäre sonst laufzeit-instabil und in Grossregionen überhöht (Zürich 42d ~90k → 28d-Referenz ~60k). Die tatsächliche Wirkung (`calculateImpactCustom`) rechnet UNVERÄNDERT auf der echten gewählten Laufzeit. Trennung: Empfehlung stabil, Wirkung ehrlich.
+- **UI-Framing (v3.12):** Hint = abgestimmte Range ("CHF X–Y · abgestimmt auf {Region}, {Fokus}", OHNE Tage-Angabe weil 28d-Referenz ≠ gewählte Laufzeit). Outcome zeigt IMMER beide Frequenzen: "N× gesamt · M×/Woche". Bei gewählter Laufzeit > 28d: ruhiger Hinweis "längere Laufzeit = etwas weniger Personen, dafür länger präsent" (ehrliche Aufklärung des Trade-offs).
+- Resultat verifiziert: Zürich ausgewogen 28d-Default → ~CHF 60k / 18k Personen / 3.32 CHF/Person (war 90k+). Werte mock-kalibriert — Splicky-Kalibrierung vor Go-Live (§10).
 
 ### Outcome-Panel-Konzept (Phase B — IMPLEMENTIERT 02.06.2026)
 - Komponenten: Reichweite-Hero + Dot-Grid (Stil A) + Präsenz-Story + Ortsanker + Coach-Zeile
