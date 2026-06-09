@@ -778,7 +778,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
       const wfLabel = ({ breit: 'Breite Wirkung', ausgewogen: 'Ausgewogen', verankerung: 'Verankerung' } as const)[customConfig.wirkungsfokus ?? 'ausgewogen'];
       prefix = `${fmtCHF(rangeLow)}–${Math.round(rangeHigh).toLocaleString('de-CH')} · abgestimmt auf ${regionName}, ${wfLabel}. `;
     } else if (effectiveBudget <= zoneHigh) {
-      prefix = 'Im Sweet Spot. ';
+      prefix = 'Im Wirkungsbereich. ';
     } else {
       prefix = 'Starke Kampagne — du nutzt das volle Potenzial dieser Region. ';
     }
@@ -862,6 +862,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               const WF_DESC: Record<'breit' | 'ausgewogen' | 'verankerung', string> =
                 { breit: 'Möglichst viele Menschen erreichen', ausgewogen: 'Gute Balance aus Reichweite & Wiederholung', verankerung: 'Gezielter — dafür sieht dich jede Person öfter' };
               const sweetRounded = sweetSpotCustom && sweetSpotCustom.budget > 0 ? Math.round(sweetSpotCustom.budget / 1000) * 1000 : 0;
+              const kanalFaktor = campaignWindow.modus === 'display_only' ? 'Online-Reichweite' : 'verfügbare Bildschirme';
               const unlocked = (i: number) => i === 0 || doneSteps[i - 1];
               const stState  = (i: number): 'done' | 'active' | 'idle' =>
                 doneSteps[i] && wizardStep !== i ? 'done' : (wizardStep === i && unlocked(i) ? 'active' : 'idle');
@@ -1023,10 +1024,10 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                       <div style={{ padding: '0 22px 22px' }}>
                         {sweetRounded > 0 && (
                           <div style={{ background: `linear-gradient(135deg, ${T.violetDeep}, ${T.violet})`, color: 'white', borderRadius: 14, padding: '18px 20px', marginBottom: 18 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>✦ Unsere Empfehlung für dich</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)', marginBottom: 6 }}>✦ Dein Wirkungsbereich für {regionName}</div>
                             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 7 }}>{fmtCHF(sweetRounded)}</div>
                             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
-                              Bei <strong style={{ color: 'white' }}>{WF_LABEL[wfKey]}</strong> über <strong style={{ color: 'white' }}>{effLauf} Tage</strong> in {regionName} trifft dieses Budget den Sweet Spot — die meiste Wirkung pro Franken.
+                              Bei <strong style={{ color: 'white' }}>{WF_LABEL[wfKey]}</strong> über <strong style={{ color: 'white' }}>{effLauf} Tage</strong> in {regionName} trifft dieses Budget deinen Wirkungsbereich — abgestimmt auf Budget, Frequenz, Laufzeit und {kanalFaktor} in {regionName}.
                             </div>
                           </div>
                         )}
@@ -1059,14 +1060,14 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                           }} />
                           {sweetSpotCustom && sweetSpotCustom.budget > 0 && customBudgetMax > 4000 && (() => {
                             const range     = customBudgetMax - 4000;
-                            const leftPct   = Math.max(0, Math.min(100, ((0.94 * sweetSpotCustom.budget - 4000) / range) * 100));
-                            const rightPct  = Math.max(0, Math.min(100, ((1.06 * sweetSpotCustom.budget - 4000) / range) * 100));
+                            const leftPct   = Math.max(0, Math.min(100, ((0.87 * sweetSpotCustom.budget - 4000) / range) * 100));
+                            const rightPct  = Math.max(0, Math.min(100, ((1.13 * sweetSpotCustom.budget - 4000) / range) * 100));
                             const markerPct = Math.max(0, Math.min(100, ((sweetSpotCustom.budget - 4000) / range) * 100));
                             return (
                               <>
                                 <div style={{ position: 'absolute', top: -3, height: 10, left: `${leftPct}%`, width: `${Math.max(0, rightPct - leftPct)}%`, background: 'rgba(107,79,187,0.18)', borderRadius: 999, pointerEvents: 'none' }} />
                                 <div style={{ position: 'absolute', top: -4, width: 12, height: 12, left: `${markerPct}%`, transform: 'translateX(-50%)', background: T.violet, borderRadius: '50%', opacity: 0.7, pointerEvents: 'none' }} />
-                                <div style={{ position: 'absolute', top: 10, left: `${markerPct}%`, transform: 'translateX(-50%)', fontSize: 10, color: T.violet, whiteSpace: 'nowrap', pointerEvents: 'none', fontWeight: 600 }}>Sweet Spot</div>
+                                <div style={{ position: 'absolute', top: 10, left: `${markerPct}%`, transform: 'translateX(-50%)', fontSize: 10, color: T.violet, whiteSpace: 'nowrap', pointerEvents: 'none', fontWeight: 600 }}>Wirkungsbereich</div>
                               </>
                             );
                           })()}
@@ -1086,7 +1087,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
                           effectiveBudget < zoneLow
                             ? <>Solide Basis. Ab {fmtCHF(sweetRounded)} holst du in {regionName} spürbar mehr Menschen ab.</>
                             : effectiveBudget <= zoneHigh
-                            ? <>Perfekt im Sweet Spot — dein Franken arbeitet hier am effizientesten.</>
+                            ? <>Genau im Wirkungsbereich — abgestimmt auf Budget, Frequenz, Laufzeit und {kanalFaktor}.</>
                             : <>Volle Power: du schöpfst {regionName} fast aus. Mehr bringt nur noch wenig dazu.</>
                         )}
                         <button type="button" style={stepBtn}
@@ -1201,7 +1202,7 @@ export default function Step2PolitikBudget({ briefing, updateBriefing, nextStep,
               const zoneLow  = sweetB * COACH_BUDGET_LOW_RATIO;
               const zoneHigh = sweetB * COACH_BUDGET_HIGH_RATIO;
               const confirm = effectiveBudget < zoneLow
-                ? { title: 'Guter Plan — da geht noch was', text: `Mit etwas mehr Budget holst du spürbar mehr Menschen ab. Ab ${fmtCHF(Math.round(sweetB / 1000) * 1000)} bist du im Sweet Spot für ${regionName}.` }
+                ? { title: 'Guter Plan — da geht noch was', text: `Mit etwas mehr Budget holst du spürbar mehr Menschen ab. Ab ${fmtCHF(Math.round(sweetB / 1000) * 1000)} bist du im Wirkungsbereich für ${regionName}.` }
                 : effectiveBudget <= zoneHigh
                 ? { title: 'Das sitzt.', text: `~${fmtNum(heroFloor)} ${demonym} sehen deine Botschaft im Schnitt ${frequenzKampagne}× — genug, um wirklich hängen zu bleiben. Starke Wahl.` }
                 : { title: 'Volle Power für deine Region', text: `Du schöpfst das Potenzial von ${regionName} aus — fast jede erreichbare Person ist dabei.` };
