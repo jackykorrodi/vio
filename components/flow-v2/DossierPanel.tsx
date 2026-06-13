@@ -10,10 +10,8 @@ import styles from './Shell.module.css';
 // ── Label maps ────────────────────────────────────────────────────────────────
 
 const ART_LABEL: Record<KampagnenArt, string> = {
-  volksinitiative: 'Volksinitiative',
-  referendum:      'Referendum',
-  kandidatur:      'Kandidatur',
-  propositur:      'Propositur',
+  abstimmung: 'Abstimmung',
+  wahlen:     'Wahlen',
 };
 
 const EBENE_LABEL: Record<Ebene, string> = {
