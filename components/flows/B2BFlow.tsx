@@ -16,8 +16,10 @@ const STEP_LABELS = ['Zielgruppe', 'Budget', 'Werbemittel', 'Abschluss', 'Bestä
 const C = {
   primary: '#6B4FBB',
   muted:   '#7A7596',
-  border:  'rgba(107,79,187,0.12)',
-  bg:      '#FDFCFF',
+  border:  'rgba(107,79,187,0.14)',
+  bg:      '#F4F2F9',
+  surface: '#FFFFFF',
+  paper:   '#FFFEFB',
   ink:     '#2D1F52',
 } as const;
 
@@ -70,21 +72,32 @@ export default function B2BFlow({ resumeData }: Props) {
   const STEPS = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
 
   return (
-    <main style={{ minHeight: '100vh', backgroundColor: 'var(--off-white)', position: 'relative' }}>
+    <main style={{ minHeight: '100vh', backgroundColor: C.bg, position: 'relative' }}>
 
-      {/* ── Blobs ── */}
-      {[
-        { color: 'rgba(184,169,232,0.18)', size: 500, x: '10%', y: '15%' },
-        { color: 'rgba(200,223,248,0.16)', size: 440, x: '75%', y: '10%' },
-        { color: 'rgba(212,168,67,0.08)',  size: 320, x: '85%', y: '65%' },
-        { color: 'rgba(184,169,232,0.14)', size: 380, x: '5%',  y: '70%' },
-      ].map((b, i) => (
-        <div key={i} style={{ position: 'fixed', width: `${b.size}px`, height: `${b.size}px`, left: b.x, top: b.y, transform: 'translate(-50%,-50%)', background: `radial-gradient(circle, ${b.color}, transparent 70%)`, filter: 'blur(88px)', zIndex: 0, pointerEvents: 'none' }} />
-      ))}
+      {/* ── Animation styles ── */}
+      <style>{`
+        @keyframes b2b-drift-a { 0%,100%{transform:translate(-50%,-50%) translate(0,0)} 33%{transform:translate(-50%,-50%) translate(40px,-30px)} 66%{transform:translate(-50%,-50%) translate(-20px,50px)} }
+        @keyframes b2b-drift-b { 0%,100%{transform:translate(-50%,-50%) translate(0,0)} 40%{transform:translate(-50%,-50%) translate(-50px,40px)} 75%{transform:translate(-50%,-50%) translate(30px,-40px)} }
+        @keyframes b2b-breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.22)} }
+        @keyframes b2b-rise    { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+        @keyframes b2b-settle  { 0%{transform:scale(.965)} 55%{transform:scale(1.012)} 100%{transform:scale(1)} }
+        .b2b-brand-dot { color:#6B4FBB; display:inline-block; animation:b2b-breathe 4s ease-in-out infinite; }
+        .b2b-rv  { opacity:0; animation:b2b-rise .55s cubic-bezier(.22,.8,.3,1) forwards; animation-delay:calc(var(--i,0)*70ms); }
+        .b2b-settle { animation:b2b-settle .28s ease forwards; }
+        .b2b-aura { pointer-events:none; position:fixed; border-radius:50%; filter:blur(100px); z-index:0; }
+        @media (prefers-reduced-motion:reduce) {
+          .b2b-brand-dot,.b2b-aura,.b2b-settle { animation:none !important; }
+          .b2b-rv { animation:none !important; opacity:1; }
+        }
+      `}</style>
+
+      {/* ── Aura ── */}
+      <div className="b2b-aura" style={{ width: '560px', height: '560px', left: '12%', top: '18%', transform: 'translate(-50%,-50%)', background: 'radial-gradient(circle, rgba(107,79,187,0.15), transparent 70%)', animation: 'b2b-drift-a 26s ease-in-out infinite' }} />
+      <div className="b2b-aura" style={{ width: '480px', height: '480px', left: '78%', top: '55%', transform: 'translate(-50%,-50%)', background: 'radial-gradient(circle, rgba(107,79,187,0.11), transparent 70%)', animation: 'b2b-drift-b 32s ease-in-out infinite' }} />
 
       {/* ── Nav ── */}
-      <nav style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(253,252,255,.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: showLabels ? '8px 28px' : '0 28px' }}>
-        <a href="/" style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 800, color: C.primary, textDecoration: 'none', letterSpacing: '-.02em' }}>VIO</a>
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, backgroundColor: 'rgba(244,242,249,.92)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderBottom: `1px solid ${C.border}`, minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: showLabels ? '8px 28px' : '0 28px' }}>
+        <a href="/" style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 800, color: C.ink, textDecoration: 'none', letterSpacing: '-.02em' }}>VIO<span className="b2b-brand-dot">.</span></a>
         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
           {STEPS.map((step, i) => {
             const done   = displayStep > step;

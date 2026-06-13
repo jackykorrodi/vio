@@ -271,7 +271,25 @@ export default function Step1Entry({ briefing, updateBriefing, onAnalysisDone, o
 
         {/* Type cards */}
         <div style={card}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+            {/* Stimmbevölkerung — neuer Flow */}
+            <div
+              onClick={() => { window.location.href = '/politik/neu'; }}
+              style={{
+                padding: '18px', borderRadius: '10px',
+                border: `2px solid ${C.border}`, background: C.bg,
+                cursor: 'pointer', transition: 'all .2s', position: 'relative',
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: '-10px', right: '14px',
+                fontSize: '10px', fontWeight: 700, letterSpacing: '.06em',
+                background: '#15A37E', color: '#fff',
+                padding: '2px 10px', borderRadius: 99,
+              }}>NEU</span>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: C.taupe }}>Stimmbevölkerung</div>
+              <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>Abstimmungen, Kandidaturen &amp; politische Botschaften</div>
+            </div>
             {[
               { value: 'b2c' as const, ico: '', name: 'Privatkunden (B2C)', desc: 'Menschen, Haushalte, Bevölkerung' },
               { value: 'b2b' as const, ico: '', name: 'Geschäftskunden (B2B)', desc: 'Firmen, Entscheider, Fachleute' },

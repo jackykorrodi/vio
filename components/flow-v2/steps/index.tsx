@@ -1,6 +1,7 @@
 'use client';
 
 import { useFlow, type Mode } from '../FlowContext';
+import styles from '../Shell.module.css';
 export { Anker } from './Anker';
 export { Wen } from './Wen';
 export { Budget } from './Budget';
@@ -65,11 +66,13 @@ export function Weiche() {
 
   return (
     <div>
-      <Eyebrow>Schritt 2 · Einstieg</Eyebrow>
-      <StepTitle>Wie möchtet ihr planen?</StepTitle>
-      <Sub>Wählt euren Einstieg — ihr könnt jederzeit wechseln.</Sub>
+      <div className={styles.rv} style={{ '--i': 0 } as React.CSSProperties}>
+        <Eyebrow>Schritt 2 · Einstieg</Eyebrow>
+        <StepTitle>Wie möchtet ihr planen?</StepTitle>
+        <Sub>Wählt euren Einstieg — ihr könnt jederzeit wechseln.</Sub>
+      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 540 }}>
+      <div className={styles.rv} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 540, '--i': 1 } as React.CSSProperties}>
         {MODUS_CARDS.map(card => (
           <button
             key={card.mode}
@@ -107,7 +110,7 @@ export function Weiche() {
         ))}
       </div>
 
-      <p style={{ fontSize: 13, color: '#857DA0', marginTop: 16, lineHeight: 1.5, maxWidth: 540 }}>
+      <p className={styles.rv} style={{ fontSize: 13, color: '#857DA0', marginTop: 16, lineHeight: 1.5, maxWidth: 540, '--i': 2 } as React.CSSProperties}>
         {mode === 'geführt'
           ? 'Geführt gewählt — VIO schlägt vor, ihr entscheidet.'
           : 'Impactbuchung gewählt — ihr setzt alle Eckwerte selbst.'}

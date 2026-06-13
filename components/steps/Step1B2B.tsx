@@ -148,8 +148,15 @@ export default function Step1B2B({ updateBriefing, onComplete }: Props) {
   const removeKanton = (value: string) =>
     setSelectedKantone(prev => prev.filter(v => v !== value));
 
+  const settle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    el.classList.remove('b2b-settle');
+    void el.offsetWidth;
+    el.classList.add('b2b-settle');
+  };
+
   return (
-    <section style={{ backgroundColor: '#FDFCFF', position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+    <section style={{ backgroundColor: '#F4F2F9', position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
 
       {/* Background blobs */}
       {[
@@ -171,23 +178,25 @@ export default function Step1B2B({ updateBriefing, onComplete }: Props) {
 
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '40px 20px 80px', position: 'relative', zIndex: 1 }}>
 
-        {/* Eyebrow */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{ width: 18, height: 2, background: '#6B4FBB', borderRadius: 2 }} />
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#D4A843' }}>
-            Schritt 1 · B2B Kampagne
-          </span>
+        <div className="b2b-rv" style={{ '--i': 0 } as React.CSSProperties}>
+          {/* Eyebrow */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ width: 18, height: 2, background: '#6B4FBB', borderRadius: 2 }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase' as const, color: '#D4A843' }}>
+              Schritt 1 · B2B Kampagne
+            </span>
+          </div>
+
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px,2.4vw,34px)', fontWeight: 800, letterSpacing: '-.025em', color: '#2D1F52', marginBottom: '6px' }}>
+            Deine Zielgruppe
+          </h1>
+          <p style={{ fontSize: '14px', color: '#7A7596', fontWeight: 300, lineHeight: 1.6, marginBottom: '32px' }}>
+            Wähle Branche, Region und Unternehmensgrösse für deine B2B-Kampagne.
+          </p>
         </div>
 
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px,2.4vw,34px)', fontWeight: 800, letterSpacing: '-.025em', color: '#2D1F52', marginBottom: '6px' }}>
-          Deine Zielgruppe
-        </h1>
-        <p style={{ fontSize: '14px', color: '#7A7596', fontWeight: 300, lineHeight: 1.6, marginBottom: '32px' }}>
-          Wähle Branche, Region und Unternehmensgrösse für deine B2B-Kampagne.
-        </p>
-
         {/* Main card */}
-        <div style={{ background: 'white', borderRadius: '24px', padding: '40px', border: '1px solid rgba(107,79,187,0.09)', boxShadow: '0 4px 24px rgba(107,79,187,0.06)' }}>
+        <div className="b2b-rv" style={{ background: 'white', borderRadius: '24px', padding: '40px', border: '1px solid rgba(107,79,187,0.09)', boxShadow: '0 4px 24px rgba(107,79,187,0.06)', '--i': 1 } as React.CSSProperties}>
 
           {/* ── BRANCHE ─────────────────────────────────────────────────────── */}
           <div style={{ marginBottom: '24px' }}>
@@ -199,7 +208,8 @@ export default function Step1B2B({ updateBriefing, onComplete }: Props) {
                   <button
                     key={b.code}
                     type="button"
-                    onClick={() => toggleBranche(b.code)}
+                    className="b2b-chip"
+                    onClick={e => { settle(e); toggleBranche(b.code); }}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: active ? '#EDE8FF' : 'white', border: active ? '2px solid #6B4FBB' : '1.5px solid rgba(107,79,187,0.14)', borderRadius: '100px', padding: '7px 14px', fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: active ? 700 : 500, color: active ? '#6B4FBB' : '#7A7596', cursor: 'pointer', transition: 'all .18s' }}
                     onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#F5F2FF'; e.currentTarget.style.borderColor = '#6B4FBB'; e.currentTarget.style.color = '#6B4FBB'; } }}
                     onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = 'rgba(107,79,187,0.14)'; e.currentTarget.style.color = '#7A7596'; } }}
@@ -255,7 +265,7 @@ export default function Step1B2B({ updateBriefing, onComplete }: Props) {
                 onChange={e => { setQuery(e.target.value); setDropdownOpen(true); }}
                 onFocus={e => { setDropdownOpen(true); e.currentTarget.style.borderColor = '#6B4FBB'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(107,79,187,0.10)'; }}
                 onBlur={e => { setTimeout(() => setDropdownOpen(false), 200); e.currentTarget.style.borderColor = 'rgba(107,79,187,0.15)'; e.currentTarget.style.boxShadow = 'none'; }}
-                style={{ width: '100%', boxSizing: 'border-box' as const, border: '1.5px solid rgba(107,79,187,0.15)', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', fontFamily: 'var(--font-sans)', color: '#2D1F52', background: '#FDFCFF', outline: 'none', transition: 'border-color .2s, box-shadow .2s' }}
+                style={{ width: '100%', boxSizing: 'border-box' as const, border: '1.5px solid rgba(107,79,187,0.15)', borderRadius: '12px', padding: '12px 16px', fontSize: '15px', fontFamily: 'var(--font-sans)', color: '#2D1F52', background: '#F4F2F9', outline: 'none', transition: 'border-color .2s, box-shadow .2s' }}
               />
               {dropdownOpen && filteredKantone.length > 0 && (
                 <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'white', border: '1px solid rgba(107,79,187,0.12)', borderRadius: '12px', boxShadow: '0 8px 24px rgba(44,44,62,.12)', maxHeight: '280px', overflowY: 'auto' as const, zIndex: 100 }}>
@@ -288,7 +298,8 @@ export default function Step1B2B({ updateBriefing, onComplete }: Props) {
                   <button
                     key={g.value}
                     type="button"
-                    onClick={() => toggleGroesse(g.value)}
+                    className="b2b-chip"
+                    onClick={e => { settle(e); toggleGroesse(g.value); }}
                     style={{ background: active ? '#F5F2FF' : 'white', border: active ? '2px solid #6B4FBB' : '1.5px solid rgba(107,79,187,0.10)', borderRadius: '16px', padding: '18px 12px', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: '4px', cursor: 'pointer', transition: 'all .18s' }}
                     onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = 'rgba(107,79,187,0.28)'; e.currentTarget.style.background = '#F5F2FF'; } }}
                     onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = 'rgba(107,79,187,0.10)'; e.currentTarget.style.background = 'white'; } }}
