@@ -35,7 +35,7 @@ export const STEP_LABELS: Record<StepId, string> = {
 
 // ─── Anker-State ─────────────────────────────────────────────────────────────
 
-export type KampagnenArt = 'volksinitiative' | 'referendum' | 'kandidatur' | 'propositur';
+export type KampagnenArt = 'abstimmung' | 'wahlen';
 export type Ebene = 'eidgenoessisch' | 'kantonal' | 'kommunal';
 
 export interface WahlSonntag {

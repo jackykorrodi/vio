@@ -10,27 +10,38 @@ import { klassifiziereMehrereRegionen } from '@/lib/region-buchbarkeit';
 
 // ── Static data ───────────────────────────────────────────────────────────────
 
-// TODO: Replace with live Urnengang-Quelle (BK/ch.ch API)
-const WAHLSONNTAGE: WahlSonntag[] = [
-  { date: '2026-09-27', label: '27. September 2026', meta: 'Eidg. · kantonal · kommunal' },
-  { date: '2026-11-29', label: '29. November 2026', meta: 'Kantonal · kommunal' },
-  { date: '2027-03-07', label: '7. März 2027',       meta: 'Eidg. · kantonal · kommunal' },
-  { date: '2027-06-13', label: '13. Juni 2027',       meta: 'Eidg. · kantonal · kommunal' },
-  { date: '2027-09-26', label: '26. September 2027',  meta: 'Eidg. · kantonal · kommunal' },
-  { date: '2027-11-28', label: '28. November 2027',   meta: 'Kantonal · kommunal' },
+// Offizielle Schweizer Abstimmungssonntage (sync mit Step1Politik.tsx / CH_ABSTIMMUNGSSONNTAGE)
+const CH_ISO = [
+  '2026-06-14',
+  '2026-09-27',
+  '2026-11-29',
+  '2027-03-07',
+  '2027-06-13',
+  '2027-09-28',
+  '2027-11-28',
+  '2028-03-12',
+  '2028-06-11',
 ];
+const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function fmtLongDE(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return `${d.getDate()}. ${MONTHS_DE[d.getMonth()]} ${d.getFullYear()}`;
+}
+const WAHLSONNTAGE: WahlSonntag[] = CH_ISO.map(date => ({
+  date,
+  label: fmtLongDE(date),
+  meta: 'Eidg. · kantonal · kommunal',
+}));
 
 const ARTEN: Array<{ id: KampagnenArt; label: string }> = [
-  { id: 'volksinitiative', label: 'Volksinitiative' },
-  { id: 'referendum',      label: 'Referendum' },
-  { id: 'kandidatur',      label: 'Kandidatur' },
-  { id: 'propositur',      label: 'Propositur' },
+  { id: 'abstimmung', label: 'Abstimmung' },
+  { id: 'wahlen',     label: 'Wahlen' },
 ];
 
 const EBENEN: Array<{ id: Ebene; label: string }> = [
   { id: 'eidgenoessisch', label: 'Eidgenössisch' },
   { id: 'kantonal',       label: 'Kantonal' },
-  { id: 'kommunal',       label: 'Kommunal' },
+  { id: 'kommunal',       label: 'Gemeinde' },
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -226,7 +237,7 @@ export function Anker() {
       </div>
 
       {/* Geo */}
-      <div className={styles.rv} style={{ '--i': 2 } as React.CSSProperties}>
+      <div className={styles.rv} style={{ '--i': 2, position: 'relative', zIndex: 1 } as React.CSSProperties}>
         <Field label="Zielgebiet">
           <QuickPicks
             ebene={anker.ebene}
@@ -268,9 +279,6 @@ export function Anker() {
               );
             })}
           </div>
-          <p style={{ fontSize: 12, color: '#857DA0', marginTop: 10, lineHeight: 1.5 }}>
-            TODO: Urnengang-Quelle (BK/ch.ch) für vollständige Liste
-          </p>
         </Field>
       </div>
     </div>
