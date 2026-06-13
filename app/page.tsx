@@ -145,6 +145,17 @@ export default function HomePage() {
                 </div>
                 <div style={{ fontFamily:'var(--font-display)', fontSize:'11px', fontWeight:500, letterSpacing:'.07em', padding:'5px 13px', borderRadius:'20px', background:C.primary, color:'white', whiteSpace:'nowrap', flexShrink:0, textTransform:'uppercase' }}>Politik</div>
               </a>
+              {/* Politik v2 — neuer Flow */}
+              <a href="/politik/neu" style={{ display:'flex', alignItems:'center', gap:'20px', padding:'22px 24px', borderRadius:'18px', border:'1.5px solid #15A37E', background:'#F0FBF7', cursor:'pointer', textDecoration:'none', transition:'all .22s', userSelect:'none' as const }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLAnchorElement).style.background = '#E6F7F2'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.transform = 'none'; (e.currentTarget as HTMLAnchorElement).style.background = '#F0FBF7'; }}>
+                <div style={{ width:'18px', height:'18px', borderRadius:'50%', border:'1.5px solid #15A37E', flexShrink:0 }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'22px', fontWeight:700, color:'#0D7A5F', marginBottom:'3px', letterSpacing:'-.01em' }}>Stimmbevölkerung</div>
+                  <div style={{ fontFamily:'var(--font-sans)', fontSize:'15px', fontWeight:400, color:'#2D7A60', lineHeight:1.4 }}>Abstimmungen, Kandidaturen &amp; politische Botschaften</div>
+                </div>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:'11px', fontWeight:600, letterSpacing:'.07em', padding:'5px 13px', borderRadius:'20px', background:'#15A37E', color:'white', whiteSpace:'nowrap', flexShrink:0, textTransform:'uppercase' }}>NEU</div>
+              </a>
               {/* B2B */}
               <a href="/campaign?type=b2b" style={{ display:'flex', alignItems:'center', gap:'20px', padding:'22px 24px', borderRadius:'18px', border:'1.5px solid rgba(107,79,187,0.15)', background:'white', cursor:'pointer', textDecoration:'none', transition:'all .22s', userSelect:'none' as const }}
                 onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = C.primary; (e.currentTarget as HTMLAnchorElement).style.background = '#FAFAFE'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)'; }}
