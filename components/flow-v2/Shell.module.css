@@ -444,7 +444,7 @@
 
 /* prefers-reduced-motion — kill everything */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  .shell * {
     animation: none !important;
     transition: none !important;
   }
