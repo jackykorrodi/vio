@@ -1,0 +1,482 @@
+/* §2 Layout — DESIGN-v7-lebendes-dossier.md */
+
+.shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 228px minmax(0, 1fr) clamp(380px, 36vw, 480px);
+  grid-template-rows: 100vh;
+  max-width: 1640px;
+  margin: 0 auto;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Rail ─────────────────────────────────────────────────────────────── */
+
+.rail {
+  padding: 30px 18px 26px 28px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #E6E1F2;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.brand {
+  font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: #2D1F52;
+  margin-bottom: 4px;
+}
+
+.brandDot {
+  color: #6B4FBB;
+  display: inline-block;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.railSub {
+  font-size: 12px;
+  color: #857DA0;
+  margin-bottom: 34px;
+  line-height: 1.4;
+}
+
+.stepsWrap {
+  position: relative;
+  flex: 1;
+}
+
+.stepsLine {
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  bottom: 14px;
+  width: 2px;
+  background: #E6E1F2;
+  border-radius: 2px;
+}
+
+.stepsProgress {
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  width: 2px;
+  background: #6B4FBB;
+  border-radius: 2px;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepsProgress::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6B4FBB;
+  box-shadow: 0 0 0 3px #EFEBF9;
+}
+
+.stepsList {
+  list-style: none;
+}
+
+.stepItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 0;
+}
+
+.stepBtn {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: none;
+  border: none;
+  cursor: default;
+  color: #857DA0;
+  font-size: 13.5px;
+  font-family: var(--font-sans, 'Jost', sans-serif);
+  padding: 0;
+  text-align: left;
+  width: 100%;
+  transition: color 0.3s;
+}
+
+.stepBtn:not(:disabled) {
+  cursor: pointer;
+}
+
+.stepBtn:not(:disabled):hover {
+  color: #6B4FBB;
+}
+
+.stepDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #E6E1F2;
+  background: #F4F2F9;
+  flex-shrink: 0;
+  transition: all 0.3s;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Active step */
+.stepItem.active .stepBtn {
+  color: #2D1F52;
+  font-weight: 600;
+  cursor: default;
+}
+
+.stepItem.active .stepDot {
+  border-color: #6B4FBB;
+  background: #fff;
+  box-shadow: 0 0 0 4px #EFEBF9;
+}
+
+.stepItem.active .stepDot::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #6B4FBB;
+}
+
+/* Done step */
+.stepItem.done .stepBtn {
+  color: #2D1F52;
+}
+
+.stepItem.done .stepDot {
+  border-color: #6B4FBB;
+  background: #6B4FBB;
+}
+
+.railFoot {
+  font-size: 11px;
+  color: #857DA0;
+  line-height: 1.5;
+  border-top: 1px solid #E6E1F2;
+  padding-top: 14px;
+  margin-top: auto;
+}
+
+/* ── Flow column ────────────────────────────────────────────────────────── */
+
+.flow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.flowScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 54px clamp(28px, 4.5vw, 72px) 30px;
+}
+
+.flowContent {
+  max-width: 640px;
+}
+
+.footer {
+  padding: 18px clamp(28px, 4.5vw, 72px) 26px;
+  border-top: 1px solid #E6E1F2;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.footerRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  max-width: 640px;
+}
+
+.btnBack {
+  font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+  font-weight: 700;
+  font-size: 15.5px;
+  border: none;
+  border-radius: 14px;
+  padding: 15px 8px;
+  cursor: pointer;
+  background: transparent;
+  color: #857DA0;
+  transition: color 0.18s;
+}
+
+.btnBack:hover {
+  color: #2D1F52;
+}
+
+.btnNext {
+  font-family: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+  font-weight: 700;
+  font-size: 15.5px;
+  border: none;
+  border-radius: 14px;
+  padding: 15px 26px;
+  cursor: pointer;
+  background: #6B4FBB;
+  color: #fff;
+  flex: 1;
+  max-width: 380px;
+  box-shadow: 0 10px 24px -10px rgba(107, 79, 187, 0.55);
+  transition: all 0.18s;
+}
+
+.btnNext:hover:not(:disabled) {
+  background: #5840A0;
+  transform: translateY(-1px);
+}
+
+.btnNext:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── Dossier column ─────────────────────────────────────────────────────── */
+
+.dossier {
+  padding: 34px clamp(18px, 2.4vw, 40px) 34px 10px;
+  overflow-y: auto;
+  border-left: 1px solid #E6E1F2;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .shell {
+    grid-template-columns: 64px minmax(0, 1fr) clamp(320px, 36vw, 420px);
+  }
+
+  .rail {
+    padding: 24px 0;
+    align-items: center;
+  }
+
+  .railSub,
+  .stepLabel {
+    display: none;
+  }
+
+  .brand {
+    font-size: 16px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    margin-bottom: 20px;
+  }
+
+  .stepBtn {
+    justify-content: center;
+    gap: 0;
+  }
+
+  .stepsLine,
+  .stepsProgress {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Range-Slider ────────────────────────────────────────────────────────── */
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 99px;
+  background: #EFEBF9;
+  outline: none;
+  cursor: pointer;
+  margin: 8px 0 5px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #6B4FBB;
+  cursor: pointer;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 10px rgba(107, 79, 187, 0.45);
+}
+
+.slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #6B4FBB;
+  cursor: pointer;
+  border: 3px solid #fff;
+}
+
+/* ── Motion Layer ────────────────────────────────────────────────────────────── */
+
+/* breathe — logo dot (class merged into .brandDot above) */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.22); }
+}
+
+/* rise — step entry stagger (set --i on each child) */
+.rv {
+  opacity: 0;
+  animation: rise 0.55s cubic-bezier(0.22, 0.8, 0.3, 1) forwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* settle — chip/card click feedback */
+.settle {
+  animation: settle 0.28s ease;
+}
+
+@keyframes settle {
+  0%   { transform: scale(0.965); }
+  60%  { transform: scale(1.012); }
+  100% { transform: scale(1); }
+}
+
+/* vflip — dossier value change */
+.vflip {
+  animation: vflip 0.35s ease;
+}
+
+@keyframes vflip {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* inkdot — section fills (applied via .justInk on the section) */
+@keyframes inkdot {
+  0%   { opacity: 0; transform: translateX(-6px) scale(0.4); }
+  30%  { opacity: 1; transform: translateX(0) scale(1.2); }
+  100% { opacity: 0; transform: translateX(14px) scale(0.6); }
+}
+
+/* active section pulse dot */
+.dSecEditing::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6B4FBB;
+  margin-right: 7px;
+  vertical-align: middle;
+  animation: lamp 2.4s ease-in-out infinite;
+}
+
+@keyframes lamp {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.7); }
+}
+
+/* ink-dot after section label on first fill */
+.dSecJustInk::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6B4FBB;
+  margin-left: 8px;
+  vertical-align: middle;
+  animation: inkdot 0.9s ease forwards;
+}
+
+/* pulse-ring on Weiter button */
+.pulse {
+  animation: nextpulse 0.9s ease 1;
+}
+
+@keyframes nextpulse {
+  45% {
+    box-shadow: 0 0 0 9px rgba(107, 79, 187, 0.16), 0 10px 24px -10px rgba(107, 79, 187, 0.55);
+  }
+}
+
+/* flyDot — fixed position travelling dot */
+.vdot {
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #6B4FBB;
+  box-shadow: 0 0 0 5px rgba(107, 79, 187, 0.16), 0 2px 10px rgba(107, 79, 187, 0.5);
+  z-index: 60;
+  pointer-events: none;
+  opacity: 1;
+  transition: all 0.65s cubic-bezier(0.3, 0.7, 0.3, 1);
+}
+
+/* prefers-reduced-motion — kill everything */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .rv {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 920px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .rail {
+    display: none;
+  }
+
+  .flow {
+    overflow: visible;
+  }
+
+  .flowScroll {
+    overflow: visible;
+  }
+
+  .dossier {
+    padding: 20px;
+    border-left: none;
+    border-top: 1px solid #E6E1F2;
+  }
+}

@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO — Geführter Flow v7 · Lebendes Dossier (Prototyp)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --violet:#6B4FBB;--violet-700:#5840A0;--ink:#2D1F52;
+    --violet-soft:#EFEBF9;--violet-tint:#F6F3FC;
+    --bg:#F4F2F9;--surface:#FFFFFF;--paper:#FFFEFB;--line:#E6E1F2;--muted:#857DA0;
+    --go:#15A37E;--warn:#C98A2B;--alert:#BC5640;
+    --display:'Plus Jakarta Sans',system-ui,sans-serif;--body:'Jost',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--body);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow:hidden}
+
+  /* ambient aura */
+  .aura{position:fixed;inset:-20%;z-index:0;pointer-events:none;filter:blur(80px);opacity:.55}
+  .aura i{position:absolute;border-radius:50%}
+  .aura i:nth-child(1){width:46vw;height:46vw;left:-8vw;top:-12vw;background:radial-gradient(circle,#DCD2F5 0%,transparent 65%);animation:drift1 26s ease-in-out infinite alternate}
+  .aura i:nth-child(2){width:38vw;height:38vw;right:-6vw;bottom:-10vw;background:radial-gradient(circle,#E9E2FA 0%,transparent 65%);animation:drift2 32s ease-in-out infinite alternate}
+  @keyframes drift1{to{transform:translate(6vw,8vh) scale(1.12)}}
+  @keyframes drift2{to{transform:translate(-7vw,-6vh) scale(1.08)}}
+
+  .app{position:relative;z-index:1;display:grid;grid-template-columns:228px minmax(0,1fr) clamp(380px,36vw,480px);height:100vh;max-width:1640px;margin:0 auto}
+
+  /* ───────── rail ───────── */
+  .rail{padding:30px 18px 26px 28px;display:flex;flex-direction:column;border-right:1px solid var(--line);background:rgba(255,255,255,.4);backdrop-filter:blur(6px)}
+  .brand{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;margin-bottom:6px}.brand span{color:var(--violet)}
+  .rail-sub{font-size:12px;color:var(--muted);margin-bottom:34px;line-height:1.4}
+  .rsteps{position:relative;flex:1}
+  .rsteps::before{content:'';position:absolute;left:7px;top:10px;bottom:14px;width:2px;background:var(--line);border-radius:2px}
+  .rline{position:absolute;left:7px;top:10px;width:2px;background:var(--violet);border-radius:2px;transition:height .6s cubic-bezier(.4,0,.2,1);height:0}
+  .rline::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 3px var(--violet-soft)}
+  .rstep{position:relative;display:flex;align-items:center;gap:13px;padding:9px 0;cursor:default;color:var(--muted);font-size:13.5px;transition:color .3s}
+  .rstep .rdot{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);background:var(--bg);flex-shrink:0;transition:all .3s;position:relative;z-index:1}
+  .rstep.done{color:var(--ink);cursor:pointer}
+  .rstep.done .rdot{border-color:var(--violet);background:var(--violet)}
+  .rstep.done .rdot::after{content:'';position:absolute;inset:3px;border-radius:50%;background:#fff;clip-path:polygon(14% 50%,40% 76%,86% 24%,76% 14%,40% 56%,24% 40%);background:#fff}
+  .rstep.now{color:var(--ink);font-weight:600}
+  .rstep.now .rdot{border-color:var(--violet);background:#fff;box-shadow:0 0 0 4px var(--violet-soft)}
+  .rstep.now .rdot::before{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--violet)}
+  .rstep:hover.done{color:var(--violet)}
+  .rail-foot{font-size:11px;color:var(--muted);line-height:1.5;border-top:1px solid var(--line);padding-top:14px}
+
+  /* ───────── flow column ───────── */
+  .flow{display:flex;flex-direction:column;min-width:0}
+  .flow-scroll{flex:1;overflow-y:auto;padding:54px clamp(28px,4.5vw,72px) 30px}
+  .step{display:none;max-width:640px}
+  .step.active{display:block}
+  .step.active .rv{opacity:0;animation:rise .55s cubic-bezier(.22,.8,.3,1) forwards;animation-delay:calc(var(--i,0)*70ms)}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--violet);margin-bottom:12px}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,2.6vw,36px);line-height:1.12;letter-spacing:-.02em;margin-bottom:10px}
+  .sub{color:var(--muted);font-size:16px;line-height:1.55;margin-bottom:30px;max-width:520px}
+  .flabel{font-size:13.5px;font-weight:600;margin-bottom:9px;display:block}
+  .field{margin-bottom:26px}
+  .hintsm{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:9px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{font-size:14.5px;padding:10px 17px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;transition:all .18s}
+  .chip:hover{border-color:var(--violet);transform:translateY(-1px)}
+  .chip.on{background:var(--violet);border-color:var(--violet);color:#fff;box-shadow:0 6px 16px -6px rgba(107,79,187,.5)}
+
+  .termine{display:flex;flex-direction:column;gap:9px;max-width:460px}
+  .term{display:flex;align-items:center;justify-content:space-between;border:1.5px solid var(--line);border-radius:14px;padding:13px 17px;cursor:pointer;transition:all .18s;background:var(--surface)}
+  .term:hover{border-color:var(--violet);transform:translateY(-1px)}
+  .term.on{border-color:var(--violet);background:var(--violet-tint);box-shadow:inset 0 0 0 1px var(--violet)}
+  .term-d{font-weight:600;font-size:14.5px}.term-meta{font-size:11.5px;color:var(--muted)}.term.on .term-meta{color:var(--violet)}
+
+  .gsearch{position:relative;max-width:560px}
+  .gsearch input{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;font-family:var(--body);font-size:15px;color:var(--ink);background:var(--surface)}
+  .gsearch input:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px var(--violet-soft)}
+  .gresults{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;box-shadow:0 18px 40px -18px rgba(45,31,82,.35);z-index:10;overflow:hidden;display:none}
+  .gresults.show{display:block;animation:rise .25s}
+  .gres{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;cursor:pointer;font-size:14px}
+  .gres:hover{background:var(--violet-tint)}
+  .gres .typ{font-size:11px;color:var(--muted);letter-spacing:.04em}
+  .gres.na{color:#B6AECB;cursor:default}.gres.na:hover{background:transparent}.gres.na .typ{color:#B6AECB}
+  .gquick{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .gsel{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .schip{display:inline-flex;align-items:center;gap:8px;background:var(--violet);color:#fff;border-radius:99px;padding:8px 10px 8px 15px;font-size:13.5px;animation:rise .25s}
+  .schip button{border:none;background:rgba(255,255,255,.25);color:#fff;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .geo-sum{font-size:13px;color:var(--muted);margin-top:11px}.geo-sum b{color:var(--violet);font-weight:600}
+
+  .check{margin-top:22px;border-radius:15px;border:1.5px solid var(--line);overflow:hidden;background:var(--surface);max-width:560px}
+  .check-head{display:flex;align-items:center;gap:12px;padding:15px 17px}
+  .spinner{width:19px;height:19px;border:2.5px solid var(--violet-soft);border-top-color:var(--violet);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .check.ok .check-head{background:#E3F4EE}.check.ok{border-color:var(--go)}
+  .tick{width:21px;height:21px;border-radius:50%;background:var(--go);display:none;align-items:center;justify-content:center;flex-shrink:0}.tick svg{width:12px;height:12px}
+  .check.ok .tick{display:flex}.check.ok .spinner{display:none}
+  .check-title{font-weight:600;font-size:14.5px}.check.ok .check-title{color:var(--go)}
+  .check-detail{padding:0 17px;max-height:0;overflow:hidden;transition:max-height .4s,padding .4s}
+  .check.ok .check-detail{max-height:120px;padding:0 17px 15px}
+  .check-detail p{font-size:13.5px;color:var(--muted);line-height:1.5}.check-detail b{color:var(--ink);font-weight:600}
+
+  .modes{display:flex;flex-direction:column;gap:14px;max-width:540px}
+  .mode{border:1.5px solid var(--line);border-radius:20px;padding:22px;cursor:pointer;background:var(--surface);transition:all .18s;position:relative}
+  .mode:hover{border-color:var(--violet);transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(45,31,82,.35)}
+  .mode.on{border-color:var(--violet);background:var(--violet-tint);box-shadow:inset 0 0 0 1px var(--violet)}
+  .mode-top{display:flex;align-items:center;gap:14px;margin-bottom:9px}
+  .mode-ic{width:46px;height:46px;border-radius:14px;background:var(--violet-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}.mode-ic svg{width:24px;height:24px}
+  .mode-t{font-family:var(--display);font-weight:800;font-size:19px}.mode-d{font-size:14.5px;color:var(--muted);line-height:1.5}
+  .mode-tag{position:absolute;top:-10px;right:18px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:var(--violet);color:#fff;padding:3px 11px;border-radius:99px}
+  .mode-tag.ghosttag{background:var(--line);color:var(--muted)}
+  .mode-note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5;min-height:18px;max-width:540px}
+  .shake{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+  .q{margin-bottom:30px;max-width:540px}
+  .q-title{font-weight:600;font-size:16px;line-height:1.3;margin-bottom:12px}
+  .slider-wrap{padding:4px 2px}
+  input[type=range].vslider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;background:var(--violet-soft);outline:none;margin:8px 0 5px}
+  input[type=range].vslider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;border-radius:50%;background:var(--violet);cursor:pointer;border:3px solid #fff;box-shadow:0 2px 10px rgba(107,79,187,.45)}
+  input[type=range].vslider::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--violet);cursor:pointer;border:3px solid #fff;box-shadow:0 2px 10px rgba(107,79,187,.45)}
+  .slider-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:15px}
+  .slider-val{text-align:center;font-family:var(--display);font-weight:700;font-size:16px;color:var(--violet);background:var(--violet-tint);border-radius:12px;padding:12px;transition:transform .2s}
+  .slider-val.pop{animation:pop .25s}
+  @keyframes pop{50%{transform:scale(1.04)}}
+  .toggle{display:flex;background:var(--violet-tint);border-radius:12px;padding:3px;margin-bottom:14px;max-width:380px}
+  .toggle button{flex:1;border:none;background:transparent;font-family:var(--body);font-size:14px;font-weight:500;padding:10px;border-radius:9px;cursor:pointer;color:var(--muted);transition:all .15s}
+  .toggle button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(45,31,82,.12)}
+  .tgcontent{display:none}.tgcontent.show{display:block}
+  .pills{display:flex;flex-wrap:wrap;gap:9px}
+  .pill{border:1.5px solid var(--line);border-radius:13px;padding:11px 15px;cursor:pointer;font-size:14.5px;transition:all .16s;background:var(--surface)}
+  .pill:hover{border-color:var(--violet)}.pill.on{border-color:var(--violet);background:var(--violet-tint);box-shadow:inset 0 0 0 1px var(--violet);font-weight:600}.pill.dis{opacity:.4;pointer-events:none}
+
+  .wille{display:flex;flex-direction:column;gap:10px;max-width:480px}
+  .wille .opt{display:flex;align-items:center;gap:13px;border:1.5px solid var(--line);border-radius:15px;padding:17px 18px;cursor:pointer;background:var(--surface);transition:all .18s}
+  .wille .opt:hover{border-color:var(--violet);transform:translateY(-1px)}
+  .wille .opt.on{border-color:var(--violet);background:var(--violet-tint);box-shadow:inset 0 0 0 1px var(--violet)}
+  .wille .opt .quote{font-size:16px;font-weight:500}
+  .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex-shrink:0;transition:all .16s}
+  .wille .opt.on .radio{border-color:var(--violet);background:var(--violet);box-shadow:inset 0 0 0 3.5px #fff}
+  .budget-inp{margin-top:14px;display:none;max-width:480px}.budget-inp.show{display:block;animation:rise .4s}
+  .budget-inp .row{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:14px;padding:14px 17px;background:var(--surface)}
+  .budget-inp .row span{font-family:var(--display);font-weight:700;color:var(--muted)}
+  .budget-inp input{border:none;font-family:var(--display);font-weight:800;font-size:22px;color:var(--ink);width:100%;background:transparent}.budget-inp input:focus{outline:none}
+
+  /* einschätzung step (left = controls) */
+  .point-right{display:flex;align-items:center;gap:14px;background:var(--violet-tint);border:1px solid var(--violet-soft);border-radius:16px;padding:16px 18px;margin-bottom:28px;max-width:540px}
+  .point-right svg{width:26px;height:26px;flex-shrink:0;animation:nudge 1.8s ease-in-out infinite}
+  @keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+  .point-right p{font-size:14.5px;line-height:1.5;color:var(--ink)}
+  .adjust-card{border:1.5px solid var(--line);border-radius:18px;background:var(--surface);padding:6px 20px;max-width:540px}
+  .adj-row{display:flex;align-items:center;justify-content:space-between;padding:15px 0;border-bottom:1px solid var(--line);gap:12px;flex-wrap:wrap}
+  .adj-row:last-child{border-bottom:none}
+  .adj-row label{font-size:14.5px;font-weight:600}
+  .stepper{display:flex;align-items:center;gap:11px}
+  .stepper button{width:32px;height:32px;border-radius:9px;border:1.5px solid var(--line);background:#fff;font-size:18px;line-height:1;cursor:pointer;color:var(--violet);font-family:var(--display);transition:all .15s}
+  .stepper button:hover{border-color:var(--violet);background:var(--violet-tint)}
+  .stepper span{font-family:var(--display);font-weight:700;font-size:16px;min-width:86px;text-align:center}
+  .seg-mini{display:flex;gap:6px}
+  .seg-mini button{border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px 11px;font-size:12.5px;cursor:pointer;font-family:var(--body);color:var(--ink);transition:all .15s}
+  .seg-mini button:hover{border-color:var(--violet)}
+  .seg-mini button.on{border-color:var(--violet);background:var(--violet-tint);color:var(--violet);font-weight:600}
+  .adj-link{font-size:13.5px;color:var(--violet);cursor:pointer}
+  .adj-note{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5;font-style:italic;min-height:20px;max-width:540px}
+  .sov{font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.5;max-width:540px}
+
+  .mittel{display:flex;flex-direction:column;gap:12px;max-width:560px}
+  .mittel .opt{display:flex;gap:15px;align-items:flex-start;border:1.5px solid var(--line);border-radius:17px;padding:18px;cursor:pointer;background:var(--surface);transition:all .18s;position:relative}
+  .mittel .opt:hover{border-color:var(--violet);transform:translateY(-1px)}
+  .mittel .opt.on{border-color:var(--violet);background:var(--violet-tint);box-shadow:inset 0 0 0 1px var(--violet)}.mittel .opt.rec{border-color:var(--violet)}
+  .sicon{width:44px;height:44px;border-radius:13px;background:var(--violet-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}.sicon svg{width:22px;height:22px}
+  .stext b{display:block;font-weight:600;font-size:15.5px;margin-bottom:3px}.stext span{font-size:13.5px;color:var(--muted);line-height:1.45}
+  .tag{position:absolute;top:-10px;right:15px;font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:99px}
+  .tag-rec{background:var(--violet);color:#fff}.tag-soon{background:var(--line);color:var(--muted)}
+
+  /* impactpfad: freie eckwerte */
+  .dates{display:flex;gap:10px;max-width:480px}
+  .dates label{flex:1;display:block}
+  .dates .dlbl{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;display:block;font-weight:600}
+  .dates input{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;font-family:var(--display);font-weight:700;font-size:14px;color:var(--ink);background:var(--surface)}
+  .dates input:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px var(--violet-soft)}
+  .optq{max-width:540px;margin-top:4px;border-top:1px solid var(--line)}
+  .optq summary{cursor:pointer;list-style:none;font-size:14px;font-weight:600;color:var(--muted);padding:13px 0 11px}
+  .optq summary::-webkit-details-marker{display:none}
+  .optq summary::after{content:' +';color:var(--violet)}
+  .optq[open] summary::after{content:' −'}
+  .optq[open] summary{color:var(--violet)}
+  .optq-body{padding:4px 0 6px}
+
+  /* final paths */
+  .paths{display:flex;flex-direction:column;gap:11px;margin:24px 0 6px}
+  .path{display:flex;align-items:center;gap:14px;border:1.5px solid var(--line);border-radius:16px;padding:16px 18px;cursor:pointer;background:var(--surface);transition:all .18s}
+  .path:hover{border-color:var(--violet);transform:translateY(-1px)}
+  .path.prim{border-color:var(--violet);background:var(--violet-tint)}
+  .path b{display:block;font-size:15.5px;font-weight:600;margin-bottom:2px}
+  .path span{font-size:13px;color:var(--muted);line-height:1.4;display:block}
+  .final-meta{font-size:12.5px;color:var(--muted);line-height:1.65;margin-top:18px}
+  .final-meta b{color:var(--ink);font-weight:600}
+
+  /* wow scene */
+  .stage{display:grid;grid-template-columns:1.55fr 1fr;gap:13px;max-width:560px;margin-bottom:20px;align-items:stretch}
+  .stage .scene{margin-bottom:0;max-width:none}
+  .phonecase{border-radius:20px;background:linear-gradient(180deg,#F0ECF9,#DFD8F1);position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 50px -24px rgba(45,31,82,.4);height:100%;min-height:200px}
+  .phonemock{width:64%;background:#1F1640;border-radius:20px;padding:6px;box-shadow:0 14px 30px -10px rgba(45,31,82,.55)}
+  .pscreen{background:#fff;border-radius:15px;overflow:hidden;padding-bottom:8px}
+  .pnav{padding:9px 10px 7px;border-bottom:1px solid #EEE9F6;font-family:var(--display);font-weight:800;font-size:9px;color:var(--ink);letter-spacing:.04em}
+  .pline{height:7px;border-radius:4px;background:#EFEBF9;margin:8px 10px 0}
+  .pline.w1{width:68%}.pline.w2{width:46%}
+  .pad{margin:9px 9px 0;border-radius:9px;background:var(--violet);color:#fff;padding:12px 10px;font-family:var(--display);font-weight:800;font-size:11px;line-height:1.2;position:relative;overflow:hidden}
+  .pad::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.2) 50%,transparent 70%);background-size:250% 100%;animation:shimmer 3.2s linear infinite}
+  .pad small{display:block;font-family:var(--body);font-weight:500;font-size:7.5px;opacity:.85;margin-top:5px;position:relative}
+  .stage-lbl{font-size:11px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.4}
+  .scene{border-radius:20px;overflow:hidden;margin-bottom:20px;background:linear-gradient(180deg,#DCD6EC 0%,#CFC8E4 55%,#B9B0D6 55%,#A89ECB 100%);aspect-ratio:16/11;position:relative;display:flex;align-items:flex-end;justify-content:center;max-width:560px;box-shadow:0 24px 50px -24px rgba(45,31,82,.4)}
+  .scene-glare{position:absolute;top:0;left:0;right:0;height:60%;background:linear-gradient(180deg,rgba(255,255,255,.35),transparent)}
+  .silh{position:absolute;bottom:0;background:rgba(45,31,82,.32);border-radius:40% 40% 0 0;animation:sway 7s ease-in-out infinite alternate}
+  @keyframes sway{to{transform:translateX(4px)}}
+  .citylight{width:32%;background:#6E6486;border-radius:8px 8px 0 0;margin-bottom:9%;padding:5px 5px 0;box-shadow:0 14px 36px -8px rgba(45,31,82,.5);position:relative}
+  .screen{border-radius:4px 4px 0 0;overflow:hidden;position:relative;background:var(--violet);min-height:220px}
+  .poster{position:absolute;inset:0;padding:19px 15px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;animation:kenburns 9s ease-in-out infinite alternate}
+  @keyframes kenburns{from{transform:scale(1)}to{transform:scale(1.07)}}
+  .poster-top{font-family:var(--display);font-weight:800;font-size:10.5px;letter-spacing:.05em;opacity:.9}
+  .claimwrap{position:relative;flex:1;display:flex;align-items:center}
+  .claim{position:absolute;font-family:var(--display);font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-.01em;opacity:0}
+  .claim.c1{animation:swap1 6s ease-in-out infinite}.claim.c2{animation:swap2 6s ease-in-out infinite}
+  @keyframes swap1{0%,42%{opacity:1;transform:translateY(0)}50%,92%{opacity:0;transform:translateY(-8px)}100%{opacity:1}}
+  @keyframes swap2{0%,42%{opacity:0;transform:translateY(8px)}50%,92%{opacity:1;transform:translateY(0)}100%{opacity:0}}
+  .poster-foot{font-size:10px;font-weight:500;opacity:.9;border-top:1px solid rgba(255,255,255,.3);padding-top:7px}
+  .post{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:9px;height:9%;background:#6E6486}
+  .live-dot{position:absolute;top:11px;right:11px;display:flex;align-items:center;gap:6px;background:rgba(45,31,82,.55);padding:4px 9px;border-radius:99px;font-size:10px;color:#fff;font-weight:600;letter-spacing:.04em}
+  .live-dot i{width:6px;height:6px;border-radius:50%;background:#5BE0A8;animation:blink 1.4s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .signals{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:16px;max-width:560px}
+  .sig{border:1.5px solid var(--line);border-radius:15px;padding:14px 15px;background:var(--surface)}
+  .sig-lbl{font-size:12px;color:var(--muted);line-height:1.3;margin-bottom:9px;min-height:30px}
+  .sig-val{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:15.5px;color:var(--go)}
+  .sig-val .lamp{width:11px;height:11px;border-radius:50%;background:var(--go);animation:lamp 2.4s ease-in-out infinite}
+  @keyframes lamp{0%,100%{box-shadow:0 0 0 0 rgba(21,163,126,.4)}50%{box-shadow:0 0 0 6px rgba(21,163,126,0)}}
+  .saying{background:var(--ink);border-radius:17px;padding:19px 20px;color:#fff;margin-bottom:16px;max-width:560px}
+  .saying-pre{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#B9AEE0;margin-bottom:9px}
+  .saying-q{font-family:var(--display);font-weight:700;font-size:19px;line-height:1.3}
+  .wow-note{font-size:12px;color:var(--muted);line-height:1.5;max-width:560px}
+
+  /* final */
+  .final{max-width:540px}
+  .final-mark{width:62px;height:62px;border-radius:50%;background:#E3F4EE;display:flex;align-items:center;justify-content:center;margin-bottom:22px}.final-mark svg{width:30px;height:30px}
+  .final p{color:var(--muted);font-size:16px;line-height:1.6;margin-bottom:10px}
+  .final .doc{background:var(--violet-tint);border:1px solid var(--violet-soft);border-radius:15px;padding:17px 18px;margin:20px 0 4px;font-size:14px;line-height:1.6}.final .doc b{font-weight:600}
+
+  /* footer nav */
+  .footer{padding:18px clamp(28px,4.5vw,72px) 26px;border-top:1px solid var(--line);background:rgba(255,255,255,.55);backdrop-filter:blur(8px)}
+  .footer-row{display:flex;gap:12px;align-items:center;max-width:640px}
+  .btn{font-family:var(--display);font-weight:700;font-size:15.5px;border:none;border-radius:14px;padding:15px 26px;cursor:pointer;transition:all .18s}
+  .btn-primary{background:var(--violet);color:#fff;flex:1;max-width:380px;box-shadow:0 10px 24px -10px rgba(107,79,187,.55)}
+  .btn-primary:hover{background:var(--violet-700);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;color:var(--muted);padding:15px 8px}.btn-ghost:hover{color:var(--ink)}
+  .softlink{font-size:13px;color:var(--muted);margin-top:12px;cursor:pointer;display:none}.softlink:hover{color:var(--violet)}
+
+  /* ───────── dossier ───────── */
+  .dossier-wrap{padding:34px clamp(18px,2.4vw,40px) 34px 10px;overflow-y:auto}
+  .paper{background:var(--paper);border-radius:18px;box-shadow:0 30px 70px -30px rgba(45,31,82,.35),0 6px 18px -8px rgba(45,31,82,.14);border:1px solid #EDE8F7;padding:30px 30px 36px;position:relative;min-height:calc(100vh - 120px)}
+  .paper::before{content:'';position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:0 4px 4px 0;background:linear-gradient(180deg,var(--violet),#9C86D9)}
+  .p-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+  .p-brand{font-family:var(--display);font-weight:800;font-size:17px}.p-brand span{color:var(--violet)}
+  .p-status{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1.5px solid var(--line);color:var(--muted);border-radius:99px;padding:4px 11px;transition:all .4s}
+  .p-status.ready{border-color:var(--go);color:var(--go);background:#E3F4EE}
+  .p-title{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em;margin-bottom:3px}
+  .p-date{font-size:12px;color:var(--muted);margin-bottom:24px}
+  .d-sec{padding:15px 0;border-top:1px solid var(--line);transition:all .3s;position:relative}
+  .d-sec:first-of-type{border-top:none}
+  .d-lbl{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  .d-sec.editing .d-lbl{color:var(--violet)}
+  .d-sec.editing .d-lbl::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--violet);margin-right:7px;vertical-align:middle;animation:lamp 2.4s ease-in-out infinite}
+  .d-sec.hiddenSec{display:none}
+  .d-ghost{display:flex;flex-direction:column;gap:7px}
+  .d-ghost i{height:9px;border-radius:6px;background:#F1EDF9;display:block}
+  .d-sec.editing .d-ghost i{background:linear-gradient(90deg,#EFEBF9 25%,#F8F6FD 50%,#EFEBF9 75%);background-size:200% 100%;animation:shimmer 1.8s linear infinite}
+  .d-ghost i:nth-child(1){width:72%}.d-ghost i:nth-child(2){width:48%}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  .d-fill{display:none}
+  .d-sec.filled .d-ghost{display:none}
+  .d-sec.filled .d-fill{display:block;animation:inkIn .55s cubic-bezier(.22,.8,.3,1)}
+  @keyframes inkIn{from{opacity:0;transform:translateY(8px);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
+  .d-main{font-size:14.5px;line-height:1.55}
+  .d-main b{font-weight:600}
+  .d-soft{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .d-chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .d-chip{font-size:12px;border:1px solid var(--line);background:#fff;border-radius:99px;padding:4px 10px;color:var(--ink)}
+  .d-ok{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--go);font-weight:600;margin-top:8px}
+  .d-ok .mini{width:14px;height:14px;border-radius:50%;background:var(--go);display:inline-flex;align-items:center;justify-content:center}.d-ok .mini svg{width:8px;height:8px}
+  .d-ziel{font-family:var(--display);font-weight:700;font-size:16.5px;line-height:1.35;letter-spacing:-.01em;margin-bottom:12px}
+  .d-note{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.55;margin-bottom:12px}
+  .d-note .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:6px;animation:lamp 2.6s ease-in-out infinite}
+  .dot.lo{background:var(--go)}.dot.mid{background:var(--warn)}.dot.hi{background:var(--alert)}
+  .d-note .lev{color:var(--muted);font-size:12.5px}
+  .d-reco{border-left:3px solid var(--violet);padding:3px 0 3px 14px}
+  .d-reco-why{font-size:13.5px;line-height:1.5;font-weight:500}
+  .d-facts{display:grid;grid-template-columns:1fr 1fr;gap:11px 14px;margin-top:12px}
+  .df-lbl{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  .df-val{font-family:var(--display);font-weight:800;font-size:15.5px;color:var(--ink);letter-spacing:-.01em;display:inline-block}
+  .d-fact.df-hero .df-val{color:var(--violet);font-size:19px}
+  .d-why{margin-top:12px}
+  .d-why summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none;display:inline-block}
+  .d-why summary::-webkit-details-marker{display:none}
+  .d-why summary::after{content:' +';color:var(--violet)}
+  .d-why[open] summary::after{content:' −'}
+  .d-why-body{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:7px}
+  .d-kanal{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .d-kcard{border:1px solid var(--line);border-radius:11px;padding:10px 11px;background:#fff}
+  .d-kcard b{display:block;font-size:12px;margin-bottom:3px;color:var(--violet);font-weight:600}
+  .d-kcard span{font-size:11.5px;color:var(--muted);line-height:1.4;display:block}
+  .d-mini-scene{margin-top:9px;border-radius:11px;background:var(--violet);color:#fff;padding:13px 14px;font-family:var(--display);font-weight:800;font-size:14px;line-height:1.2;position:relative;overflow:hidden}
+  .d-mini-scene::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.18) 50%,transparent 70%);background-size:250% 100%;animation:shimmer 3.2s linear infinite}
+  .d-mini-foot{font-size:10px;font-weight:500;opacity:.85;margin-top:8px;font-family:var(--body)}
+  .seal{position:absolute;right:26px;bottom:30px;width:96px;height:96px;border-radius:50%;border:2.5px solid var(--violet);color:var(--violet);display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:.1em;text-transform:uppercase;line-height:1.4;transform:rotate(-12deg) scale(0);opacity:0;background:rgba(246,243,252,.85)}
+  .seal.show{animation:stamp .5s cubic-bezier(.2,1.6,.4,1) forwards}
+  @keyframes stamp{from{transform:rotate(-12deg) scale(1.8);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:1}}
+
+  /* der punkt lebt */
+  .brand span,.p-brand span{display:inline-block;animation:breathe 4s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
+  .vdot{position:fixed;width:12px;height:12px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 5px rgba(107,79,187,.16),0 2px 10px rgba(107,79,187,.5);z-index:60;pointer-events:none;opacity:1;transition:all .65s cubic-bezier(.3,.7,.3,1)}
+  .checkdot{width:14px;height:14px;border-radius:50%;background:var(--violet);flex-shrink:0;animation:checkpulse 1s ease-in-out infinite}
+  @keyframes checkpulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(107,79,187,.35)}50%{transform:scale(1.15);box-shadow:0 0 0 8px rgba(107,79,187,0)}}
+  .check.ok .checkdot{display:none}
+  .d-sec.justInk .d-lbl::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--violet);margin-left:8px;vertical-align:middle;animation:inkdot .9s ease forwards}
+  @keyframes inkdot{0%{opacity:0;transform:translateX(-6px) scale(.4)}30%{opacity:1;transform:translateX(0) scale(1.2)}100%{opacity:0;transform:translateX(14px) scale(.6)}}
+
+  /* subtile gesten */
+  @keyframes settle{0%{transform:scale(.965)}60%{transform:scale(1.012)}100%{transform:scale(1)}}
+  .settle{animation:settle .28s ease}
+  .vflip{animation:vflip .35s ease}
+  @keyframes vflip{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .ticks{display:flex;justify-content:space-between;padding:0 12px;margin:-2px 0 6px}
+  .ticks i{width:4px;height:4px;border-radius:50%;background:#D8D0ED}
+  .btn-primary.pulse{animation:nextpulse .9s ease 1}
+  @keyframes nextpulse{45%{box-shadow:0 0 0 9px rgba(107,79,187,.16),0 10px 24px -10px rgba(107,79,187,.55)}}
+
+  .demo-tag{position:fixed;bottom:14px;left:14px;z-index:5;font-size:11px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:5px 11px;border-radius:99px}
+
+  /* responsive */
+  @media (max-width:1180px){.app{grid-template-columns:64px minmax(0,1fr) clamp(340px,36vw,420px)}.rail{padding:26px 10px}.rail .brand{font-size:0}.rail .brand span{font-size:24px}.rail-sub,.rail-foot,.rstep .rlabel{display:none}.rstep{justify-content:center}.rsteps::before,.rline{left:50%;margin-left:-1px}}
+  @media (max-width:920px){
+    body{overflow:auto}
+    .app{display:block;height:auto}
+    .rail{display:none}
+    .flow-scroll{padding:34px 22px 20px}
+    .footer{position:sticky;bottom:0}
+    .dossier-wrap{padding:10px 22px 40px;overflow:visible}
+    .paper{min-height:0}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.claim.c1{opacity:1}.claim.c2{opacity:0}.step.active .rv{opacity:1}}
+</style>
+</head>
+<body>
+<div class="aura"><i></i><i></i></div>
+<div class="demo-tag">VIO · Prototyp v7 «Lebendes Dossier» · Demo-Werte</div>
+
+<div class="app">
+
+  <!-- rail -->
+  <aside class="rail">
+    <div class="brand">vio<span>.</span></div>
+    <div class="rail-sub">Geführte Planung</div>
+    <div class="rsteps" id="rsteps"><div class="rline" id="rline"></div></div>
+    <div class="rail-foot">Frequenz, Standorte und Kanal-Mix regeln wir im Hintergrund.</div>
+  </aside>
+
+  <!-- flow -->
+  <main class="flow">
+    <div class="flow-scroll" id="scrollbody">
+
+      <section class="step" data-screen="anker">
+        <div class="eyebrow rv" style="--i:0">Worum geht es</div>
+        <h1 class="rv" style="--i:1">Worum geht es — und wo?</h1>
+        <p class="sub rv" style="--i:2">Wir prüfen sofort, ob eure Gebiete buchbar sind. Rechts entsteht dabei euer Dossier.</p>
+        <div class="field rv" style="--i:3"><label class="flabel">Art</label><div class="chips" id="art"><div class="chip">Wahl</div><div class="chip on">Abstimmung</div></div></div>
+        <div class="field rv" style="--i:4"><label class="flabel">Ebene</label><div class="chips" id="ebene"><div class="chip on">Eidgenössisch</div><div class="chip">Kantonal</div><div class="chip">Kommunal</div></div><div class="hintsm" id="ebeneHint"></div></div>
+        <div class="field rv" style="--i:5"><label class="flabel">Wo wollt ihr präsent sein?</label>
+          <div class="gsearch"><input id="geoSearch" type="text" placeholder="Gemeinde, Bezirk oder Kanton tippen …" autocomplete="off"><div class="gresults" id="geoResults"></div></div>
+          <div class="gquick" id="geoQuick"></div>
+          <div class="gsel" id="geoSel"></div>
+          <div class="geo-sum" id="geoSum"></div>
+        </div>
+        <div class="field rv" style="--i:6"><label class="flabel">Wann ist der Termin?</label><div class="termine" id="termine">
+          <div class="term on" data-date="2026-09-27"><span class="term-d">So, 27. September 2026</span><span class="term-meta">eidg. · kantonal · kommunal</span></div>
+          <div class="term" data-date="2026-11-29"><span class="term-d">So, 29. November 2026</span><span class="term-meta">eidg. · kantonal</span></div>
+          <div class="term" data-date="2027-03-07"><span class="term-d">So, 7. März 2027</span><span class="term-meta">eidg. · kantonal · kommunal</span></div>
+        </div></div>
+        <div class="check rv" style="--i:7" id="check"><div class="check-head"><div class="checkdot"></div><div class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="check-title" id="checktitle">Prüfe Verfügbarkeit …</div></div><div class="check-detail"><p><b>Buchbar in euren Gebieten.</b> 38 DOOH-Standorte und Display-Flächen verfügbar.</p></div></div>
+      </section>
+
+      <section class="step" data-screen="weiche">
+        <div class="eyebrow rv" style="--i:0">Wie weiter</div>
+        <h1 class="rv" style="--i:1">Gemeinsam durchdenken — oder weisst du's schon?</h1>
+        <p class="sub rv" style="--i:2">Eure Gebiete sind gesetzt. Jetzt entscheidet ihr die Flughöhe.</p>
+        <div class="modes rv" style="--i:3" id="modes">
+          <div class="mode on" data-v="guided"><span class="mode-tag">Beim ersten Mal</span><div class="mode-top"><div class="mode-ic"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6B4FBB" stroke-width="2"/><path d="M12 8l2.5 5.5L12 16l-2.5-2.5L12 8z" fill="#6B4FBB"/></svg></div><div class="mode-t">Gemeinsam planen</div></div><div class="mode-d">Wir schauen eure Lage an und empfehlen, was passt — mit Einschätzung und Vorschau.</div></div>
+          <div class="mode" data-v="quick"><div class="mode-top"><div class="mode-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="#6B4FBB" stroke-width="2" stroke-linejoin="round"/></svg></div><div class="mode-t">Impactbuchung</div></div><div class="mode-d">Ihr wisst, was ihr wollt. Laufzeit und Budget bestimmt ihr selbst — direkt zu Paket und Sujet.</div></div>
+        </div>
+        <div class="mode-note rv" style="--i:4" id="modeNote"></div>
+      </section>
+
+      <section class="step" data-screen="wen">
+        <div class="eyebrow rv" style="--i:0">Wen wollt ihr erreichen</div>
+        <h1 class="rv" style="--i:1">Wen wollt ihr bewegen?</h1>
+        <p class="sub rv" style="--i:2">Das steuert, wo wir präsent sind — und wie wir die Gebiete gewichten.</p>
+        <div class="q rv" style="--i:3">
+          <div class="q-title">Worauf legt ihr den Schwerpunkt?</div>
+          <div class="slider-wrap">
+            <input type="range" min="0" max="4" step="1" value="1" class="vslider" id="fokusSlider">
+            <div class="ticks"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="slider-ends"><span>eigene Basis</span><span>Unentschlossene</span></div>
+            <div class="slider-val" id="fokusVal"></div>
+          </div>
+          <div class="hintsm">Kein «beides» — eine klare Tendenz hilft uns, die Gebiete richtig zu gewichten.</div>
+        </div>
+        <div class="q rv" style="--i:4;margin-bottom:0">
+          <div class="q-title">Und wen konkret?</div>
+          <div class="toggle" id="zgToggle"><button data-t="partei" class="on">Nach Partei</button><button data-t="milieu">Nach Milieu</button></div>
+          <div class="tgcontent show" data-tg="partei"><div class="pills" id="parteien">
+            <div class="pill" data-v="SVP">SVP</div><div class="pill" data-v="SP">SP</div><div class="pill" data-v="Mitte">Die Mitte</div><div class="pill" data-v="FDP">FDP</div><div class="pill" data-v="Grüne">Grüne</div><div class="pill" data-v="GLP">GLP</div><div class="pill" data-v="EVP">EVP</div>
+          </div></div>
+          <div class="tgcontent" data-tg="milieu"><div class="pills" id="milieu">
+            <div class="pill" data-v="laendlich">Ländlich-konservativ</div><div class="pill" data-v="urban">Urbane Junge</div><div class="pill" data-v="mitte">Akademische Mitte</div><div class="pill" data-v="familien">Familien & Pendler</div><div class="pill" data-v="aeltere">Ältere / Pensionierte</div>
+          </div></div>
+          <div class="hintsm">Daraus finden wir die passenden Gemeinden — aus den Nationalratswahlen 2023. Max. 2.</div>
+        </div>
+      </section>
+
+      <section class="step" data-screen="budget">
+        <div class="eyebrow rv" style="--i:0">Budget</div>
+        <h1 class="rv" style="--i:1">Habt ihr ein Budget — oder sollen wir empfehlen?</h1>
+        <p class="sub rv" style="--i:2">Mit Empfehlung schlagen wir die sinnvolle Grösse für eure Lage vor.</p>
+        <div class="wille rv" style="--i:3" id="budgetMode">
+          <div class="opt" data-v="haben"><div class="radio"></div><div class="quote">Wir haben ein Budget</div></div>
+          <div class="opt on" data-v="empfehlung"><div class="radio"></div><div class="quote">Empfehlt uns die richtige Grösse</div></div>
+        </div>
+        <div class="budget-inp rv" style="--i:4" id="budgetInp"><div class="row"><span>CHF</span><input id="budgetVal" type="text" inputmode="numeric" value="6'000"></div><div class="hintsm" style="margin-top:9px">Minimum CHF 4'000. Wir sagen ehrlich, ob es für euer Gebiet reicht.</div></div>
+      </section>
+
+      <section class="step" data-screen="einschaetzung">
+        <div class="eyebrow rv" style="--i:0">Der Moment</div>
+        <h1 class="rv" style="--i:1">Unsere Einschätzung steht.</h1>
+        <p class="sub rv" style="--i:2">Sie ist rechts in euer Dossier geschrieben — Zielbild, Ausgangslage, Empfehlung. Auf eure Angaben zugeschnitten.</p>
+        <div class="point-right rv" style="--i:3"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12h15m0 0l-6-6m6 6l-6 6" stroke="#6B4FBB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><p>Lest die Einschätzung im Dossier. Wenn etwas nicht passt, justiert hier — die Konsequenz seht ihr sofort.</p></div>
+        <div class="adjust-card rv" style="--i:4">
+          <div class="adj-row"><label>Budget</label><div class="stepper"><button data-d="-500">−</button><span id="adjBudget">CHF 6'000</span><button data-d="500">+</button></div></div>
+          <div class="adj-row"><label>Laufzeit<div class="hintsm" style="margin-top:3px;font-weight:400">Gleiche Summe, anders verteilt: kurz heisst dichter, lang heisst dünner.</div></label><div class="seg-mini" id="adjLauf"><button data-v="kurz">Kurz &amp; dicht</button><button data-v="empfohlen" class="on">Empfohlen</button><button data-v="lang">Lang &amp; stetig</button></div></div>
+          <div class="adj-row"><label>Gebiet</label><span class="adj-link" id="adjGeo">← im ersten Schritt anpassen</span></div>
+        </div>
+        <div class="adj-note rv" style="--i:5" id="adjNote"></div>
+        <div class="sov rv" style="--i:6">Unser Rat, nicht euer Befehl. Frequenz und Standorte regeln wir im Hintergrund.</div>
+      </section>
+
+      <section class="step" data-screen="paket">
+        <div class="eyebrow rv" style="--i:0">Eure Eckwerte</div>
+        <h1 class="rv" style="--i:1">Ihr wisst, was ihr wollt.</h1>
+        <p class="sub rv" style="--i:2">Budget, Zeitraum und Gebiet bestimmt ihr selbst. Wir sagen ehrlich, wenn etwas nicht aufgeht — buchen könnt ihr immer.</p>
+        <div class="q rv" style="--i:3">
+          <div class="q-title">Budget</div>
+          <div class="slider-wrap">
+            <input type="range" min="4000" max="30000" step="500" value="6000" class="vslider" id="impBudget">
+            <div class="slider-ends"><span>CHF 4'000</span><span>CHF 30'000</span></div>
+            <div class="slider-val" id="impBudgetVal">CHF 6'000</div>
+          </div>
+        </div>
+        <div class="q rv" style="--i:4">
+          <div class="q-title">Zeitraum</div>
+          <div class="dates">
+            <label><span class="dlbl">Start</span><input type="date" id="impStart"></label>
+            <label><span class="dlbl">Ende</span><input type="date" id="impEnde"></label>
+          </div>
+          <div class="hintsm" id="impZeitHint"></div>
+        </div>
+        <div class="q rv" style="--i:5">
+          <div class="q-title">Gebiet</div>
+          <div class="gsearch"><input id="geoSearch2" type="text" placeholder="Gemeinde, Bezirk oder Kanton tippen …" autocomplete="off"><div class="gresults" id="geoResults2"></div></div>
+          <div class="gsel" id="geoSel2"></div>
+        </div>
+        <details class="optq rv" style="--i:6" id="impOpt">
+          <summary>Optional: Wen wollt ihr bewegen?</summary>
+          <div class="optq-body">
+            <div class="q" style="margin-bottom:22px">
+              <div class="q-title" style="font-size:14.5px">Worauf legt ihr den Schwerpunkt?</div>
+              <div class="slider-wrap">
+                <input type="range" min="0" max="4" step="1" value="1" class="vslider" id="fokusSlider2">
+                <div class="ticks"><i></i><i></i><i></i><i></i><i></i></div>
+                <div class="slider-ends"><span>eigene Basis</span><span>Unentschlossene</span></div>
+                <div class="slider-val" id="fokusVal2"></div>
+              </div>
+            </div>
+            <div class="q" style="margin-bottom:6px">
+              <div class="q-title" style="font-size:14.5px">Und wen konkret?</div>
+              <div class="toggle" id="zgToggle2"><button data-t="partei" class="on">Nach Partei</button><button data-t="milieu">Nach Milieu</button></div>
+              <div class="tgcontent show" data-tg2="partei"><div class="pills" id="parteien2">
+                <div class="pill" data-v="SVP">SVP</div><div class="pill" data-v="SP">SP</div><div class="pill" data-v="Mitte">Die Mitte</div><div class="pill" data-v="FDP">FDP</div><div class="pill" data-v="Grüne">Grüne</div><div class="pill" data-v="GLP">GLP</div><div class="pill" data-v="EVP">EVP</div>
+              </div></div>
+              <div class="tgcontent" data-tg2="milieu"><div class="pills" id="milieu2">
+                <div class="pill" data-v="laendlich">Ländlich-konservativ</div><div class="pill" data-v="urban">Urbane Junge</div><div class="pill" data-v="mitte">Akademische Mitte</div><div class="pill" data-v="familien">Familien & Pendler</div><div class="pill" data-v="aeltere">Ältere / Pensionierte</div>
+              </div></div>
+              <div class="hintsm">Steuert die Gewichtung innerhalb eurer Gebiete. Max. 2.</div>
+            </div>
+          </div>
+        </details>
+        <div class="adj-note rv" style="--i:7" id="pakNote"></div>
+      </section>
+
+      <section class="step" data-screen="werbemittel">
+        <div class="eyebrow rv" style="--i:0">Euer Sujet</div>
+        <h1 class="rv" style="--i:1">Womit werdet ihr sichtbar?</h1>
+        <p class="sub rv" style="--i:2">Alle Wege führen zur Vorschau. Die Botschaft kommt von euch — Format und Bewegung von uns.</p>
+        <div class="mittel rv" style="--i:3" id="mittel">
+          <div class="opt rec on" data-v="adapt"><span class="tag tag-rec">Empfohlen</span><div class="sicon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="13" rx="2" stroke="#6B4FBB" stroke-width="2"/><path d="M3 9h18M8 21h8" stroke="#6B4FBB" stroke-width="2" stroke-linecap="round"/></svg></div><div class="stext"><b>Wir haben ein Plakat-Sujet</b><span>Wir machen daraus alle Screen-Formate — animiert, in jeder Grösse.</span></div></div>
+          <div class="opt" data-v="upload"><div class="sicon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke="#6B4FBB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" stroke="#6B4FBB" stroke-width="2" stroke-linecap="round"/></svg></div><div class="stext"><b>Wir haben alles fertig</b><span>Spec-gerecht hochladen oder mit fixer Frist nachreichen.</span></div></div>
+          <div class="opt" data-v="scratch"><span class="tag tag-soon">Bald</span><div class="sicon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.6L19 8.5l-3.5 3.4.8 4.9L12 14.5 7.7 16.8l.8-4.9L5 8.5l4.8-.9L12 3z" stroke="#6B4FBB" stroke-width="1.8" stroke-linejoin="round"/></svg></div><div class="stext"><b>Wir fangen bei null an</b><span>Sujet gemeinsam aufbauen.</span></div></div>
+        </div>
+      </section>
+
+      <section class="step" data-screen="wow">
+        <div class="eyebrow rv" style="--i:0">So könnte es wirken</div>
+        <h1 class="rv" style="--i:1">So seid ihr präsent.</h1>
+        <p class="sub rv" style="--i:2">Euer Sujet, animiert — draussen auf der Stele, drinnen im Newsfeed.</p>
+        <div class="stage rv" style="--i:3">
+          <div><div class="scene"><div class="scene-glare"></div><div class="silh" style="left:13%;height:11%;width:13px"></div><div class="silh" style="left:23%;height:15%;width:16px;animation-delay:1.4s"></div><div class="silh" style="right:17%;height:12%;width:14px;animation-delay:.7s"></div>
+            <div class="citylight"><div class="screen"><div class="live-dot"><i></i>LIVE</div><div class="poster"><div class="poster-top" id="posterTop">ABSTIMMUNG · 27. SEPTEMBER</div><div class="claimwrap"><div class="claim c1">Jetzt JA stimmen</div><div class="claim c2">Für eine ernsthafte Alternative</div></div><div class="poster-foot">Komitee für die Initiative · vio.ch</div></div></div><div class="post"></div></div>
+          </div><div class="stage-lbl">Im öffentlichen Raum — Stele am Zürich HB</div></div>
+          <div><div class="phonecase"><div class="phonemock"><div class="pscreen"><div class="pnav">NEWS · SCHWEIZ</div><div class="pline w1"></div><div class="pline w2"></div><div class="pad">Jetzt JA stimmen<small>Anzeige · Komitee für die Initiative</small></div><div class="pline"></div><div class="pline w1"></div></div></div></div><div class="stage-lbl">Im Privaten — Schweizer Premium-Portale</div></div>
+        </div>
+        <div class="signals rv" style="--i:4">
+          <div class="sig"><div class="sig-lbl">Erwartete Wahrnehmung</div><div class="sig-val"><span class="lamp"></span>Deutlich präsent</div></div>
+          <div class="sig"><div class="sig-lbl">Erreichte Stimmberechtigte</div><div class="sig-val"><span class="lamp"></span><span id="sigReach">ca. 33'000+</span></div></div>
+          <div class="sig"><div class="sig-lbl">Risiko unterzugehen</div><div class="sig-val"><span class="lamp"></span>Niedrig</div></div>
+          <div class="sig"><div class="sig-lbl">Formate erzeugt</div><div class="sig-val"><span class="lamp"></span>12 von 1</div></div>
+        </div>
+        <div class="saying rv" style="--i:5"><div class="saying-pre">So könnte es klingen</div><div class="saying-q">«Die sieht man momentan ja überall.»</div></div>
+        <p class="wow-note rv" style="--i:6" id="wowNote">Erwartungswerte aus eurer Einschätzung, wenn ihr unserer Empfehlung folgt. Es geht um Sichtbarkeit — nicht um eine Garantie über den Ausgang.</p>
+      </section>
+
+      <section class="step" data-screen="final">
+        <div class="final">
+          <div class="final-mark rv" style="--i:0"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#15A37E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h1 class="rv" style="--i:1" id="finalH">Eure Einschätzung ist bereit.</h1>
+          <p class="rv" style="--i:2" id="finalP">Ihr entscheidet, wie es weitergeht — alles auf Basis genau des Dossiers, das ihr rechts seht.</p>
+          <div class="paths rv" style="--i:3" id="paths">
+            <div class="path prim" data-p="buchen"><div class="sicon"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke="#6B4FBB" stroke-width="2" stroke-linejoin="round"/></svg></div><div><b>Direkt buchen</b><span>Verbindlich reservieren. Das Sujet könnt ihr bis zur Frist nachreichen.</span></div></div>
+            <div class="path" data-p="offerte"><div class="sicon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#6B4FBB" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5M9 13h6M9 17h4" stroke="#6B4FBB" stroke-width="2" stroke-linecap="round"/></svg></div><div><b>Offerte als PDF erhalten</b><span>Das Dossier als Dokument für Vorstand und Fraktion — sofort per E-Mail.</span></div></div>
+            <div class="path" data-p="call" id="pathCall" style="display:none"><div class="sicon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" stroke="#6B4FBB" stroke-width="2" stroke-linejoin="round"/></svg></div><div><b>Kurz besprechen</b><span>Bei dieser Grössenordnung lohnt sich ein Blick zu zweit — Termin direkt wählen.</span></div></div>
+          </div>
+          <div class="final-meta rv" style="--i:4" id="finalMeta"></div>
+        </div>
+      </section>
+
+    </div>
+    <div class="footer">
+      <div class="footer-row"><button class="btn btn-ghost" id="back">Zurück</button><button class="btn btn-primary" id="next">Weiter</button></div>
+      <div class="softlink" id="softlink">oder zuerst Fragen klären</div>
+    </div>
+  </main>
+
+  <!-- dossier -->
+  <aside class="dossier-wrap">
+    <div class="paper" id="paper">
+      <div class="p-head"><div class="p-brand">vio<span>.</span></div><div class="p-status" id="pStatus">Entwurf</div></div>
+      <div class="p-title">Präsenz-Dossier</div>
+      <div class="p-date" id="pDate"></div>
+
+      <div class="d-sec hiddenSec" data-sec="anlass">
+        <div class="d-lbl">Anlass</div>
+        <div class="d-ghost"><i></i><i></i></div>
+        <div class="d-fill"><div class="d-main" id="dAnlass"></div></div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="gebiet">
+        <div class="d-lbl">Gebiet</div>
+        <div class="d-ghost"><i></i><i></i></div>
+        <div class="d-fill">
+          <div class="d-chiprow" id="dGebiet"></div>
+          <div class="d-ok" id="dBuchbar" style="display:none"><span class="mini"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Buchbar · 38 DOOH-Standorte verfügbar</div>
+        </div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="kanal">
+        <div class="d-lbl">Wo ihr erscheint</div>
+        <div class="d-ghost"><i></i></div>
+        <div class="d-fill"><div class="d-kanal">
+          <div class="d-kcard"><b>Im öffentlichen Raum</b><span>Digitale Stelen an Bahnhöfen und Strassen in euren Gebieten.</span></div>
+          <div class="d-kcard"><b>Im Privaten</b><span>Schweizer News- und Service-Portale — zuhause und unterwegs.</span></div>
+        </div></div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="paket">
+        <div class="d-lbl">Eckwerte</div>
+        <div class="d-ghost"><i></i><i></i></div>
+        <div class="d-fill">
+          <div class="d-main" id="dPaket"></div>
+          <div class="d-note" style="margin:10px 0 0"><span class="dot" id="dPakDot"></span><div><span id="dPakTxt"></span></div></div>
+        </div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="stoss">
+        <div class="d-lbl">Stossrichtung</div>
+        <div class="d-ghost"><i></i><i></i></div>
+        <div class="d-fill"><div class="d-main" id="dFokus"></div><div class="d-chiprow" id="dZg"></div></div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="budget">
+        <div class="d-lbl">Budget</div>
+        <div class="d-ghost"><i></i></div>
+        <div class="d-fill"><div class="d-main" id="dBudget"></div><div class="d-soft" id="dBudgetSoft"></div></div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="einschaetzung">
+        <div class="d-lbl">Unsere Einschätzung</div>
+        <div class="d-ghost"><i></i><i></i></div>
+        <div class="d-fill">
+          <div class="d-ziel" id="dZielbild"></div>
+          <div class="d-soft" style="margin-bottom:12px" id="dLage"></div>
+          <div class="d-note"><span class="dot" id="dNoteDot"></span><div><span id="dNoteTxt"></span> <span class="lev" id="dNoteLev"></span></div></div>
+          <div class="d-reco">
+            <div class="d-reco-why" id="dRecoWhy"></div>
+            <div class="d-facts">
+              <div class="d-fact df-hero"><span class="df-lbl">Betrag</span><span class="df-val" id="dRecoPrice">CHF 6'000</span></div>
+              <div class="d-fact"><span class="df-lbl">Reichweite</span><span class="df-val" id="dfReach">—</span></div>
+              <div class="d-fact"><span class="df-lbl">Laufzeit</span><span class="df-val" id="dfLauf">—</span></div>
+              <div class="d-fact"><span class="df-lbl">Start</span><span class="df-val" id="dfStart">—</span></div>
+            </div>
+            <details class="d-why"><summary>Warum diese Empfehlung?</summary><div class="d-why-body" id="dWhyBody"></div></details>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="sujet">
+        <div class="d-lbl">Werbemittel</div>
+        <div class="d-ghost"><i></i></div>
+        <div class="d-fill"><div class="d-main" id="dSujet"></div></div>
+      </div>
+
+      <div class="d-sec hiddenSec" data-sec="vorschau">
+        <div class="d-lbl">Vorschau</div>
+        <div class="d-ghost"><i></i></div>
+        <div class="d-fill">
+          <div class="d-main">Sujet animiert auf City-Light, Zürich HB.</div>
+          <div class="d-mini-scene">Jetzt JA stimmen<div class="d-mini-foot">12 Formate erzeugt · deutlich präsent · Risiko unterzugehen: niedrig</div></div>
+        </div>
+      </div>
+
+      <div class="seal" id="seal">VIO<br>Einschätzung<br>bereit</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+  // ───────── state & data (Logik aus v6 übernommen, Demo-Heuristik) ─────────
+  const TAILS={guided:['wen','budget','einschaetzung','werbemittel','wow','final'],quick:['paket','werbemittel','wow','final']};
+  let mode='guided';
+  let SEQ=['anker','weiche',...TAILS.guided];
+  const LBL={anker:"Worum geht's",weiche:'Wie weiter',wen:'Wen erreichen',budget:'Budget',einschaetzung:'Einschätzung',paket:'Eckwerte',werbemittel:'Werbemittel',wow:'So wirkt es',final:'Abschluss'};
+  const STEP2SEC={anker:['anlass','gebiet','kanal'],wen:['stoss'],budget:['budget'],einschaetzung:['einschaetzung'],paket:['paket'],werbemittel:['sujet'],wow:['vorschau']};
+  const ALL_SECS=['anlass','gebiet','kanal','stoss','budget','einschaetzung','paket','sujet','vorschau'];
+  let idx=0,maxIdx=0;
+  const state={art:'Abstimmung',ebene:'Eidgenössisch',gebiete:[{n:'Stadt Zürich',last:3},{n:'Winterthur',last:3}],termin:'2026-09-27',fokus:1,zgMode:'partei',partei:['SP'],milieu:[],budgetMode:'empfehlung',budget:0,budgetTouched:false,laufzeit:'empfohlen',mittel:'adapt',impBudget:6000,impStart:'',impEnde:'',impDatesTouched:false,stossTouched:false};
+  const gebNames=()=>state.gebiete.map(g=>g.n);
+
+  // flache Geo-Liste: Land / Kantone / Bezirke / Gemeinden (Demo-Ausschnitt der ~100 buchbaren)
+  const GEO_ITEMS=[
+    {n:'Ganze Schweiz',typ:'Land',ok:true,last:20},
+    {n:'Kanton Zürich',typ:'Kanton',ok:true,last:8},{n:'Kanton Bern',typ:'Kanton',ok:true,last:8},{n:'Kanton Aargau',typ:'Kanton',ok:true,last:8},{n:'Kanton Luzern',typ:'Kanton',ok:true,last:8},{n:'Kanton St. Gallen',typ:'Kanton',ok:true,last:8},
+    {n:'Kanton Graubünden',typ:'Kanton',ok:false},{n:'Kanton Wallis',typ:'Kanton',ok:false},{n:'Kanton Jura',typ:'Kanton',ok:false},
+    {n:'Bezirk Zürich',typ:'Bezirk · ZH',ok:true,last:4},{n:'Bezirk Winterthur',typ:'Bezirk · ZH',ok:true,last:4},{n:'Bezirk Bülach',typ:'Bezirk · ZH',ok:true,last:4},{n:'Bezirk Uster',typ:'Bezirk · ZH',ok:true,last:4},{n:'Bezirk Meilen',typ:'Bezirk · ZH',ok:true,last:4},
+    {n:'Stadt Zürich',typ:'Gemeinde · ZH',ok:true,last:3},{n:'Winterthur',typ:'Gemeinde · ZH',ok:true,last:3},{n:'Bülach',typ:'Gemeinde · ZH',ok:true,last:1},{n:'Kloten',typ:'Gemeinde · ZH',ok:true,last:1},{n:'Opfikon',typ:'Gemeinde · ZH',ok:true,last:1},{n:'Uster',typ:'Gemeinde · ZH',ok:true,last:1},{n:'Dübendorf',typ:'Gemeinde · ZH',ok:true,last:1},{n:'Meilen',typ:'Gemeinde · ZH',ok:true,last:1},{n:'Küsnacht',typ:'Gemeinde · ZH',ok:true,last:1},
+    {n:'Bern',typ:'Gemeinde · BE',ok:true,last:3},{n:'Köniz',typ:'Gemeinde · BE',ok:true,last:1},{n:'Biel/Bienne',typ:'Gemeinde · BE',ok:true,last:3},{n:'Thun',typ:'Gemeinde · BE',ok:true,last:1},
+    {n:'Aarau',typ:'Gemeinde · AG',ok:true,last:1},{n:'Baden',typ:'Gemeinde · AG',ok:true,last:3},{n:'Wettingen',typ:'Gemeinde · AG',ok:true,last:1},
+    {n:'Luzern',typ:'Gemeinde · LU',ok:true,last:3},{n:'St. Gallen',typ:'Gemeinde · SG',ok:true,last:3},
+    {n:'Chur',typ:'Gemeinde · GR',ok:false},{n:'Sion',typ:'Gemeinde · VS',ok:false}
+  ];
+  const PARTEI_GEM={SVP:'ländlichen Gemeinden im Weinland',SP:'der Stadt Zürich (Kreis 4/5) und der Winterthurer Altstadt',Mitte:'den ländlich-katholischen Gemeinden',FDP:'den Agglo-Gemeinden am rechten Seeufer',Grüne:'der Stadt Zürich und den urbanen Quartieren',GLP:'den vorstädtischen Mittelschicht-Gemeinden',EVP:'dem Zürcher Oberland'};
+  const MILIEU_GEM={laendlich:'dem Weinland und Andelfingen',urban:'Zürich Kreis 4/5 und der Winterthurer Altstadt',mitte:'den Hochschul-Quartieren',familien:'den Agglo-Gemeinden im Glattal',aeltere:'der Goldküste und dem Zürichberg'};
+  const MILIEU_NAME={laendlich:'Ländlich-konservativ',urban:'Urbane Junge',mitte:'Akademische Mitte',familien:'Familien & Pendler',aeltere:'Ältere / Pensionierte'};
+  const FOKUS=['vor allem die eigene Basis','eher die eigene Basis','ausgewogen','eher Unentschlossene','vor allem Unentschlossene'];
+  const LAUF_OPT={kurz:14,empfohlen:28,lang:42};
+  const LAUF_TXT={kurz:'kompakt in den letzten zwei Wochen — dicht, wenn alle entscheiden',empfohlen:'Schwerpunkt ab Versand der Stimmunterlagen, rund 3 Wochen vor dem Termin',lang:'früh aufbauen und bis zum Termin stetig präsent bleiben'};
+  const MITTEL_TXT={adapt:'Plakat-Sujet vorhanden — VIO erstellt daraus alle animierten Screen-Formate.',upload:'Werbemittel fertig — Upload spec-gerecht oder Nachreichen mit fixer Frist.',scratch:'Sujet wird gemeinsam von Grund auf aufgebaut.'};
+  const chf=n=>'CHF '+n.toLocaleString('de-CH').replace(/,/g,"'");
+  const fmtTermin=d=>new Date(d).toLocaleDateString('de-CH',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+  const weeksToTerm=()=>Math.max(1,Math.round((new Date(state.termin)-new Date())/6048e5));
+
+  // ───────── rail ─────────
+  const rsteps=document.getElementById('rsteps');
+  let rline=document.getElementById('rline');
+  function buildRail(){
+    rsteps.innerHTML='<div class="rline"></div>';
+    rline=rsteps.querySelector('.rline');
+    SEQ.forEach((id,i)=>{const d=document.createElement('div');d.className='rstep';d.dataset.i=i;d.innerHTML=`<span class="rdot"></span><span class="rlabel">${LBL[id]}</span>`;d.addEventListener('click',()=>{if(i<=maxIdx){idx=i;render();}});rsteps.appendChild(d);});
+  }
+  function paintRail(){[...rsteps.querySelectorAll('.rstep')].forEach((d,i)=>{d.className='rstep'+(i===idx?' now':i<=maxIdx?' done':'');});
+    const dots=[...rsteps.querySelectorAll('.rstep')];if(dots.length>1){const h=dots[idx].offsetTop-dots[0].offsetTop;rline.style.height=Math.max(0,h)+'px';}}
+
+  // ───────── dossier ─────────
+  document.getElementById('pDate').textContent='Entwurf vom '+new Date().toLocaleDateString('de-CH',{day:'numeric',month:'long',year:'numeric'});
+  function secEl(name){return document.querySelector(`.d-sec[data-sec="${name}"]`);}
+  function revealSections(){
+    // nur Sektionen der aktuellen Sequenz, bis zum weitesten besuchten Schritt
+    ALL_SECS.forEach(s=>secEl(s).classList.add('hiddenSec'));
+    SEQ.forEach((stepId,i)=>{(STEP2SEC[stepId]||[]).forEach(s=>{if(i<=maxIdx)secEl(s).classList.remove('hiddenSec');});});
+    if(mode==='quick'&&state.stossTouched&&maxIdx>=SEQ.indexOf('paket'))secEl('stoss').classList.remove('hiddenSec');
+    document.querySelectorAll('.d-sec').forEach(el=>el.classList.remove('editing'));
+    (STEP2SEC[SEQ[idx]]||[]).forEach(s=>secEl(s).classList.add('editing'));
+  }
+  function fillSec(name){const el=secEl(name);if(!el.classList.contains('filled')){el.classList.add('filled','justInk');setTimeout(()=>el.classList.remove('justInk'),950);}}
+
+  function flyDot(fromEl,toEl){
+    if(!fromEl||!toEl)return;
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const a=fromEl.getBoundingClientRect(),b=toEl.getBoundingClientRect();
+    const d=document.createElement('div');d.className='vdot';
+    d.style.left=(a.left+a.width/2-6)+'px';d.style.top=(a.top+a.height/2-6)+'px';
+    document.body.appendChild(d);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{d.style.left=(b.left+22)+'px';d.style.top=(b.top+12)+'px';d.style.transform='scale(.5)';d.style.opacity='0';}));
+    setTimeout(()=>d.remove(),750);
+  }
+
+  function setVal(el,html){if(!el||el.innerHTML===html)return;el.innerHTML=html;el.classList.remove('vflip');void el.offsetWidth;el.classList.add('vflip');}
+  const pulsed=new Set();
+  function pulseNext(){const id=SEQ[idx];if(pulsed.has(id))return;pulsed.add(id);next.classList.remove('pulse');void next.offsetWidth;next.classList.add('pulse');}
+  function scrollToSec(name){const el=secEl(name);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+
+  function tweenPrice(el,to){
+    const from=parseInt((el.textContent||'').replace(/\D/g,''))||to;
+    if(from===to){el.textContent=chf(to);return;}
+    const t0=performance.now(),dur=420;
+    function f(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=chf(Math.round((from+(to-from)*e)/100)*100);if(p<1)requestAnimationFrame(f);}
+    requestAnimationFrame(f);
+  }
+
+  function updateAnlass(){
+    fillSec('anlass');
+    document.getElementById('dAnlass').innerHTML=`<b>${state.art}</b> · ${state.ebene}<br>Termin: <b>${fmtTermin(state.termin)}</b>`;
+  }
+  function updateGebiet(buchbar){
+    fillSec('gebiet');
+    const box=document.getElementById('dGebiet');
+    box.innerHTML=state.gebiete.length?state.gebiete.map(g=>`<span class="d-chip">${g.n}</span>`).join(''):'<span class="d-soft">Noch kein Gebiet gewählt.</span>';
+    document.getElementById('dBuchbar').style.display=(buchbar&&state.gebiete.length)?'inline-flex':'none';
+    if(buchbar&&state.gebiete.length)fillSec('kanal');
+  }
+  function updateStoss(){
+    fillSec('stoss');
+    document.getElementById('dFokus').innerHTML=`Schwerpunkt: <b>${FOKUS[state.fokus]}</b>`;
+    const arr=state.zgMode==='partei'?state.partei:state.milieu.map(m=>MILIEU_NAME[m]);
+    document.getElementById('dZg').innerHTML=arr.length?arr.map(z=>`<span class="d-chip">${z}</span>`).join(''):'<span class="d-soft">Zielgruppe noch offen.</span>';
+  }
+  function updateBudgetSec(){
+    fillSec('budget');
+    if(state.budgetMode==='empfehlung'&&!state.budgetTouched){
+      document.getElementById('dBudget').innerHTML=`<b>Empfehlung durch VIO</b>`;
+      document.getElementById('dBudgetSoft').textContent='Wir schlagen die sinnvolle Grösse für eure Lage vor.';
+    }else{
+      document.getElementById('dBudget').innerHTML=`<b>${chf(state.budget||0)}</b> · eigenes Budget`;
+      document.getElementById('dBudgetSoft').textContent='Wir sagen ehrlich, ob es für euer Gebiet reicht.';
+    }
+  }
+  function updateSujet(){
+    fillSec('sujet');
+    document.getElementById('dSujet').textContent=MITTEL_TXT[state.mittel];
+  }
+
+  // ───────── einschätzung (Logik 1:1 aus v6) ─────────
+  let lastLvl='lo';
+  function renderAssessment(){
+    fillSec('einschaetzung');
+    const wk=weeksToTerm();
+    const geb=state.gebiete.length?gebNames().join(', '):'eurem Gebiet';
+    let zgTxt,gemTxt;
+    if(state.zgMode==='partei'&&state.partei.length){zgTxt=state.partei.join(' & ');gemTxt=state.partei.map(p=>PARTEI_GEM[p]).join(' und ');}
+    else if(state.zgMode==='milieu'&&state.milieu.length){zgTxt=state.milieu.map(m=>MILIEU_NAME[m]).join(' & ');gemTxt=state.milieu.map(m=>MILIEU_GEM[m]).join(' und ');}
+    else{zgTxt='eure Zielgruppe';gemTxt='euren Kerngemeinden';}
+
+    let zb;
+    if(state.fokus<=1)zb=`Ihr wollt eure Basis in ${geb} mobilisieren und klar präsent sein.`;
+    else if(state.fokus===2)zb=`Ihr wollt in ${geb} breit sichtbar und ernst genommen werden.`;
+    else zb=`Ihr wollt Unentschlossene in ${geb} erreichen und überzeugen.`;
+    document.getElementById('dZielbild').textContent=zb;
+    document.getElementById('dLage').innerHTML=`${state.ebene} · ${geb}. Noch rund ${wk} Wochen bis zum Termin. Eure Zielgruppe (${zgTxt}) sitzt vor allem in ${gemTxt}.`;
+
+    // Risiko = Budget × Gebiet × Laufzeit (Demo-Heuristik)
+    let gebietLast=state.gebiete.reduce((s,g)=>s+(g.last||1),0);if(gebietLast===0)gebietLast=1;
+    const laufTage=Math.min(LAUF_OPT[state.laufzeit],Math.max(14,wk*7-7));
+    const recBudget=Math.max(4000,Math.round((4000+gebietLast*500)/500)*500);
+    if(state.budgetMode==='empfehlung'&&!state.budgetTouched)state.budget=recBudget;
+    const eff=state.budget||recBudget;
+    const need=gebietLast*(laufTage/7)*250;
+    const ratio=eff/need;
+    let lvl,note,lev;
+    if(ratio>=1.05){lvl='lo';note='Budget, Gebiet und Laufzeit passen zusammen. Ihr seid durchgehend präsent.';lev='';}
+    else if(ratio>=0.8){lvl='mid';note='Gebiet und Laufzeit sind eher gross für dieses Budget — die Präsenz wird stellenweise dünn.';lev='Was hilft: Laufzeit straffen · Gebiet fokussieren · Budget leicht erhöhen.';}
+    else{lvl='hi';note='Über diese Laufzeit und dieses Gebiet verteilt sich das Budget zu dünn — ihr würdet untergehen.';lev='Was hilft: kürzer und dichter fahren · auf Hochburgen fokussieren · Budget erhöhen.';}
+    lastLvl=lvl;
+    document.getElementById('dNoteDot').className='dot '+lvl;
+    setVal(document.getElementById('dNoteTxt'),note);
+    setVal(document.getElementById('dNoteLev'),lev);
+
+    // kurzer Warum-Satz + Fakten-Karte
+    const ALLOK_KURZ=state.fokus<=1?'Konzentriert auf eure Hochburgen':state.fokus===2?'Schwerpunkt Hochburgen, mit etwas Streuung':'Breit dort, wo Unentschlossene erreichbar sind';
+    const LAUF_KURZ={kurz:'kompakt in den letzten zwei Wochen',empfohlen:'ab Versand der Stimmunterlagen',lang:'früh und stetig bis zum Termin'}[state.laufzeit];
+    setVal(document.getElementById('dRecoWhy'),`${ALLOK_KURZ} — ${LAUF_KURZ}.`);
+
+    const startD=new Date(new Date(state.termin)-laufTage*864e5);
+    const startStr=startD.toLocaleDateString('de-CH',{day:'numeric',month:'short'});
+    tweenPrice(document.getElementById('dRecoPrice'),eff);
+    setVal(document.getElementById('dfLauf'),laufTage+' Tage');
+    setVal(document.getElementById('dfStart'),'ab '+startStr);
+
+    // Reach: konservativer Floor (Demo-Heuristik, später reachUniqueLow aus dem Reach-Modell)
+    const reachLow=Math.max(1000,Math.floor(eff*4.8/1000)*1000);
+    const reachStr=`ca. ${reachLow.toLocaleString('de-CH').replace(/,/g,"'")}+`;
+    setVal(document.getElementById('dfReach'),reachStr);
+    const sigReach=document.getElementById('sigReach');if(sigReach)sigReach.textContent=reachStr;
+
+    // langes Warum im Aufklapper
+    let allok;
+    if(state.fokus<=1)allok=`konzentriert auf eure Hochburgen in ${gemTxt}`;
+    else if(state.fokus===2)allok=`mit Schwerpunkt auf ${gemTxt} und etwas Streuung`;
+    else allok=`breiter in durchmischte Gebiete, wo Unentschlossene erreichbar sind`;
+    const whyZusatz=(state.budgetMode==='empfehlung'&&!state.budgetTouched)?'Der Betrag ist unsere Empfehlung für eure Lage.':(eff<recBudget?'Der Betrag ist knapp — der Fokus auf die Hochburgen hält ihn tragfähig.':'');
+    document.getElementById('dWhyBody').textContent=`Präsenz ${allok} — ${LAUF_TXT[state.laufzeit]}. Reichweite konservativ gerechnet, als Minimum. ${whyZusatz}`;
+
+    document.getElementById('adjBudget').textContent=chf(eff);
+    document.querySelectorAll('#adjLauf button').forEach(b=>b.classList.toggle('on',b.dataset.v===state.laufzeit));
+    const ln={lo:'niedrig',mid:'mittel',hi:'hoch'}[lvl];
+    document.getElementById('adjNote').textContent=`Mit dieser Einstellung: ${laufTage} Tage Laufzeit, Risiko unterzugehen ${ln}.`;
+    updateBudgetSec();
+    lastEff=eff;lastLaufTage=laufTage;lastStart=startD;
+  }
+  let lastEff=6000,lastLaufTage=28,lastStart=null;
+
+  // ───────── impactpfad: freie Eckwerte — gleiche Engine (Budget × Gebiet × Laufzeit), anderer Modus ─────────
+  const iso=d=>d.toISOString().slice(0,10);
+  function impDefaults(){
+    if(state.impDatesTouched)return;
+    state.impEnde=state.termin;
+    state.impStart=iso(new Date(new Date(state.termin)-28*864e5));
+    const s=document.getElementById('impStart'),e=document.getElementById('impEnde');
+    if(s){s.value=state.impStart;e.value=state.impEnde;}
+  }
+  function renderImpact(){
+    fillSec('paket');
+    let gebietLast=state.gebiete.reduce((s,g)=>s+(g.last||1),0);if(gebietLast===0)gebietLast=1;
+    const s=new Date(state.impStart),e=new Date(state.impEnde);
+    const laufTage=Math.max(1,Math.round((e-s)/864e5));
+    const eff=Math.max(4000,state.impBudget||4000);
+    const need=gebietLast*(laufTage/7)*250;
+    const ratio=eff/need;
+    const recB=Math.ceil(need*1.05/500)*500;
+    let lvl,txt;
+    if(ratio>=1.05){lvl='lo';txt='Passt — das Budget trägt Gebiet und Zeitraum.';}
+    else if(ratio>=0.8){lvl='mid';txt=`Eher knapp für Gebiet und Zeitraum. Unsere Empfehlung: ${chf(recB)} — buchbar ist es so oder so.`;}
+    else{lvl='hi';txt=`Das Budget verteilt sich dünn über Gebiet und Zeitraum. Empfehlung: ${chf(recB)} oder kürzerer Zeitraum — buchbar bleibt es trotzdem.`;}
+    const fmtK=d=>d.toLocaleDateString('de-CH',{day:'numeric',month:'short'});
+    const tEnd=new Date(state.termin);
+    let zh=`${laufTage} Tage`;
+    if(+e===+tEnd)zh+=' · endet am Urnengang';
+    else if(e>tEnd)zh+=' · Hinweis: endet nach dem Termin';
+    else zh+=` · endet ${Math.round((tEnd-e)/864e5)} Tage vor dem Termin`;
+    setVal(document.getElementById('impZeitHint'),zh);
+    setVal(document.getElementById('impBudgetVal'),chf(eff));
+    const reachLow=Math.max(1000,Math.floor(eff*4.8/1000)*1000);
+    const reachStr=`ca. ${reachLow.toLocaleString('de-CH').replace(/,/g,"'")}+`;
+    setVal(document.getElementById('dPaket'),`<b>${chf(eff)}</b> · ${laufTage} Tage (${fmtK(s)} – ${fmtK(e)}) · ${reachStr} erreicht`);
+    document.getElementById('dPakDot').className='dot '+lvl;
+    setVal(document.getElementById('dPakTxt'),txt);
+    setVal(document.getElementById('pakNote'),txt);
+    const sigReach=document.getElementById('sigReach');if(sigReach)sigReach.textContent=reachStr;
+    lastEff=eff;lastLaufTage=laufTage;lastStart=s;
+    if(state.stossTouched)updateStoss();
+  }
+  document.getElementById('impBudget').addEventListener('input',e=>{state.impBudget=+e.target.value;renderImpact();scrollToSec('paket');});
+  document.getElementById('impStart').addEventListener('change',e=>{if(e.target.value)state.impStart=e.target.value;state.impDatesTouched=true;renderImpact();scrollToSec('paket');});
+  document.getElementById('impEnde').addEventListener('change',e=>{if(e.target.value)state.impEnde=e.target.value;state.impDatesTouched=true;renderImpact();scrollToSec('paket');});
+
+  // optionale Zielgruppe (geteilter State mit dem geführten Pfad)
+  const slider2=document.getElementById('fokusSlider2'),fokusVal2=document.getElementById('fokusVal2');
+  slider2.addEventListener('input',()=>{state.fokus=+slider2.value;fokusVal2.textContent=FOKUS[state.fokus];state.stossTouched=true;updateStoss();revealSections();});
+  const tg2=document.getElementById('zgToggle2');
+  tg2.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.zgMode=b.dataset.t;tg2.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('[data-tg2]').forEach(c=>c.classList.toggle('show',c.dataset.tg2===state.zgMode));state.stossTouched=true;updateStoss();revealSections();});
+  function pickList2(id,key){const box=document.getElementById(id);box.addEventListener('click',e=>{const p=e.target.closest('.pill');if(!p||p.classList.contains('dis'))return;const v=p.dataset.v,arr=state[key],i=arr.indexOf(v);if(i>=0){arr.splice(i,1);p.classList.remove('on');}else if(arr.length<2){arr.push(v);p.classList.add('on');}box.querySelectorAll('.pill').forEach(x=>{if(!x.classList.contains('on'))x.classList.toggle('dis',arr.length>=2);});state.stossTouched=true;updateStoss();revealSections();});}
+  pickList2('parteien2','partei');pickList2('milieu2','milieu');
+
+  // ───────── abschluss ─────────
+  function renderFinal(){
+    document.getElementById('finalH').textContent=mode==='quick'?'Eure Buchung ist bereit.':'Eure Einschätzung ist bereit.';
+    document.getElementById('finalP').textContent=mode==='quick'?'Gebiet, Eckwerte und Sujet sind beisammen — ihr entscheidet, wie es weitergeht.':'Ihr entscheidet, wie es weitergeht — alles auf Basis genau des Dossiers, das ihr rechts seht.';
+    document.getElementById('pathCall').style.display=lastEff>=12000?'flex':'none';
+    const startD=lastStart||new Date(new Date(state.termin)-lastLaufTage*864e5);
+    const frist=new Date(startD-5*864e5);
+    const fmt=d=>d.toLocaleDateString('de-CH',{day:'numeric',month:'long'});
+    document.getElementById('finalMeta').innerHTML=`<b>Sujet-Frist:</b> ${fmt(frist)} — fünf Arbeitstage vor Start am ${fmt(startD)}. Ihr könnt heute buchen und das Sujet nachreichen.<br><b>Nach dem Start:</b> ihr seht es selbst — Sichtbarkeits-Nachweis mit Foto eurer Stele und Kampagnen-Report.`;
+  }
+  document.getElementById('paths').addEventListener('click',e=>{
+    const p=e.target.closest('.path');if(!p)return;
+    const msg={buchen:'Demo: verbindliche Buchung — Bestätigung und Sujet-Upload folgen.',offerte:'Demo: das Dossier geht als PDF-Offerte an eure E-Mail.',call:'Demo: Kalender öffnet sich — Termin direkt wählen.'}[p.dataset.p];
+    alert(msg);
+  });
+
+  // ───────── navigation & render ─────────
+  const steps=[...document.querySelectorAll('.step')];
+  const back=document.getElementById('back'),next=document.getElementById('next'),softlink=document.getElementById('softlink'),scrollbody=document.getElementById('scrollbody');
+  function render(){
+    const id=SEQ[idx];
+    steps.forEach(s=>s.classList.toggle('active',s.dataset.screen===id));
+    paintRail();revealSections();
+    const isFinal=id==='final';
+    back.style.visibility=(idx===0||isFinal)?'hidden':'visible';
+    next.textContent=id==='wow'?'Weiter mit dieser Empfehlung':isFinal?'Demo neu starten':'Weiter';
+    softlink.style.display=id==='wow'?'block':'none';
+    scrollbody.scrollTop=0;
+    if(id==='anker')runCheck();
+    if(id==='wen')updateStoss();
+    if(id==='budget')updateBudgetSec();
+    if(id==='einschaetzung')renderAssessment();
+    if(id==='paket')renderImpact();
+    if(id==='werbemittel')updateSujet();
+    if(id==='wow'){fillSec('vorschau');document.getElementById('posterTop').textContent=(state.art+' · '+new Date(state.termin).toLocaleDateString('de-CH',{day:'numeric',month:'long'})).toUpperCase();document.getElementById('wowNote').textContent=mode==='quick'?'Erwartungswerte aus euren Eckwerten. Es geht um Sichtbarkeit — nicht um eine Garantie über den Ausgang.':'Erwartungswerte aus eurer Einschätzung, wenn ihr unserer Empfehlung folgt. Es geht um Sichtbarkeit — nicht um eine Garantie über den Ausgang.';pulseNext();}
+    if(isFinal)renderFinal();
+    document.getElementById('pStatus').classList.toggle('ready',isFinal);
+    document.getElementById('pStatus').textContent=isFinal?'Bereit':'Entwurf';
+    const seal=document.getElementById('seal');
+    if(isFinal){seal.classList.add('show');}else{seal.classList.remove('show');}
+  }
+  function go(d){
+    if(SEQ[idx]==='final'&&d>0){location.reload();return;}
+    const nx=idx+d;if(nx<0||nx>=SEQ.length)return;
+    const fwd=d>0;idx=nx;maxIdx=Math.max(maxIdx,idx);render();
+    if(fwd){const secs=STEP2SEC[SEQ[idx]];const target=secs?secEl(secs[0]):(SEQ[idx]==='final'?document.getElementById('seal'):null);flyDot(next,target);}
+  }
+  next.addEventListener('click',()=>go(1));
+  back.addEventListener('click',()=>go(-1));
+  softlink.addEventListener('click',()=>alert('Demo: weicher Ausstieg — «Wir klären eure Fragen, bevor es weitergeht.»'));
+
+  // ───────── anker: geo-suche ─────────
+  const geoInp=document.getElementById('geoSearch'),geoRes=document.getElementById('geoResults'),geoSel=document.getElementById('geoSel'),geoQuick=document.getElementById('geoQuick');
+  const geoInp2=document.getElementById('geoSearch2'),geoRes2=document.getElementById('geoResults2'),geoSel2=document.getElementById('geoSel2');
+  function geoSum(){document.getElementById('geoSum').innerHTML=state.gebiete.length?`Gewählt: <b>${state.gebiete.length} ${state.gebiete.length===1?'Gebiet':'Gebiete'}</b>`:'Noch kein Gebiet gewählt — tippt los oder nutzt einen Vorschlag.';}
+  function paintSel(){
+    [geoSel,geoSel2].forEach(box=>{
+      box.innerHTML=state.gebiete.map(g=>`<span class="schip">${g.n}<button data-g="${g.n}" aria-label="entfernen">✕</button></span>`).join('');
+      box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.gebiete=state.gebiete.filter(x=>x.n!==b.dataset.g);paintSel();rerunCheck();if(mode==='quick')renderImpact();}));
+    });
+    geoSum();
+  }
+  function addGebiet(it){
+    if(state.gebiete.some(g=>g.n===it.n))return;
+    state.gebiete.push({n:it.n,last:it.last||1});
+    [geoInp,geoInp2].forEach(i=>i.value='');[geoRes,geoRes2].forEach(r=>r.classList.remove('show'));
+    paintSel();rerunCheck();if(mode==='quick')renderImpact();
+  }
+  function attachGeoSearch(inp,res){
+    inp.addEventListener('input',()=>{
+      const q=inp.value.trim().toLowerCase();
+      if(q.length<1){res.classList.remove('show');return;}
+      const hits=GEO_ITEMS.filter(it=>it.n.toLowerCase().includes(q)).slice(0,8);
+      if(!hits.length){res.innerHTML='<div class="gres na"><span>Nichts gefunden</span></div>';res.classList.add('show');return;}
+      res.innerHTML=hits.map(it=>it.ok
+        ?`<div class="gres" data-i="${GEO_ITEMS.indexOf(it)}"><span>${it.n}</span><span class="typ">${it.typ}</span></div>`
+        :`<div class="gres na"><span>${it.n}</span><span class="typ">${it.typ} · keine Flächen</span></div>`).join('');
+      res.classList.add('show');
+      res.querySelectorAll('.gres:not(.na)').forEach(r=>r.addEventListener('click',()=>addGebiet(GEO_ITEMS[+r.dataset.i])));
+    });
+    inp.addEventListener('blur',()=>setTimeout(()=>res.classList.remove('show'),180));
+  }
+  attachGeoSearch(geoInp,geoRes);attachGeoSearch(geoInp2,geoRes2);
+  function paintQuick(){
+    if(state.ebene==='Eidgenössisch'){
+      geoQuick.innerHTML='<div class="chip" data-q="Ganze Schweiz">Ganze Schweiz wählen</div>';
+      geoInp.placeholder='Gemeinde, Bezirk oder Kanton tippen …';
+    }else if(state.ebene==='Kantonal'){
+      geoQuick.innerHTML=GEO_ITEMS.filter(it=>it.typ==='Kanton'&&it.ok).map(it=>`<div class="chip" data-q="${it.n}">${it.n.replace('Kanton ','')}</div>`).join('');
+      geoInp.placeholder='Oder feiner: Bezirk oder Gemeinde tippen …';
+    }else{
+      geoQuick.innerHTML='';
+      geoInp.placeholder='Eure Gemeinde tippen …';
+    }
+    geoQuick.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{const it=GEO_ITEMS.find(x=>x.n===c.dataset.q);if(it)addGebiet(it);}));
+  }
+
+  let checkTimer=null,checkOk=false;
+  function runCheck(){
+    const c=document.getElementById('check');
+    if(checkOk){updateAnlass();updateGebiet(true);return;}
+    setTimeout(()=>{c.classList.add('ok');document.getElementById('checktitle').textContent='Buchbar';checkOk=true;updateGebiet(true);pulseNext();},1200);
+    updateAnlass();updateGebiet(false);
+  }
+  function rerunCheck(){
+    const c=document.getElementById('check');
+    c.classList.remove('ok');checkOk=false;
+    document.getElementById('checktitle').textContent='Prüfe Verfügbarkeit …';
+    updateGebiet(false);
+    clearTimeout(checkTimer);
+    checkTimer=setTimeout(()=>{c.classList.add('ok');document.getElementById('checktitle').textContent='Buchbar';checkOk=true;updateGebiet(true);},900);
+  }
+
+  document.getElementById('art').addEventListener('click',e=>{if(!e.target.classList.contains('chip'))return;[...e.currentTarget.children].forEach(c=>c.classList.remove('on'));e.target.classList.add('on');state.art=e.target.textContent;updateAnlass();});
+  const ebeneHints={'Eidgenössisch':'Alle Stimmberechtigten der Schweiz — ihr könnt überall werben.','Kantonal':'Nur Stimmberechtigte im Kanton zählen — Werbung ausserhalb erreicht niemanden Stimmberechtigten.','Kommunal':'Nur Stimmberechtigte der Gemeinde zählen — wir zeigen nur kommunale Flächen.'};
+  function paintEbeneHint(){document.getElementById('ebeneHint').textContent=ebeneHints[state.ebene];}
+  document.getElementById('ebene').addEventListener('click',e=>{if(!e.target.classList.contains('chip'))return;[...e.currentTarget.children].forEach(c=>c.classList.remove('on'));e.target.classList.add('on');state.ebene=e.target.textContent;paintEbeneHint();paintQuick();updateAnlass();});
+  document.getElementById('termine').addEventListener('click',e=>{const t=e.target.closest('.term');if(!t)return;document.querySelectorAll('#termine .term').forEach(x=>x.classList.remove('on'));t.classList.add('on');state.termin=t.dataset.date;updateAnlass();impDefaults();});
+
+  // ───────── weiche ─────────
+  const modes=document.getElementById('modes'),modeNote=document.getElementById('modeNote');
+  modes.addEventListener('click',e=>{const m=e.target.closest('.mode');if(!m)return;
+    mode=m.dataset.v;
+    modes.querySelectorAll('.mode').forEach(x=>x.classList.toggle('on',x===m));
+    modeNote.textContent=mode==='quick'?'Direkter Weg: Paket, Budget und Sujet — das Dossier schreibt trotzdem mit.':'';
+    SEQ=['anker','weiche',...TAILS[mode]];
+    maxIdx=Math.min(maxIdx,1);
+    buildRail();paintRail();revealSections();pulseNext();});
+
+  // ───────── wen ─────────
+  const slider=document.getElementById('fokusSlider'),fokusVal=document.getElementById('fokusVal');
+  function paintFokus(){fokusVal.textContent=FOKUS[state.fokus];fokusVal.classList.remove('pop');void fokusVal.offsetWidth;fokusVal.classList.add('pop');}
+  slider.value=state.fokus;slider.addEventListener('input',()=>{state.fokus=+slider.value;paintFokus();updateStoss();});paintFokus();
+  const tg=document.getElementById('zgToggle');
+  tg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.zgMode=b.dataset.t;tg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.tgcontent').forEach(c=>c.classList.toggle('show',c.dataset.tg===state.zgMode));updateStoss();});
+  function pickList(id,key){const box=document.getElementById(id);box.addEventListener('click',e=>{const p=e.target.closest('.pill');if(!p||p.classList.contains('dis'))return;const v=p.dataset.v,arr=state[key],i=arr.indexOf(v);if(i>=0){arr.splice(i,1);p.classList.remove('on');}else if(arr.length<2){arr.push(v);p.classList.add('on');}box.querySelectorAll('.pill').forEach(x=>{if(!x.classList.contains('on'))x.classList.toggle('dis',arr.length>=2);});updateStoss();if(arr.length)pulseNext();});}
+  pickList('parteien','partei');pickList('milieu','milieu');
+  (function(){const p=document.querySelector('#parteien [data-v="SP"]');p.classList.add('on');document.querySelectorAll('#parteien .pill').forEach(x=>{if(!x.classList.contains('on'))x.classList.add('dis');});})();
+
+  // ───────── budget ─────────
+  const bm=document.getElementById('budgetMode'),binp=document.getElementById('budgetInp');
+  function markBM(){bm.querySelectorAll('.opt').forEach(o=>o.classList.toggle('on',o.dataset.v===state.budgetMode));binp.classList.toggle('show',state.budgetMode==='haben');}
+  bm.addEventListener('click',e=>{const o=e.target.closest('.opt');if(!o)return;state.budgetMode=o.dataset.v;state.budgetTouched=(o.dataset.v==='haben');if(o.dataset.v==='haben')state.budget=parseInt(document.getElementById('budgetVal').value.replace(/\D/g,''))||6000;markBM();updateBudgetSec();pulseNext();});
+  document.getElementById('budgetVal').addEventListener('input',e=>{state.budget=parseInt(e.target.value.replace(/\D/g,''))||0;state.budgetTouched=true;updateBudgetSec();});
+  markBM();
+
+  // ───────── einschätzung: live-anpassung ─────────
+  document.querySelectorAll('.stepper button').forEach(b=>b.addEventListener('click',()=>{const d=+b.dataset.d;state.budget=Math.max(4000,(state.budget||0)+d);state.budgetTouched=true;renderAssessment();scrollToSec('einschaetzung');}));
+  document.getElementById('adjLauf').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.laufzeit=b.dataset.v;renderAssessment();scrollToSec('einschaetzung');});
+  document.getElementById('adjGeo').addEventListener('click',()=>{idx=0;render();});
+
+  // ───────── werbemittel ─────────
+  const mittel=document.getElementById('mittel');
+  mittel.addEventListener('click',e=>{const o=e.target.closest('.opt');if(!o)return;state.mittel=o.dataset.v;mittel.querySelectorAll('.opt').forEach(x=>x.classList.toggle('on',x===o));updateSujet();pulseNext();});
+
+  // ───────── globale gesten ─────────
+  document.addEventListener('click',e=>{
+    const t=e.target.closest('.chip,.pill,.term,.mode,.wille .opt,.mittel .opt,.path,.pak,.seg-mini button,.toggle button');
+    if(t){t.classList.remove('settle');void t.offsetWidth;t.classList.add('settle');}
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    if(e.target===geoInp||e.target===geoInp2){const res=e.target===geoInp?geoRes:geoRes2;const r=res.querySelector('.gres:not(.na)');if(r&&res.classList.contains('show'))r.click();e.preventDefault();return;}
+    if(e.target.id==='budgetVal'){go(1);return;}
+    if(e.target.closest('input,textarea,summary,button'))return;
+    if(SEQ[idx]!=='final')go(1);
+  });
+
+  // ───────── init ─────────
+  slider2.value=state.fokus;fokusVal2.textContent=FOKUS[state.fokus];
+  (function(){const p=document.querySelector('#parteien2 [data-v="SP"]');p.classList.add('on');document.querySelectorAll('#parteien2 .pill').forEach(x=>{if(!x.classList.contains('on'))x.classList.add('dis');});})();
+  impDefaults();
+  buildRail();paintQuick();paintSel();render();
+</script>
+</body>
+</html>
+<!-- v7.1 -->

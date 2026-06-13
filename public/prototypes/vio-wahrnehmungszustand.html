@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIO · Wahrnehmungszustand-Prototyp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --violet:#6B4FBB;
+    --violet-soft:#8A72D6;
+    --ink:#2D1F52;
+    --ink-60:#6A5E8A;
+    --paper:#FBFAFF;
+    --card:#FFFFFF;
+    --line:#E7E2F4;
+    --reach:#4F7BBB;     /* belegbar – kühl, sachlich */
+    --presence:#6B4FBB;  /* raumpräsenz – violet */
+    --intensity:#C0589B;  /* intensität – warm */
+    --ok:#3F9D6B;
+    --shadow:0 10px 40px rgba(45,31,82,.10);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Jost',system-ui,sans-serif;font-weight:400;
+    line-height:1.55;padding:32px 20px 80px;
+  }
+  .wrap{max-width:980px;margin:0 auto}
+  h1,h2,h3,.headline{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
+  h1{font-size:26px;margin:0 0 4px}
+  .sub{color:var(--ink-60);font-size:15px;margin:0 0 28px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:var(--shadow)}
+  .label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-60);margin:0 0 10px}
+
+  /* Inputs */
+  .field{margin-bottom:22px}
+  select{
+    width:100%;font-family:'Jost';font-size:15px;padding:11px 14px;border:1px solid var(--line);
+    border-radius:11px;background:#fff;color:var(--ink);appearance:none;cursor:pointer;
+  }
+  .budget-val{font-family:'Plus Jakarta Sans';font-weight:800;font-size:30px;color:var(--violet);line-height:1}
+  .budget-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+  .budget-hint{font-size:13px;color:var(--ink-60)}
+  input[type=range]{
+    -webkit-appearance:none;width:100%;height:6px;border-radius:6px;
+    background:linear-gradient(90deg,var(--violet) 0%,var(--violet) var(--fill,40%),var(--line) var(--fill,40%),var(--line) 100%);
+    outline:none;margin-top:14px;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;
+    border:3px solid var(--violet);box-shadow:0 3px 10px rgba(107,79,187,.4);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--violet);cursor:pointer;
+  }
+  .anchors{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:var(--ink-60)}
+  .anchor{text-align:center;flex:1;cursor:pointer;padding:4px 0;border-radius:8px;transition:.15s}
+  .anchor:hover{background:var(--paper);color:var(--violet)}
+  .anchor b{display:block;font-family:'Plus Jakarta Sans';font-weight:700;color:var(--ink);font-size:12px}
+
+  /* Zustand */
+  .state-badge{
+    display:inline-flex;align-items:center;gap:8px;font-family:'Plus Jakarta Sans';font-weight:800;
+    font-size:13px;text-transform:uppercase;letter-spacing:.1em;padding:7px 16px;border-radius:999px;
+    background:rgba(107,79,187,.10);color:var(--violet);margin-bottom:4px;
+  }
+  .state-name{font-family:'Plus Jakarta Sans';font-weight:800;font-size:34px;margin:8px 0 2px;color:var(--ink)}
+  .state-desc{color:var(--ink-60);font-size:15px;margin:0 0 22px;min-height:22px}
+
+  /* Achsen */
+  .axis{margin-bottom:20px}
+  .axis-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .axis-name{font-family:'Plus Jakarta Sans';font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:6px}
+  .tag-hard{background:rgba(63,157,107,.12);color:var(--ok)}
+  .tag-est{background:rgba(192,88,155,.10);color:var(--intensity)}
+  .bar{height:14px;border-radius:8px;background:var(--line);overflow:hidden;position:relative}
+  .bar-fill{height:100%;border-radius:8px;transition:width .45s cubic-bezier(.4,0,.2,1)}
+  .bar.est{background:repeating-linear-gradient(45deg,var(--line),var(--line) 5px,#efeaf9 5px,#efeaf9 10px)}
+  .axis-note{font-size:12px;color:var(--ink-60);margin-top:6px}
+
+  .numbers{display:flex;gap:28px;margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}
+  .num b{font-family:'Plus Jakarta Sans';font-weight:800;font-size:24px;color:var(--ink);display:block}
+  .num span{font-size:12px;color:var(--ink-60)}
+  .disclaimer{margin-top:18px;font-size:12px;color:var(--ink-60);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.5}
+  .profile-hint{font-size:13px;color:var(--violet);font-weight:500;margin-top:2px;min-height:18px}
+  footer{max-width:980px;margin:36px auto 0;font-size:12px;color:var(--ink-60);text-align:center}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--ink-60)}
+  .legend span{display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Wahrnehmungszustand</h1>
+  <p class="sub">Prototyp · Budget-Regler statt Pakete · drei Achsen statt einer Zahl. Belegbares und Geschätztes bleiben getrennt.</p>
+
+  <div class="grid">
+    <!-- INPUTS -->
+    <div class="card">
+      <p class="label">Eingabe</p>
+
+      <div class="field">
+        <label class="axis-name" for="region" style="margin-bottom:8px;display:block">Region</label>
+        <select id="region">
+          <option value="gemeinde" data-pop="8000">Gemeinde · ca. 8'000 Wahlberechtigte</option>
+          <option value="bezirk" data-pop="35000" selected>Bezirk · ca. 35'000 Wahlberechtigte</option>
+          <option value="stadt" data-pop="90000">Stadt · ca. 90'000 Wahlberechtigte</option>
+          <option value="kanton" data-pop="320000">Kanton (klein) · ca. 320'000 Wahlberechtigte</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="axis-name" for="zeitraum" style="margin-bottom:8px;display:block">Kampagnendauer</label>
+        <select id="zeitraum">
+          <option value="14">14 Tage</option>
+          <option value="28" selected>28 Tage</option>
+          <option value="42">42 Tage</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="axis-name" for="druck" style="margin-bottom:8px;display:block">Wahlkampfdruck in der Region</label>
+        <select id="druck">
+          <option value="1.0">Ruhig</option>
+          <option value="0.82" selected>Normal</option>
+          <option value="0.66">Umkämpft</option>
+        </select>
+        <div class="axis-note">Mehr Gegner im selben Raum → gleiches Budget wirkt schwächer. Beratungsgrösse, keine Messung.</div>
+      </div>
+
+      <div class="field">
+        <label class="axis-name" for="mix" style="margin-bottom:8px;display:block">Kanal-Schwerpunkt</label>
+        <select id="mix">
+          <option value="balanced" selected>Ausgewogen (Display + DOOH)</option>
+          <option value="dooh">Schwerpunkt Strassenbild (DOOH)</option>
+          <option value="display">Schwerpunkt Digital (Display)</option>
+        </select>
+        <div class="axis-note">Verschiebt das Profil – nicht den Preis. Zeigt „Breite vs. Dichte".</div>
+      </div>
+
+      <div class="field" style="margin-bottom:0">
+        <div class="budget-row">
+          <span class="label" style="margin:0">Budget</span>
+          <span class="budget-val" id="budgetVal">CHF 6'000</span>
+        </div>
+        <div class="budget-hint" id="budgetHint">Empfohlen für Präsenz in diesem Bezirk</div>
+        <input type="range" id="budget" min="2000" max="20000" step="500" value="6000">
+        <div class="anchors" id="anchors">
+          <div class="anchor" data-b="3500"><b>Sichtbarkeit</b>ab ~3,5k</div>
+          <div class="anchor" data-b="6000"><b>Präsenz</b>ab ~6k</div>
+          <div class="anchor" data-b="9500"><b>Dominanz</b>ab ~9,5k</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="card">
+      <p class="label">Erwartetes Ergebnis</p>
+      <div class="state-badge">Voraussichtlicher Zustand</div>
+      <div class="state-name" id="stateName">Präsenz</div>
+      <div class="state-desc" id="stateDesc">Hohe Wiedererkennung in Ihrer Region.</div>
+      <div class="profile-hint" id="profileHint"></div>
+
+      <div style="margin-top:18px">
+        <div class="axis">
+          <div class="axis-head">
+            <span class="axis-name"><span class="dot" style="background:var(--reach)"></span>Reichweite</span>
+            <span class="tag tag-hard">belegbar</span>
+          </div>
+          <div class="bar"><div class="bar-fill" id="barReach" style="background:var(--reach);width:50%"></div></div>
+          <div class="axis-note">Wie viele Menschen wir nachweislich digital erreichen – dedupliziert, mit Frequenzbegrenzung.</div>
+        </div>
+
+        <div class="axis">
+          <div class="axis-head">
+            <span class="axis-name"><span class="dot" style="background:var(--presence)"></span>Raumpräsenz</span>
+            <span class="tag tag-est">geschätzt</span>
+          </div>
+          <div class="bar est"><div class="bar-fill" id="barPresence" style="background:var(--presence);width:50%"></div></div>
+          <div class="axis-note">Wie sichtbar im öffentlichen Raum (DOOH). Modellwert aus Screen-Dichte – keine Einzelpersonen-Messung.</div>
+        </div>
+
+        <div class="axis">
+          <div class="axis-head">
+            <span class="axis-name"><span class="dot" style="background:var(--intensity)"></span>Intensität</span>
+            <span class="tag tag-est">geschätzt</span>
+          </div>
+          <div class="bar est"><div class="bar-fill" id="barIntensity" style="background:var(--intensity);width:50%"></div></div>
+          <div class="axis-note">Wie oft einem die Botschaft begegnet. Gesättigt gerechnet – der 12. Kontakt zählt kaum mehr als der 6.</div>
+        </div>
+      </div>
+
+      <div class="numbers">
+        <div class="num"><b id="people">≈ 64'000</b><span>Menschen erreicht (Range)</span></div>
+        <div class="num"><b id="freq">≈ 4–6×</b><span>Kontakte pro Person</span></div>
+      </div>
+
+      <div class="legend">
+        <span><span class="tag tag-hard">belegbar</span> messbar, im Reporting nachweisbar</span>
+        <span><span class="tag tag-est">geschätzt</span> Modellwert mit Unschärfe</span>
+      </div>
+
+      <div class="disclaimer" id="disclaimer">
+        Reichweite ist deduplizierte Display-Auslieferung und im Reporting belegbar. Raumpräsenz und Intensität sind Modellschätzungen mit ±30–40&nbsp;% Unschärfe. Der Zustand ist eine Produktdefinition, kein gemessener Wert.
+      </div>
+    </div>
+  </div>
+
+  <footer>VIO · interner Prototyp zur Modell-Diskussion. Zahlen illustrativ, nicht kalibriert. Der interne Wirkungsindex ist hier bewusst nicht sichtbar.</footer>
+</div>
+
+<script>
+// ---- illustrative Engine (NICHT kalibriert – nur fürs Gefühl) ----
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('de-CH').replace(/,/g,"'");
+
+function sat(f){ // Sättigungskurve für Frequenz: 1 - e^(-f/zielfreq), zielfreq≈5
+  return 1 - Math.exp(-f/5);
+}
+
+function compute(){
+  const pop = +$('region').selectedOptions[0].dataset.pop;
+  const tage = +$('zeitraum').value;
+  const druck = +$('druck').value;
+  const mix = $('mix').value;
+  const budget = +$('budget').value;
+
+  // Budget-Effizienz relativ zur Regionsgrösse: kleiner Nenner -> mehr Wirkung
+  const perCapita = budget / pop;             // grobe Intensität des Drucks
+  const dauerBoost = 0.7 + (tage/42)*0.5;      // längere Laufzeit -> mehr Frequenzaufbau
+
+  // Kanal-Schwerpunkt verschiebt Profil (gleicher Preis)
+  let wReach=1, wPres=1, wFreq=1;
+  if(mix==='dooh'){ wReach=0.7; wPres=1.45; wFreq=1.25; }
+  if(mix==='display'){ wReach=1.4; wPres=0.55; wFreq=0.95; }
+
+  // Roh-Achsen 0..1 (illustrativ)
+  let reach = Math.min(1, perCapita*9.0*wReach*druck);
+  let presence = Math.min(1, perCapita*7.5*wPres*druck*(0.8+dauerBoost*0.3));
+  // effektive Frequenz -> gesättigt
+  let effFreq = (perCapita*55*wFreq*dauerBoost);
+  effFreq = Math.min(effFreq, 14);
+  let intensity = sat(effFreq);
+
+  reach=Math.max(.04,reach); presence=Math.max(.04,presence); intensity=Math.max(.04,intensity);
+
+  return {pop,tage,budget,reach,presence,intensity,effFreq};
+}
+
+function stateFrom(r,p,i){
+  // Schwellen über das PROFIL, nicht über einen Skalar.
+  const hi = v=>v>=0.62, mid = v=>v>=0.38;
+  const hiCount=[r,p,i].filter(hi).length;
+  const midCount=[r,p,i].filter(mid).length;
+
+  if(hiCount>=3 || (hiCount>=2 && midCount>=3)) return 'dominanz';
+  if(midCount>=2 || hiCount>=1) return 'praesenz';
+  return 'sichtbarkeit';
+}
+
+const STATES={
+  sichtbarkeit:{name:'Sichtbarkeit',desc:'Man nimmt Sie punktuell wahr – erste Bekanntheit.'},
+  praesenz:{name:'Präsenz',desc:'Hohe Wiedererkennung in Ihrer Region.'},
+  dominanz:{name:'Dominanz',desc:'Sie prägen den Wahrnehmungsraum der Region.'}
+};
+
+function profileHint(r,p,i,state){
+  if(state==='sichtbarkeit') return '';
+  // Breite vs. Dichte erkennen
+  if(p - r > 0.22) return 'Profil: stark im Strassenbild, digital schwächer.';
+  if(r - p > 0.22) return 'Profil: digital stark, im Strassenbild schwächer.';
+  if(i - Math.max(r,p) > 0.18) return 'Profil: Dominanz durch Dichte – wer Sie sieht, sieht Sie oft.';
+  if(Math.min(r,p) > 0.55 && i < 0.5) return 'Profil: Dominanz durch Breite – fast jeder sieht Sie, aber seltener.';
+  return 'Profil: ausgewogen über alle drei Achsen.';
+}
+
+function render(){
+  const d=compute();
+  const state=stateFrom(d.reach,d.presence,d.intensity);
+  const meta=STATES[state];
+
+  $('stateName').textContent=meta.name;
+  $('stateDesc').textContent=meta.desc;
+  $('profileHint').textContent=profileHint(d.reach,d.presence,d.intensity,state);
+
+  $('barReach').style.width=(d.reach*100).toFixed(0)+'%';
+  $('barPresence').style.width=(d.presence*100).toFixed(0)+'%';
+  $('barIntensity').style.width=(d.intensity*100).toFixed(0)+'%';
+
+  // Menschen-Range aus Reichweite (belegbar) + DOOH-Beitrag separat angedeutet
+  const erreichtMid = d.reach*d.pop*0.85 + d.presence*d.pop*0.25;
+  const lo=erreichtMid*0.82, hi=erreichtMid*1.18;
+  $('people').textContent='≈ '+fmt(lo)+'–'+fmt(hi);
+
+  const fLo=Math.max(1,d.effFreq*0.8), fHi=d.effFreq*1.2;
+  $('freq').textContent='≈ '+fLo.toFixed(0)+'–'+fHi.toFixed(0)+'×';
+
+  // Budget UI
+  $('budgetVal').textContent='CHF '+fmt(d.budget);
+  const pct=((d.budget-2000)/(20000-2000))*100;
+  $('budget').style.setProperty('--fill',pct+'%');
+  const hints={sichtbarkeit:'Aktuell: erste Sichtbarkeit',praesenz:'Aktuell: Präsenz in dieser Region',dominanz:'Aktuell: Dominanz in dieser Region'};
+  $('budgetHint').textContent=hints[state];
+}
+
+['region','zeitraum','druck','mix','budget'].forEach(id=>$(id).addEventListener('input',render));
+document.querySelectorAll('.anchor').forEach(a=>a.addEventListener('click',()=>{
+  $('budget').value=a.dataset.b; render();
+}));
+render();
+</script>
+</body>
+</html>

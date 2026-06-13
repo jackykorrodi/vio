@@ -1,8 +1,8 @@
 # VIO Regelkatalog Politik — v3.6
 
 ```yaml
-SPEC_VERSION:     3.13
-LAST_VALIDATED:   2026-06-09
+SPEC_VERSION:     3.14
+LAST_VALIDATED:   2026-06-12
 PFAD_A_STATUS:    Re-Validierung nach Konstanten-Bereinigung (OTS/Delivery entfernt) gegen Soll-Werte v3.6 ausstehend
 PFAD_B_STATUS:    §8.6/§8.7/§8.8 implementiert (Sprint 1+1b) — §12 36 Soll-Werte ausstehend
 PRECEDENCE:       Spec > Code. Bei Konflikt gilt diese Spec; Code wird angeglichen.
@@ -810,7 +810,79 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 
 ---
 
-## §13 Versionshistorie (I)
+## §13 Eckwerte-Modus — Flow v2 (N)
+
+Flow v2 kennt zwei Modi: **Geführt** (VIO schlägt vor) und **Impact** (Kunde setzt selbst). Beide rechnen **ohne Frequenz** als Nutzer-Input. Hinweise blockieren nie (kein UI-Gate).
+
+### Gebietslast L
+
+L = Summe der Gebietslastwerte aller gewählten Gebiete.
+Pool-Quelle: `region.stimm` (Stimmberechtigte — **nie** Bevölkerungszahl).
+
+**Gebietslast-Stufen — Status: Illustrativ** (Splicky-Kalibrierung ausstehend):
+
+| Gebietstyp    | Lastwert |
+|---------------|----------|
+| Gemeinde      | 1        |
+| Stadt         | 3        |
+| Bezirk        | 4        |
+| Kanton        | 8        |
+| CH (national) | 20       |
+
+Mehrere Gebiete: L = Σ Lastwerte.
+
+### Zeitraum T (Tage)
+
+**Geführt:** Ende = Urnengang; Start = Ende − {14 | 28 | 42}; Default 28 («ab Versand Stimmunterlagen»).
+**Impact:** Start und Ende frei wählbar.
+
+### Bedarfsformel
+
+```
+WOCHENSATZ   = 250          # CHF/Woche pro Lasteinheit — Status: Illustrativ
+need         = L × (T / 7) × WOCHENSATZ
+```
+
+### Budget-Ratio & Risikoklasse
+
+```
+ratio        = budget / need
+```
+
+| ratio  | Klasse  | Hebel (immer zeigen)                                              |
+|--------|---------|-------------------------------------------------------------------|
+| ≥ 1.05 | niedrig | —                                                                 |
+| ≥ 0.80 | mittel  | Gebiet fokussieren / Zeitraum straffen / Budget erhöhen           |
+| < 0.80 | hoch    | Gebiet fokussieren / Zeitraum straffen / Budget erhöhen           |
+
+Klasse **mittel** und **hoch** zeigen immer einen konkreten Hebel. Hinweis blockiert nie.
+
+### Budget-Empfehlung
+
+```
+MIN_BUDGET   = 4000         # CHF, harter Unterboden
+empfehlung   = max(MIN_BUDGET, ceil(need × 1.05 / 500) × 500)
+```
+
+### Reach
+
+Bestehendes Modell (§5): `reachUniqueLow`, Drei-Ebenen-Ehrlichkeit. UI kommuniziert «ca. X+».
+
+### UI-Sichtbarkeit
+
+Im Eckwerte-Modus erscheinen **nie** in der UI: Frequenz, CPM, Kanal-Split.
+CPM bleibt intern aktiv fürs Reach-Modell.
+
+### Soll-Werte
+
+| L | T (d) | Budget (CHF) | need      | ratio  | Klasse  | Empfehlung (CHF) |
+|---|-------|-------------|-----------|--------|---------|-----------------|
+| 6 | 28    | 6'000        | 6'000     | 1.00   | mittel  | 6'500           |
+| 6 | 50    | 8'000        | ≈ 10'714  | ≈ 0.75 | hoch    | 11'500          |
+
+---
+
+## §14 Versionshistorie (I)
 
 | Version | Datum | Änderung |
 |---|---|---|
@@ -822,6 +894,7 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 | **v3.8** | **05.06.2026** | **Pool-Tier-Paketmodell: §8.1 ersetzt Min-Budget durch feste Tier-Budgets (4×3-Matrix, §4). Pool-Tiers A/B/C/D nach stimmTotal. Reach/Frequenz sind Output, nicht Preistreiber. Reach-Caps (§5.4) bleiben als Sättigungs-Obergrenze. requiresConsultation neu: Komplexitäts-Trigger (nicht budgetgetrieben), DOMINANZ_CAP_MULTIPLIER als Trigger deprecated. §3 neue Terms pool_tier, tier_budget, wirkungs_titel, wirkungs_subline. §9.1: stabile Wirkungs-Titel (Lokale Sichtbarkeit / Regionale Präsenz / Hohe Präsenz), vierte Karte „Individuell konfigurieren" als eigene Achse, keine Hierarchie zu Standardpaketen. §9.2: Floor-Wording-Regel bei frequency_weekly < F_MIN_WEEKLY (ehrliche Subline statt Ausgrauen/Kürzen). §9.3: Frequenz-Guardrail neu (Badge-Entzug bei frequency_weekly < F_MIN_WEEKLY, Custom-CTA, nie Badge-Verschiebung), Ausführungssequenz mit Schichtgrenze. §10: Tier-Budget-Matrix als Annahme + TODO Owner.** |
 | **v3.9** | **08.06.2026** | **Paket-Engine frequenz-getrieben: §8.1 dokumentiert INPUT = Tier-Budget + Ziel-Frequenz (fix: Sichtbar 3×, Präsenz 5×, Dominanz 6×) + Laufzeit; OUTPUT = Reach. Reach-Formel identisch Custom-Pfad (reachLinear + Hofmans-Sättigung). §9.3: Frequenz-Guardrail (v3.8) entfernt — EMPFOHLEN-Badge sitzt immer auf default_recommended_package (Präsenz). Ausführungssequenz auf 3 Engine-Schritte reduziert. §9.1: Reach als absolute gerundete Zahl in Karten-Hierarchie (Item 3), Pool-% explizit verboten. §9.2: Tier-C/D-Custom-Hint als neue Subline-Zeile.** |
 | **v3.10** | **08.06.2026** | **Finale Wirkungsprodukt-Logik: §8.3 Laufzeiten auf 21/28/35d fixiert (war 14/28/42d). §8.1 Ziel-Frequenz 3/4/5× (war 3/5/6×), Strategie-Spalte (mehr Reichweite / ausgewogen / mehr Wiederholung), Differenzierungshinweis (Reach +13–22%, Gesamtkontakte ~+200%). §4 Neue Tier-Budget-Matrix (CHF, Status Annahme): A 3'500/6'000/10'000, B 5'000/9'000/15'000, C 7'500/14'000/24'000, D 10'000/18'000/30'000. §9.1: Zwei absolute KPIs (Stimmberechtigte + Ø Kontakte/Person) + Laufzeit + Strategie-Label; Reach nie als Vergleich/Ranking. §9.2: Aufklärungssatz unter Karten. §9.3: Badge-Begründung Politik-Standard (28d, ausgewogene Frequenz 4×), nicht reach-begründet; qualityStatus=high_frequency-Guardrail entfernt. Custom-Pfad (WIRKUNGSFOKUS_FREQUENZ 2.1/3.1/4.6×) unverändert.** |
+| **v3.14** | **12.06.2026** | **Eckwerte-Modus (Flow v2): §13 neu. Gebietslast L (Stimmberechtigte, illustrative Stufen 1/3/4/8/20), Zeitraum T, need-Formel, Budget-Ratio-Klassen (niedrig/mittel/hoch), Empfehlung-Formel, MIN_BUDGET CHF 4'000. Zwei Modi: Geführt (VIO schlägt vor) / Impact (frei). Hinweis blockiert nie. Frequenz/CPM/Kanal-Split nie in UI. Reach: bestehendes Modell §5.** |
 | **v3.13** | **09.06.2026** | **Kampagnenfrequenz-Modell (fundamentaler Modellwechsel). §3: `frequency_campaign` PRIMARY, `frequency_weekly` abgeleitet/sekundär. §4: Neuer Block Kampagnenfrequenz (F_KAMPAGNE_SICHTBAR/PRAESENZ/DOMINANZ = 5/7/9, F_KAMPAGNE_BREIT/AUSGEWOGEN/VERANKERUNG = 5/7/10, EFFECTIVE_FREQUENCY_MIN/MAX = 3/10, WOCHENDRUCK_WARN_THRESHOLD = 2.0). §8.1: Formel reachLinear = impressionenImPool / fKampagne (war / (zielFrequenz × laufzeitWochen)); fKampagne 5/7/9× (war 3/4/5×). Custom-Pfad: Wirkungsfokus-Tabelle auf Kampagnenkontakte umgestellt (5/7/10×, war 2.1/3.1/4.6×/Woche); Reach-Formel analog. §8.2: Frequenz-Bänder auf Kampagnenkontakte aktualisiert (informativ). §9.1: KPI-Regel — Kampagnenfrequenz PROMINENT („N× gesehen während der Kampagne"), Wochenfrequenz sekundär. Neuer Wochendruck-Info-Hinweis bei frequency_weekly < 2.0 in Custom-Coach. §10: Drei neue fKampagne/WOCHENDRUCK-Zeilen (Status: Annahme, TODO Owner). SAT 1.4, fokusabhängiges Cap-Level, 42d-Deckel bleiben unverändert.** |
 | **v3.12** | **09.06.2026** | **Sweet-Spot-Budget-Empfehlung auf Referenz-Laufzeit normalisiert (§ Sweet-Spot, §10). `calculateSweetSpotCustom` rechnet intern mit `REFERENZ_LAUFZEIT_DAYS = 28` statt der vom Nutzer gewählten Laufzeit. Budget-Empfehlung ist damit laufzeit-stabil. `calculateImpactCustom` unverändert (echte Laufzeit). Neue §10-Zeile: `REFERENZ_LAUFZEIT_DAYS`.** |
 | **v3.11** | **08.06.2026** | **Custom-Sweet-Spot mediaplanerisch korrigiert. §4: Neue Konstante SWEET_SPOT_TARGET_SATURATION=1.4 (war 4.0; Pakete 0.2–1.3, effizienter Grenzertrag-Punkt). §6.3 neu: Politik-Laufzeit-Fenster 14/28/42d als Produktregel (N) für Paket und Custom (Custom deckelt nach oben auf 42d, Korridor 14–42d bleibt). Custom-Pfad Sweet-Spot: Cap-Level fokusabhängig (Breite Wirkung=L3, Ausgewogen=L2, Verankerung=L1; war fix L1). §10: SWEET_SPOT_TARGET_SATURATION und Laufzeit-Max als Annahme + TODO Splicky-Kalibrierung ergänzt.** |
@@ -972,6 +1045,18 @@ Unverändert v3.5.2 — Status: leer, 36 Soll-Werte ausstehend.
 - §9.2 Subline-Mapping, §9.3 Default-Empfehlung-Badge, §9.4 Kommunikationsregeln.
 - §11/§12 Soll-Tabellen.
 - Custom-Pfad: DOOH-Verfügbarkeit, Kampagnenfenster, Sweet-Spot-Logik, Cap-Level fokusabhängig (SAT 1.4).
+
+### Geänderte normative Punkte v3.13 → v3.14
+
+- §13 neu: Eckwerte-Modus (Flow v2) — frequenzfreier Planungsmodus für Geführt und Impact.
+- §4 Neue illustrative Konstanten: `WOCHENSATZ = 250`, `MIN_BUDGET = 4000`, Gebietslast-Stufen (Gemeinde 1 / Stadt 3 / Bezirk 4 / Kanton 8 / CH 20).
+- Versionshistorie: §13 → §14 umbenannt.
+
+### Unveränderte normative Punkte aus v3.13
+
+- §1–§12 vollständig.
+- §4 Alle bestehenden Konstanten (Reichweite & Frequenz, Preise, DOOH-Buchbarkeit, Paket-Capping, Pool-Tier-Budget-Matrix, Kampagnenfrequenz, Custom-Pfad).
+- Custom-Pfad: Wirkungsfokus-Modell vollständig.
 
 ---
 

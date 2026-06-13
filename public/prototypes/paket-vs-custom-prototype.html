@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIO — Paket vs. Custom vs. Hybrid (Prototyp)</title>
+<style>
+  :root{
+    --violet:#6B4FBB; --violet-soft:rgba(107,79,187,0.06); --violet-line:rgba(107,79,187,0.25);
+    --ink:#1d1b2e; --slate:#6b6880; --line:#e6e4ee; --line-strong:#cfcbe0;
+    --card:#fff; --bg:#f4f2fb; --good:#2f9e6f; --warn:#c98a2b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);padding:28px 20px 80px;line-height:1.45}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px}
+  .sub{color:var(--slate);font-size:14px;margin-bottom:24px}
+  .controls{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:24px;display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end}
+  .ctrl label{display:block;font-size:12px;font-weight:600;color:var(--slate);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
+  select,input[type=range]{font-family:inherit}
+  select{padding:8px 12px;border:1.5px solid var(--line-strong);border-radius:10px;font-size:14px;background:#fff;color:var(--ink);min-width:220px}
+  input[type=range]{width:280px;accent-color:var(--violet)}
+  .budgetval{font-size:22px;font-weight:700;color:var(--violet);font-variant-numeric:tabular-nums}
+  .tierbadge{display:inline-block;background:var(--violet-soft);color:var(--violet);font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;margin-left:8px}
+
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
+  .tab{padding:10px 18px;border-radius:10px;border:1.5px solid var(--line-strong);background:#fff;color:var(--slate);font-weight:600;font-size:14px;cursor:pointer;transition:.15s}
+  .tab.active{background:var(--violet);color:#fff;border-color:var(--violet)}
+  .view{display:none}
+  .view.active{display:block}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .pcard{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:.15s}
+  .pcard.rec{border-color:var(--violet);box-shadow:0 4px 24px rgba(107,79,187,.1)}
+  .pcard.custom{border-style:dashed;border-color:var(--violet-line)}
+  .empfohlen{position:absolute;top:-10px;left:16px;background:var(--violet);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:4px 10px;border-radius:999px}
+  .ptitle{font-size:11px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.14em}
+  .pprice{font-size:28px;font-weight:800;letter-spacing:-.02em}
+  .pmeta{border-top:1px solid var(--line);padding-top:12px;color:var(--slate);font-size:13px}
+  .pmeta b{color:var(--ink);font-weight:600}
+  .kpi{display:flex;gap:18px;margin-top:6px}
+  .kpi div{font-size:13px}
+  .kpi .num{font-size:20px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;display:block}
+  .kpi .lbl{color:var(--slate);font-size:11px}
+  .strat{font-size:11px;font-weight:700;color:var(--violet);text-transform:uppercase;letter-spacing:.08em}
+  .hint{background:#fffaf0;border:1px solid #f0e2c0;border-radius:12px;padding:14px 16px;font-size:13px;color:#7a5c1e;margin-top:16px;line-height:1.5}
+  .note{font-size:12px;color:var(--slate);margin-top:18px;padding:14px;background:#fff;border:1px dashed var(--line-strong);border-radius:12px;line-height:1.6}
+  .wiz{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:560px}
+  .wrow{margin-bottom:22px}
+  .seg{display:flex;gap:8px;margin-top:8px}
+  .seg button{flex:1;padding:10px;border:1.5px solid var(--line-strong);background:#fff;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;color:var(--slate)}
+  .seg button.on{background:var(--violet);color:#fff;border-color:var(--violet)}
+  .outcome{background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:12px;padding:18px;margin-top:8px}
+  .presets{display:flex;gap:10px;margin:10px 0 22px;flex-wrap:wrap}
+  .preset{padding:10px 14px;border:1.5px solid var(--line-strong);background:#fff;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+  .preset.on{border-color:var(--violet);background:var(--violet-soft)}
+  .preset small{display:block;color:var(--slate);font-weight:400;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>VIO — Paketlogik vs. Custom vs. Hybrid</h1>
+  <div class="sub">Interaktiver Prototyp mit der echten Reach-Engine. Region + Budget verstellen, drei Darstellungs-Ansätze vergleichen. Frequenz fix pro Paket (3/5/6), Reach ist Output.</div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>Region (Pool Stimmberechtigte)</label>
+      <select id="region"></select>
+    </div>
+    <div class="ctrl" id="customBudgetWrap" style="display:none">
+      <label>Budget (Custom)</label>
+      <input type="range" id="budget" min="3000" max="60000" step="500" value="12000">
+      <div class="budgetval" id="budgetlbl">CHF 12'000</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-v="paket">① Paketlogik (Tiefe-Framing)</div>
+    <div class="tab" data-v="custom">② Custom-Wizard (begleitet)</div>
+    <div class="tab" data-v="hybrid">③ Hybrid (Presets + Custom)</div>
+  </div>
+
+  <div class="view active" id="v-paket"></div>
+  <div class="view" id="v-custom"></div>
+  <div class="view" id="v-hybrid"></div>
+
+  <div class="note" id="enginenote"></div>
+</div>
+
+<script>
+// ── Echte Engine-Konstanten (lib/preislogik.ts) ──
+const CPM_DOOH=50, CPM_DISPLAY=15, IN_POOL_FACTOR=0.7, REACH_CURVE_K=0.25, F_MIN=3, F_MAX=10;
+const SPLIT={dooh:.70,display:.30}; // voll-Klasse (Prototyp-Annahme)
+
+const REGIONS=[
+  {name:'Gemeinde klein (Tier A)', stimm:60000},
+  {name:'Stadt Winterthur ~ (Tier B)', stimm:180000},
+  {name:'Kanton mittel (Tier C)', stimm:450000},
+  {name:'Kanton Zürich (Tier D)', stimm:1015000},
+];
+// Paket-Specs (PAKET_SPECS) + Tier-Budget-Matrix (§4)
+const SPECS={sichtbar:{name:'Lokale Sichtbarkeit',f:3,days:14,lvl:1,strat:'mehr Reichweite'},
+             praesenz:{name:'Regionale Präsenz',f:5,days:28,lvl:2,strat:'ausgewogen'},
+             dominanz:{name:'Hohe Präsenz',f:6,days:42,lvl:3,strat:'mehr Wiederholung'}};
+const TIER_BUDGET={A:{sichtbar:4000,praesenz:6000,dominanz:9000},B:{sichtbar:4000,praesenz:8000,dominanz:12000},
+                   C:{sichtbar:6000,praesenz:12000,dominanz:20000},D:{sichtbar:8000,praesenz:15000,dominanz:25000}};
+const WF={breit:2.1, ausgewogen:3.1, verankerung:4.6};
+
+function tier(s){return s<100000?'A':s<300000?'B':s<=700000?'C':'D'}
+function cap(s,l){if(s<50000)return l===1?.22:l===2?.45:.65;if(s<200000)return l===1?.12:l===2?.22:.38;if(s<500000)return l===1?.06:l===2?.12:.21;return l===1?.03:l===2?.06:.12}
+function impsInPool(b){return ((b*SPLIT.dooh/CPM_DOOH)+(b*SPLIT.display/CPM_DISPLAY))*1000*IN_POOL_FACTOR}
+// identische Formel beider Pfade
+function reachOf(stimm,budget,freq,days,lvl){
+  const weeks=days/7, poolCap=stimm*cap(stimm,lvl);
+  if(poolCap<=0||freq<=0||weeks<=0)return 0;
+  const rl=impsInPool(budget)/(freq*weeks);
+  return Math.round(poolCap*(1-Math.exp(-REACH_CURVE_K*rl/poolCap)));
+}
+function chf(n){return 'CHF '+Math.round(n).toLocaleString('de-CH').replace(/,/g,"'")}
+function ppl(n){return Math.round(n/100)*100>=1000? (Math.round(n/100)*100).toLocaleString('de-CH').replace(/,/g,"'") : Math.round(n/50)*50}
+// infer cap level für custom (vereinfachte inferCapLevel)
+function inferLvl(stimm,budget,freq,days){
+  const weeks=days/7;let best=1,bd=1e9;
+  for(const l of [1,2,3]){const r=reachOf(stimm,budget,freq,days,l);const pc=stimm*cap(stimm,l);
+    const fw=r>0?impsInPool(budget)/r/weeks:0;const d=Math.abs(fw-freq);if(d<bd){bd=d;best=l}}
+  return best;
+}
+
+let state={region:3, budget:12000, view:'paket', wf:'ausgewogen', wdays:28, preset:'praesenz'};
+
+const regionSel=document.getElementById('region');
+REGIONS.forEach((r,i)=>{const o=document.createElement('option');o.value=i;o.textContent=r.name+' — '+r.stimm.toLocaleString('de-CH').replace(/,/g,"'");regionSel.appendChild(o)});
+regionSel.value=state.region;
+regionSel.onchange=e=>{state.region=+e.target.value;render()};
+
+const budgetSlider=document.getElementById('budget');
+budgetSlider.oninput=e=>{state.budget=+e.target.value;document.getElementById('budgetlbl').textContent=chf(state.budget);render()};
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  state.view=t.dataset.v;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('v-'+state.view).classList.add('active');
+  document.getElementById('customBudgetWrap').style.display=(state.view==='custom'||state.view==='hybrid')?'block':'none';
+  render();
+});
+
+function render(){
+  const reg=REGIONS[state.region], t=tier(reg.stimm);
+  renderPaket(reg,t);
+  renderCustom(reg,t);
+  renderHybrid(reg,t);
+  document.getElementById('enginenote').innerHTML=
+    '<b>Engine-Hinweis:</b> Beide Pfade nutzen dieselbe Formel <code>reach = poolCap·(1−e^(−k·imp/(freq·wochen)/poolCap))</code>. '+
+    'Paket = feste Inputs (Frequenz 3/5/6, Tier-Budget, Laufzeit 14/28/42). Custom = freie Inputs. '+
+    'Region '+reg.name+' → Tier '+t+'. Zahlen sind echte Engine-Outputs (voll-Klasse 70/30).';
+}
+
+function kpiBlock(reach,freq,days){
+  return '<div class="kpi"><div><span class="num">~'+ppl(reach)+'</span><span class="lbl">Stimmberechtigte erreicht</span></div>'+
+         '<div><span class="num">'+freq+'×</span><span class="lbl">gesehen pro Person</span></div></div>'+
+         '<div class="pmeta" style="margin-top:8px"><b>'+days+' Tage</b> Laufzeit</div>';
+}
+
+function renderPaket(reg,t){
+  const el=document.getElementById('v-paket');
+  let cards='';
+  for(const k of ['sichtbar','praesenz','dominanz']){
+    const sp=SPECS[k], b=TIER_BUDGET[t][k];
+    const reach=reachOf(reg.stimm,b,sp.f,sp.days,sp.lvl);
+    const rec=(k==='praesenz');
+    cards+='<div class="pcard'+(rec?' rec':'')+'">'+(rec?'<div class="empfohlen">Empfohlen</div>':'')+
+      '<div class="ptitle">'+sp.name+'</div>'+
+      '<div class="pprice">'+chf(b)+'</div>'+
+      kpiBlock(reach,sp.f,sp.days)+
+      '<div class="strat">'+sp.strat+'</div></div>';
+  }
+  // 4. Custom-Karte
+  cards+='<div class="pcard custom"><div class="ptitle">Individuell</div>'+
+    '<div style="font-size:15px;font-weight:700;margin-top:4px">Individuell konfigurieren →</div>'+
+    '<div class="pmeta">Eigenes Budget, Laufzeit und Wirkungsfokus</div></div>';
+  let hint='';
+  if(t==='C'||t==='D') hint='<div class="hint">💡 '+reg.name.split(' (')[0]+' zählt zu den grösseren Regionen. Wenn du zusätzliche Reichweite oder einen anderen Wirkungsfokus möchtest, kannst du deine Kampagne im Custom-Modus individuell konfigurieren.</div>';
+  el.innerHTML='<div class="grid">'+cards+'</div>'+hint+
+    '<div class="note"><b>Beobachtung Tiefe-Framing:</b> Das günstigste Paket erreicht die meisten Personen (breit, 3×), das teuerste die wenigsten aber am häufigsten (tief, 6×). Beide Kennzahlen sichtbar → der Tradeoff ist ehrlich lesbar. Badge auf Präsenz = Politik-Standard (28 Tage, Entscheidungsfenster), nicht „grösste Zahl".</div>';
+}
+
+function renderCustom(reg,t){
+  const el=document.getElementById('v-custom');
+  const freq=WF[state.wf];
+  const lvl=inferLvl(reg.stimm,state.budget,freq,state.wdays);
+  const reach=reachOf(reg.stimm,state.budget,freq,state.wdays,lvl);
+  el.innerHTML='<div class="wiz">'+
+    '<div class="wrow"><label class="ptitle" style="color:var(--slate)">1 · Wirkungsfokus</label>'+
+      '<div class="seg" id="wf">'+
+      ['breit','ausgewogen','verankerung'].map(w=>'<button data-wf="'+w+'" class="'+(state.wf===w?'on':'')+'">'+
+        ({breit:'Breite Wirkung',ausgewogen:'Ausgewogen',verankerung:'Verankerung'}[w])+'<br><small style="font-weight:400;font-size:11px;opacity:.8">'+WF[w]+'×/Woche</small></button>').join('')+'</div></div>'+
+    '<div class="wrow"><label class="ptitle" style="color:var(--slate)">2 · Laufzeit</label>'+
+      '<div class="seg" id="wd">'+[14,28,42].map(d=>'<button data-d="'+d+'" class="'+(state.wdays===d?'on':'')+'">'+d+' Tage</button>').join('')+'</div></div>'+
+    '<div class="wrow"><label class="ptitle" style="color:var(--slate)">3 · Budget — '+chf(state.budget)+'</label>'+
+      '<div style="font-size:12px;color:var(--slate)">Slider oben verstellen</div></div>'+
+    '<div class="outcome"><div class="strat">Ergebnis für '+reg.name.split(' (')[0]+'</div>'+
+      kpiBlock(reach,freq,state.wdays)+'</div>'+
+    '</div>'+
+    '<div class="note"><b>Custom-Stärke:</b> Drei freie Hebel, Wirkung wird live für genau diese Region gerechnet. Kein Paket-Punkt der „in irgendeiner Region falsch" ist. <b>Schwäche:</b> mehr Entscheidungen für den Nutzer, kein sofortiger Preisanker.</div>';
+  el.querySelectorAll('#wf button').forEach(b=>b.onclick=()=>{state.wf=b.dataset.wf;render()});
+  el.querySelectorAll('#wd button').forEach(b=>b.onclick=()=>{state.wdays=+b.dataset.d;render()});
+}
+
+function renderHybrid(reg,t){
+  const el=document.getElementById('v-hybrid');
+  // presets befüllen state-spiegel
+  const presetMap={sichtbar:{wf:'breit',days:14,budget:TIER_BUDGET[t].sichtbar},
+                   praesenz:{wf:'ausgewogen',days:28,budget:TIER_BUDGET[t].praesenz},
+                   dominanz:{wf:'verankerung',days:42,budget:TIER_BUDGET[t].dominanz}};
+  const pm=presetMap[state.preset];
+  const freq=WF[pm.wf];
+  const lvl=inferLvl(reg.stimm,pm.budget,freq,pm.days);
+  const reach=reachOf(reg.stimm,pm.budget,freq,pm.days,lvl);
+  el.innerHTML='<div style="font-size:13px;color:var(--slate);margin-bottom:6px">Schnellstart — wählt sinnvolle Werte vor, danach frei justierbar:</div>'+
+    '<div class="presets">'+['sichtbar','praesenz','dominanz'].map(k=>{const sp=SPECS[k];
+      return '<div class="preset'+(state.preset===k?' on':'')+'" data-p="'+k+'">'+sp.name+'<small>'+chf(TIER_BUDGET[t][k])+' · '+sp.f+'× · '+sp.days+'d</small></div>';}).join('')+
+      '<div class="preset" style="border-style:dashed">Leer starten<small>alle Hebel frei</small></div></div>'+
+    '<div class="wiz"><div class="outcome"><div class="strat">Vorbefüllt: '+SPECS[state.preset].name+' · '+reg.name.split(' (')[0]+'</div>'+
+      '<div class="pmeta" style="border:none;padding:0;margin-bottom:8px">'+chf(pm.budget)+' · Wirkungsfokus '+pm.wf+' · '+pm.days+' Tage</div>'+
+      kpiBlock(reach,freq,pm.days)+
+      '<div style="margin-top:12px;font-size:12px;color:var(--violet);font-weight:600">→ Werte hier weiter justieren (Budget, Fokus, Laufzeit)</div></div></div>'+
+    '<div class="note"><b>Hybrid-Idee:</b> Das Preset ist der Conversion-Anker (Ein-Klick wie ein Paket), der Wizard die Passgenauigkeit. Eine Engine, eine Logik — Pakete sind nur Startpunkte im Custom-Raum. Löst den Reach/Frequenz/Preis-Konflikt strukturell.</div>';
+  el.querySelectorAll('.preset[data-p]').forEach(p=>p.onclick=()=>{state.preset=p.dataset.p;render()});
+}
+
+render();
+</script>
+</body>
+</html>

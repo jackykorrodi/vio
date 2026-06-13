@@ -5,7 +5,7 @@ Diese Datei definiert, welche Quelle fuer welche Art von Logik gilt.
 ## Prioritaet
 
 1. Echter Code ist Wahrheit fuer den aktuellen Zustand.
-2. Fuer fachliche Soll-Logik Politik gilt: `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.7).
+2. Fuer fachliche Soll-Logik Politik gilt: `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.14).
 3. Wenn Code und Regelkatalog widersprechen: nicht still korrigieren, sondern melden und Entscheidung verlangen.
 4. `CONTEXT.md` ist Projektstatus, nicht Preislogik-Source-of-Truth.
 5. Prototypen sind UI-Referenz, nicht Logik-Source-of-Truth.
@@ -15,7 +15,7 @@ Diese Datei definiert, welche Quelle fuer welche Art von Logik gilt.
 
 Fachliche Source of Truth:
 
-- `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.7)
+- `public/vio-regelkatalog-politik-v3-6.md` (SPEC_VERSION 3.14)
 
 Implementation:
 
@@ -47,6 +47,14 @@ Nur lesen, wenn explizit Legacy-Aufraeumen oder Vergleich verlangt wird.
 
 Nur als UI-/Interaktionsreferenz verwenden.
 Nicht als Berechnungslogik uebernehmen.
+
+## Eckwerte-Modus (Flow v2)
+
+Fachliche Source of Truth: `public/vio-regelkatalog-politik-v3-6.md` §13 (SPEC_VERSION 3.14).
+
+Frequenzfrei. Zwei Modi: Geführt (VIO schlägt vor) / Impact (Kunde setzt selbst). Hinweis blockiert nie.
+
+Kernformeln: L (Gebietslast aus region.stimm), T (Zeitraum Tage), need = L × (T/7) × WOCHENSATZ, ratio = budget/need, empfehlung = max(MIN_BUDGET, ceil(need×1.05/500)×500). Reach: §5 (reachUniqueLow). Frequenz/CPM/Kanal-Split: nie in UI.
 
 ## Bekannte Pruefpunkte
 
